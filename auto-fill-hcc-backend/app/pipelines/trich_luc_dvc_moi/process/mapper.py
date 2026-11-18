@@ -259,6 +259,17 @@ def _copied_from_death_place(value, ocr_text: str) -> bool:
     return in_death_place and not in_residence
 
 
+def _died_at_home(ocr_text: str) -> bool:
+    """Dòng "Nơi chết" ghi chết TẠI NHÀ ("Tại nhà", "Tại nhà riêng", "Tại gia đình", "Tại nhà ở …"): nhà đó là nơi người chết ở, dùng
+    được làm nơi cư trú (giá trị suy ra). Chết ở bệnh viện / nơi khác thì không."""
+    lines = [line for line in str(ocr_text or "").splitlines() if line.strip()]
+    for index, line in enumerate(lines):
+        folded = _fold(_labeled_text(lines, index))
+        if "noi chet" in folded and re.match(r"\W*tai (?:nha|gia)\b", folded.split("noi chet", 1)[1].lstrip(" :.-")):
+            return True
+    return False
+
+
 def _death_registrar(ocr_text: str) -> str:
     """Nguyên dòng "Đã được đăng ký khai tử tại": LLM lúc chép đủ lúc cắt mất huyện/tỉnh. Có tờ khai thì theo tờ khai;
     nhiều nơi khác nhau (trích lục của nhiều người) thì không biết của ai → trả rỗng để giữ giá trị lượt trích."""
@@ -499,13 +510,19 @@ def _only_account_documents(values: dict, context: str, options: dict | None) ->
     giấy tờ chủ tài khoản"; hoặc phân vai để trống người được cấp mà thẻ lượt trích đọc ra trùng đúng số định danh và
     họ tên tài khoản."""
     subject = section(context, "nguoi_duoc_cap")
+    account_name, account_id = requester_context(options)
     if _fold(labeled_value(subject, "Nguồn")) == "giay to chu tai khoan":
-        return True
+        # Phân vai đôi khi gắn nhãn này cả khi chính nó ghi người được cấp là người KHÁC (thẻ của người khác người nộp):
+        # tin nhãn chỉ khi họ tên hoặc số định danh của người được cấp mà phân vai ghi khớp tài khoản.
+        subject_name = _fold(labeled_value(subject, "Họ tên"))
+        subject_id = _digits(labeled_value(subject, "Số định danh"))
+        if not (subject_name or subject_id) or not (account_name or account_id):
+            return True
+        return bool(account_id and subject_id == account_id) or bool(account_name and subject_name == _fold(account_name))
     papers = section(context, "giay_to_ho_tich")
     if labeled_value(subject, "Họ tên") or labeled_value(papers, "Loại ghi trên tờ khai") or labeled_value(
             papers, "Tài liệu nguồn"):
         return False
-    account_name, account_id = requester_context(options)
     number = _digits(values.get("NguoiDuocCap_SoDinhDanh") or values.get("NguoiDuocCap_SoGiayTo"))
     return bool(account_id) and number == account_id and _fold(account_name) == _fold(values.get("NguoiDuocCap_HoTen"))
 
@@ -644,20 +661,31 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     # Danh mục dân tộc của cổng không có "Khác": nhóm địa phương Cill/K'Ho/Lạch quy về Cơ Ho.
     add("citizenField32", normalize_ethnic(co_ho_local_group(values.get("NguoiDuocCap_DanToc"))) or None)
     raw_area = values.get("NguoiDuocCap_NoiCuTru")
-    # Nơi chết không phải nơi cư trú: bỏ tỉnh/xã/địa chỉ nhưng vẫn chọn Trong nước để bốn ô hiện ra cho cán bộ nhập.
+    from_home = False
     if event == "death" and _copied_from_death_place(raw_area, ocr_text):
-        area = {"quocGia": raw_area.get("quocGia") or "Việt Nam"}
+        # Nơi chết không phải nơi cư trú — trừ khi chết TẠI NHÀ: địa chỉ nhà đó là nơi người chết ở → điền, tô vàng
+        # cho cán bộ soát. Nơi chết khác: bỏ tỉnh/xã/địa chỉ nhưng vẫn chọn Trong nước để bốn ô hiện ra cho cán bộ nhập.
+        from_home = _died_at_home(ocr_text)
+        area = _area(raw_area, ocr_text) if from_home else {"quocGia": raw_area.get("quocGia") or "Việt Nam"}
     else:
         area = _area(raw_area, ocr_text)
+    if event == "death" and not area:
+        # Giấy khai tử không ghi nơi cư trú: vẫn mở bốn ô cho cán bộ nhập (không để cán bộ tự đi bấm "Trong nước").
+        area = {"quocGia": "Việt Nam"}
     if area:
         add("citizenNDK_LoaiCuTru", "Thường trú", default=True)
         # Radio "Trong nước" phải chọn trước: bốn ô địa chỉ chỉ hiện sau khi chọn.
         add("citizenNDK_Noicutru", "1")
         add("citizenField21", area.get("quocGia") or "Việt Nam")
-        add("citizenNDK_TinhThanh", area.get("tinh"))
-        add("citizenNDK_PhuongXa", area.get("xa"))
-        add("citizenField38", area.get("diaChi"), default=bool(area.get("_xaChuaChon")))
-        if area.get("_xaChuaChon") or not area.get("tinh"):
+        add("citizenNDK_TinhThanh", area.get("tinh"), default=from_home)
+        add("citizenNDK_PhuongXa", area.get("xa"), default=from_home)
+        add("citizenField38", area.get("diaChi"), default=from_home or bool(area.get("_xaChuaChon")))
+        if from_home:
+            warnings.append("Giấy khai tử không ghi nơi cư trú; đã lấy địa chỉ nơi chết (chết tại nhà) làm nơi cư trú — "
+                            "cán bộ kiểm tra lại.")
+        elif event == "death" and not area.get("tinh"):
+            warnings.append("Giấy khai tử không ghi nơi cư trú của người chết — cán bộ nhập tay nơi cư trú.")
+        if area.get("_xaChuaChon") or (not area.get("tinh") and event != "death"):
             warnings.append("Chưa chọn được tỉnh/phường, xã nơi cư trú của người được cấp theo danh mục hiện hành — "
                             "cán bộ chọn lại ô Tỉnh/Thành phố và Phường/Xã.")
     if self_filing:

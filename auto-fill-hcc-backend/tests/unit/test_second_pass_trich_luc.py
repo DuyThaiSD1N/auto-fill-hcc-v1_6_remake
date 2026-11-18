@@ -248,3 +248,29 @@ def test_cum_the_bo_ngay_het_han_va_noi_cap_khong_phai_co_quan(extra, kept):
     finding = thanh_tra.engine.Finding(nhan_than.INSPECTOR, unit, {"NguoiDuocCap_SoGiayTo": "250199202", **extra},
                                        "dòng", 1)
     assert nhan_than._tidy_card(finding, Case([], "", {}, {})) == {"NguoiDuocCap_SoGiayTo": "250199202", **kept}
+
+
+_TRICH_LUC_KHAI_TU_TAI_NHA = """TRÍCH LỤC KHAI TỬ
+(BẢN SAO)
+Họ, chữ đệm, tên: NGUYỄN VĂN A
+Nơi chết: Tại nhà ở thôn Một, xã Vĩnh Ngọc, thành phố Nha Trang, tỉnh Khánh Hòa
+Đã được đăng ký khai tử tại: UBND xã Vĩnh Ngọc"""
+
+
+def test_thanh_tra_dia_chi_chet_tai_nha_bo_sung_noi_cu_tru():
+    from app.pipelines._shared.thanh_tra.ho_so import Case
+    from app.pipelines.trich_luc_dvc_moi.thanh_tra import dia_chi_ghep
+
+    values = {"GiayTo_LoaiSuKien": "death", "NguoiDuocCap_HoTen": "NGUYỄN VĂN A"}
+    case = Case([{"name": "tl.pdf", "text": _TRICH_LUC_KHAI_TU_TAI_NHA}], "", values)
+    finding = dia_chi_ghep.home_finding(case, None)
+    area = finding.values["NguoiDuocCap_NoiCuTru"]
+    assert area["tinh"] == "Khánh Hòa" and area["diaChi"] == "thôn Một" and finding.backed
+    # Lượt trích đã điền đúng nhà đó → không có gì để xử.
+    assert dia_chi_ghep.home_finding(Case(case.documents, "", {**values, "NguoiDuocCap_NoiCuTru": area}), None) is None
+    family = _TRICH_LUC_KHAI_TU_TAI_NHA.replace("Tại nhà ở thôn Một,", "Tại gia đình, thôn Một,")
+    assert dia_chi_ghep.home_finding(Case([{"text": family}], "", values), None).values["NguoiDuocCap_NoiCuTru"][
+        "diaChi"] == "thôn Một"
+    # Chết ở bệnh viện → không phải nơi cư trú.
+    hospital = _TRICH_LUC_KHAI_TU_TAI_NHA.replace("Tại nhà ở thôn Một,", "Bệnh viện tỉnh,")
+    assert dia_chi_ghep.home_finding(Case([{"text": hospital}], "", values), None) is None

@@ -6,6 +6,7 @@ KHOẢN. Agent chỉ trả text có thẻ để ghim vai cho lượt trích; kh�
 
 import re
 import unicodedata
+from datetime import date
 
 from app.config import settings
 from app.services.llm import client
@@ -288,6 +289,89 @@ def _render_context(raw: str, options: dict | None) -> str:
     )
 
 
+_BIRTH_CERT_HEAD_RE = re.compile(r"^\W*(giay khai sinh|trich luc khai sinh)")
+_BIRTH_LINE_RE = re.compile(r"ngay,? thang,? nam sinh|^ngay sinh")
+_BIRTH_DATE_RE = re.compile(r"(\d{1,2})\s*[/.\-]\s*(\d{1,2})\s*[/.\-]\s*(\d{4})")
+
+
+def holder_birth(text) -> date | None:
+    """Ngày sinh của người được khai sinh trên một giấy khai sinh / trích lục khai sinh: dòng "Ngày, tháng, năm sinh"
+    đầu tiên sau tiêu đề giấy."""
+    lines = [line.strip() for line in str(text or "").splitlines() if line.strip()]
+    start = next((i for i, line in enumerate(lines) if _BIRTH_CERT_HEAD_RE.match(_fold(line))), None)
+    for line in lines[start:] if start is not None else []:
+        if _BIRTH_LINE_RE.search(_fold(line)):
+            found = _BIRTH_DATE_RE.search(line)
+            try:
+                return date(int(found.group(3)), int(found.group(2)), int(found.group(1))) if found else None
+            except ValueError:
+                return None
+    return None
+
+
+def _birth_certificates_note(documents: list[dict], context: str) -> str:
+    """Khối sự thật do mã đọc: mỗi giấy khai sinh trong hồ sơ là của người sinh năm nào, cùng / khác năm sinh người có
+    nội dung thay đổi. Hồ sơ cải chính HỌ TÊN có giấy cần sửa ghi TÊN CŨ, kèm giấy khai sinh của cha / mẹ in mới rõ chữ:
+    model hay chọn giấy theo tên nên lấy nhầm số / ngày đăng ký của giấy cha / mẹ."""
+    subject = _DATE_TEXT_RE.search(labeled_value(section(context, "nguoi_thay_doi"), "Ngày sinh") or "")
+    rows = []
+    for index, document in enumerate(documents, start=1):
+        birth = holder_birth(document.get("text"))
+        if not birth:
+            continue
+        relation = ""
+        if subject:
+            same = birth.year == int(subject.group(3))
+            relation = (" — CÙNG năm sinh với người có nội dung thay đổi" if same
+                        else " — KHÁC năm sinh: giấy của người khác (cha / mẹ...), không lấy HoSo_* ở đây")
+        rows.append(f"- Tài liệu {index} ({document.get('name') or ''}): người được khai sinh sinh "
+                    f"{birth.strftime('%d/%m/%Y')}{relation}")
+    if len(rows) < 2:
+        return ""
+    return ("\n\n<giay_khai_sinh_trong_ho_so>\nMã đọc sẵn dòng ngày sinh của từng giấy khai sinh. Giấy cần sửa là giấy "
+            "CÙNG năm sinh, kể cả khi họ tên trên giấy khác (tên cũ đang xin cải chính / OCR đọc lệch):\n"
+            + "\n".join(rows) + "\n</giay_khai_sinh_trong_ho_so>")
+
+
+_DATE_TEXT_RE = re.compile(r"(\d{1,2})\s*/\s*(\d{1,2})\s*/\s*(\d{4})")
+_REGISTRATION_FIELDS = ("HoSo_So", "HoSo_QuyenSo", "HoSo_NgayDangKy", "HoSo_NoiDangKy")
+
+
+def _as_date(text) -> date | None:
+    found = _BIRTH_DATE_RE.search(str(text or ""))
+    try:
+        return date(int(found.group(3)), int(found.group(2)), int(found.group(1))) if found else None
+    except ValueError:
+        return None
+
+
+def _carries(text: str, name: str, value) -> bool:
+    if name == "HoSo_NgayDangKy":
+        target = _as_date(value)
+        return bool(target) and any(_as_date("/".join(groups)) == target for groups in _BIRTH_DATE_RE.findall(text))
+    number = " ".join(str(value or "").split())
+    return bool(re.search(r"\d", number)) and bool(re.search(rf"(?<![\w/]){re.escape(number)}(?![\w/])", text))
+
+
+def drop_other_holder_registration(values: dict, documents: list[dict], context: str = "") -> dict:
+    """Số / ngày đăng ký lượt trích chỉ có trên giấy khai sinh của người sinh KHÁC NĂM với người có nội dung thay đổi
+    (giấy khai sinh của cha / mẹ kèm làm căn cứ), trong khi hồ sơ có giấy khai sinh CÙNG năm sinh → bỏ cả bộ HoSo_*
+    (thà thiếu còn hơn sai: ô trống thì cán bộ tự điền / thanh tra đợt 2 bổ sung). Trả bản sao ``values``."""
+    # Ngày sinh theo khối phân vai trước: lượt trích có lúc chép ngày sinh của cha / mẹ vào NguoiThayDoi_NgaySinh.
+    born = _as_date(labeled_value(section(context, "nguoi_thay_doi"), "Ngày sinh")
+                    or values.get("NguoiThayDoi_NgaySinh"))
+    if not born or not documents:
+        return values
+    births = {index: holder_birth(document.get("text")) for index, document in enumerate(documents)}
+    if not any(birth and birth.year == born.year for birth in births.values()):
+        return values
+    homes = {index for index, document in enumerate(documents) for name in ("HoSo_So", "HoSo_NgayDangKy")
+             if values.get(name) and _carries(str(document.get("text") or ""), name, values[name])}
+    if homes and all(births.get(index) and births[index].year != born.year for index in homes):
+        return {name: value for name, value in values.items() if name not in _REGISTRATION_FIELDS}
+    return values
+
+
 async def build_context(documents: list[dict], options: dict | None = None) -> str:
     if not documents:
         return ""
@@ -300,7 +384,8 @@ async def build_context(documents: list[dict], options: dict | None = None) -> s
         temperature=0,
         enable_thinking=settings.agent_reasoning,
     )
-    return _render_context(_drop_unquoted_authorization_relation(raw, documents), options)
+    context = _render_context(_drop_unquoted_authorization_relation(raw, documents), options)
+    return context + _birth_certificates_note(documents, context) if context else context
 
 
 def _drop_unquoted_authorization_relation(raw: str, documents: list[dict]) -> str:

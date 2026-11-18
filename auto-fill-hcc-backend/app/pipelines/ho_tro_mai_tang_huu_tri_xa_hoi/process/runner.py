@@ -1,5 +1,6 @@
 """Compact-agent pipeline cho mai táng người hưởng hưu trí xã hội."""
 
+import copy
 import re
 import unicodedata
 
@@ -218,6 +219,15 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
     owner_mode = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
     # Cờ theo tài khoản (phường Cam Đường, xã Bình Chương) hoặc toggle trên: người chết là chủ hồ sơ nên trích thêm NguoiMat_*.
     deceased_owner = mapper.is_deceased_owner(options)
+    # Điền đợt 2 cần OCR từng tài liệu và field TRƯỚC mapper — runner chung chỉ trả chuỗi OCR đã nối.
+    second_pass = bool((options or {}).get("_secondPass"))
+    read: dict = {}
+    builder = _owner_only_context if owner_mode else _requester_context
+
+    async def build_context(documents: list[dict], opts: dict) -> str:
+        read["documents"] = documents
+        return await builder(documents, opts)
+
     res = await runner.run(
         files_by_role,
         fields=DECEASED_OWNER_FIELDS if deceased_owner else FIELDS,
@@ -226,8 +236,9 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         aliases=ALIASES,
         extra_rules=EXTRA_RULES + (DECEASED_OWNER_RULES if deceased_owner else ""),
         options=options,
-        context_builder=_owner_only_context if owner_mode else _requester_context,
+        context_builder=build_context,
     )
+    raw_fields = copy.deepcopy(res["fields"]) if second_pass else []
     mapped_fields, warnings = mapper.enrich(res["fields"], options)
     if owner_mode:
         # Họ tên + CCCD Phần I cổng khoá (disabled) theo tài khoản VNeID; người nộp theo tờ khai có thể là người
@@ -238,4 +249,9 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
     res["fields"] = mapped_fields
     if warnings:
         res.setdefault("errors", []).extend(warnings)
+    if raw_fields and read.get("documents"):
+        from ..thanh_tra import dot_hai
+
+        # Nơi gọi pipeline lấy khoá này ra khỏi kết quả rồi chạy ở nền sau khi đã trả lượt điền đầu.
+        res["_second_pass"] = lambda base_fields: dot_hai.patch(read["documents"], raw_fields, base_fields, options)
     return res

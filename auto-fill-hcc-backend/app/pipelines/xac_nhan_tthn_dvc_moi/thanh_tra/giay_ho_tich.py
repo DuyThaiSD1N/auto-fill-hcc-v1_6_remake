@@ -30,16 +30,26 @@ tra đã đọc riêng từng trang và lập các bộ in trên giấy; dòng "
 </bo_so_ngay_co_quan>
 
 <giay_khai_tu>
-Cổng hỏi số / ngày / cơ quan của LẦN ĐĂNG KÝ KHAI TỬ của vợ hoặc chồng người được cấp. Thứ bậc nguồn, cao xuống thấp:
-1. Dòng đăng ký gốc trong thân TRÍCH LỤC KHAI TỬ: "Đã được đăng ký khai tử tại: <cơ quan> ... Số: <N> ... ngày <D>",
-   hoặc "Nơi ghi: <cơ quan>, Sổ đăng ký khai tử, quyển số <Q>, số <N>, ngày <D>". Cơ quan chép đủ mọi cấp dòng đó
-   ghi (xã / phường, huyện, tỉnh).
-2. Đầu giấy khai tử thật (trích lục thiếu dòng đăng ký gốc, giấy chứng tử, giấy báo tử): số ở nhãn "Số:" đầu trang
-   (dạng "<N>/TLKT-BS" là số của bản trích lục), ngày ở dòng địa danh + ngày, cơ quan cấp ở khối đầu trang.
-3. Dòng tình trạng hôn nhân trên tờ khai / Giấy XNTTHN cũ nhắc lại giấy khai tử — chỉ dùng khi hồ sơ KHÔNG có giấy
-   khai tử thật: chữ viết tay hay bị đọc lệch, và tờ khai thường chép số của bản trích lục.
+Cổng hỏi số / ngày / cơ quan của giấy khai tử của vợ hoặc chồng người được cấp, theo ĐÚNG LOẠI GIẤY người dân nộp: nộp
+BẢN CHÍNH (trích lục khai tử bản chính, giấy chứng tử) thì điền số đăng ký gốc; nộp BẢN SAO trích lục khai tử (số đầu
+trang dạng "<N>/TLKT-BS", hoặc giấy có dòng "(BẢN SAO)") thì điền số, ngày cấp, cơ quan cấp ở ĐẦU bản sao; có cả bản
+chính lẫn bản sao thì theo bản chính. Thứ bậc nguồn, cao xuống thấp (mã đã xếp bậc theo loại giấy):
+1. Dòng đăng ký gốc trong thân trích lục khai tử BẢN CHÍNH: "Đã được đăng ký khai tử tại: <cơ quan> ... Số: <N> ...
+   ngày <D>", hoặc "Nơi ghi: <cơ quan>, Sổ đăng ký khai tử, quyển số <Q>, số <N>, ngày <D>". Cơ quan chép đủ mọi cấp
+   dòng đó ghi (xã / phường, huyện, tỉnh).
+2. Đầu giấy khai tử BẢN CHÍNH (trích lục bản chính thiếu dòng đăng ký gốc, giấy chứng tử).
+3. Đầu BẢN SAO trích lục khai tử: số "<N>/TLKT-BS" giữ nguyên hậu tố, ngày cấp bản sao ở dòng địa danh + ngày, cơ quan
+   cấp ở khối đầu trang.
+4. Dòng đăng ký gốc trong thân BẢN SAO trích lục — chỉ bù field đầu bản sao không ghi.
+5. Đầu giấy báo tử của bệnh viện / cơ quan (không phải giấy đăng ký khai tử).
+6. Dòng tình trạng hôn nhân trên tờ khai / Giấy XNTTHN cũ nhắc lại giấy khai tử — chỉ dùng khi hồ sơ KHÔNG có giấy
+   khai tử thật: chữ viết tay hay bị đọc lệch.
+Tín hiệu mã nêu "cấu hình đơn vị: bản sao vẫn lấy số gốc" → đơn vị này điền số đăng ký gốc cả khi người dân nộp bản
+sao: dòng đăng ký gốc trong thân bản sao xếp bậc như bản chính (bậc 1), đầu bản sao như đầu bản chính (bậc 2).
 A lấy bộ bậc thấp trong khi hồ sơ có bộ bậc cao hơn → chọn B. Bộ bậc cao thiếu một giá trị thì giá trị đó lấy ở bậc kế
 tiếp của CHÍNH tờ giấy đó, không để trống.
+Dòng "Giấy báo tử / Giấy tờ thay thế Giấy báo tử số ... do <bệnh viện> cấp" trong thân trích lục là giấy căn cứ để
+đăng ký, không phải bộ của lần đăng ký khai tử: B lấy từ dòng đó → chọn A.
 </giay_khai_tu>
 
 <ban_an_ly_hon>
@@ -105,6 +115,9 @@ Mỗi bộ thuộc đúng MỘT việc ("khai_tu" hoặc "ly_hon") và đúng M�
   hôn theo bản án / quyết định số <N> ngày <D> của <Tòa án>" → việc "ly_hon".
 Một trích lục khai tử / trích lục bản án, quyết định có dòng gốc trong thân thì lập HAI bộ: một bộ "dang_ky_goc" và
 một bộ "dau_giay" (số, ngày, cơ quan ở đầu bản trích lục).
+Dòng thân trích lục khai tử "Giấy báo tử / Giấy tờ thay thế Giấy báo tử số <N> ... do <bệnh viện / cơ quan> cấp ngày
+<D>" là giấy CĂN CỨ để đăng ký khai tử, KHÔNG phải lần đăng ký → KHÔNG lập bộ nào từ dòng này. Trích lục không có dòng
+"Đã (được) đăng ký khai tử tại" / "Nơi ghi ... Sổ đăng ký khai tử" / "Cấp số" thì chỉ lập bộ "dau_giay".
 Số, ngày, cơ quan ở đầu của TỜ KHAI và của Giấy xác nhận tình trạng hôn nhân cũ là của chính tờ đó, KHÔNG phải bộ của
 giấy khai tử hay bản án ly hôn → không lập bộ "dau_giay" từ hai loại giấy này.
 </cac_loai_bo>
@@ -132,11 +145,18 @@ Trang không có bộ nào → {{"bo": []}}.
 
 _RANKS = {("khai_tu", "dang_ky_goc"): 3, ("khai_tu", "dau_giay"): 2, ("khai_tu", "nhac_lai"): 1,
           ("ly_hon", "dang_ky_goc"): 4, ("ly_hon", "dau_giay"): 3, ("ly_hon", "nhac_lai"): 1}
+# Giấy khai tử xếp bậc theo LOẠI GIẤY người dân nộp (xem <giay_khai_tu>): bản chính → số đăng ký gốc; bản sao trích lục
+# → số / ngày / cơ quan đầu bản sao, dòng đăng ký trong thân chỉ bù; giấy báo tử không phải giấy đăng ký khai tử.
+_DEATH_RANKS = {("ban_chinh", "dang_ky_goc"): 6, ("ban_chinh", "dau_giay"): 5, ("ban_sao", "dau_giay"): 4,
+                ("ban_sao", "dang_ky_goc"): 3, ("bao_tu", "dang_ky_goc"): 3, ("bao_tu", "dau_giay"): 2}
 # Bậc của bộ ở đầu văn bản Tòa án / dòng đăng ký khai tử gốc: từ bậc này trở lên, số của A nằm riêng trên dòng thụ lý
 # là số thụ lý vụ án.
 _PRIMARY_RANK = 3
 _SOURCE_LABELS = {("khai_tu", "dang_ky_goc"): "dòng đăng ký gốc trong thân trích lục khai tử",
                   ("khai_tu", "dau_giay"): "đầu giấy khai tử (số của bản trích lục / giấy chứng tử)",
+                  ("ban_sao", "dang_ky_goc"): "dòng đăng ký gốc trong thân BẢN SAO trích lục khai tử",
+                  ("ban_sao", "dau_giay"): "đầu BẢN SAO trích lục khai tử (giấy người dân nộp là bản sao)",
+                  ("bao_tu", "dau_giay"): "đầu giấy báo tử",
                   ("khai_tu", "nhac_lai"): "dòng nhắc lại trên tờ khai / Giấy XNTTHN cũ",
                   ("ly_hon", "dang_ky_goc"): "dòng văn bản gốc trong thân trích lục bản án / quyết định",
                   ("ly_hon", "dau_giay"): "đầu văn bản bản án / quyết định của Tòa án (hoặc đầu bản trích lục)",
@@ -196,6 +216,22 @@ def pages(case: Case) -> list[dict]:
     return out[:_MAX_PAGES]
 
 
+def _death_kind(page_text: str, original_number: bool = False) -> str:
+    """Loại tờ giấy khai tử: "ban_sao" (bản sao trích lục), "bao_tu" (giấy báo tử, không phải giấy đăng ký khai tử),
+    "ban_chinh" (trích lục bản chính, giấy chứng tử). ``original_number``: cờ đơn vị lấy số gốc kể cả bản sao → bản
+    sao xếp như bản chính."""
+    if mapper.is_death_copy(page_text):
+        return "ban_chinh" if original_number else "ban_sao"
+    title = mapper._DEATH_TITLE_RE.search(page_text)
+    return "bao_tu" if title and fold(title.group(0)) == "giay bao tu" else "ban_chinh"
+
+
+def _rank(matter: str, source: str, page_text: str, original_number: bool = False) -> int:
+    if matter == "khai_tu" and source != "nhac_lai":
+        return _DEATH_RANKS.get((_death_kind(page_text, original_number), source), 0)
+    return _RANKS.get((matter, source), 0)
+
+
 def _text(value) -> str:
     text = " ".join(str(value or "").split())
     return "" if text.casefold() in ("null", "none") else text
@@ -225,7 +261,7 @@ def _line_with(page_text: str, record: dict) -> str:
     return ""
 
 
-async def _read_page(page: dict, title: str) -> list[dict]:
+async def _read_page(page: dict, title: str, original_number: bool = False) -> list[dict]:
     raw = await client.chat(
         [{"role": "system", "content": _PAGE_PROMPT.format(title=title)},
          {"role": "user", "content": f"Chữ OCR của trang giấy:\n\n{page['text']}"}],
@@ -241,19 +277,36 @@ async def _read_page(page: dict, title: str) -> list[dict]:
         date = _text(item.get("ngay"))
         # Ngày model trả phải có thật trên trang: giấy không ghi ngày thì model đôi khi tự đặt một ngày giữ chỗ.
         on_page = bool(parse_date(date)) and bool(locate(_PAGE_DATE, date, [{"text": page["text"]}]))
-        record = {"matter": key[0], "source": key[1], "rank": _RANKS.get(key, 0), "number": _text(item.get("so")),
+        record = {"matter": key[0], "source": key[1], "rank": _rank(*key, page["text"], original_number),
+                  "kind": _death_kind(page["text"], original_number), "number": _text(item.get("so")),
                   "date": date if on_page else "", "agency": _tidy_agency(_text(item.get("co_quan"))),
                   "people": _text(item.get("nguoi")), "gender": fold(_text(item.get("gioi_tinh"))),
                   "line": _text(item.get("dong")), "doc": page["doc"], "page": page["text"]}
         if not record["rank"] or not (record["number"] or record["date"]):
             continue
         record["line"] = _line_with(page["text"], record)
-        if record["line"]:
+        if record["line"] and not _mislabeled_registration(page["text"], record):
             records.append(record)
-    return records + _registration_by_code(page, records)
+    return records + _registration_by_code(page, records, original_number)
 
 
-def _registration_by_code(page: dict, records: list[dict]) -> list[dict]:
+# Cụm định nghĩa của dòng đăng ký khai tử gốc (xem _PAGE_PROMPT): số / ngày có thể xuống một hai dòng dưới cụm đó. Không
+# dùng "quyển số": dòng giấy báo tử của bệnh viện cũng ghi quyển số.
+_REGISTRATION_MARK_RE = re.compile(r"dang ky khai tu|noi ghi|cap so|ngay[\s,]*(?:thang[\s,]*nam[\s,]*)?dang ky")
+
+
+def _mislabeled_registration(page_text: str, record: dict) -> bool:
+    """Bộ khai tử model gắn nhãn "dang_ky_goc" mà dòng chứng cứ (và hai dòng ngay trên) không có cụm định nghĩa của dòng
+    đăng ký gốc — vd dòng "Giấy báo tử ... do bệnh viện cấp" là giấy căn cứ để đăng ký → nhãn sai, bỏ bộ."""
+    if record["matter"] != "khai_tu" or record["source"] != "dang_ky_goc":
+        return False
+    lines = [line.strip() for line in page_text.splitlines() if line.strip()]
+    at = next((index for index, line in enumerate(lines) if line == record["line"]), None)
+    window = lines[max(0, at - 2): at + 1] if at is not None else [record["line"]]
+    return not any(_REGISTRATION_MARK_RE.search(fold(line)) for line in window)
+
+
+def _registration_by_code(page: dict, records: list[dict], original_number: bool = False) -> list[dict]:
     """Dòng đăng ký gốc của trích lục khai tử có khuôn cố định nên mã cũng đọc được: model đọc sót dòng đó (chỉ lập bộ
     đầu giấy) thì bổ sung bộ do mã đọc, để thứ bậc nguồn không bị lệch vì một lượt đọc thiếu."""
     if any(record["source"] == "dang_ky_goc" for record in records):
@@ -264,7 +317,8 @@ def _registration_by_code(page: dict, records: list[dict]) -> list[dict]:
     date = mapper._full_date(found.get("DeathCert_Date"))
     # Người chết của trang lấy theo bộ đầu giấy model đã lập, để bước lọc "giấy của ai" vẫn áp dụng.
     header = next((record for record in records if record["matter"] == "khai_tu" and record["source"] == "dau_giay"), {})
-    record = {"matter": "khai_tu", "source": "dang_ky_goc", "rank": _RANKS[("khai_tu", "dang_ky_goc")],
+    record = {"matter": "khai_tu", "source": "dang_ky_goc", "rank": _rank("khai_tu", "dang_ky_goc", page["text"], original_number),
+              "kind": _death_kind(page["text"], original_number),
               "number": found["DeathCert_Number"], "date": date, "agency": found.get("DeathCert_Agency", ""),
               "people": header.get("people", ""), "gender": header.get("gender", ""), "line": "", "doc": page["doc"],
               "page": page["text"]}
@@ -329,6 +383,8 @@ def _sources(records: list[dict], spec: Field, value) -> list[dict]:
 
 
 def _label(record: dict) -> str:
+    if record["matter"] == "khai_tu" and (record.get("kind"), record["source"]) in _SOURCE_LABELS:
+        return _SOURCE_LABELS[(record["kind"], record["source"])]
     return _SOURCE_LABELS[(record["matter"], record["source"])]
 
 
@@ -374,6 +430,8 @@ def _finding(unit: Unit, records: list[dict], case: Case) -> Finding | None:
     # Bộ của B thiếu field nào thì giữ giá trị lượt trích của field đó: đổi cả cụm không được làm trống ô đang có.
     values = {**{name: value for name, value in current.items() if name not in proposed}, **proposed}
     owner = _OWNERS[2] if best["source"] == "nhac_lai" else _OWNERS[0] if best["matter"] == "khai_tu" else _OWNERS[1]
+    if best["matter"] == "khai_tu" and mapper.death_original_number(case.options) and mapper.is_death_copy(best["page"]):
+        reasons.append("cấu hình đơn vị: bản sao vẫn lấy số gốc")
     evidence = (f"B là bộ ở {_label(best)}: số {merged['number'] or '(không ghi)'}, ngày {merged['date'] or '(không ghi)'}, "
                 f"cơ quan {merged['agency'] or '(không ghi)'}" + ("; " + "; ".join(reasons) if reasons else ""),)
     return Finding(INSPECTOR, unit, values, best["line"], best["doc"],
@@ -381,7 +439,9 @@ def _finding(unit: Unit, records: list[dict], case: Case) -> Finding | None:
 
 
 async def find(inspector: Inspector, case: Case, title: str) -> list[Finding]:
-    read = await asyncio.gather(*(_read_page(page, title) for page in pages(case)), return_exceptions=True)
+    original_number = mapper.death_original_number(case.options)
+    read = await asyncio.gather(*(_read_page(page, title, original_number) for page in pages(case)),
+                                return_exceptions=True)
     records = [record for answer in read if not isinstance(answer, BaseException) for record in answer
                if _of_subject(record, case)]
     findings = []

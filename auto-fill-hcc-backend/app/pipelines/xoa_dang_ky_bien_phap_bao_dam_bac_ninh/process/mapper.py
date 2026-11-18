@@ -133,13 +133,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     so_dd = v.get("NguoiYeuCau_SoDinhDanh")
     dia_chi = _flatten(v.get("NguoiYeuCau_DiaChi"))
     dien_thoai = v.get("NguoiYeuCau_DienThoai")
-    kinh_gui = v.get("Don_KinhGui")
 
-    # --- Bước 1: cơ quan tiếp nhận (select theo địa bàn — FE khớp text, không khớp thì chọn tay) ---
-    add(S.N_DONVI, kinh_gui)
+    # Không phát ô cơ quan tiếp nhận (donViTiepNhanId) lẫn "Kính gửi": "Kính gửi" trên phiếu thường chỉ ghi
+    # chung "Chi nhánh VPĐKĐĐ" — khớp chuỗi chứa trong rơi vào chi nhánh bất kỳ, đè cơ quan đã chọn ở tab 1;
+    # còn ô "Kính gửi" cổng tự ghi theo cơ quan đã chọn, điền đè thì mất tên chi nhánh đầy đủ.
 
     # --- Bước 2: eForm phiếu yêu cầu xóa ---
-    add(S.K_KINHGUI, kinh_gui)
     add(S.K_TUCACH, [_tu_cach_option(v.get("NguoiYeuCau_TuCach"))])  # radio: tick 1 nhãn
     add(S.K_TENDAYDU, ten_day_du)
     add(S.K_DIACHILH, dia_chi)

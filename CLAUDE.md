@@ -192,6 +192,12 @@ Chỉ chạy hai cây `tests/unit` và `tests/integration`. Cây `tests/handfree
 Baseline hiện tại có sẵn một số test đỏ không liên quan đến code mới; so số fail trước và sau khi
 sửa thay vì cố đưa về 0.
 
+Baseline ngày 2026-11-18, sau khi kéo BE thai_dev d3a90fb6 (máy local, plugin win_socketpair, có PYTHONUTF8=1):
+`17 failed, 5611 passed, 41 skipped, 11 errors`. 16 đỏ môi trường cũ + 1 đỏ
+`tests/unit/test_khai_sinh_lien_thong_tach_trang.py::test_moc_trang_chi_nhan_moc_cua_dich_vu_ocr_o_moi_planner_tach` (glob trả
+`\` trên Windows nên import module hỏng; chạy lại logic với `/` thì cả 46 planner tách đều đạt); lỗi collect thứ 11 là
+`tests/unit/test_bien_ban_lam_viec.py`, thiếu `mongomock`.
+
 Baseline ngày 2026-11-17, sau khi chuyển GPXD 1.013225 nhà ở riêng lẻ sang dòng 1/2/4 (máy local, plugin win_socketpair,
 có PYTHONUTF8=1): `16 failed, 5369 passed, 41 skipped, 10 errors`. Vẫn đúng 16 đỏ môi trường của bản 2026-11-13; lỗi collect
 thứ 10 là `tests/unit/test_partner_api_thong_ke.py` (đến từ commit 00926724), cũng thiếu `mongomock`.

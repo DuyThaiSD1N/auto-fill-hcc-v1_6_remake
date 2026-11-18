@@ -1,5 +1,6 @@
 """Compact-agent pipeline cho thủ tục hỗ trợ chi phí mai táng."""
 
+import copy
 import re
 import unicodedata
 
@@ -239,6 +240,15 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
     owner_mode = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
     # Cờ theo tài khoản (phường Nha Trang, phường Tiên Du): ChuHoSo_* = người đề nghị và là chủ hồ sơ trên cổng.
     requester_owner = mapper.is_requester_owner(options)
+    # Điền đợt 2 cần OCR từng tài liệu và field TRƯỚC mapper — runner chung chỉ trả chuỗi OCR đã nối.
+    second_pass = bool((options or {}).get("_secondPass"))
+    read: dict = {}
+    builder = _owner_only_context if owner_mode else _requester_context
+
+    async def build_context(documents: list[dict], opts: dict) -> str:
+        read["documents"] = documents
+        return await builder(documents, opts)
+
     res = await runner.run(
         files_by_role,
         fields=REQUESTER_OWNER_FIELDS if requester_owner else FIELDS,
@@ -247,9 +257,10 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         aliases=ALIASES,
         extra_rules=EXTRA_RULES + (REQUESTER_OWNER_RULES if requester_owner else ""),
         options=options,
-        context_builder=_owner_only_context if owner_mode else _requester_context,
+        context_builder=build_context,
     )
     area_warnings = _keep_proposer_area(res["fields"], res.get("ocr_text") or "") if requester_owner else []
+    raw_fields = copy.deepcopy(res["fields"]) if second_pass else []
     mapped_fields, warnings = mapper.enrich(res["fields"], options)
     warnings = area_warnings + warnings
     if owner_mode:
@@ -261,4 +272,9 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
     res["fields"] = mapped_fields
     if warnings:
         res.setdefault("errors", []).extend(warnings)
+    if raw_fields and read.get("documents"):
+        from ..thanh_tra import dot_hai
+
+        # Nơi gọi pipeline lấy khoá này ra khỏi kết quả rồi chạy ở nền sau khi đã trả lượt điền đầu.
+        res["_second_pass"] = lambda base_fields: dot_hai.patch(read["documents"], raw_fields, base_fields, options)
     return res

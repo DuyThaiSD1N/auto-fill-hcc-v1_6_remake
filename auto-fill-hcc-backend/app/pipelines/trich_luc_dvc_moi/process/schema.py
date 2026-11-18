@@ -23,7 +23,8 @@ FIELDS: list[dict] = [
      "desc": "Cơ quan cấp giấy tờ tùy thân của người được cấp, CHÉP ĐÚNG chữ ghi trên giấy (kể cả viết tắt như "
              "'CA <tỉnh>'). Giấy không ghi cơ quan cấp → bỏ field, không tự điền cơ quan nào."},
     {"name": "NguoiDuocCap_NoiCuTru",
-     "desc": "Nơi cư trú của người được cấp, object {quocGia,tinh,xa,chiTietDuoiXa[,huyen]}."},
+     "desc": "Nơi cư trú của người được cấp, object {quocGia,tinh,xa,chiTietDuoiXa[,huyen]}. Người chết mà trích lục "
+             "khai tử chỉ ghi \"Nơi chết: Tại nhà ...\" → lấy địa chỉ nhà đó."},
 
     {"name": "GiayTo_LoaiSuKien",
      "desc": 'Loại trích lục CẦN CẤP BẢN SAO, một mã: "birth" (khai sinh), "marriage" (kết hôn / ghi chú kết hôn), '

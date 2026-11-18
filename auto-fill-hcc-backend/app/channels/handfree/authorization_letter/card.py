@@ -11,5 +11,4 @@ AUTHORIZATION_LETTER_TOOL = {
     "title": "Tạo giấy ủy quyền",
     "subtitle": "Chụp CCCD hai bên · máy tự điền vào mẫu · in ngay tại quầy",
     "icon": "✍️",
-    "badge": "Mới",
 }

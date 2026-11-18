@@ -2,9 +2,11 @@
 
 import re
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
+from app.pipelines._shared import area_remap
 from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.compact_agent.issuer import default_issuer
 from app.pipelines.ho_tro_mai_tang_huu_tri_xa_hoi.process.schema import UI_COMP_BY_NAME
 
 
@@ -44,7 +46,7 @@ def _norm_identity(value: str | None) -> str:
     return re.sub(r"\D+", "", str(value or ""))
 
 
-# Cấu hình theo tài khoản: phường Cam Đường (Lào Cai) và xã Bình Chương (Quảng Ngãi) khai NGƯỜI CHẾT làm chủ hồ sơ trên cổng; người
+# Cấu hình theo tài khoản: phường Cam Đường (Lào Cai), xã Bình Chương (Quảng Ngãi) và các đơn vị trong _DECEASED_OWNER_WARDS khai NGƯỜI CHẾT làm chủ hồ sơ trên cổng; người
 # đứng ra mai táng chỉ còn là ứng viên người nộp. Nơi khác giữ nguyên logic. Mapper không biết tài
 # khoản nên router (Auto Fill) và pipeline_runner (Handfree) gọi with_account_process_options để server
 # tự đặt cờ; cờ luôn bị ghi đè theo tài khoản, client không tự bật được cho xã khác.
@@ -108,12 +110,36 @@ def is_ninh_binh_nghia_hung(user: dict | None) -> bool:
     return "ninh binh" in tinh and xa == "nghia hung"
 
 
+# Các đơn vị khác cũng khai NGƯỜI CHẾT làm chủ hồ sơ trên cổng: (tỉnh, tên phường/xã) bỏ dấu, bỏ cấp. Tên xã tài khoản có
+# thể kèm hậu tố khu vực cũ ("<tên> - Đà Lạt") nên khớp phần đầu theo ranh giới từ.
+_DECEASED_OWNER_WARDS = (
+    ("quang ngai", "dak bla"),
+    ("ninh binh", "nam hoa lu"),
+    ("bac ninh", "canh thuy"),
+    ("da nang", "lien chieu"),
+    ("bac ninh", "vu ninh"),
+)
+
+
+def is_deceased_owner_ward(user: dict | None) -> bool:
+    if not user:
+        return False
+    tinh = _norm_text(user.get("tinh"))
+    xa = _norm_text(user.get("xa"))
+    for prefix in _WARD_PREFIXES:
+        if xa.startswith(prefix):
+            xa = xa[len(prefix):].strip()
+            break
+    return any(province in tinh and (xa == ward or xa.startswith(ward + " ")) for province, ward in _DECEASED_OWNER_WARDS)
+
+
 def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
     """Trả bản sao options với các cờ theo tài khoản do server quyết (người chết là chủ hồ sơ, xoá email)."""
     result = dict(options or {})
     result.pop(DECEASED_AS_OWNER_OPTION, None)
     result.pop(CLEAR_EMAIL_OPTION, None)
-    if procedure == PROCEDURE_KEY and (is_lao_cai_cam_duong(user) or is_quang_ngai_binh_chuong(user)):
+    if procedure == PROCEDURE_KEY and (is_lao_cai_cam_duong(user) or is_quang_ngai_binh_chuong(user)
+                                       or is_deceased_owner_ward(user)):
         result[DECEASED_AS_OWNER_OPTION] = True
     if procedure == PROCEDURE_KEY and is_ninh_binh_nghia_hung(user):
         result[CLEAR_EMAIL_OPTION] = True
@@ -171,9 +197,10 @@ def _area_label(value: str | None) -> str | None:
     changed = True
     while changed:
         changed = False
-        normalized = _norm_text(text)
+        # So CÓ dấu: bỏ dấu thì tên "Phương Liễu", "Quân …" trùng tiền tố "Phường", "Quận" và bị cắt mất chữ đầu.
+        normalized = unicodedata.normalize("NFC", text).casefold()
         for prefix in prefixes:
-            normalized_prefix = _norm_text(prefix)
+            normalized_prefix = prefix.casefold()
             if normalized == normalized_prefix:
                 return None
             if normalized.startswith(normalized_prefix + " "):
@@ -183,11 +210,38 @@ def _area_label(value: str | None) -> str | None:
     return text
 
 
+def _province_label(value: str | None) -> str | None:
+    """Tên tỉnh trần như danh mục. Chữ viết tay hay bị OCR đọc lệch một chữ ("Quân Ngãi") — không khớp option nào trên cổng
+    → nắn về tỉnh DUY NHẤT trong danh mục chỉ lệch một ký tự (bỏ dấu); nhiều tỉnh cùng gần thì giữ nguyên."""
+    label = _area_label(value)
+    if not label:
+        return None
+    canonical = area_remap.canonical_province(label)
+    if canonical:
+        return canonical
+    key = area_remap._fold_province(label)
+    near = {name for name in area_remap._CURRENT_PROVINCES.values()
+            if _edit_distance(area_remap._fold_province(name), key) <= 1}
+    return near.pop() if len(near) == 1 else label
+
+
+def _phone(value) -> str | None:
+    """Số di động 10 chữ số; tờ khai hay viết tách bằng dấu chấm / khoảng trắng ("038.649.7941") mà ô SĐT của cổng chỉ nhận
+    chữ số. Không đủ 10 số (thiếu / số bàn) thì bỏ trống."""
+    digits = re.sub(r"\D+", "", str(value or ""))
+    return digits if len(digits) == 10 else None
+
+
 def _person(values: dict, prefix: str) -> Person | None:
     name = values.get(f"{prefix}_HoTen")
     identity = values.get(f"{prefix}_SoDinhDanh")
     if not name and not identity:
         return None
+    issue_date = values.get(f"{prefix}_NgayCap")
+    issuer = values.get(f"{prefix}_NoiCap")
+    if not issuer and len(_norm_identity(identity)) == 12 and re.fullmatch(r"\d{1,2}/\d{1,2}/\d{4}", str(issue_date or "").strip()):
+        # Thẻ / tờ khai không ghi (hoặc OCR không đọc được) nơi cấp: cơ quan cấp căn cước xác định theo ngày cấp.
+        issuer = default_issuer(issue_date)
     return Person(
         prefix=prefix,
         name=name,
@@ -195,10 +249,10 @@ def _person(values: dict, prefix: str) -> Person | None:
         birthday=values.get(f"{prefix}_NgaySinh"),
         gender=values.get(f"{prefix}_GioiTinh"),
         nationality=values.get(f"{prefix}_QuocTich") or "Việt Nam",
-        issue_date=values.get(f"{prefix}_NgayCap"),
-        issuer=values.get(f"{prefix}_NoiCap"),
+        issue_date=issue_date,
+        issuer=issuer,
         residence=_area(values.get(f"{prefix}_NoiCuTru")),
-        phone=values.get(f"{prefix}_DienThoai"),
+        phone=_phone(values.get(f"{prefix}_DienThoai")),
     )
 
 
@@ -225,6 +279,19 @@ def _has_applicant_anchor(context: dict) -> bool:
     )
 
 
+_NEAR_EDITS = 2
+
+
+def _edit_distance(first: str, second: str) -> int:
+    previous = list(range(len(second) + 1))
+    for i, a in enumerate(first, start=1):
+        current = [i]
+        for j, b in enumerate(second, start=1):
+            current.append(min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + (a != b)))
+        previous = current
+    return previous[-1]
+
+
 def _matches_applicant(person: Person, context: dict) -> bool:
     """Có cả tên và CCCD từ UI thì bắt buộc cùng khớp."""
     context_name = _norm_text(context.get("applicant_name"))
@@ -233,10 +300,27 @@ def _matches_applicant(person: Person, context: dict) -> bool:
     person_identity = _norm_identity(person.identity)
 
     if context_name and context_identity:
-        return person_name == context_name and person_identity == context_identity
+        # OCR chữ viết tay hay lệch 1–2 ký tự ở MỘT trong hai (tên đọc "TUẤY", số rơi một chữ số): một bên khớp hẳn, bên
+        # kia lệch không quá 2 ký tự vẫn là cùng người; lệch cả hai thì không nhận.
+        if person_identity == context_identity:
+            return _edit_distance(person_name, context_name) <= _NEAR_EDITS
+        return person_name == context_name and bool(person_identity) and (
+            _edit_distance(person_identity, context_identity) <= _NEAR_EDITS)
     if context_identity:
         return bool(person_identity and person_identity == context_identity)
     return bool(context_name and person_name == context_name)
+
+
+def _as_account(person: Person, context: dict) -> Person:
+    """Người đã khớp mốc tài khoản (có thể khớp GẦN): họ tên / số lệch so với tài khoản là OCR đọc lệch — cổng khoá hai ô
+    này theo tài khoản nên lấy đúng giá trị của tài khoản."""
+    name = str(context.get("applicant_name") or "").strip()
+    identity = _norm_identity(context.get("applicant_identity"))
+    return replace(
+        person,
+        name=name if name and _norm_text(name) != _norm_text(person.name) else person.name,
+        identity=identity if identity and identity != _norm_identity(person.identity) else person.identity,
+    )
 
 
 def _same_person(first: Person, second: Person) -> bool:
@@ -295,21 +379,25 @@ def _enrich_roles(
     # chính chủ hồ sơ cho khối người nộp. Ngày sinh UI cũ không tham gia khớp.
     if owner and _matches_applicant(owner, context):
         add("data[isOwnerDossierCheck]", True)
-        _add_requester(add, owner)
+        _add_requester(add, _as_account(owner, context))
         # Portal tự sao chép hầu hết field khi tick nhưng bỏ sót ngày sinh chủ
         # hồ sơ, nên phải phát riêng đúng field này sau khối người nộp.
         add("data[ownerBirthday]", owner.birthday)
+        # Cổng cũng không chép giới tính khi tích (cán bộ phải tự sửa từ giới tính người chết).
+        add("data[ownerGender]", owner.gender)
         return out, warnings
 
     # Nộp thay: chỉ dùng NguoiNop sau khi khớp lại toàn bộ mỏ neo UI hiện có.
     if owner and requester and _matches_applicant(requester, context):
         if _same_person(owner, requester):
             add("data[isOwnerDossierCheck]", True)
-            _add_requester(add, owner)
+            _add_requester(add, _as_account(owner, context))
             add("data[ownerBirthday]", owner.birthday)
+            # Cổng cũng không chép giới tính khi tích (cán bộ phải tự sửa từ giới tính người chết).
+            add("data[ownerGender]", owner.gender)
         else:
             add("data[isOwnerDossierCheck]", False)
-            _add_requester(add, requester)
+            _add_requester(add, _as_account(requester, context))
             _add_owner(add, owner)
         return out, warnings
 
@@ -327,7 +415,7 @@ def _enrich_roles(
 
     if requester and _matches_applicant(requester, context):
         add("data[isOwnerDossierCheck]", False)
-        _add_requester(add, requester)
+        _add_requester(add, _as_account(requester, context))
         warnings.append("Đã xác định người nộp nhưng chưa đọc được chủ hồ sơ từ Mẫu số 04.")
         return out, warnings
 
@@ -359,9 +447,9 @@ def _fill_deceased_owner(
     if str((options or {}).get("submitterMode") or "") == "owner_as_submitter":
         submitter = organizer or requester
     elif organizer and _matches_applicant(organizer, context):
-        submitter = organizer
+        submitter = _as_account(organizer, context)
     elif requester and _matches_applicant(requester, context):
-        submitter = requester
+        submitter = _as_account(requester, context)
     elif _has_applicant_anchor(context):
         anchor = context.get("applicant_identity") or context.get("applicant_name")
         warnings.append(
@@ -390,7 +478,7 @@ def _add_requester(add, person: Person) -> None:
     add("data[idIssuePlace]", person.issuer)
     add("data[phoneNumber]", person.phone)
     if person.residence:
-        add("data[province]", _area_label(person.residence.get("tinh")))
+        add("data[province]", _province_label(person.residence.get("tinh")))
         add("data[district]", _area_label(person.residence.get("xa")))
         add("data[address]", person.residence.get("diaChi"))
 
@@ -404,7 +492,7 @@ def _add_owner(add, person: Person) -> None:
     add("data[ownerIdIssuePlace]", person.issuer)
     add("data[ownerPhoneNumber]", person.phone)
     if person.residence:
-        add("data[ownerProvince]", _area_label(person.residence.get("tinh")))
+        add("data[ownerProvince]", _province_label(person.residence.get("tinh")))
         add("data[ownerDistrict]", _area_label(person.residence.get("xa")))
         add("data[ownerAddress]", person.residence.get("diaChi"))
     add("data[ownerNation]", person.nationality or "Việt Nam")

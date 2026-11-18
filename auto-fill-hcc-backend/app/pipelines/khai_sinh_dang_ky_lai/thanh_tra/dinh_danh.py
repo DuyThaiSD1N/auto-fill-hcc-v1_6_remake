@@ -29,15 +29,26 @@ from .chu_the import ROLES, Role
 
 _TABLE_NOTE = "- người yêu cầu và người được cấp trên tờ khai — hai khối khác nhau là HAI mục, kể cả khi trùng họ tên;"
 assert _TABLE_NOTE in base._PAGE_PROMPT
+# Năm sinh cha / mẹ trên tờ khai, đơn, giấy khai sinh cũ thường chỉ ghi năm: thanh tra năm sinh cha mẹ cần chép năm.
+_YEAR_ONLY_NULL = 'Trang chỉ ghi "sinh năm\n  1960" → null.'
+assert _YEAR_ONLY_NULL in base._PAGE_PROMPT
 # Lượt đọc một trang: thêm cách đọc tờ khai đăng ký lại khai sinh và các giấy hộ tịch hay đi kèm.
 _PAGE_PROMPT = base._PAGE_PROMPT.replace(_TABLE_NOTE, _TABLE_NOTE + """
 - TỜ KHAI ĐĂNG KÝ LẠI KHAI SINH: người yêu cầu, người được đăng ký lại khai sinh (mục "Đề nghị cơ quan đăng ký lại
   khai sinh cho người có tên dưới đây"), mẹ, cha — mỗi khối là MỘT mục, "vai" ghi "người yêu cầu" / "người được khai
   sinh" / "mẹ" / "cha", "loai_giay" là "to_khai";
 - giấy khai sinh / trích lục khai sinh: người được khai sinh, mẹ, cha — mỗi người một mục, "vai" ghi "người được khai
-  sinh" / "mẹ" / "cha" đúng như dòng trên giấy; trích lục khai tử: người chết ("vai" ghi "người chết");""")
+  sinh" / "mẹ" / "cha" đúng như dòng trên giấy; trích lục khai tử: người chết ("vai" ghi "người chết");""").replace(
+    _YEAR_ONLY_NULL, 'Trang chỉ ghi NĂM sinh ("sinh năm 1960", "Năm sinh:\n  1936") → chép đúng năm "yyyy" (năm sinh cha / mẹ\n  hay chỉ ghi năm).')
 
 RULES = """
+<nam_sinh>
+- Ngày / năm sinh của cha / mẹ: B là năm sinh ghi cho CHÍNH người đó trên giấy IN (đơn, bản cam đoan đánh máy, trích
+  lục, giấy khai sinh, thẻ), A khác NĂM và chỉ có trên tờ khai viết tay (mã đã kiểm: năm của A không có trên giấy in nào
+  của người đó) → chọn B. Tờ khai viết tay hay ghi lệch năm sinh cha mẹ; đơn đề nghị / xác nhận còn hay nói rõ tờ khai
+  trước đã ghi sai.
+- Dòng chứng cứ là năm sinh của người khác (anh chị em, người yêu cầu) → KHONG_DU_CAN_CU.
+</nam_sinh>
 <bon_vai>
 Hồ sơ đăng ký lại khai sinh có bốn vai: người được đăng ký lại khai sinh, mẹ, cha, người yêu cầu. Vai đã được chốt ở
 bước phân vai; mỗi vụ chỉ xét MỘT vai, nêu ở tên mục. Mã đã nhận từng bản ghi là của người ở vai đó (họ tên gần trùng
@@ -79,12 +90,24 @@ _OTHER_PAPER_TITLES = ("ban cam doan", "giay cam doan", "giay cam ket", "trich l
                        "giay uy quyen", "don xin", "don de nghi", "giay xac nhan", "can cuoc", "giay chung minh")
 
 
+# Năm sinh chỉ soát cho cha / mẹ: tờ khai viết tay hay ghi lệch năm sinh cha mẹ, còn đơn / giấy in của chính người đó
+# ghi đúng; năm sinh người được đăng ký lại đã có thẻ căn cước đối chiếu ở mapper.
+_BIRTH_ROLES = ("me", "cha")
+
+
+def _birth_canon(value) -> str:
+    return " ".join(re.findall(r"\d+", str(value or "")))
+
+
 def _units(role: Role) -> dict[str, Unit]:
     units = {"ho_ten": Unit(f"{role.key}.ho_ten", f"Họ tên {role.label}",
                             (Field(f"{role.prefix}_FullName", "họ, chữ đệm, tên", canon=base._name_key),))}
     if role.ethnic:
         units["dan_toc"] = Unit(f"{role.key}.dan_toc", f"Dân tộc {role.label}",
                                 (Field(role.ethnic, "dân tộc", canon=fold),))
+    if role.key in _BIRTH_ROLES:
+        units["nam_sinh"] = Unit(f"{role.key}.nam_sinh", f"Ngày / năm sinh {role.label}",
+                                 (Field(role.birth, "ngày / năm sinh", canon=_birth_canon),))
     return units
 
 
@@ -509,6 +532,44 @@ def ethnic_finding(role: Role, person: dict, links: list[_Link], documents: list
                              f"ghi cho chính {role.label}",))
 
 
+def _year(value) -> str:
+    found = re.findall(r"(?<!\d)(1[89]\d\d|20\d\d)(?!\d)", str(value or ""))
+    return found[-1] if found else ""
+
+
+def birth_finding(role: Role, person: dict, links: list[_Link]) -> Finding | None:
+    """Năm sinh cha / mẹ: mỗi trang ghi năm sinh cho chính người đó là một nguồn (giấy in 1 điểm, tờ khai viết tay 0,5).
+    Đề xuất khi năm khác lượt trích, nhiều điểm hơn, có giấy in, và năm của lượt trích không có trên giấy in nào."""
+    if role.key not in _BIRTH_ROLES:
+        return None
+    current = _year(person["birth"])
+    # Bản ghi nhận là của người này NHỜ trùng ngày sinh thì không làm nguồn đổi chính ngày sinh đó.
+    usable = [link for link in links if _year(link.record["birth_text"]) and link.why != "trùng ngày sinh"]
+    slots = _weigh(usable, lambda record: _year(record["birth_text"]))
+    if not slots:
+        return None
+    ranked = sorted(slots.items(), key=lambda item: (item[1]["weight"], item[1]["printed"]), reverse=True)
+    key, best = ranked[0]
+    if key == current or (len(ranked) > 1 and ranked[1][1]["weight"] == best["weight"]) or not best["printed"]:
+        return None
+    mine = slots.get(current, {"weight": 0.0, "printed": 0.0})
+    if current and (mine["printed"] or best["weight"] <= mine["weight"]):
+        return None
+    record = best["link"].record
+    if record["handwritten"]:
+        return None
+    quote = next((line.strip() for line in record["text"].splitlines() if key in line
+                  and (base._name_key(record["name"]) in base._name_key(line) or "sinh" in fold(line))), "")
+    if not quote:
+        return None
+    value = record["birth_text"] if _year(record["birth_text"]) == key else key
+    state = "bỏ trống" if not current else f"năm {current} chỉ có trên tờ khai viết tay"
+    return Finding(INSPECTOR, UNITS_BY_ROLE[role.key]["nam_sinh"], {role.birth: value}, quote, record["doc"],
+                   f"dòng năm sinh của {role.label} ({best['link'].why})", role.label, backed=True,
+                   evidence=(f"năm sinh của A: {state}; B (năm {key}) có {best['weight']:g} điểm nguồn "
+                             f"({best['printed']:g} điểm giấy in) ghi cho chính {role.label}",))
+
+
 def findings_from(records: list[dict], values: dict, documents: list[dict]) -> list[Finding]:
     people = {role.key: chu_the.identity(values, role) for role in ROLES}
     findings = []
@@ -521,7 +582,7 @@ def findings_from(records: list[dict], values: dict, documents: list[dict]) -> l
                   if key != role.key and other["name"] and not close_name(other["name"], person["name"])]
         links = [link for record in records if (link := _belongs(record, role, person, others))]
         name = account_finding(role, person, documents) or name_finding(role, person, links, documents)
-        for finding in (name, ethnic_finding(role, person, links, documents)):
+        for finding in (name, ethnic_finding(role, person, links, documents), birth_finding(role, person, links)):
             if finding:
                 findings.append(finding)
     return findings
@@ -539,5 +600,5 @@ async def find(inspector: Inspector, case: Case, title: str) -> list[Finding]:
 
 
 _OWNERS = tuple(role.label for role in ROLES)
-INSPECTOR = Inspector("dinh_danh", "ĐỊNH DANH (họ tên, dân tộc) các vai đăng ký lại khai sinh", UNITS, RULES,
+INSPECTOR = Inspector("dinh_danh", "ĐỊNH DANH (họ tên, dân tộc, năm sinh cha mẹ) các vai đăng ký lại khai sinh", UNITS, RULES,
                       owners=_OWNERS, accepted=_OWNERS, find=find)

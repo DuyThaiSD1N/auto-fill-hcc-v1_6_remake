@@ -218,6 +218,8 @@ PROCEDURES: list[dict] = [
         "hasAttachmentStep": True,
         "roles": [],
         "useDangKyBy": False,
+        # Planner chia trang khi bật "tách giấy tờ": tệp scan gộp cả bộ → giấy chứng sinh STT1, tờ khai cư trú STT2.
+        "supportsSplitDocuments": True,
         # Bước 01 "Chọn cơ quan thực hiện" (Angular Material) — trợ lý điền hộ. Viết theo ĐÚNG
         # hợp đồng fields {name, comp, value} để FE dùng lại engine fillFormAngular (không thêm
         # logic fill mới). {province}/{ward} được flow thay bằng nơi ở của phiên trước khi gửi.
@@ -4313,7 +4315,7 @@ PROCEDURES: list[dict] = [
         "hasAttachmentStep": True,
         "hideRepeatableHint": True,
         "requiredDocs": [
-            {"key": "to_khai", "name": "Tờ khai đề nghị hỗ trợ chi phí mai táng (Mẫu số 02)", "icon": "📄",
+            {"key": "to_khai", "name": "Tờ khai đề nghị hỗ trợ chi phí mai táng", "icon": "📄",
              "sides": 1, "repeatable": True},
             {"key": "chung_tu", "name": "Giấy chứng tử hoặc trích lục khai tử của người đã mất",
              "icon": "📜", "sides": 1, "repeatable": True},
@@ -4328,7 +4330,7 @@ PROCEDURES: list[dict] = [
         "useDangKyBy": False,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
-            "1. Tờ khai đề nghị hỗ trợ chi phí mai táng (Mẫu số 02) — nguồn chính để điền form.\n"
+            "1. Tờ khai đề nghị hỗ trợ chi phí mai táng — nguồn chính để điền form.\n"
             "2. Giấy chứng tử hoặc trích lục khai tử của người hưởng trợ cấp đã mất.\n"
             "3. Căn cước công dân của người đứng đơn đề nghị.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"

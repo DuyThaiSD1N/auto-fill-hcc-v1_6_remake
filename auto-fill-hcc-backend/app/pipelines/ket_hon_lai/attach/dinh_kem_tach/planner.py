@@ -22,7 +22,9 @@ from app.services.llm import client
 from .prompt import SYSTEM_PROMPT, build_user_prompt
 
 _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
-_PAGE_RE = re.compile(r"(?m)^\W*Trang\s+(\d+)\s*/\s*(\d+)\W*$")
+# Mốc trang do dịch vụ OCR chèn ("───── Trang i/N ─────", app/services/ocr_tiengnoi.py). Bắt buộc có gạch trang trí:
+# giấy in sẵn dòng chân trang "Trang 1/1" — nhận nó làm mốc là chia đôi một trang, mọi trang sau lệch số.
+_PAGE_RE = re.compile(r"(?m)^\s*[─-]{3,}\s*Trang\s+(\d+)\s*/\s*(\d+)\s*[─-]{3,}\s*$")
 _BLANK = "blank_page"
 
 

@@ -12,8 +12,8 @@ from . import dia_chi, dinh_danh, giay_to, review
 # cụm đó: form hiện / ẩn cụm theo ô này.
 _CLUSTERS = (
     (None, dinh_danh.INSPECTOR.key, ("HoTenKS", "DanTocKS")),
-    (None, dinh_danh.INSPECTOR.key, ("HoTenMeKS", "DanTocMeKS")),
-    (None, dinh_danh.INSPECTOR.key, ("HoTenChaKS", "DanTocChaKS")),
+    (None, dinh_danh.INSPECTOR.key, ("HoTenMeKS", "DanTocMeKS", "NamSinhMeKS")),
+    (None, dinh_danh.INSPECTOR.key, ("HoTenChaKS", "DanTocChaKS", "NamSinhChaKS")),
     (None, dinh_danh.INSPECTOR.key, ("HoVaTenC", "DanTocC")),
     (None, giay_to.INSPECTOR.key, ("SoDinhDanhMe", "SoGiayToDinhDanhMe", "LoaiGiayToDinhDanhMe", "NgayCapDDMe", "NoiCapDDMe")),
     (None, giay_to.INSPECTOR.key, ("SoDinhDanhCha", "SoGiayToDinhDanhCha", "LoaiGiayToDinhDanhCha", "NgayCapDDCha",

@@ -5,7 +5,7 @@ import copy
 from app.pipelines._shared.compact_agent import runner
 
 from . import mapper, reason
-from .prompt import EXTRA_RULES
+from .prompt import DEATH_ORIGINAL_NUMBER_RULES, EXTRA_RULES
 from .schema import ALIASES, ALLOWED, COMPACT_COMP_BY_NAME, FIELDS
 
 
@@ -24,7 +24,7 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         allowed=ALLOWED,
         comp_by_name=COMPACT_COMP_BY_NAME,
         aliases=ALIASES,
-        extra_rules=EXTRA_RULES,
+        extra_rules=EXTRA_RULES + (DEATH_ORIGINAL_NUMBER_RULES if mapper.death_original_number(options) else ""),
         options=options,
         context_builder=build_context,
     )

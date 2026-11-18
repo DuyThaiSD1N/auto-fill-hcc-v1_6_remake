@@ -23,7 +23,13 @@ DOCUMENT_NAME_RULE = """documentName: tên giấy tờ theo TIÊU ĐỀ in trên
    ảnh, họ tên), "sau" (mặt có đặc điểm nhận dạng, vân tay, 3 dòng MRZ) hoặc "ca_hai" (MỘT trang/ảnh chụp cả hai
    mặt) và "chuThe" = họ tên chủ thẻ — có dòng "Họ và tên" thì chép nguyên dấu, mặt sau lấy dòng MRZ cuối (vd
    "NGUYEN<<VAN<A" → "NGUYEN VAN A") — KHÔNG lấy tên người ký in trên mặt sau (tên dưới "CỤC TRƯỞNG CỤC CẢNH
-   SÁT…" / "DIRECTOR GENERAL…"); không đọc được → "". Giấy khác: "matThe" = ""."""
+   SÁT…" / "DIRECTOR GENERAL…"); không đọc được → "". Giấy khác: "matThe" = "".
+   Riêng divorce_decision (bản án / quyết định ly hôn hay bị chụp thành nhiều ảnh rời, tải lên có thể ĐẢO thứ tự):
+   "trangDau" = index (chế độ chia trang: fileIndex) của tài liệu chứa TRANG ĐẦU của chính bản án / quyết định đó —
+   trang có tên Tòa án, số, quốc hiệu, tiêu đề; là chính tài liệu này nếu nó chứa trang đầu. "trangSo" = thứ tự trang
+   của tài liệu này trong bản án / quyết định (1 = trang đầu), xếp theo nội dung nối tiếp: câu / mục / danh sách dở ở
+   cuối trang trước được viết tiếp ở đầu trang sau; trang có phần cuối của QUYẾT ĐỊNH, nơi nhận, chữ ký thẩm phán là
+   trang cuối. Giấy khác: "trangDau" = null, "trangSo" = null."""
 
 SYSTEM_PROMPT = f"""
 <persona>
@@ -40,7 +46,7 @@ nào, tên giấy tờ là gì.
 </critical_rules>
 
 <output_contract>
-{{"documents":[{{"index":0,"docType":"declaration","documentName":"Tờ khai cấp Giấy xác nhận tình trạng hôn nhân","matThe":"","chuThe":""}}]}}
+{{"documents":[{{"index":0,"docType":"declaration","documentName":"Tờ khai cấp Giấy xác nhận tình trạng hôn nhân","matThe":"","chuThe":"","trangDau":null,"trangSo":null}}]}}
 </output_contract>
 """.strip()
 

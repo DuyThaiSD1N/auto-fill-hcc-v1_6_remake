@@ -53,6 +53,42 @@ def _fold(value) -> str:
     return re.sub(r"\s+", " ", text.replace("Đ", "D").replace("đ", "d")).strip().lower()
 
 
+# Cấu hình theo tài khoản: các đơn vị dưới đây điền SỐ ĐĂNG KÝ GỐC của giấy khai tử kể cả khi người dân nộp bản sao
+# trích lục (nơi khác: bản sao → số -BS ở đầu bản sao). Mapper không biết tài khoản nên router (Auto Fill) và
+# pipeline_runner (Handfree) gọi with_account_process_options để server tự đặt cờ; cờ luôn bị ghi đè theo tài khoản.
+PROCEDURE_KEY = "xac-nhan-tinh-trang-hon-nhan"
+DEATH_ORIGINAL_NUMBER_OPTION = "deathOriginalNumber"
+_DEATH_ORIGINAL_NUMBER_WARDS = (
+    ("quang ngai", "binh son"),
+    ("quang tri", "dong thuan"),
+)
+_WARD_PREFIXES = ("xa ", "phuong ", "thi tran ", "dac khu ")
+
+
+def _is_death_original_number_ward(user: dict | None) -> bool:
+    if not user:
+        return False
+    tinh, xa = _fold(user.get("tinh")), _fold(user.get("xa"))
+    for prefix in _WARD_PREFIXES:
+        if xa.startswith(prefix):
+            xa = xa[len(prefix):].strip()
+            break
+    return any(province in tinh and xa == ward for province, ward in _DEATH_ORIGINAL_NUMBER_WARDS)
+
+
+def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
+    """Bản sao options với cờ theo tài khoản do server quyết (bản sao trích lục khai tử vẫn lấy số gốc)."""
+    result = dict(options or {})
+    result.pop(DEATH_ORIGINAL_NUMBER_OPTION, None)
+    if procedure == PROCEDURE_KEY and _is_death_original_number_ward(user):
+        result[DEATH_ORIGINAL_NUMBER_OPTION] = True
+    return result
+
+
+def death_original_number(options: dict | None) -> bool:
+    return bool((options or {}).get(DEATH_ORIGINAL_NUMBER_OPTION))
+
+
 def _compact(value) -> str:
     return re.sub(r"[^a-z0-9]", "", _fold(value))
 
@@ -272,6 +308,20 @@ def _death_registration(text: str) -> dict:
     return {key: value for key, value in found.items() if value}
 
 
+# Dòng riêng "(BẢN SAO)" của bản sao trích lục; không bắt dấu "sao y / chứng thực bản sao đúng với bản chính" (bản chụp
+# của bản chính vẫn mang số gốc).
+_COPY_LINE_RE = re.compile(r"^\W*bản\s+sao\W*$", re.IGNORECASE | re.MULTILINE)
+
+
+def is_death_copy(text: str) -> bool:
+    """Giấy khai tử là BẢN SAO trích lục: số đầu trang có hậu tố "BS" ("<N>/TLKT-BS") hoặc có dòng "(BẢN SAO)". Cổng
+    nhận số của đúng tờ người dân nộp: bản sao thì số / ngày / cơ quan ở đầu bản sao, bản chính thì số đăng ký gốc."""
+    title = _DEATH_TITLE_RE.search(text)
+    header = text[:title.start()] if title else "\n".join(text.splitlines()[:6])
+    number = _DEATH_NUMBER_RE.search(header)
+    return bool(number and re.search(r"[-/]\s*BS$", number.group(1), re.IGNORECASE)) or bool(_COPY_LINE_RE.search(text))
+
+
 def _document_number(value) -> str:
     """Số của một giấy phải có chữ số và không phải một ngày tháng: giấy không ghi số thì model đôi khi chép cơ quan
     cấp hoặc ngày cấp vào field số."""
@@ -279,10 +329,12 @@ def _document_number(value) -> str:
     return "" if not re.search(r"\d", text) or _DATE_RE.fullmatch(text) else text
 
 
-def _death_cert_from_ocr(ocr_text: str, values: dict) -> dict:
+def _death_cert_from_ocr(ocr_text: str, values: dict, original_number: bool = False) -> dict:
     """LLM bỏ sót giấy khai tử khi giấy không ghi người chết là vợ/chồng (hồ sơ chỉ CCCD + trích lục khai tử): đọc
     số / ngày / cơ quan của giấy khai tử của người KHÁC người được cấp — theo dòng đăng ký khai tử ở thân giấy, field
-    nào dòng đó không ghi thì theo ĐẦU giấy. Người chết cùng giới với người được cấp thì không phải vợ/chồng → bỏ."""
+    nào dòng đó không ghi thì theo ĐẦU giấy; giấy là BẢN SAO trích lục thì ngược lại: đầu bản sao trước, dòng đăng ký
+    bù field thiếu (``original_number``: cờ đơn vị lấy số gốc kể cả bản sao). Người chết cùng giới với người được cấp
+    thì không phải vợ/chồng → bỏ."""
     subject_name = _fold(values.get("NguoiDuocCap_HoTen"))
     subject_gender = _fold(values.get("NguoiDuocCap_GioiTinh"))
     for text in _OCR_DOC_HEADER_RE.split(ocr_text or ""):
@@ -306,7 +358,9 @@ def _death_cert_from_ocr(ocr_text: str, values: dict) -> dict:
             "DeathCert_Date": "/".join(date.groups()) if date else _full_date(header),
             "DeathCert_Agency": _death_agency(header),
         }
-        found.update(_death_registration(text))
+        registration = _death_registration(text)
+        found = ({**registration, **{key: value for key, value in found.items() if value}} if is_death_copy(text) and not original_number
+                 else {**found, **registration})
         if found["DeathCert_Number"] or found["DeathCert_Date"]:
             return found
     return {}
@@ -340,6 +394,10 @@ def _marital_status(values: dict) -> str | None:
     if declared == _OTHER and has_death != has_divorce and not has_marriage:
         # Lượt trích không xếp được loại nhưng hồ sơ có đúng một loại giấy chấm dứt hôn nhân → theo giấy đó.
         return _WIDOWED if has_death else _DIVORCED
+    if declared == _DIVORCED and has_death and not has_divorce and not has_marriage:
+        # Nguồn tình trạng không có tờ khai mà là ô gộp "Đã ly hôn hoặc góa vợ/chồng" của phiếu tra CSDL dân cư, model lấy
+        # chữ đầu "ly hôn"; hồ sơ chỉ có giấy khai tử của vợ/chồng, không có bản án / quyết định ly hôn → góa.
+        return _WIDOWED
     if declared:
         return declared
     if has_death:
@@ -491,7 +549,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
 
     # Tình trạng hôn nhân: chọn option trước, vùng chi tiết chỉ hiện sau khi chọn.
     if not any(values.get(f"DeathCert_{k}") for k in ("Number", "Date", "Agency")):
-        values.update(_death_cert_from_ocr(str(options.get("_ocr_text") or ""), values))
+        values.update(_death_cert_from_ocr(str(options.get("_ocr_text") or ""), values, death_original_number(options)))
     status = _marital_status(values)
     if status:
         add_choice("citizenTinhtranghonnhan", TINH_TRANG, status)

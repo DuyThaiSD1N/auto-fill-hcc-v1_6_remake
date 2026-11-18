@@ -219,9 +219,19 @@ def test_with_account_process_options_chi_bat_cho_phuong_nha_trang():
     assert mapper.with_account_process_options(
         {}, {"tinh": "Tỉnh Bắc Ninh", "xa": "Phường Tiên Du"}, "ho-tro-mai-tang-1116910"
     )[mapper.REQUESTER_AS_OWNER_OPTION] is True
+    # Khảo sát ảnh chốt: các đơn vị này để người lo mai táng làm chủ hồ sơ.
+    for user in (
+        {"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Tây Nha Trang"}, {"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Bắc Nha Trang"},
+        {"tinh": "Tỉnh Quảng Trị", "xa": "Phường Đông Hà"},
+        {"tinh": "Tỉnh Bắc Ninh", "xa": "Phường Kinh Bắc"}, {"tinh": "Tỉnh Bắc Ninh", "xa": "Phường Hiệp Hoà"},
+        {"tinh": "Tỉnh Bắc Ninh", "xa": "Phường Gia Bình"}, {"tinh": "Tỉnh Tuyên Quang", "xa": "Phường Minh Xuân"},
+    ):
+        assert mapper.with_account_process_options({}, user, "ho-tro-mai-tang-1116910")[mapper.REQUESTER_AS_OWNER_OPTION] is True, user
     for user in (
         {"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Nam Nha Trang"},
-        {"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Bắc Nha Trang"},
+        {"tinh": "Tỉnh Quảng Trị", "xa": "Phường Đông Hà Mới"},
+        # Phường Chũ: cán bộ để người chết làm chủ hồ sơ (mặc định).
+        {"tinh": "Tỉnh Bắc Ninh", "xa": "Phường Chũ"},
         {"tinh": "Tỉnh Lâm Đồng", "xa": "Phường Nha Trang"},
         {"tinh": "Tỉnh Bắc Ninh", "xa": "Phường Song Liễu"},
         {"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Tiên Du"},

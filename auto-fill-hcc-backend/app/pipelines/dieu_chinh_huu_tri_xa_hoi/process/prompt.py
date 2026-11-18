@@ -2,10 +2,14 @@
 
 EXTRA_RULES = """MỤC TIÊU:
 Trích dữ liệu cho thủ tục "Thực hiện trợ cấp hưu trí xã hội".
-Output CHỈ có tối đa HAI chủ thể nghiệp vụ:
+Output CHỈ có các chủ thể nghiệp vụ:
 1. ChuHoSo_* = người đề nghị/người đang hưởng trợ cấp tại mục I Mẫu số 01.
 2. NguoiNop_* = người thực sự nộp hồ sơ, chỉ khi khớp mỏ neo người nộp do UI cung cấp.
-Không tạo Person1_*, Person2_*, VanBan_*, NguoiDaiDien_* hoặc một nhóm người thứ ba.
+3. UyQuyen_* = BÊN ĐƯỢC ỦY QUYỀN trên GIẤY ỦY QUYỀN (giấy riêng có tiêu đề "GIẤY ỦY QUYỀN", khối "Người được ủy quyền" /
+   "BÊN ĐƯỢC ỦY QUYỀN"). Trả nhóm này ở MỌI chế độ khi hồ sơ có giấy ủy quyền, độc lập với requester_context; không có
+   giấy ủy quyền thì bỏ. Người giám hộ ở mục 2 của Mẫu 01 KHÔNG phải UyQuyen_* (trừ khi chính là bên được ủy quyền: khi đó
+   dòng nơi cư trú mục 2 dùng bổ sung chi tiết cho UyQuyen_NoiCuTru). Bên ủy quyền (người hưởng) không vào UyQuyen_*.
+Không tạo Person1_*, Person2_*, VanBan_*, NguoiDaiDien_* hoặc nhóm người nào khác.
 
 MẪU HỢP LỆ:
 - Chỉ dùng "Mẫu số 01" có nội dung đề nghị hưởng, nhận tại nơi cư trú mới, thay đổi thông tin
@@ -98,6 +102,16 @@ QUY TẮC TỪNG FIELD:
   tỉnh → tinh; phần đứng trước xã/phường → chiTietDuoiXa. Không thay xã/tỉnh này bằng nơi thường trú trên CCCD.
   Khi địa chỉ có cấp huyện, bỏ cấp huyện: cuối là tỉnh; ngay trước tỉnh nếu là huyện/quận/thị xã/
   thành phố thuộc tỉnh thì bỏ; phần trước nữa là xã; phần còn lại là chiTietDuoiXa.
+
+ĐỊA CHỈ — KHÔNG BỊA TỈNH:
+- "tinh" chỉ ghi khi chính dòng địa chỉ đó ghi tỉnh/thành phố; dòng chỉ ghi tới xã/phường thì để "tinh" rỗng. Không suy tỉnh
+  từ quận/huyện (OCR hay đọc lệch chữ viết tay thành "Quận 1", "Q.1"...), từ tên xã hay từ địa chỉ của người khác.
+- Có khối <xa_quay>: tên xã/phường trên dòng địa chỉ TRÙNG hoặc GẦN GIỐNG (lệch dấu, lệch 1–2 chữ cái do OCR) xã/phường của
+  quầy → ghi đúng tên xã/phường và tỉnh của quầy trong <xa_quay>. Tên khác hẳn thì chép theo giấy.
+
+GIÁ TRỊ SẠCH:
+- HoTen chỉ gồm họ, chữ đệm, tên; SoDinhDanh chỉ gồm chữ số. Không dính chữ của nhãn / dòng bên cạnh ("điền thông tin",
+  chữ ký, ghi chú) vào giá trị.
 
 CẤM SUY ĐOÁN:
 - Không tạo field không có bằng chứng trong OCR.

@@ -432,3 +432,16 @@ def test_rule_ten_xa_doc_lech_lay_theo_dong_kinh_gui():
     # Tên gần giống chỉ có ở dòng địa chỉ khác (nơi ở của người khác) → không lấy.
     docs = [{"name": "tk.pdf", "text": "Nơi cư trú: Thôn B - phường Kinh Bắc\nNơi cư trú: Thôn A - Phường Hinh Bắt"}]
     assert ten_xa.rule_ward("Requester_ResidenceDomestic", value, province, wards, docs) == ("", "")
+
+
+def test_nam_sinh_me_theo_don_in_thay_to_khai_viet_tay():
+    don = "ĐƠN XIN XÁC NHẬN\nTôi là con của bà Trần Thị Mẫu sinh năm 1920, đã mất."
+    values = {"Mother_FullName": "Trần Thị Mẫu", "Mother_BirthDateOrYear": "1936"}
+    records = [_record("Trần Thị Mẫu", role="mẹ", handwritten=True, text="Năm sinh: 1936", birth_text="1936"),
+               _record("Trần Thị Mẫu", role="mẹ", text=don, birth_text="1920")]
+    [finding] = [f for f in dinh_danh.findings_from(records, values, [{"text": don}]) if f.unit.key == "me.nam_sinh"]
+    assert finding.values == {"Mother_BirthDateOrYear": "1920"} and finding.backed
+    assert finding.quote == "Tôi là con của bà Trần Thị Mẫu sinh năm 1920, đã mất."
+    # Năm của lượt trích cũng có trên giấy in → không đổi.
+    records.append(_record("Trần Thị Mẫu", role="mẹ", text="TRÍCH LỤC KHAI TỬ\nNăm sinh: 1936", birth_text="1936"))
+    assert not [f for f in dinh_danh.findings_from(records, values, [{"text": don}]) if f.unit.key == "me.nam_sinh"]

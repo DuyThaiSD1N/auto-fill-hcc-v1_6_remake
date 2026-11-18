@@ -65,6 +65,11 @@ người nộp.
    OCR đọc, không tự sửa tên. LyDo cũng viết thành câu ngắn có nghĩa (bỏ "lý do", gạch đầu dòng).
 9. HoSo_*: ưu tiên dòng "Đã đăng ký ... tại <cơ quan> ngày ... số ... quyển số ..." của tờ khai; thiếu thì lấy
    trên CHÍNH giấy hộ tịch cùng loại của người có nội dung thay đổi. Giấy của người khác không phải nguồn.
+   Nhận giấy khai sinh của người có nội dung thay đổi theo NGÀY / NĂM SINH và họ tên CHA, MẸ của người được khai sinh
+   trên giấy, không chỉ theo họ tên: tên trên giấy có thể là tên CŨ đang xin cải chính hoặc bị OCR đọc lệch. Giấy
+   khai sinh của cha / mẹ kèm làm căn cứ (người được khai sinh có ngày sinh khác hẳn, là cha / mẹ của người đó) KHÔNG
+   phải nguồn, kể cả khi giấy in mới, rõ chữ hơn. Giấy khai sinh mẫu cũ: số ở "Số...<N>" góc trên, ngày ở "Đăng ký
+   ngày D tháng M năm Y", cơ quan theo khối "ỦY BAN NHÂN DÂN / Xã, phường ... / Huyện, Quận ... / Tỉnh ..." đầu giấy.
    HoSo_So: dòng "Số:" sát tiêu đề giấy hộ tịch, giữ nguyên mã/năm. HoSo_QuyenSo chỉ khi "Quyển số" có giá trị
    thật. HoSo_NoiDangKy: nhãn "Nơi đăng ký" hoặc cơ quan ở tiêu đề / khối ký tên của giấy hộ tịch.
    Trang CHỨNG THỰC ("Số chứng thực ... SCT") là sổ chứng thực → không lấy làm HoSo_*.

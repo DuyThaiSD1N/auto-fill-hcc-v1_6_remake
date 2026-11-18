@@ -127,6 +127,41 @@ def both_sides(doc: dict) -> dict:
     return {**doc, "matThe": "ca_hai"}
 
 
+def _int(value) -> int | None:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def join_divorce_pages(docs: list[dict], groups: list[list[int]], refs: list[int | None]) -> list[list[int]]:
+    """Ảnh / tệp rời là các trang của CÙNG một bản án / quyết định ly hôn → một nhóm, để cổng nhận MỘT tệp cho mỗi quyết
+    định. LLM chỉ ra phần nào chứa trang đầu (`trangDau`, theo mã tài liệu ``refs[vị trí]``) và thứ tự trang
+    (`trangSo`) — cán bộ hay chụp / tải lên đảo thứ tự. Phần chỉ tới phần không phải quyết định ly hôn thì đứng riêng.
+    Chỉ nhập các phần đang đứng riêng (không đụng cặp hai mặt thẻ)."""
+    single = {group[0] for group in groups if len(group) == 1}
+    divorce = {i for i in single if str(docs[i].get("docType") or "").strip() == "divorce_decision"}
+    by_ref = {refs[i]: i for i in divorce if refs[i] is not None}
+    head = {}
+    for i in divorce:
+        target = by_ref.get(_int(docs[i].get("trangDau")), i)
+        # Phần được chỉ tới phải tự nhận là trang đầu, tránh chuỗi / vòng chỉ lẫn nhau.
+        head[i] = target if by_ref.get(_int(docs[target].get("trangDau")), target) == target else i
+    members: dict[int, list[int]] = {}
+    for i in sorted(divorce):
+        members.setdefault(head[i], []).append(i)
+    out = []
+    for group in groups:
+        index = group[0]
+        if index not in divorce:
+            out.append(group)
+        elif head[index] == index:
+            page = {i: _int(docs[i].get("trangSo")) for i in members[index]}
+            # Trang đầu luôn đứng đầu; còn lại theo số trang LLM đọc, thiếu số thì theo thứ tự tải lên.
+            out.append(sorted(members[index], key=lambda i: (i != index, page[i] if page[i] and page[i] > 0 else 999, i)))
+    return out
+
+
 def _merge_groups(items: list[dict], groups: list[list[int]]) -> list[dict]:
     """Mỗi nhóm tệp → một mục: mục của tệp đầu nhóm, ghép thêm các tệp còn lại qua `sourceFileIndexes`."""
     out = []
@@ -139,14 +174,16 @@ def _merge_groups(items: list[dict], groups: list[list[int]]) -> list[dict]:
 
 
 def build_plan_items(file_names: list[str], doc_types: dict[int, str],
-                     doc_names: dict[int, str] | None = None) -> list[dict]:
+                     doc_names: dict[int, str] | None = None, folded: set[int] | None = None) -> list[dict]:
+    """``folded``: tệp sẽ ghép vào mục của tệp khác (trang sau của một giấy) — không tính khi đánh số tên trùng."""
     items = []
     seen: dict[str, int] = {}
     for index, name in enumerate(file_names):
         # Hai tệp cùng loại giấy (CCCD hai người...) → đánh số để cổng và cán bộ phân biệt được.
         document_name = _document_name(name, (doc_names or {}).get(index, ""))
-        seen[document_name.lower()] = seen.get(document_name.lower(), 0) + 1
-        if seen[document_name.lower()] > 1:
+        if index not in (folded or set()):
+            seen[document_name.lower()] = seen.get(document_name.lower(), 0) + 1
+        if index not in (folded or set()) and seen[document_name.lower()] > 1:
             document_name = f"{document_name} {seen[document_name.lower()]}"
         doc_type = doc_types.get(index) if doc_types.get(index) in DOC_TYPES else "other"
         row = ROWS.get(doc_type, DEFAULT_ROW)
@@ -231,14 +268,18 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
         a["chuThe"] = ho_ten_co_dau(a.get("chuThe") or "", texts.get(i, ""))
     doc_names = {i: _llm_document_name(a) for i, a in answers.items()}
     # Hai TỆP là hai mặt thẻ của cùng một người → một mục gộp (extension ghép thành một PDF).
-    groups = pair_card_sides([answers.get(i, {}) for i in range(len(raw_files))])
+    docs = [answers.get(i, {}) for i in range(len(raw_files))]
+    groups = pair_card_sides(docs)
     for group in groups:
         if len(group) > 1:
             doc_names[group[0]] = _llm_document_name(both_sides(answers[group[0]]))
+    # Các ảnh rời của một quyết định ly hôn → một mục (extension ghép thành một PDF), tên theo trang đầu.
+    groups = join_divorce_pages(docs, groups, list(range(len(raw_files))))
 
     replace_files = await shrink_task
     names = [replace_files[str(i)]["name"] if str(i) in replace_files else f["name"] for i, f in enumerate(raw_files)]
-    attachments = _merge_groups(build_plan_items(names, doc_types, doc_names), groups)
+    folded = {i for group in groups for i in group[1:]}
+    attachments = _merge_groups(build_plan_items(names, doc_types, doc_names, folded), groups)
     if omits_paper_declaration(options):
         for item in [a for a in attachments if a["detectedType"] == "declaration"]:
             attachments.remove(item)

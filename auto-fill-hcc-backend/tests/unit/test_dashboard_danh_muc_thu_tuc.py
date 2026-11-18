@@ -8,12 +8,15 @@ import pytest
 from app.dashboard import procedures as dashboard_procedures
 
 _PROCS = [
-    {"key": "chung", "label": "Thủ tục chung", "shortLabel": "Chung",
+    {"key": "chung", "label": "Thủ tục chung", "shortLabel": "Chung", "mode": "agent", "hasAttachmentStep": True,
      "detect": {"urlIncludes": ["maThuTuc=1.004772"]}},
     {"key": "lien-thong", "label": "Liên thông", "keKhaiUrl": "https://x/#/ke-khai/2.000987",
+     "mode": "agent", "hasAttachmentStep": True,
      "detect": {"urlIncludes": ["#/ke-khai/2.000986", "#/ke-khai/2.000987"]}},
-    {"key": "rieng-lai-chau", "label": "Riêng Lai Châu", "provinceOnly": ["laichau"]},
-    {"key": "rieng-hai-tinh", "label": "Riêng hai tỉnh", "provinceOnly": ["quangtri", "danang"]},
+    {"key": "rieng-lai-chau", "label": "Riêng Lai Châu", "provinceOnly": ["laichau"], "mode": "attach",
+     "hasAttachmentStep": True},
+    {"key": "rieng-hai-tinh", "label": "Riêng hai tỉnh", "provinceOnly": ["quangtri", "danang"], "mode": "agent",
+     "hasAttachmentStep": False},
 ]
 
 
@@ -65,7 +68,13 @@ def test_ma_tthc_lay_tu_url_ke_khai_va_nhan_dien_khong_trung():
 
 def test_khong_tra_cau_hinh_noi_bo():
     item = dashboard_procedures.catalog(_scope("all"))["items"][0]
-    assert set(item) == {"key", "label", "shortLabel", "codes", "provinces"}
+    assert set(item) == {"key", "label", "shortLabel", "codes", "support", "provinces"}
+
+
+def test_tro_ly_ho_tro_dien_hay_chi_dinh_kem():
+    items = {i["key"]: i["support"] for i in dashboard_procedures.catalog(_scope("all"))["items"]}
+    assert items == {"chung": "fill_attach", "lien-thong": "fill_attach", "rieng-lai-chau": "attach",
+                     "rieng-hai-tinh": "fill"}
 
 
 def test_registry_that_khop_luat_cua_tro_ly(monkeypatch):
@@ -101,11 +110,11 @@ def test_xuat_excel_dung_dong_dang_loc_va_trong_pham_vi():
     raw = build_catalog_workbook(picked, "Dùng chung", datetime(2026, 11, 13, tzinfo=timezone.utc))
     ws = load_workbook(io.BytesIO(raw)).active
     rows = [r for r in ws.iter_rows(min_row=4, values_only=True)]
-    assert rows[0] == ("STT", "Tên thủ tục", "Mã TTHC", "Áp dụng")
+    assert rows[0] == ("STT", "Tên thủ tục", "Mã TTHC", "Trợ lý hỗ trợ", "Áp dụng")
     assert rows[1:] == [
-        (1, "Liên thông", "2.000987", "Dùng chung"),
-        (2, "Thủ tục chung", "1.004772", "Dùng chung"),
-        (3, "Riêng Lai Châu", None, "Riêng · Lai Châu"),
+        (1, "Liên thông", "2.000987", "Điền + đính kèm", "Dùng chung"),
+        (2, "Thủ tục chung", "1.004772", "Điền + đính kèm", "Dùng chung"),
+        (3, "Riêng Lai Châu", None, "Chỉ đính kèm", "Riêng · Lai Châu"),
     ]
     assert "Dùng chung" in ws["A2"].value and "3 thủ tục" in ws["A2"].value
 

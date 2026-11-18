@@ -225,7 +225,13 @@ async def _split(lines: dict[str, tuple[str, int]], counter, title: str) -> dict
     raw = await client.chat([{"role": "system", "content": _SYSTEM.format(title=title)}, {"role": "user", "content": user}],
                             max_tokens=_MAX_TOKENS, temperature=0, enable_thinking=settings.agent_reasoning,
                             purpose="thanh_tra.dia_chi")
-    return engine.parse_json(raw)
+    answer = engine.parse_json(raw)
+    # Model đôi khi lấy chữ đầu dòng ("1.2. Nơi cư trú…") làm khoá thay khóa ô: đủ số dòng thì ghép lại theo thứ tự.
+    if isinstance(answer, dict) and not set(answer) & set(lines):
+        items = [value for value in answer.values() if isinstance(value, dict)]
+        if len(items) == len(lines):
+            answer = dict(zip(lines, items))
+    return answer
 
 
 async def find(inspector: Inspector, case: Case, title: str) -> list[Finding]:

@@ -45,6 +45,8 @@ def test_owner_mode_submitter_is_owner_and_ticks():
     assert data["data[identityNumber]"] == "031050000001"
     assert data["data[province]"] == "Lai Châu"
     assert "data[ownerFullname]" not in data
+    # Cổng chép khối người nộp sang chủ hồ sơ khi tích nhưng bỏ sót ngày sinh.
+    assert data["data[ownerBirthday]"] == data["data[birthday]"]
     assert not warnings
 
 
@@ -88,7 +90,7 @@ Tôi xin cam đoan nội dung đúng."""
 def test_schema_has_exactly_two_subject_namespaces():
     assert schema.ALLOWED
     assert all(
-        name.startswith(("ChuHoSo_", "NguoiNop_"))
+        name.startswith(("ChuHoSo_", "NguoiNop_", "UyQuyen_"))
         for name in schema.ALLOWED
     )
     assert not any(
@@ -182,9 +184,9 @@ def test_different_requester_and_owner_fill_both_with_requester_phone():
     assert data["data[ownerFullname]"] == "PHÀN A TỎN"
     assert data["data[ownerGender]"] == "Nam"
     assert data["data[ownerIdentityDate]"] == "24/06/2021"
-    # Mục II không có giới tính/nơi cấp: không được suy đoán.
+    # Mục II không có giới tính: không suy đoán. Nơi cấp không ghi nhưng thẻ 12 số có ngày cấp → suy theo ngày cấp.
     assert "data[gender]" not in data
-    assert "data[idIssuePlace]" not in data
+    assert data["data[idIssuePlace]"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
     assert not warnings
 
 
@@ -313,21 +315,20 @@ def test_issue_date_requires_literal_ocr_evidence():
     assert data["data[ownerIdentityDate]"] == "07/03/2023"
 
 
-def test_mapper_does_not_fabricate_issuer_from_issue_date():
+def _issuer_for(identity: str, issue_date: str):
     data, _ = _run(
-        {
-            "ChuHoSo_HoTen": "PHÀN A TỎN",
-            "ChuHoSo_SoDinhDanh": "012046001677",
-            "ChuHoSo_NgayCap": "24/06/2021",
-        },
-        {
-            **_context("Người Nộp Khác", "040203015844"),
-            "_ocr_text": "cấp ngày 24/06/2021",
-        },
+        {"ChuHoSo_HoTen": "Người Hưởng", "ChuHoSo_SoDinhDanh": identity, "ChuHoSo_NgayCap": issue_date},
+        {**_context("Người Nộp Khác", "040203015844"), "_ocr_text": f"cấp ngày {issue_date}"},
     )
+    assert data["data[ownerIdentityDate]"] == issue_date
+    return data.get("data[ownerIdIssuePlace]")
 
-    assert data["data[ownerIdentityDate]"] == "24/06/2021"
-    assert "data[ownerIdIssuePlace]" not in data
+
+def test_noi_cap_khong_doc_duoc_thi_suy_theo_ngay_cap():
+    assert _issuer_for("012046001677", "24/06/2021") == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
+    assert _issuer_for("012046001677", "15/08/2024") == "Bộ Công an"
+    # CMND 9 số: cơ quan cấp là công an tỉnh, không suy được.
+    assert _issuer_for("012046001", "24/06/2011") is None
 
 
 def test_owner_identity_fields_prefer_unique_exact_name_cccd_over_form_conflict():
@@ -625,7 +626,7 @@ def test_mau_moi_owner_mode_dien_gioi_tinh_va_sdt_nguoi_nop():
         {"submitterMode": "owner_as_submitter", "_ocr_text": _OCR_MAU_MOI},
     )
     data = {f["name"]: f["value"] for f in fields}
-    assert data["data[fullname]"] == "Trần Thị Mẫu"
+    assert data["data[fullname]"] == "TRẦN THỊ MẪU"  # theo tờ khai: người trên giấy → in hoa
     assert data["data[gender]"] == "Nữ"
     assert data["data[phoneNumber]"] == "0905111222"
 
@@ -827,3 +828,49 @@ def test_noi_cap_khong_co_dong_noi_cap_thi_khong_tu_dien():
     )
 
     assert "data[idIssuePlace]" not in data
+
+
+def test_to_khai_co_giay_uy_quyen_thi_nguoi_nop_la_ben_duoc_uy_quyen_bo_tich():
+    """Hồ sơ kèm giấy ủy quyền: cán bộ lấy bên được ủy quyền làm người nộp, bỏ tích; chủ hồ sơ vẫn là người hưởng."""
+    proxy = {"UyQuyen_HoTen": "Lý Thị Hiệp", "UyQuyen_SoDinhDanh": "008187000123"}
+    fields, _ = mapper.enrich(_fields({**_CHU_HO_SO_MAU_MOI, **proxy}), {"submitterMode": "owner_as_submitter"})
+    data = {f["name"]: f["value"] for f in fields}
+    assert data["data[isOwnerDossierCheck]"] is False
+    assert data["data[fullname]"] == "LÝ THỊ HIỆP" and data["data[identityNumber]"] == "008187000123"
+    assert data["data[ownerFullname]"] == "TRẦN THỊ MẪU"
+    # Không có giấy ủy quyền → giữ người hưởng làm người nộp + tích.
+    fields, _ = mapper.enrich(_fields(_CHU_HO_SO_MAU_MOI), {"submitterMode": "owner_as_submitter"})
+    assert {f["name"]: f["value"] for f in fields}["data[isOwnerDossierCheck]"] is True
+
+
+def test_so_dinh_danh_chi_giu_chu_so_va_ngay_sinh_o_tuong_lai_bi_bo():
+    fields, _ = mapper.enrich(_fields({**_CHU_HO_SO_MAU_MOI, "ChuHoSo_SoDinhDanh": "001150000111nbg",
+                                       "ChuHoSo_NgaySinh": "20/08/2999"}), {"submitterMode": "owner_as_submitter"})
+    data = {f["name"]: f["value"] for f in fields}
+    assert data["data[identityNumber]"] == "001150000111"
+    assert "data[birthday]" not in data
+
+
+def test_tai_khoan_khop_gan_thi_lay_ten_so_theo_vneid():
+    """Tên trên giấy lệch 1 chữ so với tài khoản, số trùng hẳn → vẫn là chủ tài khoản, họ tên theo VNeID."""
+    owner = {**_CHU_HO_SO_MAU_MOI, "ChuHoSo_HoTen": "Trần Thị Mầu"}
+    account = _context("TRẦN THỊ MẪU", owner["ChuHoSo_SoDinhDanh"])
+    fields, _ = mapper.enrich(_fields(owner), account)
+    data = {f["name"]: f["value"] for f in fields}
+    assert data["data[isOwnerDossierCheck]"] is True and data["data[fullname]"] == "TRẦN THỊ MẪU"
+
+
+def test_tieu_de_muc_doc_lech_van_giu_gioi_tinh():
+    ocr = ("Mẫu số 01\nV. Thông tin chung\n1. Đối tượng hưởng trợ cấp xã hội, trợ cấp hưu trí xã hội\n"
+           "1.1. Họ và tên: Hoàng Văn A\nSố căn cước/Số định danh cá nhân: 031050000001\n"
+           "Ngày sinh: 20/10/1950 Giới tính: ...Nam...\n2. Thông tin người giám hộ\n")
+    data, _ = _run(
+        {"ChuHoSo_HoTen": "Hoàng Văn A", "ChuHoSo_SoDinhDanh": "031050000001", "ChuHoSo_GioiTinh": "Nam"},
+        {**_context("Người Nộp Khác", "040203015844"), "submitterMode": "owner_as_submitter", "_ocr_text": ocr},
+    )
+    assert data["data[gender]"] == "Nam"
+
+
+def test_ngay_viet_tren_dong_cham_van_la_bang_chung():
+    assert mapper._date_with_ocr_evidence("13/08/1951", "Ngày sinh: ..13../8../1951 Giới tính") == "13/08/1951"
+    assert mapper._date_with_ocr_evidence("13/08/1951", "Ngày sinh: 13/06/1951") is None

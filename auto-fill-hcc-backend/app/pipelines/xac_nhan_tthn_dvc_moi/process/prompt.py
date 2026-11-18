@@ -51,6 +51,9 @@ khoản → KHÔNG trích người nộp, trừ số điện thoại (xem <nguoi
   "khac" = không thuộc các trường hợp trên → kèm TinhTrangHonNhan_NoiDung chép đúng dòng đó.
 - Đuôi "hiện tại chưa đăng ký kết hôn với ai" có ở cả chua_ket_hon, ly_hon, goa → quyết định theo phần ĐẦU dòng: có ly
   hôn → "ly_hon", có vợ/chồng đã chết → "goa", không nhắc gì → "chua_ket_hon".
+- Phiếu tra CSDL dân cư có ô GỘP "Đã ly hôn hoặc góa vợ/chồng": ô này KHÔNG cho biết là ly hôn hay góa → quyết định
+  theo giấy tờ trong hồ sơ: có giấy khai tử (trích lục khai tử, giấy chứng tử) của vợ/chồng → "goa"; có bản án / quyết
+  định ly hôn → "ly_hon"; không có giấy nào → bỏ trống. Không lấy chữ đứng đầu ô ("ly hôn") làm mã.
 - ly_hon/goa vẫn trả kèm giấy tờ ly hôn / khai tử đọc được; co_vo_chong có ly hôn/góa trước đó thì trả kèm cả giấy tờ
   đó lẫn Marriage_*.
 - Không suy luận tình trạng hôn nhân từ CCCD vì CCCD không chứa dữ liệu này.
@@ -72,22 +75,30 @@ KHOẢNG THỜI GIAN CHƯA ĐĂNG KÝ KẾT HÔN:
   khai / giấy XNTTHN cũ ("Theo giấy chứng tử số <N> do <CQ> cấp ngày <D>"). Hồ sơ có giấy thật mà tờ khai cũng nhắc số,
   ngày khai tử → lấy theo GIẤY THẬT, bỏ qua số và ngày trên tờ khai: chữ viết tay trên tờ khai hay bị đọc lệch, và tờ
   khai thường chép số của bản trích lục chứ không phải số đăng ký.
-- Cổng hỏi Số / Ngày / Cơ quan của LẦN ĐĂNG KÝ KHAI TỬ. Trích lục khai tử ghi lần đăng ký đó ở dòng thân "Đã (được)
+- Điền theo ĐÚNG LOẠI GIẤY người dân nộp:
+  + BẢN SAO trích lục khai tử — số ở nhãn "Số:" đầu trang có hậu tố "BS" ("<N>/TLKT-BS"), hoặc giấy có dòng "(BẢN
+    SAO)": cả ba field lấy ở ĐẦU bản sao — DeathCert_Number = số ở nhãn "Số:" đầu trang, GIỮ NGUYÊN hậu tố;
+    DeathCert_Date = ngày ở dòng địa danh + ngày đầu bản sao (ngày cấp bản sao); DeathCert_Agency = cơ quan cấp ở khối
+    đầu trang (ghép các dòng tỉnh / huyện / xã của khối đó). KHÔNG lấy số / ngày ở dòng "Đã (được) đăng ký khai tử
+    tại" trong thân bản sao. Field nào đầu bản sao không ghi → lấy ở dòng đăng ký trong thân, không để trống.
+  + BẢN CHÍNH (trích lục khai tử không có dấu bản sao, giấy chứng tử) → số gốc theo các mục dưới.
+  + Hồ sơ có CẢ bản chính lẫn bản sao giấy khai tử → theo BẢN CHÍNH.
+- Bản chính: cổng hỏi Số / Ngày / Cơ quan của LẦN ĐĂNG KÝ KHAI TỬ. Trích lục khai tử ghi lần đăng ký đó ở dòng thân "Đã (được)
   đăng ký khai tử tại: <cơ quan> ... Số: <N> ... ngày <D>", có giấy in "Cấp số: <N> Quyển số: ... Ngày đăng ký: <D>"
   (số và ngày có thể nằm ở dòng kế tiếp); trích lục lập từ cơ sở dữ liệu hộ tịch điện tử ghi ở dòng "Nơi ghi: <cơ
   quan>, Sổ đăng ký khai tử, quyển số <Q>, số <N>, ngày <D>". Giấy CÓ một trong các dòng này → cả ba field lấy từ
   CHÍNH dòng đó (cơ quan là phần đứng trước "Sổ đăng ký khai tử", số là <N> chứ không phải quyển số <Q>):
   + DeathCert_Number = số đứng sau chữ "Số" / "Cấp số" của dòng đó, chép đúng như giấy (kèm "/<năm>" nếu có). KHÔNG
-    lấy số quyển, KHÔNG lấy số ở nhãn "Số:" đầu trang (số của bản trích lục, dạng "<N>/TLKT-BS").
+    lấy số quyển, KHÔNG lấy số ở nhãn "Số:" đầu trang (số của chính bản trích lục).
   + DeathCert_Date = ngày đứng sau số đó (ngày đăng ký). KHÔNG lấy ngày cấp bản trích lục ở đầu trang, ngày chết,
     ngày sinh.
   + DeathCert_Agency = cơ quan đứng sau "tại:", chép ĐỦ mọi cấp mà dòng đó ghi (xã/phường, huyện, tỉnh), không cắt
     bớt, không tự thêm cấp giấy không ghi.
   Field nào dòng đó không ghi hoặc không đọc được → field đó lấy ở đầu trang như mục dưới, không để trống.
 - Giấy khai tử thật KHÔNG có dòng "Đã (được) đăng ký khai tử tại" hay "Nơi ghi: ..." (giấy chứng tử, giấy báo tử, trích lục thiếu dòng đó)
-  → lấy của chính tờ giấy đang nộp, không để trống: DeathCert_Number = số ở nhãn "Số:" ĐẦU trang, GIỮ NGUYÊN hậu tố
-  ("<N>/TLKT-BS"); DeathCert_Date = ngày ở dòng địa danh + ngày đầu văn bản hoặc khối ký; DeathCert_Agency = cơ quan
-  cấp ở khối "UBND XÃ ..." đầu trang.
+  → lấy của chính tờ giấy đang nộp, không để trống: DeathCert_Number = số ở nhãn "Số:" ĐẦU trang, GIỮ NGUYÊN hậu tố;
+  DeathCert_Date = ngày ở dòng địa danh + ngày đầu văn bản hoặc khối ký; DeathCert_Agency = cơ quan cấp ở khối "UBND
+  XÃ ..." đầu trang.
 - DeathCert_Agency viết "Ủy ban nhân dân" thay cho chữ tắt "UBND".
 - Không giấy nào trong hồ sơ ghi SỐ của giấy khai tử (tờ khai chỉ viết "đã có giấy khai tử do ... cấp ngày ...") →
   DeathCert_Number để trống; không lấy ngày, không tự đặt số.
@@ -153,3 +164,15 @@ Thành phố C, D": xa = B, huyen = Thành phố C, chiTietDuoiXa = Khu A. Cụm
 <khong_bia>
 Giấy tờ không ghi → bỏ field. Không suy diễn.
 </khong_bia>"""
+
+
+# Nối sau EXTRA_RULES khi tài khoản bật cờ deathOriginalNumber (mapper.with_account_process_options).
+DEATH_ORIGINAL_NUMBER_RULES = """
+
+<cau_hinh_tai_khoan>
+CẤU HÌNH TÀI KHOẢN — giấy khai tử: đơn vị này điền SỐ ĐĂNG KÝ GỐC kể cả khi người dân nộp BẢN SAO trích lục khai tử. Bỏ
+mục "BẢN SAO trích lục khai tử" trong <giay_khai_tu>: bản sao cũng lấy cả ba field DeathCert_* ở dòng "Đã (được) đăng ký
+khai tử tại ... Số: <N> ... ngày <D>" / "Nơi ghi: ..." trong thân giấy như bản chính; field nào dòng đó không ghi → lấy
+ở đầu trang.
+</cau_hinh_tai_khoan>
+"""

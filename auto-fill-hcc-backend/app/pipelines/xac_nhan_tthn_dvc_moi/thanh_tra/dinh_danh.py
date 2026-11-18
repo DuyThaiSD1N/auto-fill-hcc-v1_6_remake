@@ -396,13 +396,14 @@ def weigh(records: list[dict], subject: dict, mrz: list[dict]) -> dict:
 
     def add(field: str, key, value: str, record: dict, why: str, record_is_linked: bool = True) -> None:
         slot = out[field].setdefault(key, {"weight": 0.0, "paper": 0.0, "tier": 0, "pages": set(), "value": value,
-                                           "record": None, "why": why, "rank": -1})
+                                           "record": None, "why": why, "rank": -1, "texts": []})
         slot["tier"] = max(slot["tier"], record.get("tier", _LOW_TIER))
         page = (id(record["text"]), record["handwritten"])
         if page not in slot["pages"]:
             slot["pages"].add(page)
             slot["weight"] += _HANDWRITTEN_WEIGHT if record["handwritten"] else _PRINTED_WEIGHT
             slot["paper"] = slot["weight"]
+            slot["texts"].append((record["text"], _HANDWRITTEN_WEIGHT if record["handwritten"] else _PRINTED_WEIGHT))
         # Dòng chứng cứ đưa ra toà: ưu tiên bản ghi in đã nhận người bằng số định danh, rồi tới bản ghi nhận bằng
         # thông tin khác, cuối cùng mới tới bản ghi chỉ cùng tên không dấu.
         rank = 2 if "trùng số định danh" in why else 1 if record_is_linked else 0
@@ -511,6 +512,29 @@ async def find(inspector: Inspector, case: Case, title: str) -> list[Finding]:
     return findings_from(records, mrz, case)
 
 
+def _word_count(text: str, word: str, companions: set[str]) -> int:
+    """Số lần chữ này xuất hiện trên các dòng có kèm một chữ khác của chính họ tên (so bỏ dấu): chữ trùng từ thông dụng
+    ("Dân" trong "CÔNG DÂN", "Dân tộc") không được tính là họ tên."""
+    target, count = unicodedata.normalize("NFC", word).lower(), 0
+    for line in str(text or "").splitlines():
+        words = re.findall(r"\w+", unicodedata.normalize("NFC", line).lower())
+        if target in words and companions & {fold(item) for item in words if item != target}:
+            count += words.count(target)
+    return count
+
+
+def _self_contradicted(slot: dict, theirs: str, ours: str) -> float:
+    """Điểm của B đến từ trang mà CHÍNH trang đó ghi chữ khác biệt của A nhiều bằng / hơn chữ của B (giấy ủy quyền đánh máy
+    "Đẩy" nhưng dòng chữ ký người đó tự viết "Đậy" hai lần): trang đó không phải nguồn của B → trả số điểm phải trừ."""
+    theirs, ours = (unicodedata.normalize("NFC", str(value or "")).lower().split() for value in (theirs, ours))
+    pairs = [(b, a) for b, a in zip(theirs, ours) if b != a]
+    if not pairs or len(theirs) != len(ours):
+        return 0.0
+    companions = {fold(word) for word, other in zip(theirs, ours) if word == other}
+    return sum(weight for text, weight in slot.get("texts", ())
+               if all(_word_count(text, a, companions) >= _word_count(text, b, companions) > 0 for b, a in pairs))
+
+
 def findings_from(records: list[dict], mrz: list[dict], case: Case) -> list[Finding]:
     """Đề xuất cho MỘT người (người ở ``case.values``) từ các bản ghi đã đọc sẵn — thủ tục có nhiều chủ thể đọc trang
     một lần rồi gọi hàm này cho từng người."""
@@ -526,6 +550,10 @@ def findings_from(records: list[dict], mrz: list[dict], case: Case) -> list[Find
             continue
         key, best = max(rivals.items(), key=lambda item: (item[1]["weight"], item[1]["tier"]))
         mine = slots.get(current[field], {"weight": 0.0, "tier": 0})
+        if field == NAME:
+            contradicted = _self_contradicted(best, best["value"], subject["name"])
+            if contradicted:
+                best = {**best, "weight": best["weight"] - contradicted, "paper": best["paper"] - contradicted}
         own = mine["weight"]
         # Tên trong MRZ không dấu nên không phân xử được hai cách viết chỉ khác dấu: ngưỡng tính riêng điểm giấy.
         record = best["record"]

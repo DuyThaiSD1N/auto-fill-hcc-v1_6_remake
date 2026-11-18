@@ -97,3 +97,33 @@ def test_me_theo_khoi_nguoi_me_tren_giay_chung_sinh():
     # Giấy chứng sinh của người khác (số, tên, ngày sinh đều xa) → không đụng.
     far = {"ThongTinMe_HoTen": "Trần Thị Mai", "ThongTinMe_SoDinhDanh": "079190000999", "ThongTinMe_NgaySinh": "05/06/1985"}
     assert not [f for f in dinh_danh.findings_from(Case(docs, "", far, {})) if "ThongTinMe_HoTen" in f.values]
+
+
+_THE_CHA = """CĂN CƯỚC
+IDENTITY CARD
+Nơi cư trú / Place of residence: Khu Phố Kha Lại
+Phường D, Tỉnh A"""
+_GCS_ME = """SỞ Y TẾ TỈNH A
+GIẤY CHỨNG SINH
+Nơi cư trú: TDP Kha Lại, Phường D, Tỉnh A"""
+_KET_HON = """GIẤY CHỨNG NHẬN KẾT HÔN
+Nơi cư trú: Thôn E, xã F, tỉnh G Nơi cư trú: Tổ dân phố Khà Lại, phường D, tỉnh A"""
+
+
+def test_ten_thon_cua_cha_theo_cach_viet_nhieu_trang_giay_hon():
+    pages = trang.pages([{"text": _THE_CHA}, {"text": _GCS_ME}, {"text": _KET_HON}])
+    fix = dia_chi.detail_fix("Tổ dân phố Khà Lại", pages)
+    assert fix and fix["diaChi"] == "Tổ dân phố Kha Lại"
+    # Cách viết của lượt trích có trên nhiều trang hơn → giữ.
+    assert dia_chi.detail_fix("TDP Kha Lại", pages) is None
+
+
+def test_ten_thon_khong_lay_ten_xa_dung_sau_dau_phay_hay_ten_lech_hai_chu():
+    pages = trang.pages([{"text": "CĂN CƯỚC\nNơi cư trú: Phường Kha Hồ, Tỉnh A"},
+                         {"text": "GIẤY CHỨNG SINH\nNơi cư trú: TDP 5, Phường Kha Hồ, Tỉnh A"}])
+    assert dia_chi.detail_fix("TDP Khu Hồ", pages) is None
+    pages = trang.pages([{"text": "CĂN CƯỚC\nNơi cư trú: Thôn Yên Lâm"}, {"text": "GIẤY CHỨNG SINH\nNơi cư trú: Thôn Yên Lâm"}])
+    assert dia_chi.detail_fix("Thôn Yên Hồng", pages) is None
+    # "Hòa" / "Hoà" chỉ khác kiểu bỏ dấu.
+    pages = trang.pages([{"text": "CĂN CƯỚC\nNơi cư trú: Tdp Thanh Hoà"}, {"text": "GIẤY CHỨNG SINH\nNơi cư trú: Tdp Thanh Hoà"}])
+    assert dia_chi.detail_fix("TDP Thanh Hòa", pages) is None

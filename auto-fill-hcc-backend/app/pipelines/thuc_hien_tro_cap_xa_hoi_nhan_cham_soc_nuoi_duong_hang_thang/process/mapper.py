@@ -201,7 +201,8 @@ def _phone(value: Any) -> str | None:
     digits = re.sub(r"\D+", "", text.upper().replace("O", "0").replace("S", "5"))
     if len(digits) == 9 and not digits.startswith("0"):
         digits = "0" + digits
-    if 10 <= len(digits) <= 11 and digits.startswith("0"):
+    # Số di động hiện hành đủ 10 chữ số; OCR chữ viết tay hay thừa / lặp một chữ số → không điền số sai.
+    if len(digits) == 10 and digits.startswith("0"):
         return digits
     return None
 
@@ -253,6 +254,19 @@ def _account_anchor(options: dict | None) -> dict | None:
     return {"name": name, "identity": identity}
 
 
+def _edit_distance(a: str, b: str) -> int:
+    row = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        prev, row[0] = row[0], i
+        for j, cb in enumerate(b, 1):
+            prev, row[j] = row[j], min(row[j] + 1, row[j - 1] + 1, prev + (ca != cb))
+    return row[-1]
+
+
+# Họ tên / số trên giấy viết tay bị OCR đọc lệch vài ký tự so với tài khoản VNeID của CÙNG người.
+_NEAR_EDITS = 2
+
+
 def _account_submitter(candidates: list[dict], anchor: dict) -> dict | None:
     # Khớp CCCD trước: hai người trong hồ sơ trùng họ tên bỏ dấu thì CCCD mới tách được.
     for person in candidates:
@@ -261,7 +275,38 @@ def _account_submitter(candidates: list[dict], anchor: dict) -> dict | None:
     for person in candidates:
         if anchor["name"] and person.get("name") and _fold(person["name"]) == _fold(anchor["name"]):
             return person
+    # Khớp gần: số lệch ≤2 chữ số VÀ họ tên bỏ dấu lệch ≤2 chữ cái — cả hai cùng lệch nhẹ mới là một người đọc sai.
+    for person in candidates:
+        number, name = person.get("identity") or "", _fold(person.get("name"))
+        if (anchor["identity"] and len(number) == len(anchor["identity"]) and anchor["name"] and name
+                and _edit_distance(number, anchor["identity"]) <= _NEAR_EDITS
+                and _edit_distance(name, _fold(anchor["name"])) <= _NEAR_EDITS):
+            return person
     return None
+
+
+def _person(values: dict, prefix: str) -> dict:
+    return {
+        "name": _text(values.get(f"{prefix}_HoTen")),
+        "identity": _validated_submitter_identity(values.get(f"{prefix}_SoDinhDanh")),
+        "birthday": _date(values.get(f"{prefix}_NgaySinh")),
+        "gender": _text(values.get(f"{prefix}_GioiTinh")),
+        "id_date": _date(values.get(f"{prefix}_NgayCap")),
+        "issuer": None,
+        "residence": _area(values.get(f"{prefix}_NoiCuTru")),
+        "phone": _phone(values.get(f"{prefix}_DienThoai")),
+        "email": _text(values.get(f"{prefix}_Email")),
+    }
+
+
+def _same_person(first: dict, second: dict) -> bool:
+    if first.get("identity") and second.get("identity"):
+        return first["identity"] == second["identity"]
+    return bool(first.get("name")) and _fold(first.get("name")) == _fold(second.get("name"))
+
+
+def _upper(value: str | None) -> str | None:
+    return value.upper() if value else value
 
 
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
@@ -283,8 +328,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     def add_area(province_name, district_name, address_name, area) -> None:
         if not area:
             return
-        add(province_name, _province_label(area.get("tinh")))
-        add(district_name, _text(area.get("xa")))
+        # Tên KHÔNG kèm cấp: danh mục cổng Bộ Y tế có chỗ khác loại đơn vị với danh mục hiện hành ("Xã Hiệp Hòa" vs
+        # "Phường Hiệp Hòa"), extension chỉ chọn được khi khớp phần tên.
+        add(province_name, _strip_admin_prefix(_province_label(area.get("tinh")) or "") or None)
+        add(district_name, _strip_admin_prefix(_text(area.get("xa")) or "") or None)
         add(address_name, _text(area.get("diaChi")))
 
     # --- ĐỐI TƯỢNG hưởng trợ cấp = chủ hồ sơ ---
@@ -303,20 +350,15 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         warnings.append("Thiếu họ tên đối tượng hưởng trợ cấp từ Tờ khai/CCCD/Giấy khai sinh.")
 
     # --- NGƯỜI KHAI THAY (người giám hộ / người nhận thay / người khai Mẫu 02) ---
-    declarant = {
-        "name": _text(values.get("NguoiNop_HoTen")),
-        "identity": _validated_submitter_identity(values.get("NguoiNop_SoDinhDanh")),
-        "birthday": _date(values.get("NguoiNop_NgaySinh")),
-        "gender": _text(values.get("NguoiNop_GioiTinh")),
-        "id_date": _date(values.get("NguoiNop_NgayCap")),
-        "issuer": None,
-        "residence": _area(values.get("NguoiNop_NoiCuTru")),
-        "phone": _phone(values.get("NguoiNop_DienThoai")),
-        "email": _text(values.get("NguoiNop_Email")),
-    }
+    declarant = _person(values, "NguoiNop")
+    # --- BÊN ĐƯỢC ỦY QUYỀN trên giấy ủy quyền chi trả ---
+    proxy = _person(values, "UyQuyen")
     subject["issuer"] = _issuer(values.get("DoiTuong_NoiCap"), subject["id_date"], subject["identity"])
     declarant["issuer"] = _issuer(values.get("NguoiNop_NoiCap"), declarant["id_date"], declarant["identity"])
+    proxy["issuer"] = _issuer(values.get("UyQuyen_NoiCap"), proxy["id_date"], proxy["identity"])
     has_declarant = bool(declarant["name"] or declarant["identity"])
+    # Bên được ủy quyền là chính đối tượng (giấy ủy quyền ghi ngược) thì không phải người khác đi nộp.
+    has_proxy = bool(proxy["name"] or proxy["identity"]) and not _same_person(proxy, subject)
 
     subject_submits = subject_as_submitter(options) and bool(subject["name"] or subject["identity"])
     if subject_submits:
@@ -324,7 +366,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         submitter = {**subject, "phone": subject["phone"] or declarant["phone"]}
         submitter_is_declarant = False
     elif anchor:
-        candidates = [declarant, subject] if has_declarant else [subject]
+        # Người nhận thay trên giấy ủy quyền chi trả hay tự đăng nhập VNeID của mình để nộp → cũng là ứng viên.
+        candidates = [*([declarant] if has_declarant else []), *([proxy] if has_proxy else []), subject]
         matched = _account_submitter(candidates, anchor)
         if matched is None:
             # Người đăng nhập không có trong hồ sơ: chỉ họ tên + CCCD tài khoản là chắc chắn của họ.
@@ -341,6 +384,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
                 "identity": anchor["identity"] or matched.get("identity"),
             }
         submitter_is_declarant = matched is declarant
+    elif has_proxy:
+        # Theo tờ khai, hồ sơ có giấy ủy quyền chi trả: người đi nộp là bên được ủy quyền (cán bộ chốt như vậy).
+        submitter = proxy
+        submitter_is_declarant = has_declarant and _same_person(proxy, declarant)
     else:
         submitter = declarant if has_declarant else subject
         submitter_is_declarant = has_declarant
@@ -354,7 +401,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     nop_residence = remap_area(nop_residence)
 
     add("data[chonDoiTuong]", "Cá nhân")
-    add("data[fullname]", submitter.get("name"))
+    # Họ tên theo tài khoản giữ đúng cách viết của tài khoản; lấy từ giấy tờ thì in hoa như trên thẻ.
+    add("data[fullname]", submitter.get("name") if anchor and not subject_submits else _upper(submitter.get("name")))
     add("data[birthday]", submitter.get("birthday"))
     add("data[gender]", submitter.get("gender"))
     add("data[identityNumber]", submitter.get("identity"))
@@ -377,7 +425,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     add("data[isOwnerDossierCheck]", False)
 
     # --- Phần II: chủ hồ sơ = ĐỐI TƯỢNG hưởng trợ cấp ---
-    add("data[ownerFullname]", subject["name"])
+    add("data[ownerFullname]", _upper(subject["name"]))
     add("data[ownerBirthday]", subject["birthday"])
     add("data[ownerGender]", subject["gender"])
     add("data[ownerIdentityNumber]", subject["identity"])

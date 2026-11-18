@@ -69,6 +69,9 @@ from app.pipelines.thuc_hien_tro_cap_xa_hoi_nhan_cham_soc_nuoi_duong_hang_thang.
 from app.pipelines.xac_nhan_dieu_kien_dien_tich_nha_o_dang_ky_thuong_tru.process.mapper import (
     with_account_process_options as with_dien_tich_nha_o_account_process_options,
 )
+from app.pipelines.xac_nhan_tthn_dvc_moi.process.mapper import (
+    with_account_process_options as with_tthn_account_process_options,
+)
 from app.process import requests_repo
 from app.process.schemas import ProcessReq, ProcessResp
 from app.process.service import execute_process, prepare_process
@@ -177,6 +180,10 @@ async def process(body: ProcessReq, background: BackgroundTasks,
             prepared.pipeline_options, user, body.procedure
         )
         prepared.pipeline_options = with_cap_lai_the_can_cuoc_account_process_options(
+            prepared.pipeline_options, user, body.procedure
+        )
+        # Xã Bình Sơn, phường Đồng Thuận: xác nhận TTHN điền số đăng ký gốc của giấy khai tử kể cả khi nộp bản sao.
+        prepared.pipeline_options = with_tthn_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )
     # Điền đợt 2: chỉ bản extension khai `fillSupports: ["secondPass"]` mới chạy. Luôn gán lại để client không tự

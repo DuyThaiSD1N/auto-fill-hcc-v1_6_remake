@@ -248,7 +248,36 @@ def rule_ward(slot: Slot, value: dict, province: str, wards: tuple[str, ...], do
     if ward and line:
         return ward, line
     # Tên xã cũ (mapper không đổi được vì xã cũ bị chia...) không phải chữ đọc lệch: không dò theo tên gần giống.
-    return ("", "") if read_is_old else _named_elsewhere(read, by_key, documents)
+    if read_is_old:
+        return "", ""
+    ward, line = _named_elsewhere(read, by_key, documents)
+    if ward:
+        return ward, line
+    ward = _only_near_named(read, by_key, documents)
+    own = next((raw for raw, _ in _own_lines(slot, value, documents)), "")
+    return (ward, own) if ward and own else ("", "")
+
+
+_ADDRESS_LABEL_RE = re.compile(r"(?i)đ[iị]a\s*ch[iỉ]|n[oơ]i\s*[oở]\b")
+
+
+def _only_near_named(read: str, by_key: dict[str, str], documents: list[dict]) -> str:
+    """Tỉnh chỉ có ĐÚNG MỘT xã lệch tới 2 chữ với tên lượt trích đọc, và tên xã đó có nguyên văn (đủ dấu, sau chữ "xã /
+    phường") ở một dòng KHÔNG phải dòng địa chỉ của hồ sơ (nơi đăng ký khai sinh, cơ quan cấp... trên giấy in) → xã đó:
+    chữ viết tay của ô địa chỉ bị OCR đọc lệch. Dòng nơi cư trú / địa chỉ / nơi sinh / quê quán không tính (hay là nơi ở
+    của người khác có tên xã gần giống). Hai xã gần như nhau thì không chọn."""
+    near = [key for key in by_key if read and _edit(_plain(read), _plain(key)) <= 2]
+    if len(near) != 1:
+        return ""
+    for document in documents:
+        for raw in str(document.get("text") or "").splitlines():
+            if any(label.search(raw) for label in (RESIDENCE_RE, BIRTH_PLACE_RE, HOMETOWN_RE, _ADDRESS_LABEL_RE)):
+                continue
+            text = f" {_low(raw)} "
+            for mark in _MARK_RE.finditer(text):
+                if f" {' '.join(text[mark.end():].split())} ".startswith(f" {near[0]} "):
+                    return by_key[near[0]]
+    return ""
 
 
 def _named_elsewhere(read: str, by_key: dict[str, str], documents: list[dict]) -> tuple[str, str]:

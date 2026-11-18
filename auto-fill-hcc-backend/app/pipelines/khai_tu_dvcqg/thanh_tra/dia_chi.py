@@ -7,15 +7,23 @@ chết trên tờ khai (sau câu "Đề nghị cơ quan đăng ký khai tử..."
 nhãn ("Nơi cư trú" / "Nơi thường trú" — "Nơi chết") ghi ĐÚNG xã hiện tại của lượt trích (hoặc dòng tờ khai không ghi
 xã) cùng chỉ ra MỘT tên đơn vị, mà chi tiết của lượt trích bỏ trống hoặc là tên khác hẳn → đề xuất tên đó, giữ tỉnh /
 xã của lượt trích.
+Ô xã sẽ TRỐNG trên cổng (tên xã đọc lệch / cắt cụt, không có trong danh mục hiện hành) → khung tên xã chung
+(_shared/thanh_tra/ten_xa.py, có xã của tài khoản quầy làm gợi ý); tên thôn / tổ soát tiếp trên địa chỉ đã sửa xã.
 """
 
 import re
+from dataclasses import replace
 
+from app.pipelines._shared.thanh_tra import ten_xa
 from app.pipelines._shared.thanh_tra.ho_so import Case, Field, Finding, Inspector, Unit, fold
 from app.pipelines.khai_sinh_dang_ky_lai.thanh_tra.dia_chi import _KINDS, _UNIT_RE, _name_of, _spell, units_in
+from app.pipelines.khai_sinh_dang_ky_lai.thanh_tra.dia_chi import _ward_evidence
 from app.pipelines.khai_sinh_dang_ky_lai.thanh_tra.dinh_danh import _edit
 
+from ..process import mapper
 from . import trang
+
+TITLE = "đăng ký khai tử"
 
 _OWNER = "người được đăng ký khai tử (người chết)"
 _TARGETS = {
@@ -26,6 +34,11 @@ _TARGETS = {
 UNITS = tuple(Unit(name, label, (Field(name, "địa chỉ {tinh, xa, diaChi}", "area"),))
               for name, (label, _) in _TARGETS.items())
 _UNIT = {unit.key: unit for unit in UNITS}
+_SLOTS = {
+    "NguoiMat_NoiCuTru": ten_xa.Slot(ten_xa.RESIDENCE_RE, "Nơi cư trú cuối cùng của NGƯỜI CHẾT"),
+    "NguoiMat_NoiChet": ten_xa.Slot(re.compile(r"(?i)n[oơ]i\s*ch[eế]t|n[oơ]i\s*t[uử]\s*vong|ch[eế]t\s*t[aạ]i"),
+                                    "NƠI CHẾT của người chết"),
+}
 _DEATH_PAPERS = ("giay bao tu", "trich luc khai tu", "giay chung tu")
 _REQUEST = "de nghi co quan dang ky khai tu"
 _ANY_XA_RE = re.compile(r" (?:xa|phuong|thi tran) ")
@@ -40,6 +53,15 @@ trống, hoặc là tên đơn vị khác hẳn chỉ có trên dòng ghi xã kh
 đơn vị đúng như dòng đó, giữ tỉnh / xã của A). Dòng trích dẫn là địa chỉ của người yêu cầu / người đi khai tử, hoặc không
 có nhãn đó → KHONG_DU_CAN_CU.
 </ten_thon_to>
+
+<ten_xa>
+Vụ có tín hiệu "ô xã của A không có trong danh mục hiện hành": tên xã của A là chữ OCR đọc lệch, bị cắt cụt, hoặc cụm khác
+(tên thôn, tổ) bị lấy nhầm làm tên xã, cổng không chọn được (hoặc chọn nhầm xã khác chứa chữ đó). B là tên xã trong danh
+mục hiện hành của tỉnh. Dòng trích dẫn có tên B (cho lệch OCR vài chữ) và là nơi cư trú / nơi chết của CHÍNH người chết
+(giấy báo tử, trích lục khai tử, khối người chết trên tờ khai, thẻ của người chết) hoặc dòng "Kính gửi: UBND ..." → chọn
+B. Tên xã của A có nguyên văn trên dòng KHÔNG phải lý do giữ A: tên đó không có trong danh mục. Dòng trích dẫn là địa chỉ
+của người yêu cầu / người khác → KHONG_DU_CAN_CU.
+</ten_xa>
 """
 
 
@@ -121,10 +143,41 @@ def findings_from(case: Case) -> list[Finding]:
             for finding in [address_finding(name, case.values.get(name), case, lines)] if finding]
 
 
+def _mapped(name: str, value: dict):
+    return mapper._area(value)
+
+
+def _own_quote(name: str, fix: dict, lines: list[tuple[int, str, bool]]) -> dict:
+    """Câu trích của khung tên xã thường chỉ là phần địa chỉ, không nhãn; người yêu cầu hay ở cùng địa chỉ nên toà không
+    biết dòng đó của ai → dùng nguyên dòng có nhãn của ô thuộc chính người chết chứa câu trích (nếu có)."""
+    quote = _words(re.sub(r"^\s*\(\d+\)\s*", "", str(fix["quote"]).split(":", 1)[-1]))
+    for doc, line, _ in lines:
+        rest = _labeled_rest(line, _TARGETS[name][1])
+        if rest and quote.strip() and quote in _words(rest):
+            return {**fix, "quote": line, "doc": doc}
+    return fix
+
+
 async def find(inspector: Inspector, case: Case, title: str) -> list[Finding]:
-    return findings_from(case)
+    lines = own_lines(case, trang.pages(case.documents))
+    wards = await ten_xa.fixes(case.values, _SLOTS, case.documents, case.options, title=TITLE, mapped=_mapped)
+    findings = []
+    for name in _TARGETS:
+        fix = _own_quote(name, wards[name], lines) if name in wards else None
+        # Tên thôn / tổ soát trên địa chỉ đã sửa xã: một vụ cho cả địa chỉ, không để hai đề xuất ghi đè nhau.
+        value = fix["value"] if fix else case.values.get(name)
+        finding = address_finding(name, value, case, lines)
+        if finding and fix:
+            finding = replace(finding, evidence=(*finding.evidence, _ward_evidence(fix, case.values.get(name))))
+        elif fix:
+            finding = Finding(INSPECTOR, _UNIT[name], {name: fix["value"]}, fix["quote"], fix["doc"],
+                              "dòng giấy ghi tên xã của địa chỉ", _OWNER, backed=True,
+                              evidence=(_ward_evidence(fix, case.values.get(name)),))
+        if finding:
+            findings.append(finding)
+    return findings
 
 
-INSPECTOR = Inspector("dia_chi", "ĐỊA CHỈ người được đăng ký khai tử (thôn / tổ dân phố nơi cư trú, nơi chết)", UNITS,
+INSPECTOR = Inspector("dia_chi", "ĐỊA CHỈ người được đăng ký khai tử (xã, thôn / tổ dân phố nơi cư trú, nơi chết)", UNITS,
                       RULES, owners=(_OWNER, "người yêu cầu / người đi khai tử", "người khác"), accepted=(_OWNER,),
                       find=find)

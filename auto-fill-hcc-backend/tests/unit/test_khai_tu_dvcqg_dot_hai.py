@@ -70,6 +70,38 @@ def test_dia_chi_cu_tru_theo_dong_cua_nguoi_chet_ghi_dung_xa_hien_tai():
     assert dia_chi.findings_from(same) == []
 
 
+async def test_dia_chi_xa_cat_cut_ngoai_danh_muc_sua_theo_dong_cua_nguoi_chet(monkeypatch):
+    from app.pipelines._shared.thanh_tra import ten_xa
+    from app.pipelines.khai_tu_dvcqg.thanh_tra import dia_chi
+
+    async def no_answer(*args, **kwargs):
+        return "{}"
+
+    monkeypatch.setattr(ten_xa.client, "chat", no_answer)
+    to_khai = ("TỜ KHAI ĐĂNG KÝ KHAI TỬ\nNơi cư trú: (2) Tổ dân phố Một, phường Nam Nha Trang, tỉnh Khánh Hòa\n"
+               "Đề nghị cơ quan đăng ký khai tử cho người có tên dưới đây:\n"
+               "Nơi cư trú cuối cùng: (2) Tổ dân phố Một, phường Nam Nha Trang, tỉnh Khánh Hòa")
+    cut = {"quocGia": "Việt Nam", "tinh": "Khánh Hòa", "xa": "Nam", "diaChi": "Tổ dân phố Một"}
+    case = _case({"NguoiMat_NoiCuTru": cut}, to_khai)
+    found = await dia_chi.find(dia_chi.INSPECTOR, case, "")
+    assert [f.values["NguoiMat_NoiCuTru"]["xa"] for f in found] == ["Phường Nam Nha Trang"]
+    # Căn cứ là dòng có nhãn của chính người chết, không phải dòng cùng địa chỉ của người yêu cầu.
+    assert found[0].quote.startswith("Nơi cư trú cuối cùng")
+
+
+async def test_dia_chi_xa_trong_danh_muc_khong_hoi_model(monkeypatch):
+    from app.pipelines._shared.thanh_tra import ten_xa
+    from app.pipelines.khai_tu_dvcqg.thanh_tra import dia_chi
+
+    async def must_not_call(*args, **kwargs):
+        raise AssertionError("ô xã đã chọn được thì không hỏi model")
+
+    monkeypatch.setattr(ten_xa.client, "chat", must_not_call)
+    value = {"quocGia": "Việt Nam", "tinh": "Khánh Hòa", "xa": "Phường Nam Nha Trang", "diaChi": "Tổ dân phố Một"}
+    case = _case({"NguoiMat_NoiCuTru": value}, "GIẤY BÁO TỬ\nNơi thường trú: Tổ dân phố Một, phường Nam Nha Trang")
+    assert await dia_chi.find(dia_chi.INSPECTOR, case, "") == []
+
+
 def test_ngay_chet_nhieu_trang_ghi_hon_thi_doi():
     from app.pipelines.khai_tu_dvcqg.thanh_tra import thong_tin_chet
     case = _case({"NguoiMat_NgayMat": "23/03/2025"},

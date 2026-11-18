@@ -791,7 +791,24 @@ def test_khai_tu_noi_chet_khong_phai_noi_cu_tru(ocr):
     by = {f["name"]: f["value"] for f in out}
     assert not _area_fields(out)
     assert by["citizenNDK_Noicutru"] == "1" and by["citizenField21"] == "Việt Nam"
-    assert any("Phường/Xã" in w for w in warnings)
+    assert any("không ghi nơi cư trú" in w for w in warnings)
+
+
+def test_khai_tu_chet_tai_nha_lay_dia_chi_nha_lam_noi_cu_tru_to_vang():
+    ocr = _OCR_NOI_CHET.replace("Nơi chết: Số 1,", "Nơi chết: Tại nhà ở Số 1,")
+    out, warnings = _enrich_khai_tu(ocr)
+    area = _area_fields(out)
+    assert area["citizenNDK_PhuongXa"]["value"] == "Phường Xuân Hương" and area["citizenField38"]["value"] == "Số 1"
+    assert area["citizenNDK_PhuongXa"].get("default") and area["citizenField38"].get("default")
+    assert any("chết tại nhà" in w for w in warnings)
+
+
+def test_khai_tu_khong_co_dia_chi_nao_van_mo_san_o_cu_tru():
+    values = {k: v for k, v in _KHAI_TU.items() if k != "NguoiDuocCap_NoiCuTru"}
+    out, warnings = _enrich_khai_tu(_OCR_NOI_CHET.replace(_DONG_NOI_CHET, "Nơi chết: Bệnh viện A, tỉnh Lâm Đồng"), values)
+    by = {f["name"]: f["value"] for f in out}
+    assert not _area_fields(out) and by["citizenNDK_Noicutru"] == "1"
+    assert any("không ghi nơi cư trú" in w for w in warnings)
 
 
 @pytest.mark.parametrize("ocr", [
@@ -872,3 +889,20 @@ def test_ban_than_ten_lech_mot_chu_va_so_tai_khoan_co_tren_giay(ocr, expected):
     context = _context("Bản thân", subject_id="250199202").replace("Họ tên: TRAN THI B", "Họ tên: Nguyễn Trinh Hưng")
     out, _ = mapper.enrich(fields, {"formContext": account, "_ocr_text": ocr, "_reasoning_context": context})
     assert {f["name"]: f["value"] for f in out}["citizenQuanhe"] == expected
+
+
+def test_nhan_giay_to_chu_tai_khoan_ma_nguoi_duoc_cap_khac_tai_khoan_thi_khong_ban_than():
+    # Chỉ có CCCD của người KHÁC chủ tài khoản: phân vai ghi đúng người được cấp nhưng gắn nhầm "Nguồn: giấy tờ chủ tài
+    # khoản" → không chọn "Bản thân", khối người được cấp giữ người đọc từ thẻ.
+    context = _context("Không xác định", subject_id="001190000002", doi_chieu="khác người").replace(
+        "Trạng thái: còn sống", "Trạng thái: còn sống\nNguồn: giấy tờ chủ tài khoản")
+    out, _ = _enrich(SUBJECT, context)
+    by = {f["name"]: f["value"] for f in out}
+    assert by["citizenQuanhe"] != "Bản thân" and by["citizenNDK_HoVaTen"] == "TRAN THI B"
+    # Nhãn đúng (người được cấp là chính chủ tài khoản) vẫn chọn "Bản thân".
+    own = {**SUBJECT, "NguoiDuocCap_HoTen": "Nguyen Van A", "NguoiDuocCap_SoDinhDanh": "001090000001",
+           "NguoiDuocCap_SoGiayTo": "001090000001"}
+    context = (_context("Không xác định", subject_id="001090000001").replace("Họ tên: TRAN THI B", "Họ tên: NGUYEN VAN A")
+               .replace("Trạng thái: còn sống", "Trạng thái: còn sống\nNguồn: giấy tờ chủ tài khoản"))
+    out, _ = _enrich(own, context)
+    assert {f["name"]: f["value"] for f in out}["citizenQuanhe"] == "Bản thân"

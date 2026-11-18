@@ -1,8 +1,9 @@
 """Compact schema for "Thực hiện, điều chỉnh, thôi hưởng trợ cấp hưu trí xã hội".
 
-Hợp đồng nguồn chỉ có tối đa hai chủ thể nghiệp vụ:
+Hợp đồng nguồn có các chủ thể nghiệp vụ:
 - ChuHoSo: người đề nghị/người đang hưởng tại mục I Mẫu số 01.
 - NguoiNop: người thực sự nộp hồ sơ, đã khớp mỏ neo tên + CCCD từ UI.
+- UyQuyen: bên được ủy quyền trên giấy ủy quyền (chỉ khi hồ sơ có giấy này).
 
 LLM hợp nhất dữ liệu của cùng một chủ thể từ Mẫu số 01 và CCCD. Mapper chỉ xác
 thực lại vai trò bằng formContext rồi đổi sang tên field của eForm.
@@ -81,6 +82,40 @@ FIELDS: list[dict] = [
         "name": "NguoiNop_QuocTich",
         "desc": "Quốc tịch người nộp khi giấy tờ ghi rõ.",
     },
+    # Bên ĐƯỢC ỦY QUYỀN trên GIẤY ỦY QUYỀN: người thực sự đi nộp thay người hưởng. Chế độ "theo tờ khai" lấy người này làm
+    # người nộp; hồ sơ không có giấy ủy quyền thì bỏ cả nhóm.
+    {
+        "name": "UyQuyen_HoTen",
+        "desc": "Họ tên BÊN ĐƯỢC ỦY QUYỀN trên GIẤY ỦY QUYỀN (khối \"Người được ủy quyền\" / \"BÊN ĐƯỢC ỦY QUYỀN\", mục II của giấy). KHÔNG lấy bên ủy quyền (người hưởng). Hồ sơ không có giấy ủy quyền → bỏ.",
+    },
+    {
+        "name": "UyQuyen_SoDinhDanh",
+        "desc": "Số CCCD/CMND bên được ủy quyền: ghi trong khối bên được ủy quyền của giấy ủy quyền, hoặc CCCD có họ tên khớp người này. Chỉ chữ số.",
+    },
+    {
+        "name": "UyQuyen_NgaySinh",
+        "desc": "Ngày sinh bên được ủy quyền, dd/mm/yyyy, theo khối bên được ủy quyền hoặc CCCD đúng người này; chỉ có năm thì bỏ.",
+    },
+    {
+        "name": "UyQuyen_GioiTinh",
+        "desc": 'Giới tính bên được ủy quyền, "Nam"/"Nữ" chỉ khi giấy tờ của chính người này ghi rõ.',
+    },
+    {
+        "name": "UyQuyen_NgayCap",
+        "desc": "Ngày cấp CCCD bên được ủy quyền, dd/mm/yyyy, ghi cạnh số CCCD của chính người này; không lấy ngày cấp của người khác.",
+    },
+    {
+        "name": "UyQuyen_NoiCap",
+        "desc": "Nơi cấp CCCD bên được ủy quyền chỉ khi giấy của chính người này ghi rõ.",
+    },
+    {
+        "name": "UyQuyen_NoiCuTru",
+        "desc": "Nơi cư trú bên được ủy quyền, object {quocGia,tinh,xa,chiTietDuoiXa}, theo khối bên được ủy quyền hoặc CCCD đúng người này. Khối trên giấy ủy quyền chỉ ghi xã/tỉnh (thiếu thôn/tổ/số nhà) mà CÙNG NGƯỜI này (trùng họ tên hoặc số định danh) có dòng nơi cư trú đầy đủ hơn ở mục 2 Mẫu 01 hoặc trên CCCD của chính người đó → lấy dòng đầy đủ đó. Không lấy địa chỉ của người khác.",
+    },
+    {
+        "name": "UyQuyen_DienThoai",
+        "desc": "Số điện thoại bên được ủy quyền nếu giấy ủy quyền ghi, CHỈ chữ số.",
+    },
 ]
 
 ALLOWED = {field["name"] for field in FIELDS}
@@ -92,9 +127,11 @@ for _name in (
     "ChuHoSo_NgayCap",
     "NguoiNop_NgaySinh",
     "NguoiNop_NgayCap",
+    "UyQuyen_NgaySinh",
+    "UyQuyen_NgayCap",
 ):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
-for _name in ("ChuHoSo_NoiCuTru", "NguoiNop_NoiCuTru"):
+for _name in ("ChuHoSo_NoiCuTru", "NguoiNop_NoiCuTru", "UyQuyen_NoiCuTru"):
     COMPACT_COMP_BY_NAME[_name] = "x-select-area"
 
 UI_COMP_BY_NAME = {

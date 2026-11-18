@@ -3,10 +3,11 @@ import re
 import unicodedata
 from datetime import timezone
 
-STATUSES = ("new", "doing", "done", "notbug")
+STATUSES = ("new", "doing", "done", "ocr", "notbug")
 MAX_IMAGES = 10
 MAX_TEXT = 4000
 MAX_TITLE = 200
+MAX_NOTE = 1000
 _TITLE_CUT = 70
 
 # Ba vai trò, phân giải từ token qua phạm vi thống kê (app/dashboard/scope.py):
@@ -101,6 +102,8 @@ def serialize(doc: dict, access: str) -> dict:
         "video": _video(doc),
         "dossier": dossier,
         "updatedAt": iso(doc.get("updated_at")),
+        # Lý do admin ghi khi đóng lỗi là "Không phải lỗi" — người gửi cũng thấy để biết vì sao.
+        "notbugNote": doc.get("notbug_note") or "",
     })
     if access == MANAGER:
         item.update({

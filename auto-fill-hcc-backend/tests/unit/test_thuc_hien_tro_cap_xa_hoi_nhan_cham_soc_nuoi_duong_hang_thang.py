@@ -60,7 +60,7 @@ def test_nguoi_giam_ho_la_nguoi_nop_tre_la_chu_ho_so():
     assert ui["data[birthday]"] == "11/09/1990"
     assert ui["data[idIssuePlace]"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
     # Tỉnh của người giám hộ suy từ cùng phường của đối tượng.
-    assert ui["data[province]"] == "Thành phố Hà Nội"
+    assert ui["data[province]"] == "Hà Nội"  # không tiền tố: danh mục cổng khác loại đơn vị
     assert ui["data[address]"] == "Tổ 3"
     assert ui["data[phoneNumber]"] == "0912345678"
     assert ui["data[isOwnerDossierCheck]"] is False
@@ -142,7 +142,7 @@ def test_yen_bai_doi_tuong_vua_nop_vua_la_chu_ho_so_du_co_nguoi_giam_ho():
     assert ui["data[identityNumber]"] == "001319012345"
     assert ui["data[birthday]"] == "03/02/2019"
     assert ui["data[idIssuePlace]"] == "Bộ Công an"
-    assert ui["data[province]"] == "Thành phố Hà Nội"
+    assert ui["data[province]"] == "Hà Nội"  # không tiền tố: danh mục cổng khác loại đơn vị
     assert ui["data[phoneNumber]"] == "0987654321"
     # Tích để cổng tự đổ Phần I → Phần II, không điền owner_* và ghi chú người giám hộ.
     assert ui["data[isOwnerDossierCheck]"] is True

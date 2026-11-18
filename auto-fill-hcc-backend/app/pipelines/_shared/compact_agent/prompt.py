@@ -60,8 +60,9 @@ NHIỆM VỤ: trả về object fields thật NGẮN. Chỉ dùng key trong danh
          (BỎ huyện "Nghi Lộc").
        • "Vĩnh Thành, Chợ Lách, Bến Tre"        →  tinh="Bến Tre", xa="Vĩnh Thành", chiTietDuoiXa=""
          (BỎ huyện "Chợ Lách"; không có phần chi tiết).
-       • "Số 24 Trần Phú, Lộc Thọ, Nha Trang, Khánh Hòa" → tinh="Khánh Hòa", xa="Lộc Thọ",
-         chiTietDuoiXa="Số 24 Trần Phú" (BỎ cấp huyện "Nha Trang").
+     Địa chỉ theo địa giới mới chỉ hai cấp "[chi tiết], [xã], [tỉnh]": cụm đầu là số nhà / đường / thôn / tổ thì cụm áp
+     cuối là XÃ, không có huyện. Mỗi cụm giữa hai dấu phẩy là MỘT đơn vị — chép nguyên cả cụm, KHÔNG cắt đôi một cụm thành
+     xã + huyện (tên xã mới hay chứa tên huyện / thành phố cũ kèm chữ chỉ hướng).
      LƯU Ý: tên xã/phường vùng cao CÓ THỂ bắt đầu bằng "Bản", "Nậm", "Mường", "Pa"... (một xã có thể tên
      là "Bản ..."); TUYỆT ĐỐI KHÔNG coi phần đó là chi tiết chỉ vì bắt đầu bằng "Bản" — VỊ TRÍ trong chuỗi
      (áp chót, ngay trước cấp huyện/tỉnh) mới quyết định đó là xã. BẮT BUỘC điền xa khi chuỗi có phần cấp xã;

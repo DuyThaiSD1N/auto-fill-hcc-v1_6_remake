@@ -20,13 +20,15 @@ from app.process.schemas import FileItem
 from app.services.llm import client
 
 from ..dinh_kem_khong_tach.planner import DEFAULT_ROW, DOC_TYPES, ROWS, _document_name, _llm_document_name
-from ..dinh_kem_khong_tach.planner import both_sides, pair_card_sides
+from ..dinh_kem_khong_tach.planner import both_sides, join_divorce_pages, pair_card_sides
 from ..dinh_kem_khong_tach.planner import plan as plan_without_split
 from ..nghia_hung import OMITTED_DECLARATION_NOTE, keep_only_authorization, omits_paper_declaration, only_authorization
 from .prompt import CONFIRM_PROMPT, SYSTEM_PROMPT, build_confirm_prompt, build_user_prompt
 
 _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
-_PAGE_RE = re.compile(r"(?m)^\W*Trang\s+(\d+)\s*/\s*(\d+)\W*$")
+# Mốc trang do dịch vụ OCR chèn ("───── Trang i/N ─────", app/services/ocr_tiengnoi.py). Bắt buộc có gạch trang trí:
+# giấy in sẵn dòng chân trang "Trang 1/1" — nhận nó làm mốc là chia đôi một trang, mọi trang sau lệch số.
+_PAGE_RE = re.compile(r"(?m)^\s*[─-]{3,}\s*Trang\s+(\d+)\s*/\s*(\d+)\s*[─-]{3,}\s*$")
 _BLANK = "blank_page"
 ROW_BY_TYPE = ROWS
 
@@ -312,10 +314,17 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
 
     attachments: list[dict] = []
     seen: dict[str, int] = {}
-    # Hai mặt thẻ của CÙNG một người (dù khác trang, khác tệp) luôn gộp thành MỘT giấy.
-    for group in pair_card_sides([s["doc"] for s in segments]):
+    # Hai mặt thẻ của CÙNG một người (dù khác trang, khác tệp) luôn gộp thành MỘT giấy; ảnh rời là trang tiếp của
+    # quyết định ly hôn nhập vào quyết định đứng trước.
+    docs = [s["doc"] for s in segments]
+    cards = pair_card_sides(docs)
+    card_pairs = {tuple(group) for group in cards if len(group) > 1}
+    # Quyết định ly hôn chụp rời: LLM chỉ tới tệp chứa trang đầu theo fileIndex → mã của đoạn là fileIndex khi đoạn
+    # bắt đầu từ trang đầu tệp.
+    refs = [s["fileIndex"] if not s["pages"] or s["pages"][0] == 0 else None for s in segments]
+    for group in join_divorce_pages(docs, cards, refs):
         parts = [segments[i] for i in group]
-        doc = both_sides(parts[0]["doc"]) if len(parts) > 1 else parts[0]["doc"]
+        doc = both_sides(parts[0]["doc"]) if tuple(group) in card_pairs else parts[0]["doc"]
         file_index = parts[0]["fileIndex"]
         name = names[file_index]
         document_name = _document_name(name, _llm_document_name(doc) if doc else "")

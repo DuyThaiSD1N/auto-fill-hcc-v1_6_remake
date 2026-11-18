@@ -276,7 +276,7 @@ def test_admin_loc_theo_tinh_trang_thai_va_tu_khoa(as_user):
     province = next(i["province"] for i in body["items"] if i["code"] == "PB-01")
     only = client.get("/api/v1/bug-reports", params={"province": province}).json()
     assert [i["code"] for i in only["items"]] == ["PB-01"]
-    assert only["counts"]["status"] == {"new": 1, "doing": 0, "done": 0, "notbug": 0}
+    assert only["counts"]["status"] == {"new": 1, "doing": 0, "done": 0, "ocr": 0, "notbug": 0}
     assert client.get("/api/v1/bug-reports", params={"q": "tệp"}).json()["total"] == 1
     assert client.get("/api/v1/bug-reports", params={"status": "done"}).json()["total"] == 0
 
@@ -289,6 +289,24 @@ def test_trang_thai_khong_phai_loi(as_user):
     body = client.get("/api/v1/bug-reports", params={"status": "notbug"}).json()
     assert body["total"] == 1 and body["counts"]["status"]["notbug"] == 1
     assert as_user(WARD_A).get("/api/v1/bug-reports/summary").json()["open"] == 0
+
+
+def test_ocr_sai_va_ly_do_khong_phai_loi(as_user):
+    first = _send(as_user(WARD_A)).json()["id"]
+    second = _send(as_user(WARD_A)).json()["id"]
+    client = as_user(ADMIN)
+    assert client.patch(f"/api/v1/bug-reports/{first}", json={"status": "ocr"}).json()["status"] == "ocr"
+    res = client.patch(f"/api/v1/bug-reports/{second}", json={"status": "notbug", "notbugNote": "  Cán bộ chọn sai thủ tục "})
+    assert res.json()["notbugNote"] == "Cán bộ chọn sai thủ tục"
+    assert [e["action"] for e in res.json()["log"]][-2:] == ["status", "note"]
+    counts = client.get("/api/v1/bug-reports").json()["counts"]["status"]
+    assert counts["ocr"] == 1 and counts["notbug"] == 1
+    assert as_user(WARD_A).get("/api/v1/bug-reports/summary").json()["open"] == 0
+    mine = {i["id"]: i for i in as_user(WARD_A).get("/api/v1/bug-reports").json()["items"]}
+    assert mine[second]["notbugNote"] == "Cán bộ chọn sai thủ tục"
+    assert "notbugNote" not in as_user(PROVINCE).get("/api/v1/bug-reports").json()["items"][0]
+    too_long = as_user(ADMIN).patch(f"/api/v1/bug-reports/{second}", json={"notbugNote": "x" * 1001})
+    assert too_long.status_code == 400
 
 
 def test_loc_theo_thu_tuc_va_dem_tung_thu_tuc(as_user):

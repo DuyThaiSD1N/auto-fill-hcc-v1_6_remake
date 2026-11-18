@@ -29,6 +29,11 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         context_builder=build_context,
     )
     raw_fields = copy.deepcopy(result["fields"]) if second_pass else []
+    if read.get("documents"):
+        kept = reason.drop_other_holder_registration(
+            {f["name"]: f.get("value") for f in result["fields"] if isinstance(f, dict) and f.get("name")},
+            read["documents"], result.get("reasoning_context") or "")
+        result["fields"] = [f for f in result["fields"] if not isinstance(f, dict) or f.get("name") in kept]
     enrich_options = {**(options or {}), "_reasoning_context": result.get("reasoning_context") or ""}
     result["fields"], warnings = mapper.enrich(result["fields"], enrich_options)
     if warnings:

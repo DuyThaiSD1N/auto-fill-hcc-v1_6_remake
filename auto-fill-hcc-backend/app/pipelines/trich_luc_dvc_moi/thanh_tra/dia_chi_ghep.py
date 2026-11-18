@@ -41,6 +41,13 @@ Một dòng "Nơi cư trú" ghi địa chỉ cũ rồi xuống dòng "tại <chi
 sau là nơi ở hiện tại theo đơn vị sau sáp nhập → xã, tỉnh và chi tiết theo phần sau (dòng "Tín hiệu mã" nêu rõ khi B
 lấy từ dòng nối này).
 </chon_nguon>
+
+<chet_tai_nha>
+Trích lục khai tử không có dòng nơi cư trú nào của người chết, mà dòng "Nơi chết" ghi chết TẠI NHÀ ("Tại nhà", "Tại nhà
+riêng", "Tại gia đình", "Tại nhà ở …") → nhà đó là nơi người chết ở: B lấy địa chỉ sau chữ "tại nhà" làm nơi cư trú là ĐÚNG NGUỒN (ngoại
+lệ của luật không lấy "Nơi chết"). A bỏ trống, hoặc xã của A không chọn được / khác xã của nhà đó → chọn B. Nơi chết là
+bệnh viện, cơ sở y tế, nơi khác → không phải nơi cư trú.
+</chet_tai_nha>
 ''' + base.RULES[base.RULES.index("</chon_nguon>") + len("</chon_nguon>"):])
 _SIGNATURE_LINES = 3  # số dòng sau nhãn "(Ký, ghi rõ họ, chữ đệm, tên)" còn thuộc khối chữ ký của tờ khai
 
@@ -439,6 +446,56 @@ def screen(finding: Finding, case: Case) -> Finding | None:
     return replace(finding, evidence=tuple(evidence), backed=backed)
 
 
+_AT_HOME_RE = re.compile(r"^\W*t[aạ]i\s+(?:nh[aà](?:\s+ri[eê]ng)?|gia(?:\s+[đd][iì]nh)?)(?:\s+(?:[oở]|t[aạ]i))?\b[\s,:.-]*",
+                         re.IGNORECASE)
+
+
+def home_finding(case: Case, read: dict | None) -> Finding | None:
+    """Trích lục khai tử không có dòng nơi cư trú của người chết mà "Nơi chết" ghi chết TẠI NHÀ: địa chỉ nhà đó là nơi
+    cư trú (mapper điền, tô vàng). Lượt trích bỏ sót / lấy xã khác → đề xuất địa chỉ tách từ chính dòng đó."""
+    if mapper._event_type(case.values, case.context or "") != "death":
+        return None
+    owned = (read or {}).get("labels", {}).values()
+    if any(fold(owner) == fold(base._OWNERS[0]) and fold(kind) == fold(base._RESIDENCE) for owner, kind in owned):
+        return None
+    for doc, document in enumerate(case.documents, start=1):
+        text = str(document.get("text") or "")
+        if not mapper._died_at_home(text):
+            continue
+        lines = [line for line in text.splitlines() if line.strip()]
+        for index, line in enumerate(lines):
+            labeled = mapper._labeled_text(lines, index)
+            if "noi chet" not in fold(labeled.split(":", 1)[0]) or ":" not in labeled:
+                continue
+            body = _AT_HOME_RE.sub("", labeled.split(":", 1)[1].strip())
+            split = base.code_split(body)
+            if not split or base.split_fault(split, body):
+                continue
+            proposed = {"quocGia": "Việt Nam", **{level: value for level, value in split.items() if value}}
+            # Tên tỉnh như lượt trích trả ("Khánh Hòa", không tiền tố "tỉnh") để ô tỉnh khớp danh mục của cổng.
+            proposed["tinh"] = area_remap.canonical_province(proposed.get("tinh")) or proposed.get("tinh")
+            theirs = _mapped(proposed, case)
+            if not _usable(theirs):
+                continue
+            current = case.values.get(FIELD)
+            ours = _mapped(current, case) if isinstance(current, dict) and not is_empty(current) else None
+            if not ours:
+                reason = "ô nơi cư trú TRỐNG trong khi trích lục khai tử ghi chết tại nhà"
+            elif not _usable(ours):
+                reason = "ô xã của A không chọn được trên cổng, xã của nhà nơi người chết mất chọn được"
+            elif (_ward_key(ours.get("tinh")), _ward_key(ours.get("xa"))) != (
+                    _ward_key(theirs.get("tinh")), _ward_key(theirs.get("xa"))):
+                reason = "xã của A khác xã của nhà nơi người chết mất, giấy không có dòng nơi cư trú nào khác"
+            else:
+                return None
+            return Finding(INSPECTOR, base.UNITS[0], {FIELD: proposed}, line.strip(), doc,
+                           "dòng Nơi chết ghi chết tại nhà trên trích lục khai tử", base._OWNERS[0], backed=True,
+                           evidence=(f"địa chỉ của A: {reason}",
+                                     "B tách từ dòng Nơi chết ghi chết TẠI NHÀ; giấy không có dòng nơi cư trú của người "
+                                     "chết nên nhà đó là nơi cư trú"))
+    return None
+
+
 async def find(inspector: Inspector, case: Case, title: str) -> list[Finding]:
     current = case.values.get(FIELD)
     # Nơi cư trú ở nước ngoài không tách theo cấp hành chính Việt Nam → không soát.
@@ -447,6 +504,7 @@ async def find(inspector: Inspector, case: Case, title: str) -> list[Finding]:
     read = await base.read_lines(inspector, case, title)
     finding = compose(case, read) if read else None
     finding = screen(finding, case) if finding else None
+    finding = finding or home_finding(case, read)
     return [finding] if finding else []
 
 

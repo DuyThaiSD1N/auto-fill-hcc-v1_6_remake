@@ -34,7 +34,9 @@ Khối người nộp trên cổng đã khóa theo tài khoản → KHÔNG tríc
    mới trả "Mông (Hmông)".
 7. NguoiDuocCap_NoiCuTru CHỈ lấy dòng thuộc CHÍNH người được cấp: khối người được cấp trên tờ khai, CCCD của
    chính họ, "Nơi cư trú cuối cùng" của người chết trên trích lục khai tử. Dòng "Nơi cư trú" trên GIẤY KHAI
-   SINH nằm trong khối cha/mẹ → của cha/mẹ, KHÔNG lấy cho con. Không có dòng của chính họ → bỏ field.
+   SINH nằm trong khối cha/mẹ → của cha/mẹ, KHÔNG lấy cho con. Không có dòng của chính họ → bỏ field, TRỪ trích lục
+   khai tử có "Nơi chết" ghi chết TẠI NHÀ ("Tại nhà", "Tại nhà riêng", "Tại gia đình", "Tại nhà ở …"): nhà đó là nơi
+   người chết ở → BẮT BUỘC trả NguoiDuocCap_NoiCuTru = địa chỉ đứng sau cụm "tại nhà" / "tại gia đình". Nơi chết là bệnh viện, cơ sở y tế, nơi khác → bỏ.
    Dòng "Nơi cư trú" trong khối sau "cho người có tên dưới đây" của tờ khai LÀ của người được cấp: BẮT BUỘC
    trả, kể cả khi trùng từng chữ với nơi cư trú của người yêu cầu (cùng hộ là bình thường).
    Nơi cư trú tách {quocGia,tinh,xa,chiTietDuoiXa}: chuỗi "[chi tiết], [xã], [huyện], [tỉnh]" đếm từ cuối —

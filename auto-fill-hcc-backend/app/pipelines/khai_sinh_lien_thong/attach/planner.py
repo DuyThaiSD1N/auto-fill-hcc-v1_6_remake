@@ -580,5 +580,11 @@ async def plan_khai_sinh_attachments(
     }
 
 
-# Entrypoint thống nhất cho registry app.pipelines.<procedure>.attach.
-plan = plan_khai_sinh_attachments
+async def plan(files: list[FileItem], options: dict | None = None, session: dict | None = None) -> dict:
+    """Entrypoint cho registry: chỉ boolean ``True`` của "tách giấy tờ" mới chia trang; client cũ / tắt tách giữ
+    nguyên tệp. Import muộn vì planner tách dùng lại helper của module này."""
+    if (options or {}).get("splitDocuments") is True:
+        from app.pipelines.khai_sinh_lien_thong.attach.dinh_kem_tach.planner import plan as plan_with_split
+
+        return await plan_with_split(files, options, session)
+    return await plan_khai_sinh_attachments(files, options, session)

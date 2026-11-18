@@ -138,7 +138,7 @@ NO_PROCEDURE = "_none"
 @router.get("")
 async def list_reports(
     user: dict = Depends(require_dashboard),
-    status: Literal["all", "new", "doing", "done", "notbug"] = Query("all"),
+    status: Literal["all", "new", "doing", "done", "ocr", "notbug"] = Query("all"),
     q: str | None = Query(None, max_length=200),
     dateFrom: str | None = Query(None),
     dateTo: str | None = Query(None),
@@ -330,7 +330,8 @@ async def get_report(report_id: str, user: dict = Depends(require_dashboard)):
 class ReportPatch(BaseModel):
     title: str | None = None
     text: str | None = None
-    status: Literal["new", "doing", "done", "notbug"] | None = None
+    status: Literal["new", "doing", "done", "ocr", "notbug"] | None = None
+    notbugNote: str | None = None
 
 
 @router.patch("/{report_id}")
@@ -360,6 +361,13 @@ async def patch_report(report_id: str, body: ReportPatch, user: dict = Depends(r
     if body.status is not None and body.status != doc.get("status"):
         changes["status"] = body.status
         log.append({"at": at, **ctx.actor(), "action": "status", "to": body.status})
+    if body.notbugNote is not None:
+        note = body.notbugNote.strip()
+        if len(note) > rules.MAX_NOTE:
+            raise AppError("BUG_NOTE_TOO_LONG", f"Lý do tối đa {rules.MAX_NOTE} ký tự.", 400)
+        if note != (doc.get("notbug_note") or ""):
+            changes["notbug_note"] = note
+            log.append({"at": at, **ctx.actor(), "action": "note"})
     if changes:
         changes["updated_at"] = at
         await repo.update(doc["_id"], changes, log)

@@ -9,6 +9,10 @@ HAI vai:
   gia đình. Không có người khai thay → mapper dùng đối tượng cho Phần I.
 
 Cấu trúc form (field-key lấy từ file mapping HTML thật; mỗi key XUẤT HIỆN 1 LẦN → KHÔNG occurrence):
+BÊN ĐƯỢC ỦY QUYỀN (UyQuyen_*) = người nhận thay trên giấy ủy quyền chi trả; mapper chọn làm người nộp khi tài
+khoản khớp người này (theo tài khoản) hoặc khi hồ sơ có giấy ủy quyền (theo tờ khai).
+
+Cấu trúc form (field-key lấy từ file mapping HTML thật; mỗi key XUẤT HIỆN 1 LẦN → KHÔNG occurrence):
   Phần 1 Người nộp  → data[fullname/birthday/gender/identityNumber/identityDate/idIssuePlace/province/
                       district/address/phoneNumber/email] + chonDoiTuong="Cá nhân".
   Phần 2 Chủ hồ sơ  → data[owner*] + data[ghiChu]. BỎ TÍCH data[isOwnerDossierCheck] để mở + điền.
@@ -59,6 +63,29 @@ FIELDS: list[dict] = [
      "desc": "Nơi cư trú người khai thay (mục I.2.2 / III.1 / Mẫu 02 mục I), object {quocGia,tinh,xa,chiTietDuoiXa}."},
     {"name": "NguoiNop_DienThoai", "desc": "Số điện thoại người khai thay (mục I.2.4 / Mẫu 02 mục I.4)."},
     {"name": "NguoiNop_Email", "desc": "Email người khai thay nếu giấy tờ có."},
+    # === BÊN ĐƯỢC ỦY QUYỀN trên giấy ủy quyền chi trả (mapper quyết người nộp: tài khoản / tờ khai) ===
+    {"name": "UyQuyen_HoTen",
+     "desc": 'Họ tên BÊN ĐƯỢC ỦY QUYỀN trên GIẤY ỦY QUYỀN / giấy đề nghị ủy quyền chi trả (khối "Người được ủy quyền" '
+             '/ "BÊN ĐƯỢC ỦY QUYỀN", mục II của giấy). KHÔNG lấy bên ủy quyền (đối tượng). Hồ sơ không có giấy ủy '
+             "quyền → bỏ. Ghi IN HOA."},
+    {"name": "UyQuyen_SoDinhDanh",
+     "desc": "Số CCCD/CMND bên được ủy quyền: ghi trong khối bên được ủy quyền của giấy ủy quyền, hoặc CCCD có họ tên "
+             "khớp người này. Chỉ chữ số."},
+    {"name": "UyQuyen_NgaySinh",
+     "desc": "Ngày sinh bên được ủy quyền, dd/mm/yyyy, theo khối bên được ủy quyền hoặc CCCD đúng người này; chỉ có năm "
+             "thì bỏ."},
+    {"name": "UyQuyen_GioiTinh",
+     "desc": 'Giới tính bên được ủy quyền, "Nam"/"Nữ" chỉ khi giấy tờ của chính người này ghi rõ.'},
+    {"name": "UyQuyen_NgayCap",
+     "desc": "Ngày cấp CCCD bên được ủy quyền, dd/mm/yyyy, ghi cạnh số CCCD của chính người này; không lấy ngày cấp "
+             "của người khác."},
+    {"name": "UyQuyen_NoiCap", "desc": "Nơi cấp CCCD bên được ủy quyền chỉ khi giấy của chính người này ghi rõ."},
+    {"name": "UyQuyen_NoiCuTru",
+     "desc": "Nơi cư trú bên được ủy quyền, object {quocGia,tinh,xa,chiTietDuoiXa}, theo khối bên được ủy quyền hoặc "
+             "CCCD đúng người này. Khối trên giấy ủy quyền chỉ ghi xã/tỉnh (thiếu thôn/tổ/số nhà) mà CÙNG NGƯỜI này "
+             "(trùng họ tên hoặc số định danh) có dòng nơi cư trú đầy đủ hơn ở mục I.2 Mẫu 01 hoặc trên CCCD của chính "
+             "người đó → lấy dòng đầy đủ đó. Không lấy địa chỉ của người khác."},
+    {"name": "UyQuyen_DienThoai", "desc": "Số điện thoại bên được ủy quyền nếu giấy ủy quyền ghi, CHỈ chữ số."},
     {"name": "NguoiNop_QuanHe",
      "desc": 'Mối quan hệ của người khai thay với đối tượng (Mẫu 01 mục I.2.5 "Mối quan hệ với người đề nghị '
              'hưởng chính sách"), ví dụ "Bố đẻ", "Mẹ đẻ", "Ông nội". Không có thì bỏ.'},
@@ -68,9 +95,10 @@ ALLOWED = {f["name"] for f in FIELDS}
 ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
-for _name in ("DoiTuong_NgaySinh", "DoiTuong_NgayCap", "NguoiNop_NgaySinh", "NguoiNop_NgayCap"):
+for _name in ("DoiTuong_NgaySinh", "DoiTuong_NgayCap", "NguoiNop_NgaySinh", "NguoiNop_NgayCap", "UyQuyen_NgaySinh",
+              "UyQuyen_NgayCap"):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
-for _name in ("DoiTuong_NoiCuTru", "NguoiNop_NoiCuTru"):
+for _name in ("DoiTuong_NoiCuTru", "NguoiNop_NoiCuTru", "UyQuyen_NoiCuTru"):
     COMPACT_COMP_BY_NAME[_name] = "x-select-area"
 
 # ---- UI Form.io fields (data[...]) — comp dom-*. Mỗi key 1× → không occurrence.

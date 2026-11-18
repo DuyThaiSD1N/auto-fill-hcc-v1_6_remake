@@ -2,9 +2,11 @@
 
 import re
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from datetime import date
 
 from app.pipelines._shared.area_remap import remap_area
+from app.pipelines._shared.compact_agent.issuer import default_issuer
 from app.pipelines.dieu_chinh_huu_tri_xa_hoi.process.schema import UI_COMP_BY_NAME
 
 
@@ -67,8 +69,9 @@ def _date_with_ocr_evidence(value: str | None, ocr_text: str | None) -> str | No
         f"{target_match.group(3)}"
     )
 
+    # Đơn viết tay ghi ngày trên dòng chấm ("..13../8../1951"): cho chấm / khoảng trắng quanh dấu "/".
     for day, month, year in re.findall(
-        r"\b(\d{1,2})\s*/\s*(\d{1,2})\s*/\s*(\d{4})\b",
+        r"(?<!\d)(\d{1,2})[\s.…]*/[\s.…]*(\d{1,2})[\s.…]*/[\s.…]*(\d{4})(?!\d)",
         str(ocr_text),
     ):
         if not (1 <= int(day) <= 31 and 1 <= int(month) <= 12):
@@ -76,6 +79,28 @@ def _date_with_ocr_evidence(value: str | None, ocr_text: str | None) -> str | No
         if f"{int(day):02d}/{int(month):02d}/{year}" == target:
             return target
     return None
+
+
+def _plausible_date(value: str | None) -> str | None:
+    """Ngày sinh / ngày cấp có thật và không sau hôm nay (đã gặp ngày sinh người hưởng ra năm 2025)."""
+    match = re.fullmatch(r"\s*(\d{1,2})/(\d{1,2})/(\d{4})\s*", str(value or ""))
+    if not match:
+        return None
+    try:
+        day = date(int(match.group(3)), int(match.group(2)), int(match.group(1)))
+    except ValueError:
+        return None
+    return day.strftime("%d/%m/%Y") if date(1900, 1, 1) <= day <= date.today() else None
+
+
+def _birth_fits_identity(birthday: str | None, identity: str | None) -> str | None:
+    """Số định danh 12 số mã hoá năm sinh (chữ số 4 = thế kỷ, 5–6 = hai số cuối năm; TT 59/2021/TT-BCA): ngày sinh lệch
+    năm với số của chính người đó là ngày lạc vào → bỏ."""
+    digits = _norm_identity(identity)
+    if not birthday or len(digits) != 12:
+        return birthday
+    year = 1900 + 100 * (int(digits[3]) // 2) + int(digits[4:6])
+    return birthday if birthday.endswith(f"/{year}") else None
 
 
 def _strip_admin_prefix(value) -> str:
@@ -176,7 +201,8 @@ def _section(text: str, start_pattern: str, end_pattern: str | None) -> str:
 # Mẫu số 01 NĐ 176/2025: "I. Thông tin chung" gồm "1. Đối tượng hưởng…" (chủ hồ sơ) và
 # "2. Thông tin người giám hộ" (khối người nộp, như mục II mẫu cũ); "II. Thông tin đề nghị
 # hưởng…" trở đi là phần chính sách, có người khác (cha/mẹ, người nhận tiền).
-_NEW_FORM_OWNER_START = r"(?m)^\s*I[.\s]+Thông tin chung"
+# OCR hay đọc số La Mã "I." của tiêu đề thành "V." / "l." / "1." / "|.".
+_NEW_FORM_OWNER_START = r"(?m)^\s*[IVl1|][.\s]+Thông tin chung"
 _NEW_FORM_REQUESTER_START = r"(?m)^\s*2[.)]\s*Thông tin người"
 _NEW_FORM_SECTION_TWO = r"(?m)^\s*II[.\s]+Thông tin"
 
@@ -392,7 +418,8 @@ def _phone_with_evidence(
 
 def _person(values: dict, prefix: str, ocr_text: str | None) -> Person | None:
     name = values.get(f"{prefix}_HoTen")
-    identity = values.get(f"{prefix}_SoDinhDanh")
+    # Chỉ giữ chữ số: model từng dính chữ của dòng bên cạnh vào số ("…2246nbg", "…2837điền thông tin").
+    identity = _norm_identity(values.get(f"{prefix}_SoDinhDanh")) or None
     if not name and not identity:
         return None
     has_ocr = bool(ocr_text)
@@ -402,34 +429,37 @@ def _person(values: dict, prefix: str, ocr_text: str | None) -> Person | None:
         name,
         identity,
     )
+    issue_date = _plausible_date(_date_with_ocr_evidence(
+        values.get(f"{prefix}_NgayCap"),
+        evidence_scope,
+    ) if has_ocr else values.get(f"{prefix}_NgayCap"))
+    # Dòng nơi cấp không đọc được (chữ viết tay méo) mà thẻ 12 số có ngày cấp: cơ quan cấp suy được từ ngày cấp
+    # (từ 01/07/2024 Bộ Công an, trước đó Cục Cảnh sát QLHC về TTXH). CMND / không ngày cấp thì để trống.
+    issuer = _issuer_with_evidence(values.get(f"{prefix}_NoiCap"), evidence_scope, has_ocr)
+    if not issuer and issue_date and len(identity or "") == 12:
+        issuer = default_issuer(issue_date)
     return Person(
         prefix=prefix,
         name=name,
         identity=identity,
-        birthday=_date_with_ocr_evidence(
+        birthday=_plausible_date(_date_with_ocr_evidence(
             values.get(f"{prefix}_NgaySinh"),
             evidence_scope,
-        ) if has_ocr else values.get(f"{prefix}_NgaySinh"),
+        ) if has_ocr else values.get(f"{prefix}_NgaySinh")),
+        # Không khoanh được giấy nào của người này (tiêu đề mục đọc lệch...) thì không có gì để đối chiếu → giữ giá
+        # trị lượt trích, không bỏ trống.
         gender=_gender_with_evidence(
             values.get(f"{prefix}_GioiTinh"),
             evidence_scope,
-            has_ocr,
+            has_ocr and bool(evidence_scope.strip()),
         ),
         nationality=_text_with_evidence(
             values.get(f"{prefix}_QuocTich"),
             evidence_scope,
             has_ocr,
         ) or "Việt Nam",
-        issue_date=_date_with_ocr_evidence(
-            values.get(f"{prefix}_NgayCap"),
-            evidence_scope,
-        ) if has_ocr else values.get(f"{prefix}_NgayCap"),
-        # Không mặc định cơ quan cấp từ ngày cấp. Có bằng chứng mới được điền.
-        issuer=_issuer_with_evidence(
-            values.get(f"{prefix}_NoiCap"),
-            evidence_scope,
-            has_ocr,
-        ),
+        issue_date=issue_date,
+        issuer=issuer,
         phone=_phone_with_evidence(
             values.get(f"{prefix}_DienThoai"),
             evidence_scope,
@@ -462,21 +492,55 @@ def _has_applicant_anchor(context: dict) -> bool:
     )
 
 
+def _edit_distance(a: str, b: str) -> int:
+    row = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        prev, row[0] = row[0], i
+        for j, cb in enumerate(b, 1):
+            prev, row[j] = row[j], min(row[j] + 1, row[j - 1] + 1, prev + (ca != cb))
+    return row[-1]
+
+
+# Chữ viết tay / thẻ chụp mờ OCR hay lệch 1–2 chữ cái / chữ số so với tài khoản VNeID của chính người đó.
+_NEAR_EDITS = 2
+
+
 def _matches_applicant(person: Person, context: dict) -> bool:
     context_name = _norm_text(context.get("applicant_name"))
     context_identity = _norm_identity(context.get("applicant_identity"))
     person_name = _norm_text(person.name)
     person_identity = _norm_identity(person.identity)
 
-    # Có đủ hai mỏ neo thì bắt buộc khớp cả hai, không cho một field bù field sai.
+    # Có đủ hai mỏ neo: khớp cả hai, hoặc trùng hẳn MỘT mỏ neo và mỏ neo kia chỉ lệch ít (tên cùng số chữ, số ≥ 9 chữ
+    # số). Lệch cả hai thì không nhận (có thể là người nhà cùng họ, cùng nơi đăng ký).
     if context_name and context_identity:
+        near_name = (bool(person_name) and len(person_name.split()) == len(context_name.split())
+                     and _edit_distance(person_name, context_name) <= _NEAR_EDITS)
+        near_identity = len(person_identity) >= 9 and _edit_distance(person_identity, context_identity) <= _NEAR_EDITS
         return (
-            person_name == context_name
-            and person_identity == context_identity
+            (person_name == context_name and (person_identity == context_identity or near_identity))
+            or (person_identity == context_identity and near_name)
         )
     if context_identity:
         return bool(person_identity and person_identity == context_identity)
     return bool(context_name and person_name == context_name)
+
+
+def _account_spelling(person: Person, context: dict) -> Person:
+    """Người trên giấy là chủ tài khoản VNeID → họ tên + số theo tài khoản (nguồn đúng chữ, đúng số). Tên chỉ khác hoa /
+    thường thì giữ chữ trên giấy; tài khoản không dấu thì không thay tên có dấu."""
+    account_name = str(context.get("applicant_name") or "").strip()
+    account_identity = _norm_identity(context.get("applicant_identity"))
+    name = str(person.name or "")
+    keep_name = (not account_name or account_name.casefold() == name.casefold()
+                 or (account_name.isascii() and _norm_text(account_name) == _norm_text(name)))
+    return replace(person, name=name if keep_name else account_name, identity=account_identity or person.identity)
+
+
+def _as_account(person: Person, context: dict) -> Person:
+    """Người nộp theo tài khoản: họ tên + số theo VNeID; ngày sinh phải khớp năm mã hoá trong số tài khoản."""
+    person = _account_spelling(person, context)
+    return replace(person, birthday=_birth_fits_identity(person.birthday, person.identity))
 
 
 def _same_person(first: Person, second: Person) -> bool:
@@ -510,7 +574,25 @@ def _person_has_ocr_evidence(person: Person, ocr_text: str) -> bool:
     return bool(person_name or person_identity)
 
 
+# Họ tên người trong hồ sơ ghi IN HOA (như giấy tờ tùy thân). Họ tên người nộp theo tài khoản là chữ cổng đổ từ VNeID →
+# giữ nguyên; theo tờ khai thì người nộp là người trên giấy → in hoa.
+_UPPER_NAMES = {"data[ownerFullname]"}
+
+
 def enrich(
+    fields: list[dict],
+    options: dict | None = None,
+) -> tuple[list[dict], list[str]]:
+    out, warnings = _enrich(fields, options)
+    by_paper = str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
+    upper = _UPPER_NAMES | ({"data[fullname]"} if by_paper else set())
+    for item in out:
+        if item["name"] in upper and isinstance(item.get("value"), str):
+            item["value"] = item["value"].upper()
+    return out, warnings
+
+
+def _enrich(
     fields: list[dict],
     options: dict | None = None,
 ) -> tuple[list[dict], list[str]]:
@@ -546,9 +628,19 @@ def enrich(
     # Toggle extension "Lấy người nộp theo tờ khai": BỎ mỏ neo UI, LUÔN lấy chủ hồ sơ
     # (ưu tiên) hoặc người nộp làm người nộp — tick tự nộp, điền Phần I, form tự copy sang chủ hồ sơ.
     if str((options or {}).get("submitterMode") or "") == "owner_as_submitter":
+        # Hồ sơ có giấy ủy quyền: người đi nộp là BÊN ĐƯỢC ỦY QUYỀN (cán bộ chốt như vậy), bỏ tích, chủ hồ sơ vẫn là
+        # người hưởng. Người giám hộ ở mục 2 của đơn thì không (cán bộ giữ người hưởng làm người nộp).
+        proxy = _person(values, "UyQuyen", ocr_text)
+        if proxy and not (owner and _same_person(owner, proxy)):
+            add("data[isOwnerDossierCheck]", False)
+            _add_requester(add, proxy)
+            if owner:
+                _add_owner(add, owner)
+            return out, warnings
         submitter = owner or requester
         add("data[isOwnerDossierCheck]", True)
         _add_requester(add, submitter)
+        _add_owner_birthday(add, submitter)
         return out, warnings
 
     # Trường hợp tự nộp: agent chỉ cần trả ChuHoSo. Mapper dùng chính chủ hồ sơ
@@ -559,7 +651,8 @@ def enrich(
         and _person_has_ocr_evidence(owner, ocr_text)
     ):
         add("data[isOwnerDossierCheck]", True)
-        _add_requester(add, owner)
+        _add_requester(add, _as_account(owner, context))
+        _add_owner_birthday(add, _as_account(owner, context))
         return out, warnings
 
     # Trường hợp nộp thay: NguoiNop chỉ được dùng sau khi khớp lại mỏ neo UI.
@@ -571,10 +664,11 @@ def enrich(
     ):
         if _same_person(owner, requester):
             add("data[isOwnerDossierCheck]", True)
-            _add_requester(add, owner)
+            _add_requester(add, _as_account(owner, context))
+            _add_owner_birthday(add, _as_account(owner, context))
         else:
             add("data[isOwnerDossierCheck]", False)
-            _add_requester(add, requester)
+            _add_requester(add, _as_account(requester, context))
             _add_owner(add, owner)
         return out, warnings
 
@@ -608,7 +702,7 @@ def enrich(
         and _person_has_ocr_evidence(requester, ocr_text)
     ):
         add("data[isOwnerDossierCheck]", False)
-        _add_requester(add, requester)
+        _add_requester(add, _as_account(requester, context))
         warnings.append(
             "Đã xác định người nộp nhưng chưa đọc được chủ hồ sơ từ Mẫu số 01."
         )
@@ -637,6 +731,12 @@ def _add_requester(add, person: Person) -> None:
         add("data[province]", _area_label(person.residence.get("tinh")))
         add("data[district]", _area_label(person.residence.get("xa")))
         add("data[address]", person.residence.get("diaChi"))
+
+
+def _add_owner_birthday(add, person: Person) -> None:
+    # Tích "Người nộp là chủ hồ sơ" thì cổng chép khối người nộp sang khối chủ hồ sơ nhưng bỏ sót ngày sinh (ô vẫn giữ
+    # ngày sinh của tài khoản đăng nhập) → phát riêng ô này.
+    add("data[ownerBirthday]", person.birthday)
 
 
 def _add_owner(add, person: Person) -> None:

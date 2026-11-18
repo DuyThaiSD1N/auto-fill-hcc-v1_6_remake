@@ -140,3 +140,89 @@ def test_giay_to_chi_lay_dong_dang_ky_cua_giay_dung_ten_nguoi_co_noi_dung_thay_d
     assert not giay_to._of_subject(line(1, "Nơi đăng ký khai sinh: UBND phường Mới"), case)
     assert giay_to._of_subject(line(2, "Nơi đăng ký khai sinh: UBND xã Cũ"), case)
     assert not giay_to._of_subject(line(3, "Đăng ký kết hôn tại: X"), case)
+
+
+def test_ten_xa_doc_lech_chi_sua_ten_xa_giu_chi_tiet(monkeypatch):
+    # Tên phường viết tay OCR đọc lệch 2 chữ, không có trong danh mục: chỉ đổi tên xã sang xã DUY NHẤT gần chữ đó của tỉnh
+    # (tên đó có nguyên văn trên giấy in của hồ sơ), giữ chi tiết; không ghép lại địa chỉ cũ trên thẻ.
+    import json
+    from app.pipelines._shared.thanh_tra import ten_xa
+    from app.pipelines.cai_chinh_dvc_moi.thanh_tra import dia_chi_ghep
+    from app.services.llm import client
+
+    async def no_answer(messages, **kwargs):
+        return json.dumps({"xa": "", "dong_dia_chi": "", "dong_phu": "", "ly_do": ""})
+
+    monkeypatch.setattr(client, "chat", no_answer)
+    to_khai = "TỜ KHAI ĐĂNG KÝ VIỆC THAY ĐỔI\nNơi cư trú: 12 Tổ Mẫu Phường Yên Chiểu TP Đà Nẵng"
+    giay = "TRÍCH LỤC KHAI SINH\nNơi đăng ký khai sinh: Ủy ban nhân dân phường Liên Chiểu, thành phố Đà Nẵng"
+    value = {"quocGia": "Việt Nam", "tinh": "Đà Nẵng", "xa": "Phường Yên Chiểu", "diaChi": "12 Tổ Mẫu"}
+    case = Case([{"text": to_khai}, {"text": giay}], "", {dia_chi_ghep.FIELD: value}, {})
+    [finding] = asyncio.run(dia_chi_ghep.find(dia_chi_ghep.INSPECTOR, case, "thử"))
+    assert finding.values[dia_chi_ghep.FIELD] == {**value, "xa": "Phường Liên Chiểu"}
+    assert finding.quote.startswith("Nơi cư trú: 12 Tổ Mẫu")
+    # Không có giấy nào ghi tên xã gần chữ đó → không đoán.
+    assert ten_xa._only_near_named("yên chiểu", {ten_xa._bare(w): w for w in ten_xa.wards_of("Đà Nẵng")},
+                                   [{"text": to_khai}]) == ""
+
+
+_KS_CHA = ("GIẤY KHAI SINH\nHọ, chữ đệm, tên: NGUYỄN VĂN A\nNgày, tháng, năm sinh: 01/01/1950\nSố: 509\n"
+           "Ngày, tháng, năm đăng ký: 13/4/2021")
+_KS_CON = ("ỦY BAN NHÂN DÂN\nXã, phường...Mẫu...\nSố...40\nGIẤY KHAI SINH\n(BẢN SAO)\nHọ và tên Nguyễn Thị Cũ\n"
+           "Ngày, tháng, năm sinh 26-03-1985\nĐăng ký ngày 09 tháng 04 năm 1985")
+
+
+def test_giay_khai_sinh_trong_ho_so_ghi_cung_khac_nam_sinh():
+    from app.pipelines.cai_chinh_dvc_moi.process import reason
+
+    context = "<nguoi_thay_doi>\nHọ tên: Nguyễn Thị Mới\nNgày sinh: 25/03/1985\n</nguoi_thay_doi>"
+    note = reason._birth_certificates_note([{"name": "cha.pdf", "text": _KS_CHA}, {"name": "con.pdf", "text": _KS_CON}],
+                                          context)
+    assert "Tài liệu 1 (cha.pdf): người được khai sinh sinh 01/01/1950 — KHÁC năm sinh" in note
+    assert "Tài liệu 2 (con.pdf): người được khai sinh sinh 26/03/1985 — CÙNG năm sinh" in note
+    # Một giấy khai sinh thì không cần khối đối chiếu.
+    assert reason._birth_certificates_note([{"text": _KS_CON}], context) == ""
+
+
+def test_giay_to_bo_de_xuat_lay_tu_giay_khai_sinh_khac_nam_sinh(monkeypatch):
+    import json
+    from app.pipelines.cai_chinh_dvc_moi.thanh_tra import giay_to
+    from app.services.llm import client
+
+    async def pick_father(messages, **kwargs):
+        lines = messages[1]["content"].splitlines()
+        at = next(i for i, line in enumerate(lines) if line.endswith("Ngày, tháng, năm đăng ký: 13/4/2021"))
+        number = int(lines[at].split("]")[0].strip("["))
+        return json.dumps({"co_quan": None, "so": None, "quyen_so": None,
+                           "ngay_dang_ky": {"dong": number, "value": "13/04/2021", "thuoc_ve": giay_to._OWNERS[0]}})
+
+    monkeypatch.setattr(client, "chat", pick_father)
+    values = {"NguoiThayDoi_NgaySinh": "25/03/1985", "HoSo_LoaiGiayTo": "khai sinh", "HoSo_NgayDangKy": "09/04/1985"}
+    case = Case([{"text": _KS_CHA}, {"text": _KS_CON}], "", values, {})
+    assert asyncio.run(giay_to.find(giay_to.INSPECTOR, case, "thử")) == []
+
+
+def test_bo_so_ngay_dang_ky_cua_giay_khai_sinh_cha_me():
+    from app.pipelines.cai_chinh_dvc_moi.process import reason
+
+    docs = [{"text": _KS_CHA}, {"text": _KS_CON}]
+    wrong = {"NguoiThayDoi_NgaySinh": "25/03/1985", "HoSo_So": "509", "HoSo_NgayDangKy": "13/04/2021",
+             "HoSo_NoiDangKy": "UBND phường Mẫu"}
+    assert reason.drop_other_holder_registration(wrong, docs) == {"NguoiThayDoi_NgaySinh": "25/03/1985"}
+    right = {**wrong, "HoSo_So": "40", "HoSo_NgayDangKy": "09/04/1985"}
+    assert reason.drop_other_holder_registration(right, docs) == right
+    # Ngày sinh lấy ở khối phân vai khi lượt trích không có; hồ sơ không có giấy cùng năm sinh thì giữ nguyên.
+    context = "<nguoi_thay_doi>\nNgày sinh: 25/03/1985\n</nguoi_thay_doi>"
+    no_birth = {k: v for k, v in wrong.items() if k != "NguoiThayDoi_NgaySinh"}
+    assert reason.drop_other_holder_registration(no_birth, docs, context) == {}
+    assert reason.drop_other_holder_registration(wrong, [{"text": _KS_CHA}]) == wrong
+
+
+def test_chot_giay_khai_sinh_uu_tien_ngay_sinh_khoi_phan_vai():
+    from app.pipelines.cai_chinh_dvc_moi.process import reason
+
+    docs = [{"text": _KS_CHA}, {"text": _KS_CON}]
+    context = "<nguoi_thay_doi>\nNgày sinh: 25/03/1985\n</nguoi_thay_doi>"
+    # Lượt trích chép nhầm ngày sinh của cha vào ngày sinh người có nội dung thay đổi.
+    wrong = {"NguoiThayDoi_NgaySinh": "01/01/1950", "HoSo_So": "509", "HoSo_NgayDangKy": "13/04/2021"}
+    assert reason.drop_other_holder_registration(wrong, docs, context) == {"NguoiThayDoi_NgaySinh": "01/01/1950"}

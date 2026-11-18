@@ -3,7 +3,7 @@
 from app.pipelines._shared.formatting import normalize_ui_dates
 from app.pipelines._shared.thanh_tra import ban_va
 
-from ..process import mapper
+from ..process import mapper, reason
 from . import dia_chi_ghep, dinh_danh, giay_to, noi_dung, review
 
 _RELATION = "citizenQuanhevsngcaichinhhotich1"
@@ -28,7 +28,9 @@ async def patch(documents: list[dict], context: str, raw_fields: list[dict], bas
     values = {f["name"]: f.get("value") for f in raw_fields if isinstance(f, dict) and f.get("name")}
     verdict = await review(documents, context, values, options)
     out = {"fields": [], "rulings": verdict.rulings, "timing": verdict.timing}
-    after, _ = mapper.enrich([{"name": name, "value": value} for name, value in verdict.values.items()], options)
+    # Cùng chốt với lượt đầu: thanh tra không sửa thì không ghi lại số / ngày của giấy khai sinh cha / mẹ.
+    final = reason.drop_other_holder_registration(verdict.values, documents, context)
+    after, _ = mapper.enrich([{"name": name, "value": value} for name, value in final.items()], options)
     normalize_ui_dates(after)
     first = {f.get("name"): f.get("value") for f in base_fields or [] if isinstance(f, dict)}
     then = {f.get("name"): f.get("value") for f in after}

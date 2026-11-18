@@ -45,10 +45,21 @@ def test_to_khai_bo_khoa_ho_ten_va_cccd_phan_i(monkeypatch, package):
     assert flags[("data[fullname]", 1)] is None
 
 
-@pytest.mark.parametrize("package", PACKAGES)
+# Hưu trí xã hội: hai ô Phần I luôn bỏ khoá ở cả hai chế độ (cổng hay để trống ô theo VNeID, cán bộ cần nhập được).
+_LUON_BO_KHOA = {"dieu_chinh_huu_tri_xa_hoi"}
+
+
+@pytest.mark.parametrize("package", [package for package in PACKAGES if package not in _LUON_BO_KHOA])
 def test_theo_tai_khoan_giu_khoa(monkeypatch, package):
     flags = _run(monkeypatch, package, {})
     assert not any(flags.values())
+
+
+@pytest.mark.parametrize("package", sorted(_LUON_BO_KHOA))
+def test_theo_tai_khoan_van_bo_khoa_hai_o_phan_i(monkeypatch, package):
+    flags = _run(monkeypatch, package, {})
+    assert flags[("data[fullname]", 0)] is True and flags[("data[identityNumber]", None)] is True
+    assert flags[("data[birthday]", None)] is None and flags[("data[fullname]", 1)] is None
 
 
 def _quy_hoach_fields(options):

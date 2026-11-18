@@ -249,6 +249,9 @@ _GOC = {"viec": "khai_tu", "nguon": "dang_ky_goc", "so": "12/2020", "ngay": "03/
         "dong": "Số: 12/2020 ngày 3 tháng 4 năm 2020"}
 _DAU = {"viec": "khai_tu", "nguon": "dau_giay", "so": "9/TLKT-BS", "ngay": "07/05/2022", "co_quan": "UBND XÃ ĐÔNG MAI",
         "nguoi": "TRẦN VĂN K", "gioi_tinh": "Nam", "dong": "Số: 9/TLKT-BS"}
+# Bản CHÍNH trích lục khai tử (số đầu trang không có hậu tố BS): cổng nhận số đăng ký gốc.
+TRICH_LUC_KT_CHINH = TRICH_LUC_KT.replace("Số: 9/TLKT-BS", "Số: 9/TLKT")
+_DAU_CHINH = {**_DAU, "so": "9/TLKT", "dong": "Số: 9/TLKT"}
 _NHAC = {"viec": "khai_tu", "nguon": "nhac_lai", "so": "9/TLKT-BS", "ngay": "07/05/2022", "co_quan": None,
          "nguoi": None, "gioi_tinh": None,
          "dong": "Tình trạng hôn nhân: chồng đã chết theo trích lục khai tử số 9/TLKT-BS ngày 07/05/2022"}
@@ -270,23 +273,38 @@ def _papers(values: dict, *texts: str):
     return asyncio.run(giay_ho_tich.find(giay_ho_tich.INSPECTOR, Case(docs, "", base, {}), "thử"))
 
 
-def test_khai_tu_luot_trich_lay_so_ban_sao_thi_de_xuat_bo_dang_ky_goc(monkeypatch):
-    _fake_sets(monkeypatch, {"TRÍCH LỤC KHAI TỬ": [_GOC, _DAU], "TỜ KHAI": [_NHAC]})
-    current = {"DeathCert_Number": "9/TLKT-BS", "DeathCert_Date": "07/05/2022", "DeathCert_Agency": "UBND xã Đông Mai"}
-    [finding] = _papers(current, TO_KHAI_GOA, TRICH_LUC_KT)
+def test_khai_tu_ban_chinh_luot_trich_lay_so_dau_giay_thi_de_xuat_bo_dang_ky_goc(monkeypatch):
+    _fake_sets(monkeypatch, {"TRÍCH LỤC KHAI TỬ": [_GOC, _DAU_CHINH], "TỜ KHAI": [_NHAC]})
+    current = {"DeathCert_Number": "9/TLKT", "DeathCert_Date": "07/05/2022", "DeathCert_Agency": "UBND xã Đông Mai"}
+    [finding] = _papers(current, TO_KHAI_GOA, TRICH_LUC_KT_CHINH)
     assert finding.backed and finding.quote == "Số: 12/2020 ngày 3 tháng 4 năm 2020"
     assert finding.values == {"DeathCert_Number": "12/2020", "DeathCert_Date": "03/04/2020",
                               "DeathCert_Agency": "UBND xã Đông Mai, huyện Yên Phong, tỉnh Bắc Ninh"}
     assert "bậc thấp hơn" in finding.evidence[0]
 
 
-def test_khai_tu_so_goc_ghep_ngay_ban_sao_la_so_nay_ngay_kia(monkeypatch):
-    _fake_sets(monkeypatch, {"TRÍCH LỤC KHAI TỬ": [_GOC, _DAU]})
+def test_khai_tu_so_goc_ghep_ngay_dau_giay_la_so_nay_ngay_kia(monkeypatch):
+    _fake_sets(monkeypatch, {"TRÍCH LỤC KHAI TỬ": [_GOC, _DAU_CHINH]})
     current = {"DeathCert_Number": "12/2020", "DeathCert_Date": "07/05/2022",
                "DeathCert_Agency": "UBND xã Đông Mai, huyện Yên Phong, tỉnh Bắc Ninh"}
-    [finding] = _papers(current, TRICH_LUC_KT)
+    [finding] = _papers(current, TRICH_LUC_KT_CHINH)
     assert finding.backed and "số này ngày kia" in finding.evidence[0]
     assert finding.values["DeathCert_Date"] == "03/04/2020"
+
+
+def test_khai_tu_dong_giay_bao_tu_benh_vien_khong_phai_dong_dang_ky_goc(monkeypatch):
+    # Trích lục bản chính không có dòng đăng ký gốc, thân giấy có dòng giấy báo tử của bệnh viện (giấy căn cứ): model gắn
+    # nhầm nhãn "dang_ky_goc" thì mã bỏ bộ đó, lượt trích theo đầu giấy được giữ.
+    page = TRICH_LUC_KT_DAU + ("\nGiấy báo tử/Giấy tờ thay thế Giấy báo tử số Giấy báo tử số 67, quyển số 01 do Bệnh viện "
+                               "Mẫu cấp ngày 20/06/2023")
+    bao_tu = {"viec": "khai_tu", "nguon": "dang_ky_goc", "so": "67", "ngay": "20/06/2023", "co_quan": "Bệnh viện Mẫu",
+              "nguoi": "TRẦN VĂN K", "gioi_tinh": "Nam", "dong": page.splitlines()[-1]}
+    _fake_sets(monkeypatch, {"TRÍCH LỤC KHAI TỬ": [bao_tu, _DAU]})
+    current = {"DeathCert_Number": "9/TLKT-BS", "DeathCert_Date": "07/05/2022", "DeathCert_Agency": "Ủy ban nhân dân xã Đông Mai"}
+    assert not [f for f in _papers(current, page) if f.values.get("DeathCert_Number") == "67"]
+    # Dòng đăng ký gốc thật (số xuống dòng dưới cụm "Đã được đăng ký khai tử tại") vẫn được nhận.
+    assert not giay_ho_tich._mislabeled_registration(TRICH_LUC_KT, {"matter": "khai_tu", "source": "dang_ky_goc",
+                                                                    "line": "Số: 12/2020 ngày 3 tháng 4 năm 2020"})
 
 
 def test_khai_tu_khong_co_dong_goc_thi_lay_dau_giay_va_bo_sung_o_trong(monkeypatch):
@@ -399,11 +417,37 @@ def test_ly_hon_luot_trich_lay_so_thu_ly_thi_co_can_cu_doi_theo_dau_van_ban(monk
 
 
 def test_model_doc_sot_dong_dang_ky_goc_thi_ma_bo_sung_bo_do(monkeypatch):
-    _fake_sets(monkeypatch, {"TRÍCH LỤC KHAI TỬ": [_DAU]})
-    current = {"DeathCert_Number": "9/TLKT-BS", "DeathCert_Date": "07/05/2022", "DeathCert_Agency": "UBND xã Đông Mai"}
-    [finding] = _papers(current, TRICH_LUC_KT)
+    _fake_sets(monkeypatch, {"TRÍCH LỤC KHAI TỬ": [_DAU_CHINH]})
+    current = {"DeathCert_Number": "9/TLKT", "DeathCert_Date": "07/05/2022", "DeathCert_Agency": "UBND xã Đông Mai"}
+    [finding] = _papers(current, TRICH_LUC_KT_CHINH)
     assert finding.backed and finding.values["DeathCert_Number"] == "12/2020"
     assert finding.values["DeathCert_Date"] == "03/04/2020" and finding.quote == "Số: 12/2020 ngày 3 tháng 4 năm 2020"
+
+
+
+def test_khai_tu_ban_sao_trich_luc_lay_so_dau_ban_sao():
+    # Người dân nộp BẢN SAO trích lục: cổng nhận số -BS, ngày cấp, cơ quan cấp ở đầu bản sao.
+    assert giay_ho_tich._death_kind(TRICH_LUC_KT) == "ban_sao"
+    assert giay_ho_tich._death_kind(TRICH_LUC_KT_CHINH) == "ban_chinh"
+    assert giay_ho_tich._death_kind(TRICH_LUC_KT_CHINH.replace("TRÍCH LỤC KHAI TỬ", "TRÍCH LỤC KHAI TỬ\n(BẢN SAO)")) == "ban_sao"
+
+
+def test_khai_tu_ban_sao_luot_trich_lay_so_goc_thi_de_xuat_so_ban_sao(monkeypatch):
+    _fake_sets(monkeypatch, {"TRÍCH LỤC KHAI TỬ": [_GOC, _DAU]})
+    current = {"DeathCert_Number": "12/2020", "DeathCert_Date": "03/04/2020", "DeathCert_Agency": "UBND xã Đông Mai"}
+    [finding] = _papers(current, TRICH_LUC_KT)
+    assert finding.backed and finding.quote == "Số: 9/TLKT-BS"
+    assert finding.values["DeathCert_Number"] == "9/TLKT-BS" and finding.values["DeathCert_Date"] == "07/05/2022"
+    # Lượt trích đã lấy đúng số bản sao → không đổi sang số gốc.
+    same = {"DeathCert_Number": "9/TLKT-BS", "DeathCert_Date": "07/05/2022", "DeathCert_Agency": "UBND xã Đông Mai"}
+    assert all(not f.backed for f in _papers(same, TRICH_LUC_KT))
+
+
+def test_khai_tu_co_ca_ban_chinh_lan_ban_sao_thi_theo_ban_chinh(monkeypatch):
+    _fake_sets(monkeypatch, {"TLKT-BS": [_DAU], "Số: 9/TLKT\n": [_GOC, _DAU_CHINH]})
+    current = {"DeathCert_Number": "9/TLKT-BS", "DeathCert_Date": "07/05/2022", "DeathCert_Agency": "UBND xã Đông Mai"}
+    [finding] = _papers(current, TRICH_LUC_KT, TRICH_LUC_KT_CHINH)
+    assert finding.backed and finding.values["DeathCert_Number"] == "12/2020"
 
 
 # ───────── Thanh tra địa chỉ ─────────
@@ -615,3 +659,31 @@ def test_dan_toc_chi_cua_nguoi_khac_thi_khong_bo_sung(monkeypatch):
     docs = [{"name": "tk.pdf", "text": _TO_KHAI_DAN_TOC}]
     findings = asyncio.run(dinh_danh.find(dinh_danh.INSPECTOR, Case(docs, "", dict(VALUES), {}), "thử"))
     assert not [f for f in findings if f.unit.key == "dan_toc"]
+
+
+def test_khai_tu_don_vi_cau_hinh_ban_sao_van_lay_so_goc(monkeypatch):
+    from app.pipelines.xac_nhan_tthn_dvc_moi.process import mapper as tthn_mapper
+
+    _fake_sets(monkeypatch, {"TRÍCH LỤC KHAI TỬ": [_GOC, _DAU]})
+    current = {"DeathCert_Number": "9/TLKT-BS", "DeathCert_Date": "07/05/2022", "DeathCert_Agency": "UBND xã Đông Mai"}
+    base = {"NguoiDuocCap_HoTen": "Lê Thị Hanh", "NguoiDuocCap_GioiTinh": "Nữ", **current}
+    options = tthn_mapper.with_account_process_options({}, {"tinh": "Tỉnh Quảng Trị", "xa": "Phường Đồng Thuận"},
+                                                       tthn_mapper.PROCEDURE_KEY)
+    docs = [{"name": "0.pdf", "text": TRICH_LUC_KT}]
+    [finding] = asyncio.run(giay_ho_tich.find(giay_ho_tich.INSPECTOR, Case(docs, "", base, options), "thử"))
+    assert finding.backed and finding.values["DeathCert_Number"] == "12/2020"
+    assert "cấu hình đơn vị" in finding.evidence[0]
+    # Đơn vị khác (client tự gửi cờ) không được bật.
+    assert tthn_mapper.with_account_process_options({"deathOriginalNumber": True}, {"tinh": "Tỉnh Lâm Đồng", "xa": "Xã A"},
+                                                    tthn_mapper.PROCEDURE_KEY) == {}
+
+
+def test_ho_ten_trang_tu_mau_thuan_khong_lam_nguon_cho_cach_viet_khac():
+    from app.pipelines.xac_nhan_tthn_dvc_moi.thanh_tra import dinh_danh as tthn_dinh_danh
+
+    # Giấy ủy quyền đánh máy một cách viết, nhưng dòng chữ ký trên CHÍNH trang đó ghi cách viết của lượt trích hai lần.
+    uy_quyen = "GIẤY ỦY QUYỀN\nÔng/bà: Lê Thị Mẩy Sinh năm: 1951\nBÊN ỦY QUYỀN\nMậy lê thi Mậy"
+    slot = {"texts": [(uy_quyen, 1.0)]}
+    assert tthn_dinh_danh._self_contradicted(slot, "Lê Thị Mẩy", "LÊ THỊ MẬY") == 1.0
+    # Trang chỉ ghi cách viết của B → vẫn là nguồn của B.
+    assert tthn_dinh_danh._self_contradicted({"texts": [("Ông/bà: Lê Thị Mẩy", 1.0)]}, "Lê Thị Mẩy", "LÊ THỊ MẬY") == 0.0

@@ -7,7 +7,7 @@ Phạm vi theo tỉnh của tài khoản, cùng luật mà trợ lý dùng để
 Khác trợ lý ở một chỗ: tài khoản không xác định được tỉnh chỉ thấy thủ tục dùng chung — đây là
 trang tra cứu, hiện thủ tục riêng của tỉnh khác chỉ gây hiểu nhầm là đơn vị mình dùng được.
 
-Chỉ trả tên, mã TTHC và tỉnh áp dụng; không trả cấu hình nội bộ (detect, requiredDocs, wizard...).
+Chỉ trả tên, mã TTHC, tỉnh áp dụng và Trợ lý điền/đính kèm; không trả cấu hình nội bộ (detect, requiredDocs, wizard...).
 """
 import re
 
@@ -42,6 +42,14 @@ def _codes(proc: dict) -> list[str]:
     return []
 
 
+def _support(proc: dict) -> str:
+    """Trợ lý làm gì trên cổng: `attach` chỉ đính kèm (không có tờ khai), `fill_attach` điền tờ khai + đính kèm,
+    `fill` chỉ điền (cổng không có bước đính kèm, vd nhóm căn cước/cư trú của BCA)."""
+    if proc.get("mode") == "attach":
+        return "attach"
+    return "fill_attach" if proc.get("hasAttachmentStep") else "fill"
+
+
 def _province_name(slug: str) -> str:
     province = province_by_slug(slug)
     return province["name"] if province else slug
@@ -71,6 +79,7 @@ def catalog(scope: dict) -> dict:
             "label": proc.get("label") or proc["key"],
             "shortLabel": proc.get("shortLabel") or None,
             "codes": _codes(proc),
+            "support": _support(proc),
             "provinces": [{"slug": s, "name": _province_name(s)} for s in only],
         })
     provinces = sorted(

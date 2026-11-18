@@ -114,6 +114,16 @@ def test_chua_ket_hon_nhung_co_ban_an_thi_ly_hon_theo_van_ban():
     assert (v["citizenField46"]["value"], v["citizenField47"]["value"]) == ("15/07/2011", "Tòa án nhân dân A")
 
 
+def test_ly_hon_tu_o_gop_csdl_nhung_chi_co_giay_khai_tu_thi_goa():
+    # Phiếu CSDL dân cư ghi gộp "Đã ly hôn hoặc góa vợ/chồng", model lấy "ly_hon"; hồ sơ chỉ có trích lục khai tử của chồng.
+    death = {"DeathCert_Number": "487/2026", "DeathCert_Date": "24/07/2026", "DeathCert_Agency": "UBND xã A"}
+    v, _ = _enrich({**BASE, "TinhTrangHonNhan": "ly_hon", **death}, _context())
+    assert v["citizenTinhtranghonnhan"]["code"] == "4" and v["citizenSogiaychungtuTrichluckhaituBanan"]["value"] == "487/2026"
+    # Có bản án ly hôn thì vẫn là ly hôn.
+    v, _ = _enrich({**BASE, "TinhTrangHonNhan": "ly_hon", **death, "DivorceDecision_Number": "5/2011/HNGĐ-ST"}, _context())
+    assert v["citizenTinhtranghonnhan"]["code"] == "3"
+
+
 def test_goa_va_khoang_thoi_gian():
     v, _ = _enrich({**BASE, "TinhTrangHonNhan": "goa", "DeathCert_Number": "167/TLKT-BS",
                     "DeathCert_Date": "07/11/2024", "DeathCert_Agency": "UBND xã A"}, _context())
@@ -303,7 +313,7 @@ async def test_dong_ha_tach_cat_dung_trang_uy_quyen(monkeypatch):
     _fake_portal(monkeypatch, split_planner, {"documents": [
         {"fileIndex": 0, "pages": [1], "docType": "declaration", "documentName": "Tờ khai"},
         {"fileIndex": 0, "pages": [2], "docType": "authorization", "documentName": "Văn bản ủy quyền"},
-    ]}, ["Trang 1/2\ntờ khai\nTrang 2/2\nủy quyền"])
+    ]}, ["───── Trang 1/2 ─────\ntờ khai\n───── Trang 2/2 ─────\nủy quyền"])
     result = await split_planner.plan(_files(1), {"onlyAuthorization": True})
     assert len(result["attachments"]) == 1
     item = result["attachments"][0]
@@ -572,3 +582,53 @@ def test_ma_khac_ma_ho_so_chi_co_giay_khai_tu_thi_chon_vo_chong_da_chet():
     # Có cả giấy kết hôn hiện tại, hoặc không có giấy nào: giữ mã lượt trích.
     assert mapper._marital_status({"TinhTrangHonNhan": "khac", "DeathCert_Number": "12/2020", "Marriage_Number": "3"}) == "6"
     assert mapper._marital_status({"TinhTrangHonNhan": "khac"}) == "6"
+
+
+def test_giay_khai_tu_ban_sao_doc_du_phong_lay_dau_ban_sao_ban_chinh_lay_so_goc():
+    sao = ("UBND XÃ MẪU\nSố: 7/TLKT-BS\nMẫu, ngày 05 tháng 4 năm 2021\nTRÍCH LỤC KHAI TỬ\n(BẢN SAO)\n"
+           "Họ, chữ đệm, tên: NGUYỄN VĂN A\nGiới tính: Nam\n"
+           "Đã được đăng ký khai tử tại: UBND xã Mẫu, huyện B, tỉnh C\nSố: 3 ngày 02/03/2015")
+    values = {"NguoiDuocCap_HoTen": "Trần Thị B", "NguoiDuocCap_GioiTinh": "Nữ"}
+    found = mapper._death_cert_from_ocr(sao, values)
+    assert found["DeathCert_Number"] == "7/TLKT-BS" and mapper._full_date(found["DeathCert_Date"]) == "05/04/2021"
+    chinh = sao.replace("7/TLKT-BS", "7/TLKT").replace("(BẢN SAO)\n", "")
+    assert not mapper.is_death_copy(chinh)
+    assert mapper._death_cert_from_ocr(chinh, values)["DeathCert_Number"] == "3"
+
+
+def test_giay_khai_tu_ban_sao_don_vi_cau_hinh_lay_so_goc():
+    sao = ("UBND XÃ MẪU\nSố: 7/TLKT-BS\nMẫu, ngày 05 tháng 4 năm 2021\nTRÍCH LỤC KHAI TỬ\n"
+           "Họ, chữ đệm, tên: NGUYỄN VĂN A\nGiới tính: Nam\n"
+           "Đã được đăng ký khai tử tại: UBND xã Mẫu, huyện B, tỉnh C\nSố: 3 ngày 02/03/2015")
+    values = {"NguoiDuocCap_HoTen": "Trần Thị B", "NguoiDuocCap_GioiTinh": "Nữ"}
+    assert mapper._death_cert_from_ocr(sao, values, original_number=True)["DeathCert_Number"] == "3"
+    options = mapper.with_account_process_options({}, {"tinh": "Tỉnh Quảng Ngãi", "xa": "Xã Bình Sơn"}, mapper.PROCEDURE_KEY)
+    assert mapper.death_original_number(options)
+    assert not mapper.with_account_process_options({}, {"tinh": "Tỉnh Quảng Ngãi", "xa": "Xã Bình Sơn"}, "khac")
+
+
+def _ly_hon(dau=None, so=None):
+    return {"docType": "divorce_decision", "trangDau": dau, "trangSo": so}
+
+
+def test_anh_roi_quyet_dinh_ly_hon_gop_mot_tep_theo_thu_tu_trang():
+    # Tải lên đảo thứ tự: tệp 0 trang cuối, tệp 1 trang giữa, tệp 2 trang đầu; tệp 3 là CCCD.
+    docs = [_ly_hon(2, 3), _ly_hon(2, 2), _ly_hon(2, 1), {"docType": "identity"}]
+    groups = planner.join_divorce_pages(docs, [[0], [1], [2], [3]], [0, 1, 2, 3])
+    assert groups == [[2, 1, 0], [3]]
+    items = planner._merge_groups(planner.build_plan_items(
+        ["a.jpg", "b.jpg", "c.jpg", "d.jpg"], {i: d["docType"] for i, d in enumerate(docs)},
+        {0: "Quyết định công nhận thuận tình ly hôn", 1: "Quyết định công nhận thuận tình ly hôn",
+         2: "Quyết định công nhận thuận tình ly hôn", 3: "CCCD Nguyen Van A"}, {1, 0}), groups)
+    assert [(i["fileIndex"], i.get("sourceFileIndexes"), i["documentName"]) for i in items] == [
+        (2, [2, 1, 0], "Quyết định công nhận thuận tình ly hôn"), (3, None, "CCCD Nguyen Van A")]
+
+
+def test_quyet_dinh_ly_hon_khong_gop_sai():
+    # Hai quyết định riêng; phần chỉ tới tệp không phải quyết định ly hôn đứng riêng; cặp hai mặt thẻ giữ nguyên.
+    docs = [_ly_hon(0, 1), _ly_hon(1, 1), _ly_hon(1, 2), _ly_hon(4, 2), {"docType": "identity"},
+            {"docType": "identity"}]
+    assert planner.join_divorce_pages(docs, [[0], [1], [2], [3], [4, 5]], list(range(6))) == [
+        [0], [1, 2], [3], [4, 5]]
+    # LLM không trả trangDau / trangSo → như cũ, mỗi tệp một mục.
+    assert planner.join_divorce_pages([_ly_hon(), _ly_hon()], [[0], [1]], [0, 1]) == [[0], [1]]

@@ -37,7 +37,7 @@ từng giấy tờ.
 </critical_rules>
 
 <output_contract>
-{{"tep":[{{"fileIndex":0,"tieuDeTrang":["Giấy khai sinh",""]}}],"documents":[{{"fileIndex":0,"pages":[1,2],"docType":"declaration","documentName":"Tờ khai cấp Giấy xác nhận tình trạng hôn nhân","matThe":"","chuThe":""}}]}}
+{{"tep":[{{"fileIndex":0,"tieuDeTrang":["Giấy khai sinh",""]}}],"documents":[{{"fileIndex":0,"pages":[1,2],"docType":"declaration","documentName":"Tờ khai cấp Giấy xác nhận tình trạng hôn nhân","matThe":"","chuThe":"","trangDau":null,"trangSo":null}}]}}
 </output_contract>
 """.strip()
 

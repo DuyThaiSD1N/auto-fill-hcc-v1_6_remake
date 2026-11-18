@@ -6,6 +6,7 @@ Loại / tên giấy không soát ở đây: bước phân vai và mapper đã c
 """
 
 import re
+from dataclasses import replace
 from datetime import date
 
 from app.config import settings
@@ -13,7 +14,7 @@ from app.pipelines._shared.thanh_tra import engine
 from app.pipelines._shared.thanh_tra.ho_so import Case, Field, Finding, Inspector, Unit, alnum, fold, parse_date
 from app.services.llm import client
 
-from ..process.reason import labeled_value, name_match, requester_context, section
+from ..process.reason import holder_birth, labeled_value, name_match, requester_context, section
 
 # Số của bản trích lục (bản sao) in ở đầu giấy: "<N>/TLKS-BS", "<N>/<năm>/TLKT-BS".
 _COPY_NO_RE = re.compile(r"/\s*TL[A-ZĐ]{1,6}\s*-\s*BS\b", re.IGNORECASE)
@@ -24,6 +25,17 @@ Giấy hộ tịch cần sửa là giấy đã đăng ký trước đây của n
 sửa" / "Giấy tờ hộ tịch đã đăng ký" của <phan_vai_da_xac_dinh>. Nguồn theo thứ tự: mục "Đã đăng ký ... tại ..." của
 TỜ KHAI thay đổi, cải chính → CHÍNH giấy hộ tịch cùng loại và cùng người có nội dung thay đổi có trong hồ sơ. Giấy
 khác loại hoặc của người khác (giấy khai sinh / khai tử của cha, mẹ kèm làm căn cứ) KHÔNG phải nguồn.
+Nhận giấy khai sinh của người có nội dung thay đổi theo NGÀY / NĂM SINH và họ tên CHA, MẸ của người được khai sinh (các
+dòng họ tên, ngày sinh cũng được chắt lọc), không chỉ theo họ tên: tên trên giấy có thể là tên CŨ đang xin cải chính
+hoặc bị OCR đọc lệch. Giấy khai sinh có người được khai sinh sinh năm khác hẳn (của cha / mẹ) KHÔNG phải nguồn, kể cả
+khi in mới, rõ chữ hơn. Giấy khai sinh mẫu cũ: số ở "Số...<N>" góc trên, ngày ở "Đăng ký ngày D tháng M năm Y", cơ
+quan theo khối "ỦY BAN NHÂN DÂN / Xã, phường ... / Huyện, Quận ... / Tỉnh ..." đầu giấy.
+Tiêu đề "### Tài liệu N — giấy khai sinh, người được khai sinh sinh ngày D" do mã đọc sẵn từ dòng ngày sinh của giấy:
+"CÙNG năm sinh với người có nội dung thay đổi" → đó là giấy cần sửa, dù ngày lệch vài hôm hay họ tên trên giấy khác
+họ tên người đó: hồ sơ cải chính HỌ TÊN thì giấy cần sửa ghi TÊN CŨ (giá trị "từ ..." của nội dung đề nghị), chữ viết
+tay giấy cũ còn bị OCR đọc lệch — lấy số, ngày đăng ký, cơ quan của CHÍNH giấy đó. "KHÁC năm sinh" → giấy của người
+khác, không lấy gì ở đó.
+Tín hiệu mã "A lấy từ giấy khai sinh của người khác" → chọn B khi B là dòng của giấy đúng người.
 Trang CHỨNG THỰC ("Số chứng thực: ... quyển số ... SCT", ngày chứng thực) là sổ chứng thực → không lấy gì ở đó.
 </giay_can_cap>
 
@@ -109,8 +121,12 @@ def check(unit: Unit, values: dict, case: Case) -> str:
 # này chỉ để CHẮT LỌC dòng đưa cho model xem, không quyết định giá trị nào.
 _CANDIDATE_LINE_RE = re.compile(
     r"\bso\b|quyen|ngay\s*\d|thang\s*\d|dang ky|uy ban nhan dan|ubnd|\btm\b|trich luc|khai sinh|ket hon|"
-    r"khai tu|chung thuc|ban sao|to khai")
-_MAX_LINES = 60
+    r"khai tu|chung thuc|ban sao|to khai|"
+    # Dòng người đứng tên giấy (họ tên, ngày sinh, cha / mẹ): để model nhận giấy của đúng người.
+    r"\bten\b|nam sinh|ngay sinh|nguoi me|nguoi cha|xa, phuong|huyen, quan|tinh, thanh pho")
+# Dòng chú thích cuối mẫu ("(1) Ghi theo số trong Sổ ...") không mang giá trị, chỉ chiếm chỗ của dòng thật.
+_FOOTNOTE_RE = re.compile(r"^\(\d\)\s*(ghi|tuy|truong hop|neu)")
+_MAX_LINES = 100
 _FIND_MAX_TOKENS = 500
 
 _FIND_SYSTEM = """<vai_tro>
@@ -146,7 +162,8 @@ def _candidate_lines(case: Case) -> list[tuple[int, str]]:
     out = []
     for index, document in enumerate(case.documents, start=1):
         for line in str(document.get("text") or "").splitlines():
-            if line.strip() and _CANDIDATE_LINE_RE.search(fold(line)):
+            folded = fold(line.strip())
+            if line.strip() and _CANDIDATE_LINE_RE.search(folded) and not _FOOTNOTE_RE.match(folded):
                 out.append((index, line.strip()))
     return out[:_MAX_LINES]
 
@@ -158,12 +175,27 @@ async def find(inspector: Inspector, case: Case, title: str) -> list[Finding]:
     if not lines:
         return []
     listing, last = [], 0
+    births = {index: _holder_birth(document.get("text")) for index, document in enumerate(case.documents, start=1)}
+    born = parse_date(case.values.get("NguoiThayDoi_NgaySinh"))
     for number, (index, line) in enumerate(lines, start=1):
         if index != last:
-            listing.append(f"### Tài liệu {index}")
+            # Mã đọc sẵn ngày sinh của người được khai sinh để model nhận giấy của đúng người (tên có thể là tên cũ).
+            note = ""
+            if births.get(index):
+                note = f" — giấy khai sinh, người được khai sinh sinh ngày {births[index].strftime('%d/%m/%Y')}"
+                if born:
+                    note += (" (CÙNG năm sinh với người có nội dung thay đổi)" if births[index].year == born.year
+                             else " (KHÁC năm sinh với người có nội dung thay đổi: giấy của người khác)")
+            listing.append(f"### Tài liệu {index}{note}")
             last = index
         listing.append(f"[{number}] {line}")
     task = _FIND_TASK.format(rules=RULES.strip(), owners="\n".join(f'- "{owner}"' for owner in _OWNERS))
+    same_year = [index for index, birth in births.items() if birth and born and birth.year == born.year]
+    if born and same_year:
+        # Hồ sơ cải chính HỌ TÊN: giấy cần sửa ghi tên cũ nên model hay loại giấy đó vì "khác tên".
+        task = (f"Đối chiếu của mã: Tài liệu {', '.join(map(str, same_year))} là giấy khai sinh có người được khai sinh "
+                f"CÙNG năm sinh {born.year} với người có nội dung thay đổi. Họ tên trên giấy đó khác họ tên người này "
+                f"KHÔNG phải lý do loại: đó thường là tên cũ đang xin cải chính hoặc chữ OCR đọc lệch.\n\n" + task)
     raw = await client.chat(
         [{"role": "system", "content": _FIND_SYSTEM.format(title=title)},
          {"role": "user", "content": f"{case.context.strip()}\n\nCác dòng đã chắt lọc:\n" + "\n".join(listing)
@@ -184,6 +216,10 @@ async def find(inspector: Inspector, case: Case, title: str) -> list[Finding]:
         findings.append(Finding(INSPECTOR, unit, {unit.fields[0].name: answer["value"]}, line, index,
                                 owner=str(answer.get("thuoc_ve") or "").strip()[:80],
                                 **_code_basis(unit, case.values.get(unit.fields[0].name), answer["value"], line)))
+    _back_other_holder(findings, case)
+    # Giấy khai sinh có người được khai sinh sinh khác NĂM với người có nội dung thay đổi là giấy của người khác.
+    findings = [finding for finding in findings
+                if not (born and births.get(finding.doc) and births[finding.doc].year != born.year)]
     # Ngày đăng ký của một tài liệu cách ngày sinh quá xa → tài liệu đó không phải giấy hộ tịch cần sửa của người này
     # (giấy của người khác / bản sao cấp lại): bỏ mọi mục đọc từ tài liệu đó.
     wrong_docs = {finding.doc for finding in findings if finding.unit.key == "ngay_dang_ky"
@@ -220,6 +256,39 @@ def _of_subject(finding: Finding, case: Case) -> bool:
         if _NAME_LINE_RE.match(label) and not _OTHER_ROLE_RE.search(label):
             return bool(name_match(subject, line))
     return True
+
+
+_BIRTH_DATE_RE = re.compile(r"(\d{1,2})\s*[/.\-]\s*(\d{1,2})\s*[/.\-]\s*(\d{4})")
+_holder_birth = holder_birth
+
+
+def _on_document(spec_key: str, ours, text: str) -> bool:
+    if spec_key == "ngay_dang_ky":
+        target = parse_date(ours)
+        return bool(target) and any(parse_date(f"{d}/{m}/{y}") == target for d, m, y in _BIRTH_DATE_RE.findall(text))
+    number = str(ours or "").strip()
+    return bool(_register_no(number)) and bool(re.search(rf"(?<![\w/]){re.escape(number)}(?![\w/])", text))
+
+
+def _back_other_holder(findings: list[Finding], case: Case) -> None:
+    """A (số / ngày đăng ký lượt trích) chỉ có trên giấy khai sinh mà người được khai sinh sinh khác NĂM với người có
+    nội dung thay đổi (giấy của cha / mẹ kèm làm căn cứ), còn B ở tài liệu khác → căn cứ mã cho B."""
+    born = parse_date(case.values.get("NguoiThayDoi_NgaySinh"))
+    if not born or "khai sinh" not in fold(case.values.get("HoSo_LoaiGiayTo")):
+        return
+    for index, finding in enumerate(findings):
+        ours = case.values.get(finding.unit.fields[0].name)
+        if finding.unit.key not in ("so", "ngay_dang_ky") or not ours:
+            continue
+        homes = [i for i, document in enumerate(case.documents, start=1)
+                 if _on_document(finding.unit.key, ours, str(document.get("text") or ""))]
+        if not homes or finding.doc in homes:
+            continue
+        holders = [_holder_birth(case.documents[i - 1].get("text")) for i in homes]
+        if all(holder and holder.year != born.year for holder in holders):
+            findings[index] = replace(finding, backed=True, evidence=tuple(finding.evidence) + (
+                f"A lấy từ giấy khai sinh của người khác: người được khai sinh trên giấy đó sinh "
+                f"{holders[0].strftime('%d/%m/%Y')}, người có nội dung thay đổi sinh {born.strftime('%d/%m/%Y')}",))
 
 
 def _code_basis(unit: Unit, ours, theirs, line: str) -> dict:

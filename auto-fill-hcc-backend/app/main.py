@@ -32,6 +32,7 @@ from app.reports.router import router as reports_router
 from app.dashboard.router import router as dashboard_router
 from app.bug_reports.router import router as bug_reports_router
 from app.daily_reports.router import router as daily_reports_router
+from app.work_minutes.router import router as work_minutes_router
 from app.partner_api.app import PREFIX as partner_api_prefix, partner_app
 from app.traces.router import router as traces_router
 from app.upload_session.router import router as upload_session_router
@@ -116,6 +117,7 @@ app.include_router(traces_router)
 app.include_router(dashboard_router)  # bảng thống kê phường (require_ward, khóa theo user_id)
 app.include_router(bug_reports_router)  # báo lỗi trên web thống kê
 app.include_router(daily_reports_router)  # báo cáo hằng ngày trên web thống kê
+app.include_router(work_minutes_router)  # biên bản làm việc (nhóm báo cáo hằng ngày)
 app.include_router(reports_router)
 app.include_router(users_router)
 app.include_router(locations_router)

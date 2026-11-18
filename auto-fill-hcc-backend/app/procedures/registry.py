@@ -1187,6 +1187,7 @@ PROCEDURES: list[dict] = [
 #     },
     {
         "key": "khai-sinh-ket-hop-nhan-cha-me-con",
+        "collectFormContext": True,
         "detect": {"urlIncludes": ["maThuTuc=1.000689"]},
         "label": "Thủ tục đăng ký khai sinh kết hợp đăng ký nhận cha, mẹ, con",
         "mode": "agent",
@@ -1240,6 +1241,8 @@ PROCEDURES: list[dict] = [
         "hasAttachmentStep": True,
         "roles": [],
         "useDangKyBy": False,
+        # Planner chia trang khi bật "tách giấy tờ": tệp scan gộp cả bộ → giấy chứng sinh STT1, tờ khai cư trú STT2.
+        "supportsSplitDocuments": True,
         # Bước 01 "Chọn cơ quan thực hiện": popup hiện nút điền hộ khi thủ tục có khoá này.
         # Dùng CHUNG với Handfree (app/procedures/agency_plans.py) để hai kênh không lệch nhau.
         "agencyFillPlan": agency_plans.LIEN_THONG_KHAI_SINH,
@@ -1256,6 +1259,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "khai-sinh-dang-ky-lai",
+        "collectFormContext": True,
         "detect": {"urlIncludes": ["maThuTuc=1.004884"]},
         "label": "Thủ tục đăng ký lại khai sinh",
         "mode": "agent",
@@ -1278,6 +1282,7 @@ PROCEDURES: list[dict] = [
         # đăng ký khai sinh → không có khối "đăng ký trước đây"; nguồn dữ liệu là hồ sơ, giấy tờ cá
         # nhân đã có (CCCD, BHYT, học bạ, bằng cấp, GCN kết hôn, trích lục khai tử của cha/mẹ…).
         "key": "khai-sinh-da-co-ho-so",
+        "collectFormContext": True,
         "detect": {"urlIncludes": ["maThuTuc=1.004772"]},
         "label": "Thủ tục đăng ký khai sinh cho người đã có hồ sơ, giấy tờ cá nhân",
         "mode": "agent",
@@ -1300,6 +1305,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "ket-hon",
+        "collectFormContext": True,
         "detect": {"urlIncludes": ["maThuTuc=1.000894"]},
         "label": "Thủ tục đăng ký kết hôn",
         "mode": "agent",
@@ -1321,6 +1327,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "ket-hon-nuoc-ngoai",
+        "collectFormContext": True,
         # Form riêng có yếu tố nước ngoài — nhận diện theo tiêu đề (chưa có maThuTuc; cập nhật sau nếu cần).
         "detect": {"textIncludes": ["kết hôn có yếu tố nước ngoài"], "textPriority": True},
         "label": "Thủ tục đăng ký kết hôn có yếu tố nước ngoài",
@@ -1340,6 +1347,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-lai-ket-hon",
+        "collectFormContext": True,
         "detect": {"urlIncludes": ["maThuTuc=1.004746"]},
         "label": "Thủ tục đăng ký lại kết hôn",
         "mode": "agent",
@@ -1472,6 +1480,7 @@ PROCEDURES: list[dict] = [
 #     },
     {
         "key": "trich-luc-ks",
+        "collectFormContext": True,
         # Cổng DVC quốc gia bản mới (/nop-ho-so, React + SurveyJS): trang không in mã TTHC → khóa domain + tiêu đề
         # biểu mẫu + tiêu đề khối người được cấp. formalityId = UUID trang thủ tục (cơ quan nằm ở departmentId), khớp
         # URL thì nhận ngay cả khi form chưa render, và là "định danh mạnh" để popup được đổi sang thủ tục này khi
@@ -1510,6 +1519,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "thay-doi-cai-chinh-ho-tich",
+        "collectFormContext": True,
         # Cổng DVC quốc gia bản mới (/nop-ho-so, React + SurveyJS): trang không in mã TTHC → khóa domain + tiêu đề
         # biểu mẫu + tiêu đề khối người có nội dung thay đổi. formalityId (UUID trang thủ tục) khớp URL thì nhận
         # ngay — xem ghi chú ở trich-luc-ks.
@@ -1548,6 +1558,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "khai-sinh-dang-ky-thuong",
+        "collectFormContext": True,
         # Cổng DVC quốc gia bản mới (/nop-ho-so, React + SurveyJS): URL chỉ có formalityId, mã TTHC chỉ nằm trong
         # aria-label của panel (không vào innerText) → khóa domain + tiêu đề biểu mẫu + tiêu đề khối người được
         # khai sinh. "thủ tục đăng ký khai sinh" không trùng "đăng ký lại khai sinh". formalityId (UUID trang thủ
@@ -1581,6 +1592,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "khai-sinh-nuoc-ngoai",
+        "collectFormContext": True,
         # Mã 2.000528. Trang chi tiết DVCQG chọn cơ quan xong chuyển sang cổng Bộ Tư pháp
         # dichvucongnganhtuphap.moj.gov.vn/nop-ho-so/<id>?maThuTuc=2.000528 (wizard 4 bước như kết hôn), bước kê khai là
         # eForm khai sinh mẫu 2093. Bản 12/11 tưởng là trang SurveyJS /nop-ho-so của DVCQG (formalityId + urlScope
@@ -1611,6 +1623,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "xac-nhan-thong-tin-ho-tich",
+        "collectFormContext": True,
         # Mã TTHC 2.002516, nhóm hộ tịch, cổng dichvucongnganhtuphap.moj.gov.vn (link kê khai trên Cổng DVC
         # quốc gia chuyển sang sau khi chọn cơ quan). Pipeline trả HAI bộ ô: trang "Thông tin chủ hồ sơ"
         # (data[...]) và eForm hộ tịch trong iframe tokhaidientu.moj.gov.vn (x-*: Mục I, Mục II, nội dung,
@@ -1685,6 +1698,7 @@ PROCEDURES: list[dict] = [
 #     },
     {
         "key": "khai-tu",
+        "collectFormContext": True,
         # Cổng DVC quốc gia bản mới: dichvucong.gov.vn/nop-ho-so?formalityCaseId=…&formalityId=…, form
         # React + SurveyJS, KHÔNG dùng chung eForm moj với "khai-tu". URL chỉ có UUID nên nhận diện theo
         # cụm chữ trên form (tiêu đề panel "THỦ TỤC ĐĂNG KÝ KHAI TỬ" + khối "NGƯỜI ĐƯỢC ĐĂNG KÝ KHAI TỬ"),
@@ -1723,6 +1737,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "khai-tu-dang-ky-lai",
+        "collectFormContext": True,
         "detect": {"urlIncludes": ["maThuTuc=1.005461"]},
         "label": "Thủ tục đăng ký lại khai tử",
         "mode": "agent",
@@ -1795,6 +1810,7 @@ PROCEDURES: list[dict] = [
 #     },
     {
         "key": "xac-nhan-tinh-trang-hon-nhan",
+        "collectFormContext": True,
         # Cổng DVC quốc gia bản mới (eForm moj maThuTuc=1.004873 đã tắt): dichvucong.gov.vn/nop-ho-so, form React +
         # SurveyJS. URL chỉ có UUID nên nhận diện theo cụm chữ trên form (tiêu đề panel + nhãn quan hệ của khối người
         # nộp), giới hạn trong trang nộp hồ sơ của cổng này; formalityId khớp URL thì nhận ngay.
@@ -1891,6 +1907,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dinh-chinh-sai-sot-lam-dong",
+        "collectFormContext": True,
         # Cổng dichvucong.lamdong.gov.vn (Form.io/Angular apply-online) — CÙNG nền tảng GPXD lamdong,
         # engine fill standard dom-*. URL chỉ có ObjectId THEO PHƯỜNG (đổi theo mỗi phường/xã) → KHÔNG
         # dùng urlIncludes được. Detect theo VĂN BẢN: tiêu đề + MÃ THỦ TỤC "1.116358" in trên trang. Mã
@@ -2206,6 +2223,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-the-huong-dan-vien-du-lich-noi-dia",
+        "collectFormContext": True,
         # Cùng cổng Bộ VHTTDL với hai thủ tục ở trên (Angular Material `liz-*`, engine content/fill-liz.js
         # khớp theo (.group-header, <mat-label>)); hồ sơ nộp về Sở VHTTDL tỉnh (mã quy trình QT-121).
         # Form VÀ bảng thành phần hồ sơ nằm CHUNG một trang. matthc=1.004623 cũng được ghép tự động từ
@@ -2250,6 +2268,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-the-huong-dan-vien-du-lich-quoc-te",
+        "collectFormContext": True,
         # Mã TTHC 1.004628 (QT-120), cùng cổng Bộ VHTTDL và CÙNG giao diện với thẻ HDV nội địa ở trên (liz-*, engine
         # content/fill-liz.js), nộp về Sở VHTTDL tỉnh — dùng chung cả nước. Key TRÙNG ke_khai_links (selectSo); nhận diện
         # CẢ trang chi tiết DVCQG (uuid) lẫn trang nộp /nop-ho-so?MaTTHC=1.004628. Không dùng cụm chữ: trang cấp đổi
@@ -2291,6 +2310,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-the-huong-dan-vien-du-lich-tai-diem-da-nang",
+        "collectFormContext": True,
         # Cùng cổng Bộ VHTTDL và CÙNG giao diện với thẻ HDV nội địa ở trên (liz-*, engine content/fill-liz.js),
         # nộp về Sở VHTTDL TP Đà Nẵng (mã quy trình QT-115). matthc=1.001440 được ghép tự động từ
         # ke_khai_links.json (key trùng). Cụm tên có chữ "Thủ tục" đứng trước: trang thẻ NỘI ĐỊA cũng in
@@ -2333,6 +2353,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-doi-the-huong-dan-vien-du-lich-da-nang",
+        "collectFormContext": True,
         # Cùng cổng Bộ VHTTDL và CÙNG giao diện với thẻ HDV nội địa/tại điểm ở trên (liz-*, engine
         # content/fill-liz.js), nộp về Sở VHTTDL TP Đà Nẵng (mã quy trình QT-113). matthc=1.001432 được ghép
         # tự động từ ke_khai_links.json (key trùng). Cụm tên có chữ "đổi" chen giữa "cấp" và "thẻ" nên không
@@ -2375,6 +2396,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-lai-the-huong-dan-vien-du-lich-da-nang",
+        "collectFormContext": True,
         "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Cùng cổng Bộ VHTTDL và CÙNG giao diện với cấp đổi / thẻ nội địa / tại điểm ở trên (liz-*, engine
         # content/fill-liz.js), nộp về Sở VHTTDL TP Đà Nẵng (mã quy trình QT-122). matthc=1.004614 được ghép
@@ -3912,6 +3934,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-gcn-chuyen-quyen-truoc-2024-igate-lao-cai",
+        "collectFormContext": True,
         # 1.115666 trên cổng iGate MỚI của Lào Cai (Form.io) — cùng cách nhận diện với mục
         # "chuyen-muc-dich-su-dung-dat-igate-lao-cai": urlScope "<host>/vi/" (eForm cũ là /dich-vu-cong/…), mã TTHC
         # bắt màn "Chọn trường hợp giải quyết", id apply-online bắt stepper. Bản cổng TEST sinh ngay sau danh sách.
@@ -3949,6 +3972,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-gcn-chuyen-quyen-truoc-2024-lao-cai",
+        "collectFormContext": True,
         # Cổng dichvucong.laocai.gov.vn (eForm iGate) — CÙNG form bước 2 CongDan_*/ChuHoSo_* với các
         # thủ tục Lào Cai khác.
         # ⚠ URL mọi bước của cổng này là …/tiep-nhan-online/nhap-thong-tin-ho-so?sid=<phiên> — DÙNG
@@ -3996,6 +4020,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dinh-chinh-gcn-da-cap-igate-lao-cai",
+        "collectFormContext": True,
         # 1.115686 trên cổng iGate MỚI của Lào Cai — cách nhận diện như "chuyen-muc-dich-su-dung-dat-igate-lao-cai":
         # urlScope "<host>/vi/" (eForm cũ là /dich-vu-cong/…), mã TTHC + id apply-online; mục "<key>-test" cho
         # dichvucongtest sinh ở _IGATE_LAO_CAI cuối danh sách, kèm cụm textPriority chép từ mục cũ. Mục cũ khai
@@ -4047,6 +4072,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dinh-chinh-gcn-da-cap-lao-cai",
+        "collectFormContext": True,
         # Cổng dichvucong.laocai.gov.vn (eForm iGate) — CÙNG 35 ô CongDan_*/ChuHoSo_* với các thủ tục
         # Lào Cai khác. Mã in ở tiêu đề trang, URL bước nộp dùng chung cả tỉnh nên chỉ khai host ở
         # urlScope (xem entry 1.115666).
@@ -4084,6 +4110,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-dat-dai-lan-dau-ho-gia-dinh-igate-lao-cai",
+        "collectFormContext": True,
         # 1.115689 trên cổng iGate MỚI của Lào Cai — cách nhận diện như "chuyen-muc-dich-su-dung-dat-igate-lao-cai":
         # urlScope "<host>/vi/" (eForm cũ là /dich-vu-cong/…), mã TTHC + id apply-online; mục "<key>-test" cho
         # dichvucongtest sinh ở _IGATE_LAO_CAI cuối danh sách, kèm cụm tên + textPriority chép từ mục cũ (id apply-online
@@ -4135,6 +4162,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-dat-dai-lan-dau-ho-gia-dinh-lao-cai",
+        "collectFormContext": True,
         # Cổng dichvucong.laocai.gov.vn (eForm iGate) — CÙNG 35 ô CongDan_*/ChuHoSo_* với các thủ tục
         # Lào Cai khác. Mã in ở tiêu đề trang, URL bước nộp dùng chung cả tỉnh nên chỉ khai host ở
         # urlScope (xem entry 1.115666).
@@ -4179,6 +4207,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-bien-dong-chia-tach-to-chuc-igate-lao-cai",
+        "collectFormContext": True,
         # 1.115670 trên cổng iGate MỚI của Lào Cai (Form.io) — cùng cách nhận diện với mục
         # "chuyen-muc-dich-su-dung-dat-igate-lao-cai": urlScope "<host>/vi/" (eForm cũ là /dich-vu-cong/…), mã TTHC
         # bắt màn "Chọn trường hợp giải quyết", id apply-online bắt stepper. Bản cổng TEST sinh ngay sau danh sách.
@@ -4220,6 +4249,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-bien-dong-chia-tach-to-chuc-lao-cai",
+        "collectFormContext": True,
         # Cổng dichvucong.laocai.gov.vn (eForm iGate) — CÙNG 35 ô CongDan_*/ChuHoSo_* với các thủ tục
         # Lào Cai khác. Mã in ở tiêu đề trang, URL bước nộp dùng chung cho cả tỉnh nên chỉ khai host ở
         # urlScope (xem entry 1.115666 ngay trên).
@@ -4264,6 +4294,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "giao-thue-dat-igate-lao-cai",
+        "collectFormContext": True,
         # 1.115650 trên cổng iGate MỚI của Lào Cai (Form.io) — cùng cách nhận diện với mục
         # "chuyen-muc-dich-su-dung-dat-igate-lao-cai": urlScope "<host>/vi/" (eForm cũ là /dich-vu-cong/…), mã TTHC
         # bắt màn "Chọn trường hợp giải quyết" /vi/nps/apply?MaTTHC=…, id apply-online bắt stepper. Bản cổng TEST
@@ -4305,6 +4336,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "giao-thue-dat-lao-cai",
+        "collectFormContext": True,
         # TỈNH MỚI: dichvucong.laocai.gov.vn — eForm iGate legacy (ô CongDan_*/ChuHoSo_*), CÙNG nền tảng
         # với các thủ tục Lai Châu nên dùng lại engine fill-legacy.js và engine đính kèm fixed-slot.
         # Cổng là SPA, URL có ?sid=<phiên> đổi mỗi lần nộp → khóa host + cụm tên thủ tục (như Lai Châu).
@@ -4344,6 +4376,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "xoa-dang-ky-bien-phap-bao-dam-lao-cai",
+        "collectFormContext": True,
         # 1.011443.000.00.00.H38 (Văn phòng đăng ký đất đai tỉnh Lào Cai). Cùng eForm iGate legacy
         # (CongDan_*/ChuHoSo_*) với 1.115650 nên dùng lại fill-legacy.js + engine đính kèm fixed-slot.
         # Mã QG 1.011443 dùng chung với Bắc Ninh/Đà Nẵng/Quảng Ninh → khóa host laocai + tên thủ tục.
@@ -4377,6 +4410,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-bien-phap-bao-dam-lao-cai",
+        "collectFormContext": True,
         # 1.011441.000.00.00.H38 (Văn phòng đăng ký đất đai tỉnh Lào Cai), cùng eForm iGate với thủ tục xóa
         # đăng ký 1.011443. Mã QG dùng chung với Bắc Ninh/Đà Nẵng/Quảng Ninh → khóa host laocai. Tên thủ tục
         # là chuỗi con của tiêu đề "Xóa đăng ký biện pháp bảo đảm bằng…" nên phải khóa thêm bằng MÃ.
@@ -4411,6 +4445,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-thay-doi-bien-phap-bao-dam-lao-cai",
+        "collectFormContext": True,
         # 1.011442.000.00.00.H38 (Văn phòng đăng ký đất đai tỉnh Lào Cai), cùng eForm iGate với 1.011441/
         # 1.011443. Mã QG dùng chung nhiều tỉnh → khóa host laocai + mã + cụm tên.
         "detect": {
@@ -4444,6 +4479,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "chap-thuan-dieu-chinh-chu-truong-dau-tu-bql-lao-cai",
+        "collectFormContext": True,
         # Cổng dichvucong.laocai.gov.vn (eForm iGate) — trang điền chỉ có khối CongDan_*/ChuHoSo_* như các thủ tục
         # Lào Cai khác; 3 thủ tục chủ trương đầu tư dùng chung process `chu_truong_dau_tu_lao_cai`. Tiêu đề
         # trang "1.009759.H38 - Chấp thuận điều chỉnh chủ trương đầu tư thuộc thẩm quyền của Ban quản lý …".
@@ -4478,6 +4514,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dieu-chinh-du-an-dau-tu-ubnd-tinh-lao-cai",
+        "collectFormContext": True,
         # Cùng trang điền + process với 1.009759. Tên thủ tục TRÊN CỔNG khác tên trong danh mục: "1.009646.H38 -
         # Thủ tục điều chỉnh dự án đầu tư thuộc thẩm quyền chấp thuận chủ trương đầu tư của UBND cấp tỉnh".
         "detect": {
@@ -4511,6 +4548,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "chap-thuan-chu-truong-dau-tu-ubnd-tinh-lao-cai",
+        "collectFormContext": True,
         # Cùng process với 1.009759. Trang nộp GỘP điền + đính kèm (nhapThongTinHoSo1bBKN), khối chủ hồ sơ đứng
         # trước khối người nộp, không có nút "Người nộp là chủ hồ sơ" và không có "Giấy tờ khác".
         "detect": {
@@ -4544,6 +4582,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cho-thue-dat-thue-rung-igate-lao-cai",
+        "collectFormContext": True,
         # 1.115678 trên cổng iGate MỚI của Lào Cai (Form.io) — cùng cách nhận diện với mục
         # "chuyen-muc-dich-su-dung-dat-igate-lao-cai": urlScope "<host>/vi/" (eForm cũ là /dich-vu-cong/…), mã TTHC
         # bắt màn "Chọn trường hợp giải quyết" /vi/nps/apply?MaTTHC=…, id apply-online bắt stepper. Bản cổng TEST
@@ -4587,6 +4626,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cho-thue-dat-thue-rung",
+        "collectFormContext": True,
         # Mã 1.115678 — BẢN PHÂN CẤP của thủ tục giao/thuê đất Lào Cai, áp dụng cho các trường hợp tại
         # Điều 3 Quyết định 40/2026/QĐ-UBND ngày 31/5/2026. Cùng cổng, cùng eForm iGate legacy
         # (CongDan_*/ChuHoSo_*) với 1.115650 nên dùng lại fill-legacy.js + engine đính kèm fixed-slot;
@@ -4653,6 +4693,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "tang-cho-qsdd-nha-nuoc-chua-cap-gcn-igate-lao-cai",
+        "collectFormContext": True,
         # 1.115690 trên cổng iGate MỚI của Lào Cai — cách nhận diện như "dang-ky-dat-dai-lan-dau-ho-gia-dinh-igate-lao-cai":
         # urlScope "<host>/vi/", mã TTHC + id apply-online; mục "<key>-test" sinh ở _IGATE_LAO_CAI cuối danh sách, kèm cụm
         # tên + textPriority chép từ mục cũ (id apply-online mỗi xã/phường một khác) → mục này PHẢI đứng trước mục cũ.
@@ -4689,6 +4730,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "tang-cho-qsdd-nha-nuoc-chua-cap-gcn",
+        "collectFormContext": True,
         # Mã 1.115690 — "hiến đất làm đường": hộ gia đình tặng cho Nhà nước/cộng đồng dân cư một phần
         # thửa đất để mở rộng đường giao thông, trường hợp thửa đất CHƯA được cấp Giấy chứng nhận.
         # Cùng cổng, cùng eForm iGate legacy (CongDan_*/ChuHoSo_*) với 1.115650/1.115678/1.115693 nên
@@ -4747,6 +4789,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an-igate-lao-cai",
+        "collectFormContext": True,
         # 1.115681 trên cổng iGate MỚI của Lào Cai — cách nhận diện như "chuyen-muc-dich-su-dung-dat-igate-lao-cai":
         # urlScope "<host>/vi/" (eForm cũ là /dich-vu-cong/…), mã TTHC + id apply-online; mục "<key>-test" cho
         # dichvucongtest sinh ở _IGATE_LAO_CAI cuối danh sách, kèm cụm textPriority chép từ mục cũ.
@@ -4782,6 +4825,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an",
+        "collectFormContext": True,
         # Mã 1.115681 — thủ tục của DOANH NGHIỆP: tổ chức kinh tế đã được chấp thuận chủ trương đầu
         # tư nay xin nhận chuyển nhượng/thuê/nhận góp vốn quyền sử dụng đất của các hộ dân để gom đủ
         # mặt bằng dự án. Cùng cổng, cùng eForm iGate legacy (CongDan_*/ChuHoSo_*) với
@@ -5126,6 +5170,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dien-thong-tin-tai-khoan-bac-ninh",
+        "collectFormContext": True,
         # Trang HOÀN THIỆN TÀI KHOẢN lần đầu sau đăng nhập VNeID SSO: dichvucong.bacninh.gov.vn/web/guest/
         # vneidsso. ⚠ Detect theo PATH /vneidsso, KHÔNG dùng maTTHC (URL mang maTTHC=1.011443 của thủ tục
         # đang làm → trùng thủ tục Xóa ĐK BPBĐ). Portlet prefix MỚI _org_bn_taikhoan_sso_vneid_* → engine
@@ -5548,6 +5593,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dieu-chinh-quyet-dinh-giao-dat-igate-lao-cai",
+        "collectFormContext": True,
         # 1.115652 trên cổng iGate MỚI của Lào Cai (Form.io) — cùng cách nhận diện với mục
         # "chuyen-muc-dich-su-dung-dat-igate-lao-cai": urlScope "<host>/vi/" (eForm cũ là /dich-vu-cong/…), mã TTHC
         # bắt màn "Chọn trường hợp giải quyết", id apply-online bắt stepper. Bản cổng TEST sinh ngay sau danh sách.
@@ -5587,6 +5633,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dieu-chinh-quyet-dinh-giao-dat-lao-cai",
+        "collectFormContext": True,
         # Cùng nghiệp vụ với "dieu-chinh-dat-dai" nhưng KHÓA ĐÚNG CỔNG Lào Cai và khớp bằng CỤM TÊN
         # THỦ TỤC ĐẦY ĐỦ thay vì 2 chữ rời, nên không cướp trang của thủ tục khác. Dùng lại pipeline
         # process sẵn có (app/pipelines/dieu_chinh_dat_dai).
@@ -5627,6 +5674,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dieu-chinh-quyet-dinh-giao-dat-cap-xa-lao-cai",
+        "collectFormContext": True,
         # Bản nộp ở UBND CẤP XÃ (maCoQuan=UBND_PLC_LCI) của cùng nghiệp vụ với 1.115652 (bản ở Sở).
         # Tên thủ tục CHỈ khác ở đuôi "(cấp xã)" nên cụm tên của 1.115652 là CHUỖI CON của trang này →
         # phải khoá bằng MÃ. Cổng in mã trong banner "thủ tục đã chọn" ở mọi bước ("Một phần 1.115680 -
@@ -5675,6 +5723,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-giay-phep-xay-dung-moi-nha-o-rieng-le",
+        "collectFormContext": True,
         "detect": {
             "urlIncludes": ["maThuTuc=1.013225"],
             "textIncludes": [
@@ -5938,6 +5987,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-igate-lao-cai",
+        "collectFormContext": True,
         # 1.115667 trên cổng iGate MỚI của Lào Cai (Form.io) — cùng cách nhận diện với mục
         # "chuyen-muc-dich-su-dung-dat-igate-lao-cai": urlScope "<host>/vi/" (eForm cũ là /dich-vu-cong/…), mã TTHC
         # bắt màn "Chọn trường hợp giải quyết", id apply-online bắt stepper. Bản cổng TEST sinh ngay sau danh sách.
@@ -5976,6 +6026,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-lao-cai",
+        "collectFormContext": True,
         # Cổng dichvucong.laocai.gov.vn (iGate VNPT, maCoQuan=STNMT_LCI) — engine dom-* chuẩn, khớp ô
         # theo name CongDan_*/ChuHoSo_*. Map bước 2 "Thông tin người nộp" + đính kèm bảng Thành phần hồ sơ
         # (fixed-slot theo nhánh a/b — attach/catalog.py); eForm Mẫu 24 chưa có DOM nên chưa điền. Key trùng
@@ -6013,6 +6064,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-bien-dong-dat-dai-igate-lao-cai",
+        "collectFormContext": True,
         # 1.115668 trên cổng iGate MỚI của Lào Cai (Form.io) — cùng cách nhận diện với mục
         # "dang-ky-cap-gcn-nhan-chuyen-nhuong-du-an-bat-dong-san-igate-lao-cai": urlScope "<host>/vi/" (eForm cũ là
         # /dich-vu-cong/…), mã TTHC bắt màn "Chọn trường hợp giải quyết", id apply-online (crawl 16/11/2026 ở cổng test,
@@ -6055,6 +6107,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-bien-dong-dat-dai-lao-cai",
+        "collectFormContext": True,
         # Cổng dichvucong.laocai.gov.vn (iGate VNPT, maCoQuan=STNMT_LCI) — CÙNG form bước 2 CongDan_*/ChuHoSo_*
         # với 1.115667 (engine dom-*), đính kèm fixed-slot theo nhánh a/b + "Giấy tờ khác" (attach/catalog.py).
         # Cụm "dồn điền" cũng có ở bản Đà Nẵng/Ninh Bình/Bắc Ninh → urlScope khóa host Lào Cai. Trang 1.115667
@@ -6094,6 +6147,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-igate-lao-cai",
+        "collectFormContext": True,
         # 1.115687 trên cổng iGate MỚI của Lào Cai — cách nhận diện như "chuyen-muc-dich-su-dung-dat-igate-lao-cai":
         # urlScope "<host>/vi/" (eForm cũ là /dich-vu-cong/…), mã TTHC + id apply-online; mục "<key>-test" cho
         # dichvucongtest sinh ở _IGATE_LAO_CAI cuối danh sách. Mục cũ urlScope "laocai.gov.vn" (khớp cả URL nền mới)
@@ -6131,6 +6185,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "thu-hoi-gcn-cap-lan-dau-khong-dung-quy-dinh-cap-lai",
+        "collectFormContext": True,
         # Cổng dichvucong.laocai.gov.vn (iGate VNPT) — CÙNG form bước 2 CongDan_*/ChuHoSo_* với
         # 1.115651/1.115667/1.115668/1.115671 (engine dom-*), mapping theo
         # "mapping_thu_hoi_huy_GCN_laocai.xlsx". Khác các thủ tục anh em: ba ô địa chỉ của khối NGƯỜI NỘP là
@@ -6184,6 +6239,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-dat-dai-cap-gcn-lan-dau-to-chuc-igate-lao-cai",
+        "collectFormContext": True,
         # 1.115688 trên cổng iGate MỚI của Lào Cai — cách nhận diện như "chuyen-muc-dich-su-dung-dat-igate-lao-cai":
         # urlScope "<host>/vi/" (eForm cũ là /dich-vu-cong/…), mã TTHC + id apply-online; mục "<key>-test" cho
         # dichvucongtest sinh ở _IGATE_LAO_CAI cuối danh sách. Mục cũ urlScope "laocai.gov.vn" (khớp cả URL nền mới)
@@ -6220,6 +6276,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-dat-dai-cap-gcn-lan-dau-to-chuc",
+        "collectFormContext": True,
         # Cổng dichvucong.laocai.gov.vn (Nth.FormBuilder — iGate VNPT) — CÙNG form bước 2 CongDan_*/ChuHoSo_*
         # với 1.115651/1.115667/1.115668/1.115671/1.115687 (engine dom-*), mapping theo
         # "Mapping_1.115688_DangKyDatDai_LanDau_LaoCai.xlsx" (2 file HTML: biến thể tổ chức và cá nhân của
@@ -6279,6 +6336,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-igate-lao-cai",
+        "collectFormContext": True,
         # 1.115671 trên cổng iGate MỚI của Lào Cai (Form.io) — cùng cách nhận diện với mục
         # "chuyen-muc-dich-su-dung-dat-igate-lao-cai": urlScope "<host>/vi/" (eForm cũ là /dich-vu-cong/…), mã TTHC
         # bắt màn "Chọn trường hợp giải quyết", id apply-online bắt stepper. Bản cổng TEST sinh ngay sau danh sách.
@@ -6319,6 +6377,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-bien-dong-thoa-thuan-thanh-vien-ho-gia-dinh-theo-ban-an",
+        "collectFormContext": True,
         # Cổng dichvucong.laocai.gov.vn (iGate VNPT, maCoQuan=STNMT_LCI) — CÙNG form bước 2 CongDan_*/ChuHoSo_*
         # với 1.115667/1.115668/1.115651 (engine dom-*), mapping theo
         # "mapping_dang-ky-bien-dong_1.115671_LaoCai_MTTQ.xlsx".
@@ -6384,6 +6443,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "chuyen-muc-dich-su-dung-dat-igate-lao-cai",
+        "collectFormContext": True,
         # 1.115651 trên cổng iGate MỚI của Lào Cai (nền Form.io như Lâm Đồng/Ninh Bình). Cổng cũ (eForm
         # CongDan_*/ChuHoSo_*) vẫn đi mục ngay dưới. Mục này cho cổng CHÍNH THỨC dichvucong.laocai.gov.vn; bản cổng
         # TEST dichvucongtest.laocai.gov.vn là mục "<key>-test" sinh ngay sau danh sách (cùng pipeline, nhãn thêm
@@ -6431,6 +6491,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "chuyen-muc-dich-su-dung-dat-lao-cai",
+        "collectFormContext": True,
         # Cổng dichvucong.laocai.gov.vn (iGate VNPT, maCoQuan=STNMT_LCI) — CÙNG form bước 2 CongDan_*/ChuHoSo_*
         # với 1.115667/1.115668. Đính kèm fixed-slot theo 4 nhóm "(1)…(4) Hồ sơ đề nghị…" chọn theo mẫu đơn
         # (attach/catalog.py) + "Giấy tờ khác". Cụm tên cũng có ở Lâm Đồng/Quảng Ninh → urlScope khóa host Lào Cai.
@@ -6465,6 +6526,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "chuyen-muc-dich-su-dung-dat-khoan-1-dieu-175-igate-lao-cai",
+        "collectFormContext": True,
         # 1.115679 (bản nộp ở PHƯỜNG/XÃ) trên cổng iGate MỚI của Lào Cai — cách nhận diện như
         # "chuyen-muc-dich-su-dung-dat-igate-lao-cai": urlScope "<host>/vi/" (eForm cũ là /dich-vu-cong/…), mã TTHC +
         # id apply-online; mục "<key>-test" cho dichvucongtest sinh ở _IGATE_LAO_CAI cuối danh sách, kèm textPriority
@@ -6504,6 +6566,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "chuyen-muc-dich-su-dung-dat-khoan-1-dieu-175",
+        "collectFormContext": True,
         # Cổng dichvucong.laocai.gov.vn (Nth.FormBuilder — iGate VNPT) — bản nộp ở PHƯỜNG/XÃ của cụm thủ tục
         # "chuyển mục đích / chuyển hình thức / gia hạn / điều chỉnh thời hạn". TÊN TRÙNG Y HỆT 1.115651
         # (bản nộp ở Sở, key chuyen-muc-dich-su-dung-dat-lao-cai) nên nhãn ghi kèm MÃ 1.115679 để cán bộ tìm
@@ -6578,6 +6641,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "xac-dinh-lai-dien-tich-dat-o-truoc-01-7-2004-igate-lao-cai",
+        "collectFormContext": True,
         # 1.115685 trên cổng iGate MỚI của Lào Cai — cách nhận diện như "chuyen-muc-dich-su-dung-dat-igate-lao-cai":
         # urlScope "<host>/vi/" (eForm cũ là /dich-vu-cong/…), mã TTHC + id apply-online; mục "<key>-test" cho
         # dichvucongtest sinh ở _IGATE_LAO_CAI cuối danh sách. KHÔNG khai textPriority (giữ nhánh ưu tiên cho bản Quảng
@@ -6610,6 +6674,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "xac-dinh-lai-dien-tich-dat-o-truoc-01-7-2004",
+        "collectFormContext": True,
         # Mã 1.115685 — cổng dichvucong.laocai.gov.vn (iGate VNPT legacy, HTML/jQuery thuần). Bước 2
         # dùng CÙNG bộ ô CongDan_*/ChuHoSo_* với 1.115650/1.115678/1.115693/1.115694 (engine dom-*),
         # mapping theo "mapping_xac_dinh_lai_dien_tich_dat_o_1.115685.xlsx" (2 bản DOM cá nhân+tổ chức).
@@ -6677,6 +6742,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "su-dung-dat-ket-hop-da-muc-dich-cap-xa-igate-lao-cai",
+        "collectFormContext": True,
         # 1.115682 trên cổng iGate MỚI của Lào Cai — cách nhận diện như "chuyen-muc-dich-su-dung-dat-igate-lao-cai":
         # urlScope "<host>/vi/" (eForm cũ là /dich-vu-cong/…), mã TTHC + id apply-online; mục "<key>-test" cho
         # dichvucongtest sinh ở _IGATE_LAO_CAI cuối danh sách. Mục cũ không có textPriority nên không cần chép cụm text.
@@ -6707,6 +6773,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "su-dung-dat-ket-hop-da-muc-dich-cap-xa",
+        "collectFormContext": True,
         # Mã 1.115682 — cổng dichvucong.laocai.gov.vn (iGate VNPT legacy, HTML/jQuery thuần: mapping
         # đếm được formcontrolname = 0, formio-component = 0). Bước 2 dùng CÙNG bộ ô CongDan_*/
         # ChuHoSo_* với 1.115650/1.115678/1.115681/1.115685/1.115693/1.115694 (engine dom-*), mapping
@@ -6774,6 +6841,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-cap-gcn-dien-tich-tang-them-nhan-chuyen-quyen-mot-phan-thua",
+        "collectFormContext": True,
         # Cổng dichvucong.laocai.gov.vn (iGate VNPT, maCoQuan=STNMT_LCI) — bước 2 dùng CÙNG bộ ô
         # CongDan_*/ChuHoSo_* với 1.115667/1.115668 (engine dom-*), mapping theo
         # "Mapping_DVC_LaoCai_Buoc2_TranThiMinhHue.xlsx".
@@ -6830,6 +6898,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-cap-gcn-dien-tich-tang-them-thay-doi-ranh-gioi-igate-lao-cai",
+        "collectFormContext": True,
         # 1.115693 trên cổng iGate MỚI của Lào Cai — cách nhận diện như "dang-ky-dat-dai-lan-dau-ho-gia-dinh-igate-lao-cai":
         # urlScope "<host>/vi/", mã TTHC + id apply-online; mục "<key>-test" sinh ở _IGATE_LAO_CAI cuối danh sách, kèm cụm
         # tên chép từ mục cũ (id apply-online mỗi xã/phường một khác) → mục này PHẢI đứng trước mục cũ.
@@ -6869,6 +6938,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-cap-gcn-dien-tich-tang-them-thay-doi-ranh-gioi",
+        "collectFormContext": True,
         # Cổng dichvucong.laocai.gov.vn (iGate VNPT legacy, HTML/jQuery thuần) — bước 2 dùng CÙNG bộ ô
         # CongDan_*/ChuHoSo_* với 1.115667/1.115668/1.115678/1.115694 (engine dom-*), mapping theo
         # "Mapping_1.115693_Cap_GCN_dien_tich_tang_them_Nguyen_Duy_Tam.xlsx" (2 bản DOM cá nhân+tổ chức).
@@ -6945,6 +7015,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-igate-lao-cai",
+        "collectFormContext": True,
         # 1.115677 trên cổng iGate MỚI của Lào Cai (Form.io) — cùng cách nhận diện với mục
         # "chuyen-muc-dich-su-dung-dat-igate-lao-cai": urlScope "<host>/vi/" (eForm cũ là /dich-vu-cong/…), mã TTHC
         # bắt màn "Chọn trường hợp giải quyết", id apply-online bắt stepper. Bản cổng TEST sinh ngay sau danh sách.
@@ -6977,6 +7048,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep",
+        "collectFormContext": True,
         # Cổng dichvucong.laocai.gov.vn (iGate VNPT, Nth.FormBuilder) — bước 2 dùng CÙNG bộ ô
         # CongDan_*/ChuHoSo_* với 1.115667/1.115668/1.115694 (engine dom-*), mapping theo
         # "Mapping_XN_thoi_han_SDD_nong_nghiep_LaoCai.xlsx".
@@ -7020,6 +7092,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-lao-cai",
+        "collectFormContext": True,
         # Mã 1.013947.H38 — cùng cổng dichvucong.laocai.gov.vn và CÙNG form bước 2 CongDan_*/ChuHoSo_* với
         # 1.115677 ở trên (mapping "Mapping_XN_tiep_tuc_SDD_nong_nghiep_LaoCai.xlsx"), pipeline dùng lại
         # schema/mapper của 1.115677. Khác: bảng Thành phần hồ sơ 3 dòng (dòng b.2.1 không tích).
@@ -7057,6 +7130,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-dvcqg-lao-cai",
+        "collectFormContext": True,
         # Mã 1.013831.H38 — cùng cổng dichvucong.laocai.gov.vn và CÙNG form bước 2 CongDan_*/ChuHoSo_* với
         # 1.115668 (`dang-ky-bien-dong-dat-dai-lao-cai`, mapping "Mapping_DKBD_Buoc2_NguoiNop_ChuHoSo.xlsx"),
         # pipeline dùng lại schema/mapper của 1.115668. Khác: Đơn Mẫu số 18 (NĐ 151/2025) và bảng Thành phần
@@ -7097,6 +7171,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-lao-cai",
+        "collectFormContext": True,
         # Mã 1.013833.H38 — cùng cổng dichvucong.laocai.gov.vn và CÙNG form bước 2 CongDan_*/ChuHoSo_* với
         # 1.115668 / 1.013831, pipeline dùng lại UI + mapper của 1.115668 (mapping "Mapping_DK_bien_dong_….xlsx").
         # Khác: không có bên nhận — chủ hồ sơ là người đứng tên đầu ở Đơn mục 1.1; bảng Thành phần hồ sơ 7 dòng.
@@ -7141,6 +7216,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dinh-chinh-gcn-da-cap-dvcqg-lao-cai",
+        "collectFormContext": True,
         # Mã TTHC 1.012790 (Văn phòng đăng ký đất đai tỉnh Lào Cai) — key TRÙNG ke_khai_links.json. Cùng cổng
         # dichvucong.laocai.gov.vn và CÙNG form bước 2 CongDan_*/ChuHoSo_* với 1.115668 / 1.013833 (mapping
         # "Mapping_Dinh_chinh_GCN_Mau24.xlsx"); bảng Thành phần hồ sơ 4 dòng.
@@ -7208,6 +7284,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham",
+        "collectFormContext": True,
         "detect": {
             "textIncludes": [
                 "Cấp giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm đối với cơ sở kinh doanh dịch vụ ăn uống, cơ sở sản xuất thực phẩm thuộc phạm vi quản lý của Bộ Y tế"
@@ -7231,6 +7308,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-gcn-attp-nong-lam-thuy-san",
+        "collectFormContext": True,
         # Cổng NN&MT cấp mã apply-online/<id> + process=<id> RIÊNG cho từng cơ quan/quy trình (UBND xã, Chi cục…):
         # hai mã dưới chỉ là của một cơ quan, xã khác ra mã khác → không nhận diện. Thêm cụm tên (hai cụm AND, cụm
         # sau chặn nhầm với ATTP Bộ Y tế "cơ sở kinh doanh dịch vụ ăn uống") + textPriority, khoá trong cổng NN&MT
@@ -7264,6 +7342,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-lai-giay-chung-nhan-du-dieu-kien-an-toan-thuc-pham",
+        "collectFormContext": True,
         "detect": {
             "textIncludes": [
                 "Cấp lại Giấy chứng nhận đủ điều kiện an toàn thực phẩm đối với cơ sở sản xuất, kinh doanh thực phẩm"
@@ -7320,6 +7399,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "thong-bao-sua-doi-bo-sung-noi-dung-chuong-trinh-khuyen-mai",
+        "collectFormContext": True,
         # Cổng DVC Bộ Công Thương (Form.io + bảng đính kèm attp-row, CÙNG engine 2 thủ tục ATTP ở trên),
         # dùng chung cho Sở Công Thương mọi tỉnh nên nhãn không gắn tỉnh. Mã 2.001474 hiện ở dòng
         # "Quy trình: 2.001474 - …" cả bước kê khai lẫn bước đính kèm. Tờ khai Mẫu 06 dùng lại 5 field-key
@@ -7347,6 +7427,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-khuyen-mai-may-rui-mot-tinh",
+        "collectFormContext": True,
         # Cùng cổng DVC Bộ Công Thương + cùng engine với 2.001474 ở trên (2 form Form.io, bảng đính kèm
         # attp-row), dùng chung cho Sở Công Thương mọi tỉnh nên nhãn không gắn tỉnh. Mã 2.000004 hiện ở dòng
         # "Quy trình: 2.000004 - …". Tờ khai Mẫu 02 ĐP dùng lại 7 field-key của khối tài khoản → occurrence 0/1.
@@ -7381,12 +7462,13 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "ho-tro-mai-tang-1116910",
+        "collectFormContext": True,
         # Mã TTHC 1.116910 (DVCQG /thu-tuc-hanh-chinh/01a0f66e-…), thay mã cũ 1.001731, dùng chung CẢ NƯỚC cho cả
         # Auto Fill lẫn trợ lý (cùng key). 5/11/2026 gộp entry trùng "ho-tro-mai-tang" vào đây và bỏ tiền tố
         # "[Tỉnh Ninh Bình]": tiền tố khoá Auto Fill về Ninh Bình và làm báo cáo hồ sơ trợ lý tỉnh khác hiện tên Ninh Bình.
-        # Chủ hồ sơ trên cổng là NGƯỜI CHẾT; người đứng ra mai táng là người nộp. Riêng phường Nha Trang (Khánh Hòa)
-        # và phường Tiên Du (Bắc Ninh) (cờ requesterAsOwner, ho_tro_mai_tang/process/mapper.py): chủ hồ sơ = người
-        # đề nghị trên tờ khai.
+        # Chủ hồ sơ trên cổng là NGƯỜI CHẾT; người đứng ra mai táng là người nộp. Riêng các đơn vị trong
+        # _REQUESTER_OWNER_WARDS (cờ requesterAsOwner, ho_tro_mai_tang/process/mapper.py): chủ hồ sơ = người đề nghị
+        # trên tờ khai.
         "detect": {
             "urlIncludes": ["maThuTuc=1.116910", "01a0f66e-63a3-749a-a9d8-2dcbeda6af79"],
             "textIncludes": ["Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội"],
@@ -7394,6 +7476,8 @@ PROCEDURES: list[dict] = [
         },
         "label": "Hỗ trợ chi phí mai táng cho đối tượng bảo trợ xã hội",
         "mode": "agent",
+        # Điền đợt 2 (thanh tra định danh + địa chỉ, app/second_pass) trên form Form.io: extension báo secondPassFormio.
+        "secondPass": "formio",
         "hasAttachmentStep": True,
         "roles": [],
         "useDangKyBy": False,
@@ -7412,12 +7496,15 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "ho-tro-mai-tang-huu-tri-xa-hoi",
+        "collectFormContext": True,
         "detect": {
             "textIncludes": ["Hỗ trợ chi phí mai táng đối với đối tượng hưởng trợ cấp hưu trí xã hội"],
             "headingDisabled": True,
         },
         "label": "Hỗ trợ chi phí mai táng đối với đối tượng hưởng trợ cấp hưu trí xã hội",
         "mode": "agent",
+        # Điền đợt 2 (thanh tra định danh + địa chỉ, app/second_pass) trên form Form.io: extension báo secondPassFormio.
+        "secondPass": "formio",
         "hasAttachmentStep": True,
         "roles": [],
         "useDangKyBy": False,
@@ -7604,6 +7691,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dieu-chinh-huu-tri-xa-hoi",
+        "collectFormContext": True,
         # Trang nộp đã chuyển sang Cổng Bộ Y tế dichvucongbyt.moh.gov.vn (/padsvc/apply-online/<ObjectId>):
         # URL không mang mã TTHC → nhận theo tiêu đề <h2 class="title"> "Thực hiện trợ cấp hưu trí xã hội".
         # textIncludes đòi ĐỦ mọi cụm nên chỉ để MỘT cụm (trang mới không in tên dài "Thực hiện, điều chỉnh,
@@ -7618,6 +7706,9 @@ PROCEDURES: list[dict] = [
         "label": "Thực hiện trợ cấp hưu trí xã hội",
         "mode": "agent",
         "hasAttachmentStep": True,
+        # Điền đợt 2 trên form Form.io (data[...]): chỉ chạy khi extension khai fillSupports có "secondPassFormio".
+        # Bản khác bỏ qua khoá này.
+        "secondPass": "formio",
         "roles": [],
         "useDangKyBy": False,
         # Cài đặt "Có tách hồ sơ khi đính kèm" (options.splitDocuments): BẬT → PDF gộp cắt theo trang, mỗi giấy
@@ -7635,6 +7726,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "mai-tang-dan-cong-hoa-tuyen",
+        "collectFormContext": True,
         "detect": {
             "textIncludes": [
                 "Giải quyết chế độ mai táng phí đối với dân công hỏa tuyến tham gia kháng chiến chống Pháp, chống Mỹ, chiến tranh bảo vệ Tổ quốc và làm nhiệm vụ quốc tế"
@@ -7665,6 +7757,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "xac-dinh-muc-do-khuyet-tat",
+        "collectFormContext": True,
         "detect": {
             "urlIncludes": ["maThuTuc=1.001699"],
             "textIncludes": ["Xác định, xác định lại mức độ khuyết tật và cấp Giấy xác nhận khuyết tật"],
@@ -7717,6 +7810,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "xet-tuyen-vien-chuc",
+        "collectFormContext": True,
         "detect": {"textIncludes": ["Thủ tục xét tuyển Viên chức (85/2023/NĐ-CP)"], "headingDisabled": True},
         "label": "Thủ tục xét tuyển Viên chức (85/2023/NĐ-CP)",
         "mode": "agent",
@@ -7800,6 +7894,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "thi-tuyen-cong-chuc",
+        "collectFormContext": True,
         "detect": {"textIncludes": ["Thi tuyển công chức"], "headingDisabled": True, "textPriority": True},
         "label": "Thi tuyển công chức",
         "mode": "agent",
@@ -7939,6 +8034,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "uu-dai-ncc-tu-tran",
+        "collectFormContext": True,
         "detect": {
             "urlIncludes": ["apply-online/696072f4b066193e95eb9d5e", "process=69706da26cabcb44db2cea08"],
             "textIncludes": ["Hưởng trợ cấp khi người có công đang hưởng trợ cấp ưu đãi từ trần"],
@@ -7965,6 +8061,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "giai-quyet-che-do-khang-chien",
+        "collectFormContext": True,
         # Cổng Bộ Nội vụ dichvucongbnv.moha.gov.vn — Form.io, engine fillFormStandard dom-* + attach MOHA
         # ("Chọn tệp"). URL SPA khác nhau theo ObjectId và process ID → detect theo urlIncludes + text.
         "detect": {
@@ -7997,6 +8094,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "sua-doi-thong-tin-ho-so-nguoi-co-cong",
+        "collectFormContext": True,
         # Cổng Bộ Nội vụ dichvucongbnv.moha.gov.vn — Form.io, engine fillFormStandard dom-* + attach MOHA
         # ("Chọn tệp"). URL SPA không có MaTTHC trong DOM → detect theo cụm tên thủ tục (như MOHA khác).
         "detect": {
@@ -8024,6 +8122,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "di-chuyen-ho-so-nguoi-huong-tro-cap",
+        "collectFormContext": True,
         # Cổng Bộ Nội vụ dichvucongbnv.moha.gov.vn — Form.io, engine fillFormStandard dom-* + attach MOHA
         # ("Chọn tệp"). URL SPA không có MaTTHC trong DOM → detect theo cụm tên thủ tục.
         "detect": {
@@ -8056,6 +8155,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-trich-luc-sao-ho-so-nguoi-co-cong",
+        "collectFormContext": True,
         # Mã TTHC 1.010828, nộp tại SỞ Nội vụ (ke_khai_links đặt selectSo) — key TRÙNG ke_khai_links. Cổng Bộ Nội vụ
         # dichvucongbnv.moha.gov.vn, Form.io cùng họ field với 1.010814 nhưng KHÔNG có mẫu khai đơn: Phần I người
         # nộp khoá họ tên/ngày sinh/CCCD theo tài khoản, Phần II chủ hồ sơ, bảng "Hồ sơ kèm theo gồm". URL SPA không
@@ -8085,6 +8185,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "tro-cap-xa-hoi-hang-thang",
+        "collectFormContext": True,
         # Cổng Bộ Y tế dichvucongbyt.moh.gov.vn — Form.io, engine fillFormStandard dom-* + attach BẢNG
         # checkbox (engine attp-row như ATTP). URL SPA là ObjectId không có MaTTHC → detect theo cụm tên.
         "detect": {
@@ -8119,6 +8220,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-moi-giay-phep-hanh-nghe-chuyen-tiep",
+        "collectFormContext": True,
         # Cổng Bộ Y tế dichvucongbyt.moh.gov.vn — Form.io, engine fillFormStandard dom-* + attach BẢNG
         # attp-row (như #62 tro-cap-xa-hoi-hang-thang, field-key data[...] TRÙNG KHÍT). CHỈ MỘT người =
         # người hành nghề. URL SPA là ObjectId không có MaTTHC → detect theo cụm tên đặc trưng.
@@ -8160,6 +8262,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep",
+        "collectFormContext": True,
         # Mã TTHC 1.012292, nộp tại Sở Y tế. Cổng Bộ Y tế dichvucongbyt.moh.gov.vn — CÙNG form với
         # cap-moi-giay-phep-hanh-nghe-chuyen-tiep (+ ô data[ghiChu]); bảng đính kèm 10 dòng, nhiều dòng trùng
         # tên. URL SPA là ObjectId không có MaTTHC → detect theo cụm tên đặc trưng.
@@ -8199,6 +8302,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-moi-giay-phep-hoat-dong-kham-benh-chua-benh",
+        "collectFormContext": True,
         # Mã TTHC 1.012278, nộp tại Sở Y tế. Cổng Bộ Y tế dichvucongbyt.moh.gov.vn — CÙNG khung Form.io với
         # dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep (Phần I/II + data[ghiChu]); bảng đính kèm 11 dòng, dòng 1
         # và 10 trùng tên "Đơn theo Mẫu 02". URL SPA là ObjectId không có MaTTHC → detect theo TÊN thủ tục in
@@ -8237,6 +8341,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-lai-giay-phep-hanh-nghe-truoc-2024",
+        "collectFormContext": True,
         # Cổng Bộ Y tế dichvucongbyt.moh.gov.vn — Form.io, field-key TRÙNG KHÍT cap-moi-giay-phep-hanh-nghe-
         # chuyen-tiep; attach BẢNG attp-row ~34 dòng trùng tên (xem planner). Trang không in mã TTHC, URL SPA
         # là ObjectId → detect theo cụm tên đặc trưng.
@@ -8273,6 +8378,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dieu-chinh-giay-phep-hoat-dong-kcb",
+        "collectFormContext": True,
         # Cổng Bộ Y tế dichvucongbyt.moh.gov.vn — Form.io field-key như các thủ tục BYT; chủ hồ sơ là CƠ SỞ
         # (tổ chức) → mapper chọn data[chonDoiTuong] loại tổ chức trước để ô tên tổ chức hiện ra. Attach
         # attp-row 5 dòng (2 dòng Đơn trùng tên). Trang không in mã TTHC, URL SPA là ObjectId → detect theo tên.
@@ -8303,6 +8409,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-chung-chi-hanh-nghe-duoc",
+        "collectFormContext": True,
         # Cổng Bộ Y tế dichvucongbyt.moh.gov.vn — Form.io, engine fillFormStandard dom-* + attach BẢNG
         # attp-row (field-key data[...] TRÙNG KHÍT #92/#62). 1 người=người đề nghị (tự nộp / nộp thay như
         # #92). URL SPA là ObjectId không MaTTHC → detect theo cụm tên đặc trưng.
@@ -8343,6 +8450,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te",
+        "collectFormContext": True,
         "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 1.014104, nộp tại SỞ Y tế (ke_khai_links đặt selectSo). Cổng Bộ Y tế — Form.io, engine
         # fillFormStandard dom-* + attach attp-row tách PDF gộp theo trang (field-key trùng #101). URL SPA
@@ -8421,6 +8529,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-van-ban-chap-thuan-tau-ca",
+        "collectFormContext": True,
         # Cổng Nông nghiệp & Môi trường dichvucongnnmt.mae.gov.vn — Form.io, engine fillFormStandard dom-*
         # + attach attp-row (field-key nhân thân data[...] TRÙNG KHÍT #92/#101). Có thêm nội dung tờ khai
         # Mẫu 12 (occurrence=1) + thông số tàu. URL SPA ObjectId → detect theo cụm tên đặc trưng.
@@ -8453,6 +8562,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-giay-phep-khai-thac-thuy-san",
+        "collectFormContext": True,
         # Cổng Nông nghiệp & Môi trường dichvucongnnmt.mae.gov.vn — Form.io, engine fillFormStandard dom-*
         # + attach attp-row (field-key nhân thân data[...] TRÙNG KHÍT #97/#92). CHỈ nhân thân Phần I/II;
         # ô isOwnerDossierCheck mặc định CHƯA tick (như #97). URL SPA ObjectId → detect theo cụm tên.
@@ -8486,6 +8596,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-hanh-nghe",
+        "collectFormContext": True,
         # Mã TTHC 1.012275 (khám bệnh, chữa bệnh — QĐ 2976/QĐ-BYT), nộp tại SỞ Y tế: ke_khai_links đặt
         # selectSo, phải tích "Sở" ở khối "Chọn cơ quan thực hiện" mới vào được form. URL trang chi tiết
         # DVCQG được with_ke_khai_detect_urls ghép thêm vào urlIncludes. Cụm tên ngắn và dễ trùng
@@ -8521,6 +8632,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cong-bo-co-so-du-dieu-kien-tiem-chung",
+        "collectFormContext": True,
         # Mã TTHC 2.000655, nộp tại SỞ Y tế (ke_khai_links đặt selectSo). Form.io trên hệ thống TTHC Bộ Y tế,
         # engine fillFormStandard dom-* + attach attp-row (bảng 1 dòng Văn bản thông báo). Phần I chỉ bổ sung
         # khi có CCCD khớp tài khoản đăng nhập (extension gửi formContext); Phần II theo tờ Thông báo.
@@ -8553,6 +8665,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-lai-chung-chi-hanh-nghe-thu-y",
+        "collectFormContext": True,
         # Mã TTHC 1.005319 — nộp tại SỞ Nông nghiệp và Môi trường (ke_khai_links đặt selectSo). Form.io,
         # engine fillFormStandard dom-* + attach attp-row (bảng 1 dòng Đơn 03.HNTY). Field-key nhân thân
         # data[...] TRÙNG KHÍT #97/#101; Phần III là nội dung Đơn 03.HNTY. URL kê khai DVCQG được
@@ -8591,6 +8704,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "gia-han-chung-chi-hanh-nghe-thu-y",
+        "collectFormContext": True,
         # Mã TTHC 2.001064 — nộp tại SỞ Nông nghiệp và Môi trường (ke_khai_links đặt selectSo). Cùng họ
         # form với cấp lại (#cap-lai-chung-chi-hanh-nghe-thu-y): Form.io dom-* + attach attp-row, tờ đơn
         # là Mẫu 02.HNTY (không có ô lý do). Bảng thành phần 3 dòng + nút "Thêm giấy tờ" cho văn bằng.
@@ -8630,6 +8744,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-gcn-dang-ky-tau-ca",
+        "collectFormContext": True,
         # Cổng Nông nghiệp & Môi trường dichvucongnnmt.mae.gov.vn — Form.io, engine fillFormStandard dom-*
         # + attach attp-row (16 dòng thành phần hồ sơ). Field-key nhân thân data[...] TRÙNG KHÍT #66/#92.
         # Form CHỈ thu nhân thân 2 vai (KHÔNG occurrence, KHÔNG ô thông số tàu — tàu chỉ ở file đính kèm).
@@ -8665,6 +8780,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-bien-phap-bao-dam-qsdd",
+        "collectFormContext": True,
         # Cổng dịch vụ công Đà Nẵng dichvucong.danang.gov.vn — Form.io (field-key RIÊNG), engine
         # fillFormStandard dom-* + attach attp-row. Form chỉ thu NGƯỜI YÊU CẦU (cá nhân/tổ chức); nội dung
         # thế chấp trong Phiếu Mẫu 01a đính kèm. URL SPA ObjectId → detect theo cụm tên.
@@ -8696,6 +8812,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "xoa-dang-ky-phuong-tien-thuy",
+        "collectFormContext": True,
         # Cổng DVC Bộ Xây dựng dvc.moc.gov.vn — Form.io, engine fillFormStandard dom-* + attach attp-row
         # (CÙNG cổng #63 liên vận & quy-hoach). HAI vai: Người nộp (Phần I) / Chủ phương tiện (Phần II,
         # cá nhân HOẶC tổ chức). Key trùng Phần I↔II điền bằng occurrence. Nút "Sao chép thông tin người
@@ -8727,6 +8844,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-bien-dong-dat-dai-da-nang",
+        "collectFormContext": True,
         # Cổng DVC TP Đà Nẵng dichvucong.danang.gov.vn — Form.io, engine fillFormStandard dom-* + attach
         # attp-row (CÙNG cổng #95). HAI vai trong 1 panel: Chủ hồ sơ (ownerFullname/organization) / Người
         # nộp (fullname/CCCD/địa chỉ + chonDoiTuong + taxCode). isOwnerDossier bỏ tích khi ủy quyền. URL
@@ -9081,6 +9199,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-thay-doi-bien-phap-bao-dam-qsdd",
+        "collectFormContext": True,
         # 1.011442 — Cổng DVC TP Đà Nẵng dichvucong.danang.gov.vn (Form.io, CÙNG panel "Thông tin chung" với
         # xóa-đăng-ký-BPBĐ Đà Nẵng / 1.012756) + attach attp-row 12 dòng. Key trùng ke_khai_links.json. Mã QG dùng
         # chung với Lào Cai (dang-ky-thay-doi-bien-phap-bao-dam-lao-cai) → khóa host danang. Cụm tên có "thay
@@ -9123,6 +9242,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-gcn-so-nha-da-nang",
+        "collectFormContext": True,
         # Cổng DVC TP Đà Nẵng dichvucong.danang.gov.vn — Form.io, engine fillFormStandard dom-* + attach
         # attp-row (CÙNG cổng #68/#75, field-key data[...] y hệt). HAI vai 1 panel: Chủ hồ sơ (chủ sở hữu
         # nhà ký đơn) / Người nộp; mặc định tự nộp → tick isOwnerDossier. noidungyeucaugiaiquyet ghép tên
@@ -9158,6 +9278,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "xac-nhan-ho-so-so-nha-da-nang",
+        "collectFormContext": True,
         # Cổng DVC TP Đà Nẵng dichvucong.danang.gov.vn — Form.io, engine fillFormStandard dom-* + attach
         # attp-row. CÙNG cổng + field-key data[...] Y HỆT #110 (cap-gcn-so-nha-da-nang); chỉ khác tên thủ
         # tục + đính kèm 1 dòng (Đơn đề nghị + GCN QSDĐ minh chứng cùng dòng). URL SPA ObjectId → detect
@@ -9368,6 +9489,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn",
+        "collectFormContext": True,
         "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 1.013995. Cổng DVC TP Đà Nẵng dichvucong.danang.gov.vn — Form.io, engine fillFormStandard
         # dom-* (CÙNG field-key panel "Thông tin chung" với #75) + attach attp-row 8 dòng, tách PDF gộp theo
@@ -9410,6 +9532,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-bien-dong-chia-tach-hop-nhat-sap-nhap-to-chuc-cap-gcn-tung-thua",
+        "collectFormContext": True,
         "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 1.013977. Cổng DVC TP Đà Nẵng dichvucong.danang.gov.vn — Form.io, engine fillFormStandard
         # dom-* (CÙNG field-key panel "Thông tin chung" với 1.013995) + attach attp-row 9 dòng: PDF gộp nhiều chục
@@ -9453,6 +9576,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh",
+        "collectFormContext": True,
         "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 1.012945. Cổng DVCQG — Form.io, engine fillFormStandard dom-* + attach attp-row 7 dòng. Eform
         # chung: "Chọn mẫu đơn" (data[ChonTruongHop]) mở MỘT trong 4 fieldset chia / tách / sáp nhập / hợp nhất,
@@ -9568,6 +9692,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san",
+        "collectFormContext": True,
         "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 1.012906 (Sở Xây dựng). Form.io, engine fillFormStandard dom-* + attach attp-row 6 dòng (tách
         # theo trang: Đơn trang 1 + CCCD trang 2 của cùng một PDF về 2 dòng). Phần I người nộp khoá họ tên/ngày
@@ -9599,6 +9724,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-dat-dai-lan-dau-nha-nuoc-giao-quan-ly",
+        "collectFormContext": True,
         "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 1.012756 (Văn phòng Đăng ký đất đai). Cổng DVC TP Đà Nẵng dichvucong.danang.gov.vn — Form.io,
         # engine fillFormStandard dom-* (CÙNG field-key panel "Thông tin chung" với 1.013977) + attach attp-row 2
@@ -9634,6 +9760,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-phep-long-duong-via-he",
+        "collectFormContext": True,
         # Cổng DVC Bộ Xây dựng dvc.moc.gov.vn — Form.io, engine fillFormStandard dom-* + attach attp-row
         # (CÙNG cổng #63/#76/#78). EFORM RIÊNG nhiều phần: Phần I người nộp (cá nhân đại diện) + Phần I-b
         # doanh nghiệp (điều kiện, khi Tổ chức) + Phần II đơn đề nghị + Phần III thông tin đề nghị
@@ -9786,6 +9913,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-giay-phep-chat-ha-cay-xanh",
+        "collectFormContext": True,
         # Cổng DVC Bộ Xây dựng dvc.moc.gov.vn — Form.io, engine fillFormStandard dom-* + attach attp-row
         # (CÙNG cổng #63/#103). HAI vai: Người nộp (flat data[...]) / Chủ hồ sơ + đơn (nested
         # data[panel][...]). Có DATAGRID bảng kê cây data[panel][tbantest][N][...] (cần FE parse grid lồng
@@ -9819,6 +9947,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-ban-sao-van-bang-so-goc",
+        "collectFormContext": True,
         # Cổng DVC Bộ GD&ĐT dvc.moet.gov.vn — Form.io, engine fillFormStandard dom-* + attach attp-row.
         # Field-key PHẲNG data[...]. Người nộp (Phần I) lấy tên+CCCD từ formContext (collectFormContext);
         # nút "Người nộp là chủ hồ sơ" (data[isOwnerDossier]) KHÔNG tick → điền thẳng chủ hồ sơ (owner*/
@@ -9853,6 +9982,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "chap-thuan-dau-noi-tam",
+        "collectFormContext": True,
         # Cổng DVC Bộ Xây dựng dvc.moc.gov.vn — Form.io, engine fillFormStandard dom-* + attach attp-row
         # (CÙNG cổng #63/#76). Field-key PHẲNG data[...]. HAI vai: Người nộp (Phần I) / Đơn vị đề nghị +
         # nội dung Đơn (Phần II). URL SPA ObjectId → detect theo cụm tên.
@@ -9919,6 +10049,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-cap-lai-phu-hieu-xe-kinh-doanh-van-tai",
+        "collectFormContext": True,
         # TTHC 2.002288 — cổng DVC Bộ Xây dựng dvc.moc.gov.vn (Form.io, engine fillFormStandard dom-* + attach
         # attp-row; CÙNG cổng xe tập lái / liên vận). Chủ thể đề nghị = đơn vị kinh doanh vận tải; người nộp là
         # cá nhân đăng nhập. Xe nhập qua panel "Thêm phương tiện" (comp dom-click mở panel, một xe mỗi lần).
@@ -10041,6 +10172,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "xoa-dang-ky-tau-ca",
+        "collectFormContext": True,
         # Cổng dichvucongnnmt.mae.gov.vn dùng Form.io + bảng Angular. URL không có mã TTHC dạng số,
         # nhận diện bằng id thủ tục hoặc id quy trình lấy trực tiếp từ snapshot apply-online thật.
         "detect": {"urlIncludes": [
@@ -10239,6 +10371,10 @@ PROCEDURES: list[dict] = [
         "label": "Thực hiện trợ cấp xã hội và nhận chăm sóc, nuôi dưỡng, hỗ trợ kinh phí nhận chăm sóc, "
                  "nuôi dưỡng hằng tháng",
         "mode": "agent",
+        # Điền đợt 2 (thanh tra định danh + địa chỉ, app/second_pass) trên form Form.io: extension báo secondPassFormio.
+        "secondPass": "formio",
+        # Auto Fill gửi options.formContext (họ tên + CCCD tài khoản VNeID) để mapper chọn người nộp theo tài khoản.
+        "collectFormContext": True,
         "hasAttachmentStep": True,
         "roles": [],
         "useDangKyBy": False,
@@ -10257,6 +10393,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "tiep-nhan-doi-tuong-can-bao-ve-khan-cap-vao-co-so-tro-giup-xa-hoi",
+        "collectFormContext": True,
         # Mã TTHC 1.116908 (NĐ 335/2026/NĐ-CP) — key TRÙNG ke_khai_links.json. Cổng Bộ Y tế
         # dichvucongbyt.moh.gov.vn, cùng form Form.io với 1.116909 + bảng thành phần hồ sơ 2 dòng (attp-row).
         # URL SPA là ObjectId không mang mã → nhận theo cụm tên; "cần bảo vệ khẩn cấp" không có ở thủ tục anh em
@@ -10288,6 +10425,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "tiep-nhan-doi-tuong-bao-tro-xa-hoi-co-hoan-canh-dac-biet-kho-khan-vao-co-so-tro-giup-xa-hoi",
+        "collectFormContext": True,
         # Mã TTHC 1.116907 (NĐ 335/2026/NĐ-CP) — key TRÙNG ke_khai_links.json. CÙNG cổng, form và Tờ khai Mẫu số 04
         # với 1.116908 ngay trên (pipeline gọi lại bản đó); bảng thành phần hồ sơ CHỈ dòng tờ khai. Nhận theo cụm
         # tên; "bảo trợ xã hội có hoàn cảnh đặc biệt khó khăn" không có trong nhãn 1.116908/1.116909/1.116910.
@@ -10354,6 +10492,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc",
+        "collectFormContext": True,
         # Mã QG 1.014335 — cổng DVC Bộ GD&ĐT dvc.moet.gov.vn, Form.io (engine fillFormStandard dom-*) + đính kèm
         # attp-row (2 dòng cố định, mỗi dòng 1 PDF gộp). Field-key PHẲNG data[...] theo
         # Mapping_Mien_giam_hoc_phi_GDNN_BoGDDT.xlsx. Người nộp (Phần I) khoá họ tên/CCCD/ngày sinh theo tài khoản;
@@ -10391,6 +10530,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "dang-ky-noi-quy-lao-dong",
+        "collectFormContext": True,
         "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 2.001955 — cổng DVCQG (Bộ Nội vụ), Form.io (engine fillFormStandard dom-*) theo
         # Mapping_DangKy_NoiQuyLaoDong_BoNoiVu.xlsx. Phần I người nộp khoá họ tên/CCCD/ngày sinh theo tài khoản →
@@ -10565,6 +10705,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich",
+        "collectFormContext": True,
         # Mã TTHC 1.001822 (QT-09), nộp tại Sở VHTTDL tỉnh. Key TRÙNG ke_khai_links (selectSo) nên URL trang chi
         # tiết DVCQG + matthc=/madvc=1.001822 được ghép tự động; khai lại ở đây như thủ tục quảng cáo băng-rôn để
         # nhận diện ở CẢ trang DVCQG lẫn trang nộp /nop-ho-so?MaTTHC=1.001822 của cổng Bộ VHTTDL (liz-*, engine
@@ -10602,6 +10743,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-lai-chung-chi-hanh-nghe-bao-quan-tu-bo-phuc-hoi-di-tich",
+        "collectFormContext": True,
         # Mã TTHC 1.002003 (QT-10), nộp tại Sở VHTTDL tỉnh — cùng cổng, cùng trang liz với bản cấp mới 1.001822 ngay
         # trên. Key TRÙNG ke_khai_links (selectSo); nhận diện CẢ trang chi tiết DVCQG (uuid) lẫn trang nộp
         # /nop-ho-so?MaTTHC=1.002003 của cổng Bộ VHTTDL (engine content/fill-liz.js).
@@ -10637,6 +10779,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "to-chuc-bieu-dien-nghe-thuat",
+        "collectFormContext": True,
         # Mã TTHC 1.009397 (NĐ 144/2020/NĐ-CP), nộp tại Sở VHTTDL tỉnh — cùng cổng Bộ VHTTDL (liz-*, engine
         # content/fill-liz.js) với CCHN di tích ngay trên. Key TRÙNG ke_khai_links (selectSo); nhận diện CẢ trang chi
         # tiết DVCQG (uuid) lẫn trang nộp /nop-ho-so?MaTTHC=1.009397.
@@ -10671,6 +10814,7 @@ PROCEDURES: list[dict] = [
     },
     {
         "key": "cap-giay-chung-nhan-khoa-cap-nhat-kien-thuc-huong-dan-vien-du-lich",
+        "collectFormContext": True,
         # Mã TTHC 1.004605 (QT-123), nộp tại Sở VHTTDL tỉnh — cùng cổng Bộ VHTTDL (liz-*, engine content/fill-liz.js)
         # với thẻ HDV nội địa 1.004623. Key TRÙNG ke_khai_links (selectSo); nhận diện CẢ trang chi tiết DVCQG (uuid) lẫn
         # trang nộp /nop-ho-so?MaTTHC=1.004605.

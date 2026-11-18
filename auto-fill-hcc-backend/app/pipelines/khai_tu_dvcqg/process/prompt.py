@@ -58,6 +58,9 @@ trích người nộp, trừ số điện thoại (ô cổng để trống, xem 
 11. Địa chỉ tách {quocGia,tinh,xa,chiTietDuoiXa}: "[chi tiết], [xã], [huyện], [tỉnh]" đếm từ cuối — cuối là tỉnh, áp cuối
     là cấp huyện (bỏ khỏi xa/diaChi, trả riêng ở khóa "huyen"), cụm trước huyện là xã, còn lại là chiTietDuoiXa. Chọn đúng
     nguồn trước rồi mới tách; không ghép chi tiết nguồn này với xã/tỉnh nguồn khác.
+    Địa chỉ theo địa giới mới chỉ hai cấp "[chi tiết], [xã], [tỉnh]": cụm đầu là số nhà / đường / thôn / tổ thì cụm áp
+    cuối là XÃ, không có huyện. Mỗi cụm giữa hai dấu phẩy là MỘT đơn vị: chép nguyên cả cụm vào xa, không cắt đôi một
+    cụm thành xã + huyện (tên xã mới hay chứa tên huyện / thành phố cũ kèm chữ chỉ hướng).
 </dia_chi>
 
 <khong_bia>

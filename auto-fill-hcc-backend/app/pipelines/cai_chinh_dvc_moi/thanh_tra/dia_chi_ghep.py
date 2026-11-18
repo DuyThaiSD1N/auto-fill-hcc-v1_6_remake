@@ -18,6 +18,7 @@ from collections import Counter
 from dataclasses import replace
 
 from app.pipelines._shared import area_remap
+from app.pipelines._shared.thanh_tra import ten_xa
 from app.pipelines._shared.thanh_tra.ho_so import Case, Finding, Inspector, fold, is_empty
 
 from ..process import mapper
@@ -43,6 +44,21 @@ sau là nơi ở hiện tại theo đơn vị sau sáp nhập → xã, tỉnh v�
 lấy từ dòng nối này).
 </chon_nguon>
 ''' + base.RULES[base.RULES.index("</chon_nguon>") + len("</chon_nguon>"):])
+# Tên xã của lượt trích OCR đọc lệch / không có trong danh mục (ô xã trên cổng sẽ trống): sửa riêng tên xã theo dòng
+# địa chỉ của chính ô (khung chung _shared/thanh_tra/ten_xa.py), giữ chi tiết của lượt trích — ghép lại cả địa chỉ thì
+# hay rơi sang địa chỉ cũ trên thẻ, và bước đọc dòng chậm làm đợt 2 quá hạn.
+_WARD_SLOT = ten_xa.Slot(ten_xa.RESIDENCE_RE, "Nơi cư trú của người có nội dung thay đổi")
+_WARD_RULES = """
+<ten_xa>
+Vụ có tín hiệu "ô xã của A không có trong danh mục hiện hành": tên xã của A là chữ OCR đọc lệch (chữ viết tay) hoặc cụm
+khác bị lấy nhầm làm tên xã, cổng không chọn được nên ô xã TRỐNG. B chỉ đổi tên xã (giữ chi tiết của A) sang tên xã trong
+danh mục hiện hành của tỉnh có trên dòng trích dẫn (cho lệch OCR vài chữ), dòng đó là địa chỉ của chính người có nội
+dung thay đổi hoặc dòng "Kính gửi: UBND ..." → chọn B. Người yêu cầu và người có nội dung thay đổi thường là CÙNG một
+người (cùng họ tên): dòng "Nơi cư trú" ở khối người yêu cầu của tờ khai khi đó là địa chỉ của chính người có nội dung
+thay đổi. Dòng trích dẫn chứa chi tiết của A (lượt trích đã lấy địa chỉ từ chính dòng đó) → cùng người, chỉ sửa tên xã
+→ chọn B. Dòng trích dẫn là địa chỉ của người khác → KHONG_DU_CAN_CU.
+</ten_xa>
+"""
 _SIGNATURE_LINES = 3  # số dòng sau nhãn "(Ký, ghi rõ họ, chữ đệm, tên)" còn thuộc khối chữ ký của tờ khai
 
 
@@ -454,11 +470,22 @@ async def find(inspector: Inspector, case: Case, title: str) -> list[Finding]:
     # Nơi cư trú ở nước ngoài không tách theo cấp hành chính Việt Nam → không soát.
     if isinstance(current, dict) and fold(current.get("quocGia") or "Việt Nam").strip() not in ("viet nam", "vn"):
         return []
+    wards = await ten_xa.fixes(case.values, {FIELD: _WARD_SLOT}, case.documents, case.options, title=title,
+                               mapped=lambda _, value: mapper._area(value))
+    if FIELD in wards:
+        fix = wards[FIELD]
+        read_ward = str((current or {}).get("xa") or "")
+        return [Finding(inspector, base.UNITS[0], {FIELD: fix["value"]}, fix["quote"], fix["doc"],
+                        "dòng giấy ghi tên xã của địa chỉ", base._OWNERS[0], backed=True,
+                        evidence=(f"ô xã của A ({f'“{read_ward}”' if read_ward else 'bỏ trống'}) không có trong danh "
+                                  f"mục hiện hành nên trên cổng sẽ TRỐNG; B chỉ đổi tên xã sang xã trong danh mục hiện "
+                                  f"hành của tỉnh {fix['value'].get('tinh')}, có trên dòng trích dẫn, giữ chi tiết của A "
+                                  f"({'model chọn' if fix['by'] == 'llm' else 'mã chọn'}: {fix['why']})",))]
     read = await base.read_lines(inspector, case, title)
     finding = compose(case, read) if read else None
     finding = screen(finding, case) if finding else None
     return [finding] if finding else []
 
 
-INSPECTOR = Inspector("dia_chi", "ĐỊA CHỈ nơi cư trú của người có nội dung thay đổi", base.UNITS, RULES, owners=base._OWNERS,
+INSPECTOR = Inspector("dia_chi", "ĐỊA CHỈ nơi cư trú của người có nội dung thay đổi", base.UNITS, RULES + _WARD_RULES, owners=base._OWNERS,
                       accepted=base._OWNERS[:1], find=find)

@@ -85,6 +85,9 @@ from app.pipelines.xac_nhan_thong_tin_ve_cu_tru.process.mapper import (
 from app.pipelines.thuc_hien_tro_cap_xa_hoi_nhan_cham_soc_nuoi_duong_hang_thang.process.mapper import (
     with_account_process_options as with_tro_cap_nhan_cham_soc_account_process_options,
 )
+from app.pipelines.xac_nhan_tthn_dvc_moi.process.mapper import (
+    with_account_process_options as with_tthn_account_process_options,
+)
 from app.pipelines.xac_nhan_tthn_dvc_moi.attach.nghia_hung import with_account_attach_options
 from app.pipelines._shared.lao_cai_tach_giay_to import always_split, plan_with_split
 from app.pipelines._shared.locked_submitter import unlock_locked_submitter
@@ -416,6 +419,7 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
             # Điều chỉnh thông tin cư trú: giấy không ghi cơ quan → xã/tỉnh tài khoản (tô vàng).
             options = with_dieu_chinh_cu_tru_account_process_options(options, owner_user, procedure_key)
             options = with_xac_nhan_cu_tru_account_process_options(options, owner_user, procedure_key)
+            options = with_tthn_account_process_options(options, owner_user, procedure_key)
             # Cài đặt theo tài khoản "Lấy người nộp theo tờ khai" — pipeline chưa hỗ trợ thì bỏ qua khoá này.
             if isinstance(owner_user, dict) and account_settings.resolve(owner_user)["submitterFromDeclaration"]:
                 options["submitterMode"] = "owner_as_submitter"

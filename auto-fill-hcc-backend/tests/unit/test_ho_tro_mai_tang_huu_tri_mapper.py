@@ -242,6 +242,19 @@ def test_binh_chuong_account_sets_deceased_as_owner_flag_only_for_this_procedure
     assert mapper.DECEASED_AS_OWNER_OPTION not in mapper.with_account_process_options({}, binh_chuong, "ho-tro-mai-tang-1116910")
 
 
+def test_cac_don_vi_khai_nguoi_chet_la_chu_ho_so_bat_co():
+    key = mapper.PROCEDURE_KEY
+    for unit in ({"tinh": "Tỉnh Quảng Ngãi", "xa": "Phường Đăk Bla"}, {"tinh": "Tỉnh Ninh Bình", "xa": "Phường Nam Hoa Lư"},
+                 {"tinh": "Tỉnh Bắc Ninh", "xa": "Phường Cảnh Thụy"}, {"tinh": "Thành phố Đà Nẵng", "xa": "Phường Liên Chiểu"},
+                 {"tinh": "Tỉnh Bắc Ninh", "xa": "Phường Vũ Ninh"}):
+        assert mapper.with_account_process_options({}, unit, key)[mapper.DECEASED_AS_OWNER_OPTION] is True, unit
+        assert mapper.DECEASED_AS_OWNER_OPTION not in mapper.with_account_process_options({}, unit, "ho-tro-mai-tang-1116910")
+    # Cùng tên xã ở tỉnh khác; Cam Ly, Hiệp Hòa cán bộ để người lo mai táng làm chủ hồ sơ.
+    for other in ({"tinh": "Tỉnh Phú Thọ", "xa": "Phường Vũ Ninh"}, {"tinh": "Tỉnh Bắc Ninh", "xa": "Phường Vũ"},
+                  {"tinh": "Tỉnh Lâm Đồng", "xa": "Phường Cam Ly - Đà Lạt"}, {"tinh": "Tỉnh Bắc Ninh", "xa": "Phường Hiệp Hòa"}):
+        assert mapper.DECEASED_AS_OWNER_OPTION not in mapper.with_account_process_options({}, other, key)
+
+
 def test_clear_email_flag_emits_clear_after_requester_block():
     compact = [{"name": k, "value": v} for k, v in _DANG_VAN_LAM.items()]
     fields, _ = mapper.enrich(compact, {"submitterMode": "owner_as_submitter", mapper.CLEAR_EMAIL_OPTION: True})
