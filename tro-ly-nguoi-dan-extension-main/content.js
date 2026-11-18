@@ -1528,6 +1528,7 @@
   }
   // Ô cam kết cuối trang ("Tôi xin chịu trách nhiệm…", #chkCHECK_LIABILITY): click thật để handler của cổng
   // (bật nút nộp) chạy như công dân tự tích; đã tích sẵn thì không click (click nữa là bỏ tích).
+  // checked: false = bỏ tích (trợ lý điền / điền lại tờ khai → công dân phải cam đoan lại trên dữ liệu mới).
   // Không thấy id (trang khác của cổng đặt id khác) → tìm ô checkbox có nhãn chứa đúng câu cam kết.
   function findCommitBox(id, label) {
     const byId = id ? document.getElementById(id) : null;
@@ -1545,15 +1546,17 @@
     if (msg?.action !== "tickCommitBox" || !IS_TOP_FRAME) return;
     const box = findCommitBox(String(msg.id || ""), String(msg.label || ""));
     if (!box) { sendResponse({ ok: false, error: "not_found" }); return; }
-    box.scrollIntoView({ block: "center", behavior: "smooth" });
+    const want = msg.checked !== false;
+    if (box.checked === want) { sendResponse({ ok: true }); return; }
+    if (want) box.scrollIntoView({ block: "center", behavior: "smooth" });
     // Cờ cho bộ theo dõi ô cam kết (content/bca/field-review.js): cú tích này của trợ lý, không báo "công dân tự tích".
     window.__TLND_COMMIT_BY_ASSISTANT__ = true;
     try {
-      if (!box.checked) box.click();
+      box.click();
     } finally {
       window.__TLND_COMMIT_BY_ASSISTANT__ = false;
     }
-    sendResponse(box.checked ? { ok: true } : { ok: false, error: "not_checked" });
+    sendResponse(box.checked === want ? { ok: true } : { ok: false, error: want ? "not_checked" : "still_checked" });
   });
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {

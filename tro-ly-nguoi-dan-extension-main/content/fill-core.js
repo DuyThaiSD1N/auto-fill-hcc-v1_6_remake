@@ -736,6 +736,34 @@ function refreshStandardSelectPlugins(select) {
   }
 }
 
+// Ô ngày form-builder cổng DVC Bộ Công an (Nth) có nút chọn định dạng cạnh ô nhập (Ngày/Tháng/Năm · Tháng/Năm · Năm).
+// Giấy tờ chỉ ghi NĂM (năm sinh cha/mẹ trên tờ khai hộ chiếu 1.001456) → BE gửi field.dateFormat ("Năm" / "Tháng/Năm"):
+// chọn định dạng TRƯỚC rồi mới gõ. Cùng cách với Auto Fill (content.js). DOM SUY (chưa chụp sau khi bấm nút).
+async function pickStandardDateFormat(el, label) {
+  if (!el || !label) return false;
+  const want = foldChoiceText(label);
+  const box = el.closest?.(".input-group") || el.parentElement;
+  if (!box) return false;
+  for (const select of box.querySelectorAll("select")) {
+    const option = Array.from(select.options || []).find((o) => foldChoiceText(o.textContent) === want);
+    if (!option) continue;
+    if (select.value !== option.value) {
+      select.value = option.value;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    return true;
+  }
+  const item = Array.from(box.querySelectorAll("a, li, button, [data-format]"))
+    .find((node) => node !== el && foldChoiceText(node.textContent) === want && !node.querySelector("a, button"));
+  if (!item) {
+    console.warn(`[AutoFill-STD] ${el.name || el.id}: không thấy nút định dạng "${label}" — gõ thẳng giá trị.`);
+    return false;
+  }
+  item.click();
+  await sleep(200);
+  return true;
+}
+
 function fillStandardInput(el, value, options = {}) {
   if (!el) return false;
   setNativeValue(el, value, {
@@ -903,6 +931,10 @@ function choiceSearchTerms(select, value) {
 // tinhnhankq/xanhankq: Tỉnh / Phường-xã nhận kết quả của form đăng ký xe cổng DVC Bộ Công an
 //   (CongDan__fsTinhNhanKQ → CongDan__fsXaNhanKQ, danh mục xã nạp theo tỉnh). Ghi chú đặt ngoài hàm:
 //   tests/moet-so-agency-contract.test.js chỉ dò 1500 ký tự đầu thân hàm.
+// quequanmapx: Phường/xã địa chỉ cơ quan của form đăng ký mẫu con dấu cổng DVC Bộ Công an
+//   (CongDan__fs_BCAQueQuanMaTinh → CongDan__fs_BCAQueQuanMaPX; ô tỉnh đã khớp "matinh"), xã nạp qua API theo tỉnh.
+// quequanmaqh/noiohientaimaqh: Phường/Xã thường trú / tạm trú của form cấp hộ chiếu phổ thông 1.001456 cùng cổng
+//   (CongDan__fs_BCAQueQuanMaTinh → _BCAQueQuanMaQH, _BCANoiOHienTaiMaTinh → _BCANoiOHienTaiMaQH).
 function isAreaSelectName(name) {
   // village/ward = ô Phường/Xã (con cascade của Tỉnh) trên form Form.io moha — phải nhận là
   // ô địa chỉ để điền SAU Tỉnh và được retry chờ options con load. Thiếu thì điền hụt dù giá trị đúng.
@@ -917,7 +949,7 @@ function isAreaSelectName(name) {
   //   cascade theo "Loại đăng ký thay đổi" (CHANGE_OWNER_TYPE_TITLE_IDFld) — danh sách lý do nạp lại
   //   SAU khi đổi Loại, không nhận area-select thì thử 1 lần rồi bỏ, hụt mất "Khác" dù giá trị đúng.
   // diachihoatdong][tinhthanh|xaphuong: Tỉnh/Phường-xã của đơn vị KDVT (Bộ XD, cấp phù hiệu).
-  return /province|district|village|ward|matinh|maphuongxa|maxa|tinhthanhphonopdon|tinhthanhpho|quanhuyen|tinhtp|px1|country_idfld|city_idfld|ward_idfld|street_numberfld|addr[a-z]*ctl|change_owner_type_idfld|diachihoatdong\]\[(tinhthanh|xaphuong)|tinhnhankq|xanhankq/.test(String(name || "").toLowerCase());
+  return /province|district|village|ward|matinh|maphuongxa|maxa|tinhthanhphonopdon|tinhthanhpho|quanhuyen|tinhtp|px1|country_idfld|city_idfld|ward_idfld|street_numberfld|addr[a-z]*ctl|change_owner_type_idfld|diachihoatdong\]\[(tinhthanh|xaphuong)|tinhnhankq|xanhankq|quequanmapx|quequanmaqh|noiohientaimaqh/.test(String(name || "").toLowerCase());
 }
 
 function isAreaSelectField(f) {
@@ -1266,18 +1298,69 @@ async function fillStandardSelectAll(names, value, occurrence = null, deadline =
   return filledAny;
 }
 
+// Cổng DVC Bộ Công an (form-builder Nth): <select> ẩn + bootstrap-select (div.bootstrap-select đứng ngay sau select).
+// Chạy thật hộ chiếu 1.001456 (18/11): đặt value + change thì ô Tỉnh hiện đúng chữ nhưng Phường/Xã thường trú / tạm trú
+// không chọn được → chọn như người dùng: bấm nút mở menu, chờ mục khớp ĐÚNG tên (khớp đủ chữ trước; bỏ tiền tố
+// Phường/Xã/Tỉnh chỉ khi ra đúng MỘT mục), bấm mục đó — bootstrap-select tự đặt value và bắn change + changed.bs.select
+// cho script cổng. Không thấy thì đóng menu, để đường cũ chạy tiếp. Dùng click() đơn: clickLikeUser bắn hai lần click.
+function bootstrapSelectWrapper(select) {
+  if (!select) return null;
+  const inside = select.closest?.(".bootstrap-select");
+  if (inside) return inside;
+  for (let sib = select.nextElementSibling; sib; sib = sib.nextElementSibling) {
+    if (sib.classList?.contains("bootstrap-select")) return sib;
+  }
+  return null;
+}
+
+function bootstrapItemKey(text) {
+  return foldChoiceText(text).replace(/^(phuong|xa|thi tran|dac khu|tinh|thanh pho)\s+/, "").trim();
+}
+
+async function pickBootstrapSelectItem(select, value, waitMs = 2500) {
+  const wrap = bootstrapSelectWrapper(select);
+  const button = wrap?.querySelector?.("button.dropdown-toggle");
+  const want = String(value ?? "").trim();
+  if (!button || button.disabled || !want) return false;
+  const wantFull = foldChoiceText(want);
+  const wantKey = bootstrapItemKey(want);
+  const itemText = (a) => (a.querySelector(".text") || a).textContent || "";
+  const findItem = () => {
+    const items = Array.from(wrap.querySelectorAll(".dropdown-menu li:not(.disabled) a"));
+    const exact = items.find((a) => foldChoiceText(itemText(a)) === wantFull);
+    if (exact) return exact;
+    const byKey = wantKey ? items.filter((a) => bootstrapItemKey(itemText(a)) === wantKey) : [];
+    return byKey.length === 1 ? byKey[0] : null;
+  };
+  const isOpen = () => wrap.classList.contains("open") || wrap.classList.contains("show");
+  if (!isOpen()) button.click();
+  const item = await waitFor(findItem, waitMs, 100);
+  if (item) {
+    item.click();
+    await sleep(250);
+  }
+  if (isOpen()) button.click();
+  if (!item) return false;
+  const ok = foldChoiceText(select.selectedOptions?.[0]?.textContent || "") === foldChoiceText(itemText(item));
+  if (ok) markFilled(standardMarkTarget(select));
+  return ok;
+}
+
 async function fillStandardCheckbox(el, value) {
   if (!el) return false;
   const wantTrue = value === true || String(value).toLowerCase() === "true" || String(value) === "1";
   const target = standardMarkTarget(el);
   if (el.checked !== wantTrue) {
-    const label = el.closest("label") || target || el;
-    label.click();
+    // iCheck (cổng DVC Bộ Công an — loại hộ chiếu gắn chip 1.001456): input opacity 0, lớp phủ ins.iCheck-helper nhận cú
+    // bấm. Bấm khung .form-group không làm gì; tự đặt checked thì ô vẽ của iCheck + script cổng không biết → bấm lớp phủ.
+    const helper = el.parentElement?.querySelector?.(":scope > ins.iCheck-helper");
+    (helper || el.closest("label") || target || el).click();
     await sleep(250);
     if (el.checked !== wantTrue) {
       el.checked = wantTrue;
       el.dispatchEvent(new Event("input", { bubbles: true }));
       el.dispatchEvent(new Event("change", { bubbles: true }));
+      if (helper) el.parentElement.classList.toggle("checked", wantTrue);
     }
   } else {
     // Re-dispatch so Form.io runs dependent copy logic even when the checkbox
@@ -1924,27 +2007,54 @@ async function fillFormStandard(fields, { keepMarks = false } = {}) {
         const el = findStandardRadio(candidates, root) || await waitFor(() => findStandardRadio(candidates, root), 1500, 80);
         ok = await fillStandardRadio(el, f.value);
       } else if (f.comp === "dom-select") {
-        // Ô Tỉnh/Xã giữ luồng cascade + ngân sách riêng; ô khác hỏi cầu nối MAIN world trước, bỏ qua thì đi đường cũ.
-        let viaMain = null;
-        if (!isAreaSelectField(f)) {
-          const el = findStandardSelect(candidates, occurrence, root)
-            || (f.searchOnce ? await waitFor(() => findStandardSelect(candidates, occurrence, root), 2500, 100) : null);
-          if (el) viaMain = await fillFormioRemoteSelectViaMain(el, f.value);
-        }
-        if (viaMain?.handled) {
-          ok = !!viaMain.ok;
-        } else if (isAreaSelectField(f)) {
-          const deadline = standardFieldDeadline(areaDeadlines, f);
-          const cascade = snapshotStandardAreaCascade(candidates, occurrence, root);
-          ok = await fillStandardSelectAll(candidates, f.value, occurrence, deadline, root);
-          if (ok) commitStandardAreaCascade(cascade);
-        } else if (f.searchOnce) {
-          const el = findStandardSelect(candidates, occurrence, root)
-            || await waitFor(() => findStandardSelect(candidates, occurrence, root), 2500, 100);
-          ok = !!el && await fillChoicesSearchOnce(el, f.value);
-        } else {
-          const el = findStandardSelect(candidates, occurrence, root);
-          ok = await fillStandardSelectAny(el, f.value, candidates, occurrence, 0, root);
+        const trySelect = async (attempt) => {
+          let ok = false;
+          // Cổng DVC Bộ Công an: ô bootstrap-select chọn như người dùng trước (pickBootstrapSelectItem). Danh sách Phường/Xã
+          // còn của tỉnh cũ (có mục thật) thì chờ lượt sau; danh sách trống vẫn mở menu (cổng có thể nạp khi mở).
+          if (location.hostname === "dichvucong.bocongan.gov.vn") {
+            const el = findStandardSelect(candidates, occurrence, root);
+            const stale = el && standardSelectAwaitingCascade(el)
+              && Array.from(el.options || []).some((o) => o.value && o.value !== "-1");
+            if (el && !stale && bootstrapSelectWrapper(el)) {
+              const cascade = isAreaSelectField(f) ? snapshotStandardAreaCascade(candidates, occurrence, root) : null;
+              if (await pickBootstrapSelectItem(el, f.value, attempt ? 1200 : 2500)) {
+                if (cascade) commitStandardAreaCascade(cascade);
+                return true;
+              }
+            }
+          }
+          // Ô Tỉnh/Xã giữ luồng cascade + ngân sách riêng; ô khác hỏi cầu nối MAIN world trước, bỏ qua thì đi đường cũ.
+          let viaMain = null;
+          if (!isAreaSelectField(f)) {
+            const el = findStandardSelect(candidates, occurrence, root)
+              || (f.searchOnce ? await waitFor(() => findStandardSelect(candidates, occurrence, root), 2500, 100) : null);
+            if (el) viaMain = await fillFormioRemoteSelectViaMain(el, f.value);
+          }
+          if (viaMain?.handled) {
+            ok = !!viaMain.ok;
+          } else if (isAreaSelectField(f)) {
+            // Lượt thử lại (waitMs) cần ngân sách MỚI: ngân sách lượt đầu đã tiêu hết lúc chờ danh sách.
+            const deadline = attempt ? Date.now() + STANDARD_AREA_FIELD_BUDGET_MS : standardFieldDeadline(areaDeadlines, f);
+            const cascade = snapshotStandardAreaCascade(candidates, occurrence, root);
+            ok = await fillStandardSelectAll(candidates, f.value, occurrence, deadline, root);
+            if (ok) commitStandardAreaCascade(cascade);
+          } else if (f.searchOnce) {
+            const el = findStandardSelect(candidates, occurrence, root)
+              || await waitFor(() => findStandardSelect(candidates, occurrence, root), 2500, 100);
+            ok = !!el && await fillChoicesSearchOnce(el, f.value);
+          } else {
+            const el = findStandardSelect(candidates, occurrence, root);
+            ok = await fillStandardSelectAny(el, f.value, candidates, occurrence, 0, root);
+          }
+          return ok;
+        };
+        ok = await trySelect(0);
+        // waitMs (BE gửi theo ô): danh sách nạp chậm qua API (eForm cổng DVC Bộ Công an: Phường/xã nạp theo Tỉnh, Loại
+        // hình cơ quan nạp lại sau Nơi tiếp nhận) → chưa khớp thì thử lại tới hết waitMs thay vì bỏ ngay.
+        const waitUntil = Date.now() + standardFieldWaitMs(f);
+        for (let attempt = 1; !ok && Date.now() < waitUntil; attempt++) {
+          await sleep(400);
+          ok = await trySelect(attempt);
         }
       } else if (f.comp === "dom-date" || f.comp === "dom-datetime") {
         const el = findStandardInputForField(f, candidates, occurrence, root) || await waitFor(() => findStandardInputForField(f, candidates, occurrence, root), 1000, 80);
@@ -1960,6 +2070,7 @@ async function fillFormStandard(fields, { keepMarks = false } = {}) {
       } else if (f.comp === "dom-input" || f.comp === "raw") {
         const el = findStandardInputForField(f, candidates, occurrence, root) || await waitFor(() => findStandardInputForField(f, candidates, occurrence, root), 1000, 80);
         const postbackAddressInput = isPostbackAddressField(f);
+        if (!f.clear && f.dateFormat) await pickStandardDateFormat(el, f.dateFormat);
         if (f.clear) ok = clearStandardInput(el);
         else ok = fillStandardInput(el, f.value, postbackAddressInput ? { change: false, commit: false } : {});
       } else {
@@ -3019,6 +3130,12 @@ function standardFieldIdentity(field) {
   const name = fieldCandidates(field)[0] || field?.name || "";
   const occurrence = standardOccurrence(field?.occurrence);
   return `${name}::${occurrence === null ? "auto" : occurrence}`;
+}
+
+// Thời gian chờ thêm cho ô chọn có danh sách nạp chậm (field.waitMs do BE gửi), chặn trần 10 s.
+function standardFieldWaitMs(field) {
+  const ms = Number(field?.waitMs) || 0;
+  return ms > 0 ? Math.min(ms, 10000) : 0;
 }
 
 function standardFieldDeadline(deadlines, field, budgetMs = STANDARD_AREA_FIELD_BUDGET_MS) {

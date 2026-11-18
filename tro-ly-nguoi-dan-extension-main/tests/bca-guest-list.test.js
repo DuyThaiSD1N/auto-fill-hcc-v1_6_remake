@@ -228,6 +228,21 @@ test("bộ đọc ô Bộ Công an: chỉ trang chính dancuquocgia, cùng giao 
   assert.match(bcaReview, /classList\?\.contains\("select2"\)/);
 });
 
+test("ô bắt buộc: dấu * vẽ bằng CSS, * đứng sau nhãn, hoặc cổng báo lỗi dưới ô đều tô đỏ (18/11/2026)", () => {
+  // Thông báo lưu trú: "Loại hình cơ sở lưu trú *" bị tô cam vì dấu * không nằm trong chữ nhãn → nộp bị cổng chặn.
+  assert.match(bcaReview, /getComputedStyle\(el, pseudo\)\.content/);
+  assert.match(bcaReview, /\|\| portalFlagged\(group\[0\] \|\| el, box\)/);
+  assert.match(bcaReview, /vui long \(chon\|nhap/);
+  // Nhãn lỗi jQuery validate không được lấy làm tên ô.
+  assert.match(bcaReview, /\.find\(\(l\) => textOf\(l\) && !isErrorNode\(l\)\)/);
+});
+
+test("bổ sung ô: nhãn không phải thẻ label vẫn đọc được chữ trước ô; không bao giờ hỏi bằng tên HTML", () => {
+  assert.match(bcaReview, /return looseLabel\(anchor, group\) \|\| \{ text: hintOf\(el\), marked: false \};/);
+  assert.match(bcaReview, /label: \(text && !htmlName\(text\) \? text : ""\) \|\| sectionOf\(el\) \|\| "Ô còn trống"/);
+  assert.doesNotMatch(bcaReview, /label: text \|\| name,/);
+});
+
 test("nút nộp: còn ô bắt buộc hoặc chưa tích cam kết thì không bấm; cổng hỏi xác nhận thì để công dân tự bấm", () => {
   const fn = bcaReview.slice(bcaReview.indexOf("async function submit("), bcaReview.indexOf("chrome.runtime.onMessage"));
   assert.match(fn, /if \(stats\.required\) return \{ clicked: false, missing: \["required"\]/);
@@ -242,6 +257,18 @@ test("nút tích ô cam đoan chạy cả khi BE chỉ gửi nhãn ô (trang că
   assert.match(sidebar, /a\.type === "tick_commit" && \(a\.id \|\| a\.label\)/);
   const tick = content.slice(content.indexOf('msg?.action !== "tickCommitBox"'), content.indexOf('msg?.action !== "fillBcaAgency"'));
   assert.match(tick, /window\.__TLND_COMMIT_BY_ASSISTANT__ = true;[\s\S]*box\.click\(\)[\s\S]*__TLND_COMMIT_BY_ASSISTANT__ = false/);
+  // Đúng trạng thái muốn rồi thì không click (click nữa là đảo ô).
+  assert.match(tick, /if \(box\.checked === want\) \{ sendResponse\(\{ ok: true \}\); return; \}/);
+});
+
+test("điền / điền lại tờ khai Bộ Công an: bỏ tích ô cam kết trước khi điền để công dân cam đoan lại", () => {
+  // 18/11/2026: bấm "Điền lại thông tin" xong ô cam đoan trên trang vẫn tích.
+  const tick = content.slice(content.indexOf('msg?.action !== "tickCommitBox"'), content.indexOf('msg?.action !== "fillBcaAgency"'));
+  assert.match(tick, /const want = msg\.checked !== false;/);
+  const fill = sidebar.slice(sidebar.indexOf('a.type === "fill_fields" && Array.isArray(a.fields)'),
+    sidebar.indexOf('action: "fillFields", fields: a.fields'));
+  assert.match(fill, /a\.fieldReview\?\.commitId \|\| a\.fieldReview\?\.commitLabel/);
+  assert.match(fill, /action: "tickCommitBox",[\s\S]*checked: false/);
 });
 
 test("công dân tự tích / bỏ tích ô cam kết trên trang → sidebar báo commit_result source page", () => {
@@ -258,4 +285,90 @@ test("trang căn cước khác bộ id người kê khai vẫn là form standard
   assert.match(content, /const agencyBlock = !maeHost && location\.hostname !== "dichvucong\.dancuquocgia\.gov\.vn"/);
   // Lượt bấm "Đã đưa đủ" mang cờ khối cơ quan → BE coi là bước kê khai.
   assert.match(sidebar, /bcaAgencyBlock: !!ctx\?\.bcaAgencyBlock,/);
+});
+
+
+// ── Cấp hộ chiếu 1.001456 (18/11): ô bootstrap-select chọn như người dùng + ô tích iCheck bấm lớp phủ ──
+const vm = require("node:vm");
+const RAW_SRC = fs.readFileSync(path.join(__dirname, "..", FILE_STD), "utf8");
+
+function fnSrc(name) {
+  const m = new RegExp(`\\n( *)(async )?function ${name}\\(`).exec(RAW_SRC);
+  assert.ok(m, `thiếu hàm ${name}`);
+  const end = RAW_SRC.indexOf(`\n${m[1]}}\n`, m.index + 1);
+  return RAW_SRC.slice(m.index + 1, end + m[1].length + 2);
+}
+
+function classes(...init) {
+  const set = new Set(init);
+  return { contains: (c) => set.has(c), add: (c) => set.add(c), remove: (c) => set.delete(c),
+    toggle: (c, on) => (on ? set.add(c) : set.delete(c)) };
+}
+
+function hoChieuCtx() {
+  const ctx = {
+    console: { warn() {}, log() {} },
+    foldChoiceText: (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/gi, "d")
+      .toLowerCase().replace(/\s+/g, " ").trim(),
+    sleep: () => Promise.resolve(),
+    waitFor: async (fn, timeout) => {
+      for (let t = 0; t <= timeout; t += 100) { const v = fn(); if (v) return v; await new Promise((r) => setTimeout(r, 5)); }
+      return null;
+    },
+    markFilled() {},
+    standardMarkTarget: (el) => el.formGroup || el,
+  };
+  vm.runInNewContext(["bootstrapSelectWrapper", "bootstrapItemKey", "pickBootstrapSelectItem", "fillStandardCheckbox"]
+    .map(fnSrc).join("\n") + "\nthis.pick = pickBootstrapSelectItem; this.tick = fillStandardCheckbox;", ctx);
+  return ctx;
+}
+
+// <select> ẩn + div.bootstrap-select đứng sau; danh sách Phường/Xã chỉ có sau khi mở menu (nạp chậm).
+function wardSelect(names) {
+  const options = [{ value: "", textContent: "-- Chưa chọn --" }];
+  const select = { options, selectedIndex: 0, closest: () => null };
+  Object.defineProperty(select, "selectedOptions", { get: () => [options[select.selectedIndex]] });
+  const items = [];
+  const wrap = { classList: classes("btn-group", "bootstrap-select"), querySelectorAll: () => items };
+  const button = { disabled: false, click() {
+    if (wrap.classList.contains("open")) return wrap.classList.remove("open");
+    wrap.classList.add("open");
+    if (!items.length) setTimeout(() => names.forEach((name, i) => {
+      options.push({ value: String(i + 1), textContent: name });
+      items.push({ textContent: name, querySelector: () => null, click() { select.selectedIndex = i + 1; } });
+    }), 20);
+  } };
+  wrap.querySelector = () => button;
+  select.nextElementSibling = wrap;
+  return { select, wrap };
+}
+
+test("hộ chiếu: Phường/Xã bootstrap-select mở menu, chờ danh sách, bấm đúng mục rồi đóng menu", async () => {
+  const ctx = hoChieuCtx();
+  const { select, wrap } = wardSelect(["Phường Đoàn Kết A", "Phường Đoàn Kết", "Xã Bản Hon"]);
+  assert.equal(await ctx.pick(select, "Phường Đoàn Kết", 1000), true);
+  assert.equal(select.selectedOptions[0].textContent, "Phường Đoàn Kết");
+  assert.equal(wrap.classList.contains("open"), false);
+  // Khớp bỏ tiền tố chỉ khi ra đúng một mục; không có mục khớp → false, đóng menu.
+  const other = wardSelect(["Phường Kỳ Lừa", "Xã Mai Pha"]);
+  assert.equal(await ctx.pick(other.select, "Kỳ Lừa", 1000), true);
+  const none = wardSelect(["Xã Mai Pha"]);
+  assert.equal(await ctx.pick(none.select, "Phường Đông Kinh", 300), false);
+  assert.equal(none.wrap.classList.contains("open"), false);
+});
+
+test("hộ chiếu: ô tích iCheck bấm lớp phủ ins.iCheck-helper, không bấm khung form-group", async () => {
+  const ctx = hoChieuCtx();
+  const wrapper = { classList: classes("icheckbox_minimal") };
+  const el = { checked: false, parentElement: wrapper, closest: () => null, dispatchEvent() {},
+    formGroup: { click() { throw new Error("không được bấm khung form-group"); } } };
+  const helper = { click() { el.checked = !el.checked; wrapper.classList.toggle("checked", el.checked); } };
+  wrapper.querySelector = (sel) => (sel.includes("iCheck-helper") ? helper : null);
+  assert.equal(await ctx.tick(el, true), true);
+  assert.equal(wrapper.classList.contains("checked"), true);
+});
+
+test("hộ chiếu: vòng điền chuẩn ở cổng Bộ Công an thử bootstrap-select trước đường cũ", () => {
+  const body = RAW_SRC.slice(RAW_SRC.indexOf("const trySelect = async (attempt) => {"));
+  assert.match(body.slice(0, 1500), /dichvucong\.bocongan\.gov\.vn[\s\S]*pickBootstrapSelectItem\(el, f\.value/);
 });

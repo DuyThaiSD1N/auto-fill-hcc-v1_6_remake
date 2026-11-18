@@ -197,3 +197,89 @@ test("vòng điền chuẩn: ô bcaOtherOnly bỏ qua trừ khi bca-declarant ch
   assert.match(RELATION_SRC, /f\.comp === "bca-declarant"\)\s*\{\s*bcaDeclarant = await fillBcaDeclarantField\(f, result\);/);
   assert.match(RELATION_SRC, /if \(f\.bcaOtherOnly && bcaDeclarant !== "other"\) continue;/);
 });
+
+
+// ── Cấp hộ chiếu 1.001456 (18/11): ô bootstrap-select chọn như người dùng + ô tích iCheck bấm lớp phủ ──
+const vm = require("node:vm");
+const RAW_SRC = fs.readFileSync(path.join(__dirname, "..", FILE_STD), "utf8");
+
+function fnSrc(name) {
+  const m = new RegExp(`\\n( *)(async )?function ${name}\\(`).exec(RAW_SRC);
+  assert.ok(m, `thiếu hàm ${name}`);
+  const end = RAW_SRC.indexOf(`\n${m[1]}}\n`, m.index + 1);
+  return RAW_SRC.slice(m.index + 1, end + m[1].length + 2);
+}
+
+function classes(...init) {
+  const set = new Set(init);
+  return { contains: (c) => set.has(c), add: (c) => set.add(c), remove: (c) => set.delete(c),
+    toggle: (c, on) => (on ? set.add(c) : set.delete(c)) };
+}
+
+function hoChieuCtx() {
+  const ctx = {
+    console: { warn() {}, log() {} },
+    foldChoiceText: (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/gi, "d")
+      .toLowerCase().replace(/\s+/g, " ").trim(),
+    sleep: () => Promise.resolve(),
+    waitFor: async (fn, timeout) => {
+      for (let t = 0; t <= timeout; t += 100) { const v = fn(); if (v) return v; await new Promise((r) => setTimeout(r, 5)); }
+      return null;
+    },
+    markFilled() {},
+    standardMarkTarget: (el) => el.formGroup || el,
+  };
+  vm.runInNewContext(["bootstrapSelectWrapper", "bootstrapItemKey", "pickBootstrapSelectItem", "fillStandardCheckbox"]
+    .map(fnSrc).join("\n") + "\nthis.pick = pickBootstrapSelectItem; this.tick = fillStandardCheckbox;", ctx);
+  return ctx;
+}
+
+// <select> ẩn + div.bootstrap-select đứng sau; danh sách Phường/Xã chỉ có sau khi mở menu (nạp chậm).
+function wardSelect(names) {
+  const options = [{ value: "", textContent: "-- Chưa chọn --" }];
+  const select = { options, selectedIndex: 0, closest: () => null };
+  Object.defineProperty(select, "selectedOptions", { get: () => [options[select.selectedIndex]] });
+  const items = [];
+  const wrap = { classList: classes("btn-group", "bootstrap-select"), querySelectorAll: () => items };
+  const button = { disabled: false, click() {
+    if (wrap.classList.contains("open")) return wrap.classList.remove("open");
+    wrap.classList.add("open");
+    if (!items.length) setTimeout(() => names.forEach((name, i) => {
+      options.push({ value: String(i + 1), textContent: name });
+      items.push({ textContent: name, querySelector: () => null, click() { select.selectedIndex = i + 1; } });
+    }), 20);
+  } };
+  wrap.querySelector = () => button;
+  select.nextElementSibling = wrap;
+  return { select, wrap };
+}
+
+test("hộ chiếu: Phường/Xã bootstrap-select mở menu, chờ danh sách, bấm đúng mục rồi đóng menu", async () => {
+  const ctx = hoChieuCtx();
+  const { select, wrap } = wardSelect(["Phường Đoàn Kết A", "Phường Đoàn Kết", "Xã Bản Hon"]);
+  assert.equal(await ctx.pick(select, "Phường Đoàn Kết", 1000), true);
+  assert.equal(select.selectedOptions[0].textContent, "Phường Đoàn Kết");
+  assert.equal(wrap.classList.contains("open"), false);
+  // Khớp bỏ tiền tố chỉ khi ra đúng một mục; không có mục khớp → false, đóng menu.
+  const other = wardSelect(["Phường Kỳ Lừa", "Xã Mai Pha"]);
+  assert.equal(await ctx.pick(other.select, "Kỳ Lừa", 1000), true);
+  const none = wardSelect(["Xã Mai Pha"]);
+  assert.equal(await ctx.pick(none.select, "Phường Đông Kinh", 300), false);
+  assert.equal(none.wrap.classList.contains("open"), false);
+});
+
+test("hộ chiếu: ô tích iCheck bấm lớp phủ ins.iCheck-helper, không bấm khung form-group", async () => {
+  const ctx = hoChieuCtx();
+  const wrapper = { classList: classes("icheckbox_minimal") };
+  const el = { checked: false, parentElement: wrapper, closest: () => null, dispatchEvent() {},
+    formGroup: { click() { throw new Error("không được bấm khung form-group"); } } };
+  const helper = { click() { el.checked = !el.checked; wrapper.classList.toggle("checked", el.checked); } };
+  wrapper.querySelector = (sel) => (sel.includes("iCheck-helper") ? helper : null);
+  assert.equal(await ctx.tick(el, true), true);
+  assert.equal(wrapper.classList.contains("checked"), true);
+});
+
+test("hộ chiếu: vòng điền chuẩn ở cổng Bộ Công an thử bootstrap-select trước đường cũ", () => {
+  const body = RAW_SRC.slice(RAW_SRC.indexOf("const trySelect = async (attempt) => {"));
+  assert.match(body.slice(0, 1500), /dichvucong\.bocongan\.gov\.vn[\s\S]*pickBootstrapSelectItem\(el, f\.value/);
+});

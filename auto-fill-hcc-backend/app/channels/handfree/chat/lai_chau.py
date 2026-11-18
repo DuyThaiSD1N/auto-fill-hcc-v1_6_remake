@@ -80,6 +80,28 @@ def _auto(proc: dict | None, page: int) -> bool:
     return page == CASE and _config(proc).get("caseGroups") == "auto"
 
 
+def _case_hint(proc: dict | None) -> dict | None:
+    """`caseHint` (registry): việc công dân phải làm ở trang chọn trường hợp, dạng markdown (vd "**Cơ quan giải quyết hồ
+    sơ** (Công an tỉnh …)"). Nói ngay khi tới trang và khi trợ lý không đọc được ô nào."""
+    hint = _clean(_config(proc).get("caseHint"), 300)
+    return {"hint_md": hint, "hint_tts": hint.replace("**", "")} if hint else None
+
+
+def _presets(conv: dict, proc: dict | None) -> list[dict]:
+    """`caseAgencyByProvince` (registry, vd hộ chiếu 1.001456): trợ lý tự chọn ô cơ quan (nhãn chứa `label`) theo tỉnh
+    của TÀI KHOẢN trợ lý (user 18/11; tài khoản thiếu tỉnh thì theo nơi làm thủ tục) — extension lấy lựa chọn chứa NGUYÊN
+    cụm tên tỉnh (`match`), nhiều mục thì ưu tiên mục có `prefer`; không ra đúng một mục thì để công dân chọn trên thẻ."""
+    from app.pipelines._shared import fold
+    from app.pipelines._shared.area_remap import canonical_province
+
+    cfg = _config(proc).get("caseAgencyByProvince")
+    province = (canonical_province((conv.get("auth_user") or {}).get("tinh") or "")
+                or canonical_province(((conv.get("location") or {}).get("province")) or ""))
+    if not isinstance(cfg, dict) or not cfg.get("label") or not province:
+        return []
+    return [{"label": cfg["label"], "match": fold(province), "prefer": cfg.get("prefer") or ""}]
+
+
 def _groups(proc: dict | None, page: int = FEE) -> list[dict]:
     if _auto(proc, page):
         return [dict(g) for g in _AUTO]
@@ -191,8 +213,17 @@ def _step_report(conv: dict, proc: dict | None, payload: dict):
     r.chips = [{"label": vi.LC_RETRY_CHIP, "send": NEXT_SEND, "solid": True}]
     if _at(conv) == CASE and _auto(proc, CASE):
         # Trang chọn trường hợp tự dò: đọc lại các ô (không làm sẵn gì) để thẻ chọn hiện đúng ô cổng đang đòi.
-        r.actions = [{"type": "lc_result_scan", "groups": _groups(proc, CASE), "prepare": False}]
+        r.actions = [_case_rescan(conv, proc)]
     return r
+
+
+def _case_rescan(conv: dict, proc: dict | None) -> dict:
+    """Đọc lại trang chọn trường hợp; kèm presets để ô cơ quan nạp chậm (lượt đầu chưa có) vẫn được chọn bù."""
+    action = {"type": "lc_result_scan", "groups": _groups(proc, CASE), "prepare": False}
+    presets = _presets(conv, proc)
+    if presets:
+        action["presets"] = presets
+    return action
 
 
 def _on_page(conv: dict, proc: dict | None, payload: dict):
@@ -212,8 +243,17 @@ def _on_page(conv: dict, proc: dict | None, payload: dict):
         return None
     st["at"] = step
     if step == CASE:
-        r = _reply(_say(vi.LC_CASE_READING))
-        r.actions = [{"type": "lc_result_scan", "groups": _groups(proc, CASE)}]
+        md, tts = _say(vi.LC_CASE_READING)
+        hint = _case_hint(proc)
+        if hint:
+            hint_md, hint_tts = _say(vi.LC_CASE_HINT, **hint)
+            md, tts = md + hint_md, tts + hint_tts
+        r = _reply((md, tts))
+        action = {"type": "lc_result_scan", "groups": _groups(proc, CASE)}
+        presets = _presets(conv, proc)
+        if presets:
+            action["presets"] = presets
+        r.actions = [action]
         return r
     if step == FEE:
         r = _reply(_say(vi.LC_RESULT_READING))
@@ -237,8 +277,18 @@ def _summary(rows: list[dict]) -> tuple[str, str]:
 def _result_report(conv: dict, proc: dict | None, payload: dict):
     page = CASE if _at(conv) == CASE else FEE
     rows = lien_thong.result_rows(_read_configs(proc, page, payload.get("groups")), payload.get("groups"))
+    preset_label = _clean((_config(proc).get("caseAgencyByProvince") or {}).get("label")).lower() if page == CASE else ""
+    for row in rows:
+        # Ô cơ quan trợ lý chọn theo tỉnh tài khoản: chỉ hiện giá trị (thẻ tối đa 8 nút — danh sách 34 tỉnh bị cắt).
+        if preset_label and row["value"] and preset_label in row["label"].lower():
+            row["fixed"], row["options"] = True, []
     _st(conv)["result_rows"] = rows
     if not rows:
+        hint = _case_hint(proc) if page == CASE else None
+        if hint:
+            r = _reply(_say(vi.LC_CASE_UNREAD_HINT, **hint))
+            r.chips = [next_chip()]
+            return r
         unread = vi.LC_CASE_UNREAD_AUTO if _auto(proc, page) else vi.LC_CASE_UNREAD if page == CASE else vi.LC_RESULT_UNREAD
         r = _reply(_say(unread))
         r.chips = [next_chip()]
@@ -253,6 +303,10 @@ def _result_report(conv: dict, proc: dict | None, payload: dict):
         md, tts = _summary(rows)
     prepared = {str(x) for x in payload.get("prepared") or []}
     notes = [vi.LC_ADDRESS_PULLED] if "address" in prepared else []
+    for row in rows:
+        if f"preset:{row['name']}" in prepared and row["value"]:
+            notes.append({key: tpl.format(label=row["label"], value=row["value"])
+                          for key, tpl in vi.LC_CASE_PRESET.items()})
     if f"auto:{_FEE}" in prepared:
         notes.append(vi.LC_FEE_AUTO)
     if f"auto:{_CASE}" in prepared:
@@ -308,7 +362,7 @@ def _case_changed(conv: dict, proc: dict | None):
     if _at(conv) != CASE or not _auto(proc, CASE):
         return _reply()
     r = _reply()
-    r.actions = [{"type": "lc_result_scan", "groups": _groups(proc, CASE), "prepare": False}]
+    r.actions = [_case_rescan(conv, proc)]
     return r
 
 

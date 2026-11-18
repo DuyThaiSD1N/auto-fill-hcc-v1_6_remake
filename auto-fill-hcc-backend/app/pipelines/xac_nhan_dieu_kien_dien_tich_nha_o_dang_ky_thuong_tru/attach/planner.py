@@ -8,7 +8,9 @@ Hồ sơ hay là MỘT PDF scan chung Tờ khai + Giấy chứng nhận.
 
 Bảng thành phần hồ sơ CHỈ CÓ MỘT dòng (theo ảnh ánh xạ của thủ tục):
   1. Tờ khai xác nhận tình trạng chỗ ở hợp pháp, diện tích nhà ở tối thiểu ... (Mẫu số 02)
-TOÀN BỘ giấy tờ đính chung vào dòng 1 (mục I, attp-row nhận nhiều tệp), KHÔNG tạo dòng mới qua "+ Thêm giấy tờ".
+Giấy chứng nhận đính RIÊNG (người dùng chốt 18/11/2026): tạo dòng mới qua "+ Thêm giấy tờ" (target
+`add-document-dialog`); modal không tạo được dòng thì FE đính chung vào dòng Tờ khai (`fallbackComponentName`).
+Các giấy còn lại đính chung dòng 1 (attp-row nhận nhiều tệp).
 Thứ tự các tệp: Tờ khai → Giấy chứng nhận (trong tệp GCN: trang BÌA + "VI- Những thay đổi sau khi cấp" đứng TRƯỚC
 trang I-V) → giấy tờ chỗ ở khác → văn bản ủy quyền → CCCD → trang không rõ loại (kèm cảnh báo).
 """
@@ -55,7 +57,36 @@ _TO_KHAI_ROW = {
     "documentName": "Tờ khai xác nhận tình trạng chỗ ở hợp pháp",
     "loaiBan": "Bản chính",
 }
-# Thứ tự các tệp trên dòng Tờ khai.
+# Giấy chứng nhận: dòng RIÊNG tạo qua modal "+ Thêm giấy tờ" (FE chọn mục danh mục theo gợi ý, cụ thể → chung).
+_GCN_ROW = {
+    "componentName": "Giấy chứng nhận quyền sử dụng đất",
+    "formOptionHints": ["Giấy chứng nhận quyền sử dụng đất", "Giấy chứng nhận", "Giấy tờ khác"],
+    "loaiBan": "Bản chính",
+}
+
+
+def _row_fields(doc_type: str) -> dict:
+    """Trường định tuyến dòng: GCN → dòng mới qua "Thêm giấy tờ" (dự phòng dòng Tờ khai), còn lại → dòng Tờ khai."""
+    if doc_type == _GCN:
+        return {
+            "componentName": _GCN_ROW["componentName"],
+            "formOptionHints": list(_GCN_ROW["formOptionHints"]),
+            "loaiBan": _GCN_ROW["loaiBan"],
+            "quantity": 1,
+            "target": "add-document-dialog",
+            "needsAddComponent": True,
+            "fallbackComponentName": _TO_KHAI_ROW["componentName"],
+        }
+    return {
+        "componentName": _TO_KHAI_ROW["componentName"],
+        "componentIndex": _TO_KHAI_ROW["componentIndex"],
+        "loaiBan": _TO_KHAI_ROW["loaiBan"],
+        "target": "attp-row",
+        "needsAddComponent": False,
+    }
+
+
+# Thứ tự các tệp trên trang (Tờ khai trước).
 _ORDER = [_TO_KHAI, _GCN, _GIAY_TO_CHO_O, _AUTHORIZATION, _CCCD, _OTHER]
 _LABELS = {
     _TO_KHAI: _TO_KHAI_ROW["documentName"],
@@ -218,7 +249,7 @@ def _whole_file_items(
                 included.append(doc_type)
             classified.append({"fileIndex": file_index, "fileName": file.get("name"),
                                "pageFrom": segment["pageFrom"], "pageTo": segment["pageTo"], "type": doc_type,
-                               "componentIndex": _TO_KHAI_ROW["componentIndex"], "preservedFile": True})
+                               "componentName": _row_fields(head)["componentName"], "preservedFile": True})
         base = _LABELS[head].replace("/", "-")
         document_name, n = base, 2
         while document_name in used_names:
@@ -228,11 +259,7 @@ def _whole_file_items(
             "fileIndex": file_index,
             "fileName": file_name,
             "documentName": document_name,
-            "componentName": _TO_KHAI_ROW["componentName"],
-            "componentIndex": _TO_KHAI_ROW["componentIndex"],
-            "loaiBan": _TO_KHAI_ROW["loaiBan"],
-            "target": "attp-row",
-            "needsAddComponent": False,
+            **_row_fields(head),
             "detectedType": head,
             "includedTypes": included,
         })
@@ -285,7 +312,7 @@ def build_plan_items(
         parts.append((segment, doc_type))
         classified.append({"fileIndex": segment["fileIndex"], "fileName": file.get("name"),
                            "pageFrom": segment["pageFrom"], "pageTo": segment["pageTo"], "type": doc_type,
-                           "componentIndex": _TO_KHAI_ROW["componentIndex"]})
+                           "componentName": _row_fields(doc_type)["componentName"]})
 
     attachments: list[dict] = []
     # FE coi tệp trùng tên đã có trên dòng là đã đính → mỗi item một tên.
@@ -302,11 +329,7 @@ def build_plan_items(
             "fileIndex": segment["fileIndex"],
             "fileName": str(file.get("name") or f"file-{segment['fileIndex'] + 1}"),
             "documentName": document_name,
-            "componentName": _TO_KHAI_ROW["componentName"],
-            "componentIndex": _TO_KHAI_ROW["componentIndex"],
-            "loaiBan": _TO_KHAI_ROW["loaiBan"],
-            "target": "attp-row",
-            "needsAddComponent": False,
+            **_row_fields(doc_type),
             "detectedType": doc_type,
         }
         # Đoạn chỉ là một phần file (hoặc GCN đảo trang bìa lên trước) → cắt đúng trang; phủ trọn file → nguyên file.

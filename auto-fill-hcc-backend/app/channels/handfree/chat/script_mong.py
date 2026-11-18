@@ -114,6 +114,10 @@ PROCEDURE_HMONG = {
     "cap-the-can-cuoc-tu-du-14-tuoi": "Ua daim npav Căn cước rau neeg hnub nyoog 14 xyoo rov saum toj",
     # BẢN NHÁP chờ anh Dư soát — "cuv npe" (đăng ký) + "tsheb" (xe) + "thawj zaug" (lần đầu).
     "dang-ky-xe-lan-dau-san-xuat-lap-rap-trong-nuoc": "Cuv npe tsheb thawj zaug",
+    # BẢN NHÁP chờ anh Dư soát — "cuv npe" (đăng ký) + "qauv" (mẫu) + "foob" (con dấu) + "tshiab" (mới).
+    "dang-ky-mau-con-dau": "Cuv npe qauv foob tshiab",
+    # BẢN NHÁP chờ anh Dư soát — "ua" (làm) + "phau ntawv hla teb chaws" (hộ chiếu, nghĩa đen: sổ đi qua nước).
+    "cap-ho-chieu-pho-thong-o-trong-nuoc": "Ua phau ntawv hla teb chaws",
     # BẢN NHÁP chờ anh Dư soát (Bộ GD&ĐT — bản sao văn bằng/chứng chỉ từ sổ gốc).
     "cap-ban-sao-van-bang-so-goc": "Daim ntawv theej ntawv pov thawj kawm ntawv",
     # BẢN NHÁP chờ anh Dư soát (Bộ Xây dựng — thuê/thuê mua nhà ở xã hội).

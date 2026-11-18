@@ -32,8 +32,18 @@
   const sameText = (a, b) => fold(a).replace(/[.\s]+$/, "") === fold(b).replace(/[.\s]+$/, "");
   const ourPage = () => HOSTS.includes(location.hostname) && location.pathname.includes("/tiep-nhan-online/");
   // Ô chọn bị bootstrap-select / select2 che: thẻ <select> gốc ẩn, khung công dân thấy nằm ở wrapper / ngay sau.
-  const controlShown = (el) => shown(el) || shown(el?.closest?.(".bootstrap-select"))
-    || (el?.nextElementSibling?.classList?.contains("select2") && shown(el.nextElementSibling));
+  const controlShown = (el) => shown(el) || shown(bootstrapOf(el)) || shown(select2Of(el));
+  // bootstrap-select: bản cũ bọc thẻ <select>; cổng Bộ Công an (hộ chiếu 1.001456, ảnh 18/11) đặt khung
+  // div.btn-group.bootstrap-select NGAY SAU thẻ <select> ẩn — không dò anh em thì ô "Cơ quan giải quyết hồ sơ" bị coi là
+  // ẩn, trợ lý báo "chưa đọc được ô".
+  function bootstrapOf(select) {
+    const inside = select?.closest?.(".bootstrap-select");
+    if (inside) return inside;
+    for (let sib = select?.nextElementSibling; sib; sib = sib.nextElementSibling) {
+      if (sib.classList?.contains("bootstrap-select")) return sib;
+    }
+    return null;
+  }
   // Nhóm radio (Bộ Công an: "Loại biển số"): radio tự vẽ có ô gốc ẩn, nhãn hiện.
   const isRadio = (el) => el?.tagName === "INPUT" && el.type === "radio";
   const radioShown = (r) => shown(r) || shown(r.closest("label")) || shown(r.parentElement);
@@ -58,6 +68,8 @@
   }
 
   const CASE_PAGE = "/chon-truong-hop-ho-so";
+  // Ô chọn của khung chọn trường hợp: select có name, hoặc chỉ có id (ô "Cơ quan giải quyết hồ sơ" của một số thủ tục).
+  const CASE_CONTROLS = "select[name], select[id], input[type='radio'][name]";
 
   function step() {
     if (!ourPage()) return 0;
@@ -72,7 +84,8 @@
       const fees = Array.from(document.querySelectorAll(`select[name^="${FEE}_"]`));
       return fees.find(shown) || fees[0] || null;
     }
-    return document.querySelector(`[name="${CSS.escape(name)}"]`);
+    // Ô tự dò không có name (chỉ có id) được báo bằng id → tìm lại theo id.
+    return document.querySelector(`[name="${CSS.escape(name)}"]`) || document.getElementById(name);
   }
 
   const realOptions = (select) => Array.from(select?.options || []).filter((o) => o.value !== "" && textOf(o));
@@ -99,7 +112,13 @@
 
   // ── select2 nạp danh sách khi mở (ô "Điểm đăng ký"): mở một nhịp để đọc / chọn rồi đóng ──
   const lazyOptions = new Map();
-  const select2Of = (select) => (select?.nextElementSibling?.classList?.contains("select2") ? select.nextElementSibling : null);
+  function select2Of(select) {
+    if (select?.nextElementSibling?.classList?.contains("select2")) return select.nextElementSibling;
+    // Trang "Chọn trường hợp hồ sơ" (đăng ký mẫu con dấu): khung select2 có thể không đứng sát ô gốc mà cùng cha.
+    const sibling = select?.parentElement ? Array.from(select.parentElement.children)
+      .find((el) => el !== select && el.classList?.contains("select2")) : null;
+    return sibling || null;
+  }
   const openResults = () => Array.from(document.querySelectorAll(".select2-container--open .select2-results__option"))
     .filter((li) => !li.classList.contains("loading-results") && !li.classList.contains("select2-results__message")
       && li.getAttribute("aria-disabled") !== "true" && textOf(li));
@@ -151,6 +170,28 @@
     }
   }
 
+  // bootstrap-select: chọn như người dùng — bấm nút mở menu, bấm đúng mục (bootstrap-select tự đặt value, bắn change +
+  // changed.bs.select cho script cổng hiện ô tiếp theo), đóng menu. click() đơn: mỗi cú bấm đảo trạng thái menu.
+  async function pickBootstrap(select, text) {
+    const wrap = bootstrapOf(select);
+    const button = wrap?.querySelector("button.dropdown-toggle");
+    if (!button || button.disabled || select.disabled) return false;
+    const isOpen = () => wrap.classList.contains("open") || wrap.classList.contains("show");
+    if (!isOpen()) button.click();
+    let item = null;
+    for (let waited = 0; waited < 2500 && !item; waited += 150) {
+      item = Array.from(wrap.querySelectorAll(".dropdown-menu li:not(.disabled) a"))
+        .find((a) => sameText(textOf(a.querySelector(".text") || a), text));
+      if (!item) await sleep(150);
+    }
+    if (item) {
+      item.click();
+      await sleep(250);
+    }
+    if (isOpen()) button.click();
+    return !!item && sameText(selectedText(select), text);
+  }
+
   // Ô chọn (kể cả select2 nạp khi mở) hoặc nhóm radio: chọn đúng lựa chọn có chữ `text`.
   async function setControl(name, text) {
     const el = control(name);
@@ -173,6 +214,7 @@
       }
       return radio.checked;
     }
+    if (el.tagName === "SELECT" && bootstrapOf(el) && await pickBootstrap(el, text)) return true;
     if (setSelect(el, text)) return true;
     return select2Of(el) ? pickSelect2(el, text) : false;
   }
@@ -208,7 +250,7 @@
   // Khung chọn trường hợp: tổ tiên gần nhất của nút "Đồng ý và tiếp tục" có ô chọn (bỏ ô chọn ngôn ngữ đầu trang).
   function caseRoot() {
     for (let node = nextButton()?.parentElement; node && node !== document.body; node = node.parentElement) {
-      if (node.querySelector("select[name], input[type='radio'][name]")) return node;
+      if (node.querySelector(CASE_CONTROLS)) return node;
     }
     return document.querySelector("form") || document.body;
   }
@@ -256,8 +298,11 @@
   function discover() {
     const seen = new Set();
     const out = [];
-    for (const el of caseRoot().querySelectorAll("select[name], input[type='radio'][name]")) {
-      const name = el.getAttribute("name");
+    for (const el of caseRoot().querySelectorAll(CASE_CONTROLS)) {
+      const name = el.getAttribute("name") || el.id;
+      // Ô chọn ngôn ngữ / menu đầu trang không thuộc khung chọn trường hợp. Cổng Bộ Công an (hộ chiếu, ảnh 18/11): ô
+      // "Cơ quan giải quyết hồ sơ" nạp chậm → khung dò leo lên cả trang, bắt nhầm ô ngôn ngữ cbx_MA_NGON_NGU ở đầu trang.
+      if (!name || el.closest("header, nav, .dvc-header, #dvc-header-home") || /ngon_?ngu|language/i.test(name)) continue;
       if (seen.has(name) || !(isRadio(el) ? radiosOf(name).length : controlShown(el))) continue;
       seen.add(name);
       out.push({ name, ...labelFor(el) });
@@ -374,31 +419,81 @@
   }
 
   // Ô chọn chưa có giá trị mà cổng chỉ cho đúng một lựa chọn → chọn luôn ("auto:<name>").
-  function autoPickSingle(groups) {
+  async function autoPickSingle(groups) {
     const prepared = [];
     for (const group of resolve(groups)) {
       const select = control(group.name);
       if (!select || select.tagName !== "SELECT" || !controlShown(select) || select.value) continue;
       const options = realOptions(select);
-      if (options.length === 1 && setSelect(select, textOf(options[0]))) prepared.push(`auto:${group.name}`);
+      if (options.length === 1 && await setControl(group.name, textOf(options[0]))) prepared.push(`auto:${group.name}`);
+    }
+    return prepared;
+  }
+
+  // BE gửi presets [{label, match, prefer}] (hộ chiếu 1.001456: ô "Cơ quan giải quyết hồ sơ" theo tỉnh công dân chọn
+  // lúc đầu): ô có nhãn chứa `label` mà còn trống → lựa chọn chứa NGUYÊN cụm `match` (tên tỉnh đã bỏ dấu); nhiều mục thì
+  // giữ mục có cụm `prefer`; vẫn không ra đúng một mục thì không đoán, để công dân chọn trên thẻ ("preset:<name>").
+  const words = (s) => ` ${fold(s).replace(/[^a-z0-9]+/g, " ").trim()} `;
+  // Ô của preset + các lựa chọn khớp tỉnh (rỗng = ô / danh sách chưa nạp).
+  function presetTarget(groups, preset) {
+    const want = fold(preset?.label);
+    const match = words(preset?.match).trim();
+    if (!want || !match) return null;
+    const group = resolve(groups).find((g) => fold(g.label || g.name).includes(want));
+    const select = group && control(group.name);
+    if (!select || select.tagName !== "SELECT" || !controlShown(select)) return null;
+    return { group, select, options: realOptions(select).map(textOf).filter((t) => words(t).includes(` ${match} `)) };
+  }
+
+  async function applyPresets(groups, presets) {
+    const prepared = [];
+    for (const preset of Array.isArray(presets) ? presets : []) {
+      // Ô cơ quan nạp chậm qua AJAX → chờ tới 6 giây cho ô + lựa chọn của tỉnh xuất hiện.
+      let target = presetTarget(groups, preset);
+      for (let waited = 0; waited < 6000 && !target?.options.length; waited += 250) {
+        await sleep(250);
+        target = presetTarget(groups, preset);
+      }
+      if (!target || selectedText(target.select)) continue;
+      const { group } = target;
+      let { options } = target;
+      const prefer = words(preset?.prefer).trim();
+      if (options.length > 1 && prefer) {
+        const preferred = options.filter((t) => words(t).includes(` ${prefer} `));
+        if (preferred.length) options = preferred;
+      }
+      if (options.length === 1 && await setControl(group.name, options[0])) prepared.push(`preset:${group.name}`);
     }
     return prepared;
   }
 
   // Lần đọc đầu: làm sẵn những việc không cần hỏi công dân.
-  async function prepare(groups) {
+  async function prepare(groups, presets) {
     const prepared = [];
     if (fixQuantity()) prepared.push("quantity");
     const result = control(RESULT);
     if (result && result.value !== "0" && addressShown() && addressEmpty() && await pullApplicantAddress()) {
       prepared.push("address");
     }
-    prepared.push(...autoPickSingle(groups));
+    const preset = await applyPresets(groups, presets);
+    // Chọn cơ quan xong cổng mới hiện ô "Trường hợp giải quyết" (AJAX) → chờ đứng yên rồi mới xét ô một lựa chọn.
+    if (preset.length) await settle();
+    prepared.push(...preset);
+    prepared.push(...(await autoPickSingle(groups)));
     return prepared;
   }
 
   async function scan(msg) {
-    const prepared = msg.prepare === false ? [] : await prepare(msg.groups);
+    // Tự dò mà khung chưa có ô nào (ô nạp qua AJAX sau khi trang hiện) → chờ tối đa 4 giây rồi mới đọc.
+    if ((msg.groups || []).some((g) => g?.name === AUTO)) {
+      for (let waited = 0; waited < 4000 && !discover().length; waited += 250) await sleep(250);
+    }
+    let prepared = msg.prepare === false ? [] : await prepare(msg.groups, msg.presets);
+    // Lượt đọc lại (prepare:false) vẫn chọn bù ô preset còn trống (lượt đầu ô chưa nạp kịp).
+    if (msg.prepare === false && Array.isArray(msg.presets) && msg.presets.length) {
+      prepared = await applyPresets(msg.groups, msg.presets);
+      if (prepared.length) await settle();
+    }
     if (prepared.some((x) => x.startsWith("auto:"))) await settle();
     await loadLazy(msg.groups);
     return { groups: readGroups(msg.groups), missing: missingAddress(), prepared };
@@ -416,7 +511,7 @@
       }
       // Ô chỉ một lựa chọn chọn luôn; chọn xong cổng có thể hiện thêm ô → lặp vài vòng.
       for (let round = 0; ok && round < 3; round += 1) {
-        const picked = autoPickSingle(msg.groups);
+        const picked = await autoPickSingle(msg.groups);
         if (!picked.length) break;
         prepared.push(...picked);
         await settle();

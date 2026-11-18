@@ -481,6 +481,16 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
                                                        "đăng ký xe lần đầu", "bấm biển số xe máy mới",
                                                        "đăng ký ô tô mới mua lắp ráp trong nước",
                                                        "mua xe mới cần đăng ký cấp biển"],
+    # Thủ tục của CƠ QUAN, TỔ CHỨC (không phải cá nhân) xin khắc / đăng ký con dấu lần đầu. Phân biệt chứng thực chữ ký,
+    # chứng thực bản sao (đóng dấu sao y) — những việc đó không đăng ký con dấu.
+    "dang-ky-mau-con-dau": ["đăng ký mẫu con dấu", "khắc con dấu mới cho cơ quan", "làm con dấu cho đảng ủy mới thành lập",
+                            "xin khắc dấu cho chi bộ, đảng bộ", "đăng ký con dấu cho tổ chức mới thành lập",
+                            "đăng ký mẫu dấu ở công an tỉnh"],
+    # Hộ chiếu phổ thông (đi nước ngoài) — phân biệt thẻ căn cước (cấp đổi / cấp lại căn cước) và đăng ký xe. Câu "đổi
+    # từ CMND sang căn cước" trong tờ khai hộ chiếu vẫn là xin HỘ CHIẾU, không phải cấp đổi thẻ căn cước.
+    "cap-ho-chieu-pho-thong-o-trong-nuoc": ["làm hộ chiếu", "xin cấp hộ chiếu đi nước ngoài", "làm passport",
+                                            "hộ chiếu hết hạn cần làm lại", "mất hộ chiếu, xin cấp lại",
+                                            "làm hộ chiếu gắn chip", "cấp hộ chiếu phổ thông"],
     "cap-lai-cap-doi-gcn-ho-kinh-doanh": ["cấp lại giấy chứng nhận hộ kinh doanh",
                                           "mất giấy phép kinh doanh hộ gia đình", "làm lại giấy phép kinh doanh",
                                           "giấy đăng ký kinh doanh bị rách, hỏng",

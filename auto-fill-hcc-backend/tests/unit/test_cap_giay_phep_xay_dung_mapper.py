@@ -100,20 +100,12 @@ def test_cap_giay_phep_xay_dung_maps_private_house_sample():
     assert d["data[dienTichLoDat]"] == "228"
     assert d["data[duongPho]"] == "TDP Liễu Khê"
     assert d["data[thoiGianDuKienHoanThanh]"] == "6"
-    assert d["data[toChucCaNhanLapThietKe]"] == "toChuc"
-    assert d["data[maSoDoanhNghiepLapThietKe]"] == "2301199858"
-    assert d["data[thietKeXayDung][0][boMonChuTriThietKe]"] == "Kiến trúc"
-    assert d["data[thietKeXayDung][0][hoVaTenChuTriThietKe]"] == "Nguyễn Văn Lục"
-    assert d["data[thietKeXayDung][0][maSoChungChiHanhNgheChuTriThietKe]"] == "BAN-00000047"
-    assert d["data[thietKeXayDung][1][boMonChuTriThietKe]"] == "Kết cấu"
-    assert d["data[thietKeXayDung][1][hoVaTenChuTriThietKe]"] == "Cao Đình Chính"
-    assert d["data[thietKeXayDung][1][maSoChungChiHanhNgheChuTriThietKe]"] == "BAN-00127083"
-    assert d["data[thietKeXayDung][2][boMonChuTriThietKe]"] == "Điện"
-    assert d["data[thietKeXayDung][2][hoVaTenChuTriThietKe]"] == "Nguyễn Văn Thắng"
-    assert d["data[thietKeXayDung][2][maSoChungChiHanhNgheChuTriThietKe]"] == "BXD-00028135"
-    assert d["data[thietKeXayDung][3][boMonChuTriThietKe]"] == "Nước"
-    assert d["data[thietKeXayDung][3][hoVaTenChuTriThietKe]"] == "Nguyễn Văn An"
-    assert d["data[thietKeXayDung][3][maSoChungChiHanhNgheChuTriThietKe]"] == "BAN-00109462"
+    # Người dùng chốt 18/11/2026: nhà ở riêng lẻ LUÔN "Cá nhân" lập thiết kế; có công ty thiết kế thì lấy chủ nhiệm.
+    assert d["data[toChucCaNhanLapThietKe]"] == "caNhan"
+    assert d["data[tenCaNhanLapThietKe]"] == "Nguyễn Văn Lục"
+    assert d["data[maSoChungChiCaNhanLapThietKe]"] == "BAN-00000047"
+    assert "data[maSoDoanhNghiepLapThietKe]" not in d
+    assert "data[thietKeXayDung][0][boMonChuTriThietKe]" not in d
     assert d["data[loaiCongTrinh]"] == "Nhà ở riêng lẻ"
     assert d["data[tenCongTrinhNhaO]"] == "Nhà ở riêng lẻ"
     assert d["data[capCongTrinhNhaO]"] == "III"
@@ -284,8 +276,9 @@ def test_chi_biet_nam_sinh_thi_khong_bia_ngay_thang():
         {},
     )
 
-    assert _values(mapped)["data[birthday]"] == ""
-    assert _comps(mapped)["data[birthday]"] == "dom-expect"
+    # Người nộp không trùng tài khoản đăng nhập -> trả TRỐNG (xoá ngày cổng đổ sẵn) + tô đỏ.
+    birthday = next(f for f in mapped if f["name"] == "data[birthday]")
+    assert birthday == {"name": "data[birthday]", "comp": "dom-date", "value": "", "clear": True, "markEmpty": True}
     # Giới tính thì VẪN điền được: chữ số thứ 4 của CCCD mã hoá giới tính, đây là suy ra tất định.
     assert _values(mapped)["data[gender]"] == "Nữ"
 
@@ -297,7 +290,8 @@ def test_chi_co_nam_sinh_roi_cung_khong_dung_de_ghep_ngay():
     )
 
     assert _values(mapped)["data[birthday]"] == ""
-    assert _comps(mapped)["data[birthday]"] == "dom-expect"
+    assert _comps(mapped)["data[birthday]"] == "dom-date"
+    assert next(f for f in mapped if f["name"] == "data[birthday]").get("clear") is True
 
 
 def test_ngay_sinh_day_du_van_duoc_dien_va_van_chuan_nam_theo_cccd():
@@ -633,6 +627,43 @@ def test_nha_o_rieng_le_ten_cong_trinh_va_tham_tra_ca_nhan():
     assert d["data[maSoChungChiCaNhanThamTraThietKe]"] == "BXD-00000001"
     assert "data[tenDoanhNghiepThamTraThietKe]" not in d
     assert names.index("data[toChucCaNhanThamTraThietKe]") > names.index("data[loaiCongTrinh]")
+
+
+def test_nha_o_lay_nguoi_nop_theo_to_khai_cccd_ngay_sinh_va_lap_thiet_ke():
+    # Dạng req thật 18/11/2026: Đơn ghi CCCD 12 số (OCR "ecd"), GCN cũ ghi "Năm sinh" + CMND 9 số; LLM lấy nhầm CMND.
+    # Tài khoản đăng nhập là người khác, bật "Lấy người nộp theo tờ khai"; giấy không có thông tin thiết kế.
+    ocr = (
+        "ĐƠN ĐỀ NGHỊ CẤP GIẤY PHÉP XÂY DỰNG\n- Tên chủ đầu tư (tên chủ hộ): Trần Văn An ecd: 001090000001; "
+        "và Lê Thị Bình ecd: 001195000002;\n"
+        "GIẤY CHỨNG NHẬN\nÔng: Trần Văn An Năm sinh: 1990, CMND số: 225000001 Địa chỉ thường trú: 12 Đường Hoa Sen"
+    )
+    facts = [
+        _field("ChuDauTu_Loai", "Chủ hộ"),
+        _field("Applicant_HoTen", "Trần Văn An"),
+        _field("Applicant_NgaySinh", "1990"),
+        _field("Applicant_SoDinhDanh", "225000001"),
+        _field("ChuHo_HoTen", "Trần Văn An"),
+        _field("ChuHo_SoDinhDanh", "225000001"),
+    ] + _cong_trinh()
+    options = {**_dang_nhap(_DUOC_UY_QUYEN), "submitterMode": "owner_as_submitter", "_ocr_text": ocr}
+    out, _ = mapper.enrich(facts, options)
+    d = _values(out)
+    by_name = {f["name"]: f for f in out if f.get("occurrence") is None}
+    names = [f["name"] for f in out]
+
+    assert d["data[identityNumber]"] == d["data[soDinhDanhChuHo]"] == "001090000001"
+    for name in ("data[birthday]", "data[identityDate]"):
+        assert by_name[name]["value"] == "" and by_name[name]["clear"] is True and by_name[name]["markEmpty"] is True
+    assert d["data[toChucCaNhanLapThietKe]"] == "caNhan"
+    assert names.index("data[toChucCaNhanLapThietKe]") > names.index("data[loaiCongTrinh]")
+
+    # CCCD 12 số LLM đọc đúng thì giữ; chỉ có CMND (không có CCCD sau tên trong OCR) thì giữ CMND.
+    assert mapper._identity_uu_tien_cccd("001090000009", "Trần Văn An", ocr) == "001090000009"
+    assert mapper._identity_uu_tien_cccd("225000001", "Lê Văn Cường", ocr) == "225000001"
+
+    # Tài khoản đăng nhập CHÍNH là người nộp -> giữ ngày cổng đổ sẵn, không xoá.
+    out, _ = mapper.enrich(_nguoi_nop(_CHU_HO) + _chu_ho(_CHU_HO) + _cong_trinh(), _dang_nhap(_CHU_HO))
+    assert not any(f.get("clear") for f in out if f["name"] in ("data[birthday]", "data[identityDate]"))
 
 
 def test_to_chuc_chu_dau_tu_uy_quyen_cho_nhan_vien_nop():

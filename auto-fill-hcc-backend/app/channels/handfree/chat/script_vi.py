@@ -641,6 +641,14 @@ BCA_SUBMIT_FAILED = {
            "**Nộp hồ sơ** lại ạ."),
     "tts": "Dạ hồ sơ chưa nộp được. Công dân sửa theo lời cổng báo trên trang rồi bấm Nộp hồ sơ lại ạ.",
 }
+# Cổng chặn nộp và báo lỗi dưới các ô bắt buộc còn trống (trợ lý tô đỏ các ô đó).
+BCA_SUBMIT_FAILED_REQUIRED = {
+    "md": ("⚠️ Hồ sơ **chưa nộp được**{message}.\n\nTờ khai còn **{required} ô bắt buộc** (tô đỏ trên trang) chưa có "
+           "thông tin. Công dân xem lại các ô tô đỏ và điền thẳng trên trang, hoặc bấm **Bổ sung các thông tin còn "
+           "thiếu** để tôi hỏi từng ô, rồi bấm **Nộp hồ sơ** lại ạ."),
+    "tts": ("Dạ hồ sơ chưa nộp được, tờ khai còn {required} ô bắt buộc tô đỏ chưa có thông tin. Công dân xem lại các ô "
+            "tô đỏ, hoặc bấm Bổ sung các thông tin còn thiếu để tôi hỏi từng ô ạ."),
+}
 # Trang căn cước: nút cuối Bước 1 là "Lưu và Tiếp tục" sang Bước 2 đặt lịch thu nhận sinh trắc học (chưa phải nộp).
 BCA_SUBMIT_NEXT_PAGE = {
     "md": ("✓ Tôi đã bấm **{button}**.\n\nCông dân chọn **ngày, giờ thu nhận sinh trắc học** trên trang, xong bấm "
@@ -810,6 +818,22 @@ REFILL_WRONG_PAGE = {
 REVIEW_ATTACHMENT_SAME_PAGE = {
     "md": "\n\nKiểm tra xong → bấm **Đính kèm giấy tờ**, tôi đính kèm ngay ở mục **Hồ sơ đính kèm** trên trang này ạ.",
     "tts": " Kiểm tra xong, công dân bấm Đính kèm giấy tờ, tôi đính kèm ngay trên trang này ạ.",
+}
+
+# Trang kê khai có mục Nhận kết quả để công dân tự chọn (registry resultMethodHint, vd đăng ký mẫu con dấu — cổng DVC
+# Bộ Công an): nhắc chọn trước khi bấm "Đồng ý và tiếp tục" sang trang đính kèm.
+_RESULT_METHOD_MD = ("\n\n👉 Kiểm tra xong, công dân chọn **Hình thức nhận kết quả** ở mục **Nhận kết quả** cuối trang: "
+                     "**Trực tiếp** hoặc **Qua dịch vụ bưu chính công ích**. Chọn bưu chính thì nhập **Địa chỉ nhận kết "
+                     "quả**. Xong bấm **Đồng ý và tiếp tục** sang **Thành phần hồ sơ**")
+_RESULT_METHOD_TTS = (" Kiểm tra xong, công dân chọn hình thức nhận kết quả ở cuối trang, trực tiếp hoặc qua bưu chính. "
+                      "Chọn bưu chính thì nhập địa chỉ nhận kết quả, xong bấm Đồng ý và tiếp tục sang thành phần hồ sơ")
+WAIT_ATTACHMENT_RESULT_METHOD = {
+    "md": _RESULT_METHOD_MD + ", tôi tự đính kèm ạ.",
+    "tts": _RESULT_METHOD_TTS + ", tôi tự đính kèm ạ.",
+}
+REVIEW_RESULT_METHOD = {
+    "md": _RESULT_METHOD_MD + " → bấm **Đính kèm giấy tờ** trong Trợ lý ạ.",
+    "tts": _RESULT_METHOD_TTS + ", rồi bấm Đính kèm giấy tờ ạ.",
 }
 
 REVIEW_ATTACHMENT_ACTION = {
@@ -2528,6 +2552,17 @@ LC_CASE_UNREAD = {
            "tục** giúp tôi ạ."),
     "tts": "Dạ tôi chưa đọc được ô trường hợp giải quyết, công dân chọn tay rồi bấm Đồng ý và tiếp tục giúp tôi ạ.",
 }
+# Thủ tục khai laiChauFeeStep.caseHint (đăng ký mẫu con dấu): nói rõ phải chọn gì ở trang chọn trường hợp.
+LC_CASE_HINT = {
+    "md": "\n\n👉 Ở trang này công dân chọn {hint_md}, rồi bấm **Đồng ý và tiếp tục** ạ.",
+    "tts": " Ở trang này công dân chọn {hint_tts}, rồi bấm Đồng ý và tiếp tục ạ.",
+}
+LC_CASE_UNREAD_HINT = {
+    "md": ("⚠️ Tôi chưa đọc được ô chọn trên trang **Chọn trường hợp hồ sơ**. Công dân chọn {hint_md} trực tiếp trên "
+           "trang, rồi bấm **Đồng ý và tiếp tục** giúp tôi ạ."),
+    "tts": ("Dạ tôi chưa đọc được ô chọn trên trang. Công dân chọn {hint_tts} trực tiếp trên trang, rồi bấm Đồng ý và "
+            "tiếp tục giúp tôi ạ."),
+}
 # Trang chọn trường hợp tự dò ô (Cổng DVC Bộ Công an — đăng ký xe): nhãn ô lấy trên trang (Loại xe…).
 LC_CASE_UNREAD_AUTO = {
     "md": ("⚠️ Tôi chưa đọc được ô chọn nào trên trang **Chọn trường hợp hồ sơ**, công dân chọn tay rồi bấm **Đồng ý "
@@ -2546,6 +2581,11 @@ LC_CASE_STUCK = {
 LC_SINGLE_AUTO = {
     "md": "\n\n📌 Ô nào cổng chỉ cho một lựa chọn thì tôi đã chọn sẵn.",
     "tts": " Ô nào cổng chỉ cho một lựa chọn thì tôi đã chọn sẵn.",
+}
+# Trang chọn trường hợp: ô cơ quan trợ lý tự chọn theo tỉnh công dân chọn lúc đầu (laiChauFeeStep.caseAgencyByProvince).
+LC_CASE_PRESET = {
+    "md": "\n\n📌 Tôi đã chọn sẵn **{label}**: **{value}** theo tỉnh công dân chọn lúc đầu.",
+    "tts": " Tôi đã chọn sẵn {label}: {value} theo tỉnh công dân chọn lúc đầu.",
 }
 LC_CASE_AUTO = {
     "md": "\n\n📌 Cổng chỉ có một trường hợp giải quyết nên tôi đã chọn sẵn.",

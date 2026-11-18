@@ -285,6 +285,38 @@ def test_noi_dung_yeu_cau_one_owner_and_missing_parcel():
     assert _values(fields)["data[noidungyeucaugiaiquyet]"] == f"{mapper.NOI_DUNG_THU_TUC} - TRẦN THỊ BÌNH"
 
 
+def test_don_dung_chung_hai_nguoi_khong_leo_vao_mot_khoi():
+    # Đơn mục 1 ghi chung vợ chồng trên một dòng, LLM chép nguyên dòng cho cả hai vai: mỗi khối chỉ người ĐẦU.
+    fields, warnings = mapper.enrich(_facts(
+        ChuHoSo_HoTen="Trần Thị Bình SN: 05/06/1975 – Lê Văn An SN: 01/02/1973",
+        ChuHoSo_NgaySinh="05/06/1975 – 01/02/1973",
+        ChuHoSo_SoDinhDanh="056175012345 - 056073098765",
+        ChuHoSo_DiaChi=_OWNER["ChuHoSo_DiaChi"],
+        ChuHoSo_DienThoai="0912345678 - 0987654321",
+        NguoiNop_HoTen="Trần Thị Bình – Lê Văn An",
+        NguoiNop_SoDinhDanh="056175012345056073098765",
+        **_PARCEL,
+    ))
+    values = _values(fields)
+
+    assert warnings == []
+    for name in ("data[fullname]", "data[ownerFullname]"):
+        assert values[name] == "Trần Thị Bình", name
+    for name in ("data[identityNumber]", "data[ownerIdentityNumber]"):
+        assert values[name] == "056175012345", name
+    for name in ("data[phoneNumber]", "data[ownerPhoneNumber]"):
+        assert values[name] == "0912345678", name
+    for name in ("data[birthday]", "data[ownerBirthday]"):
+        assert values[name] == "05/06/1975", name
+    assert values["data[noidungyeucaugiaiquyet]"].endswith(" - TRẦN THỊ BÌNH")
+    # Một số viết tách nhóm vẫn là một số; tên tổ chức có gạch nối không bị cắt.
+    assert mapper._identity("056 175 012 345") == "056175012345"
+    assert mapper._identity("056-175-012-345") == "056175012345"
+    org = _values(mapper.enrich(_facts(ChuHoSo_HoTen="Công ty TNHH Biển Xanh - Chi nhánh Khánh Hòa"))[0])
+    assert org["data[ownerFullname]"] == "Công ty TNHH Biển Xanh - Chi nhánh Khánh Hòa"
+    assert org["data[chonDoiTuong]"] == "Tổ chức"
+
+
 def test_authorized_submitter_never_borrows_owner_facts():
     fields, _warnings = mapper.enrich(_facts(
         **_OWNER,

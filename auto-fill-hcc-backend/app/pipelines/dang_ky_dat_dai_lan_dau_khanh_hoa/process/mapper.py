@@ -46,13 +46,29 @@ def _fold(value: Any) -> str:
     return re.sub(r"\s+", " ", text).strip().lower()
 
 
+# Đơn Mẫu 19 mục 1 ghi chung nhiều người cùng sử dụng đất trên một dòng ("A SN: … – B SN: …", "b) <số A> - <số B>").
+# LLM có lượt chép nguyên dòng: gom hết chữ số thì ra một số 24 ký tự, nối hai tên thì lẹo hai người vào một khối.
+_MULTI_SEP = r"\s*[-–—,;/]\s*|\s+và\s+"
+
+
+def _first_number(value: Any) -> str:
+    """Chuỗi kê nhiều số ("<số A> - <số B>") -> cụm của người đầu; một số viết tách nhóm ("056 175 012 345",
+    "056.175.012.345", "056-175-012-345") giữ nguyên để gom chữ số như cũ."""
+    text = _text(value) or ""
+    groups = [part for part in re.split(_MULTI_SEP, text) if len(re.sub(r"\D+", "", part)) >= 9]
+    return groups[0] if len(groups) > 1 else text
+
+
 def _identity(value: Any) -> str | None:
-    digits = re.sub(r"\D+", "", _text(value) or "")
+    digits = re.sub(r"\D+", "", _first_number(value))
+    # Hai CCCD 12 số đã bị nối liền (không còn dấu ngăn) -> số của người đầu.
+    if len(digits) == 24:
+        digits = digits[:12]
     return digits or None
 
 
 def _phone(value: Any) -> str | None:
-    digits = re.sub(r"\D+", "", (_text(value) or "").upper().replace("O", "0").replace("S", "5"))
+    digits = re.sub(r"\D+", "", _first_number((_text(value) or "").upper().replace("O", "0").replace("S", "5")))
     if len(digits) == 9 and not digits.startswith("0"):
         digits = "0" + digits
     return digits if 10 <= len(digits) <= 11 and digits.startswith("0") else None
@@ -161,6 +177,8 @@ def _first_person(name: str | None) -> str | None:
     if not name:
         return None
     first = re.split(r"\s+[-–—]\s+|\s*[,;]\s*|\s+và\s+", name, maxsplit=1)[0]
+    # "Phạm Văn A SN: 11/3/1988" / "… sinh năm 1988": bỏ phần ngày sinh viết liền sau tên.
+    first = re.split(r"(?i)\s*\b(?:SN|sinh\s+năm|sinh\s+ngày|năm\s+sinh)\b\s*:?.*$", first, maxsplit=1)[0]
     return _text(first)
 
 
@@ -212,8 +230,13 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add(ward_name, _ward(area))
         add(address_name, _text(area.get("diaChi")))
 
-    owner_name = _text(values.get("ChuHoSo_HoTen"))
-    applicant_name = _text(values.get("NguoiNop_HoTen")) or owner_name
+    # Đơn đứng chung nhiều người: mỗi khối chỉ MỘT người (người đầu), không nối tên người cùng sử dụng đất. Tên tổ
+    # chức ("Công ty … - Chi nhánh …") giữ nguyên.
+    owner_raw = _text(values.get("ChuHoSo_HoTen"))
+    owner_is_org = _is_to_chuc(values.get("ChuHoSo_LoaiChuThe"), owner_raw)
+    owner_name = owner_raw if owner_is_org else _first_person(owner_raw)
+    applicant_raw = _text(values.get("NguoiNop_HoTen"))
+    applicant_name = (applicant_raw if _is_to_chuc(None, applicant_raw) else _first_person(applicant_raw)) or owner_name
     authorized = bool(owner_name and applicant_name and _fold(owner_name) != _fold(applicant_name))
 
     def owner_val(key: str) -> Any:
@@ -247,7 +270,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     add_person_area("data[province]", "data[village]", "data[address]", applicant_area)
 
     # --- Phần II: chủ hồ sơ ---
-    if _is_to_chuc(values.get("ChuHoSo_LoaiChuThe"), owner_name):
+    if owner_is_org:
         add("data[chonDoiTuong]", "Tổ chức")
     else:
         add("data[chonDoiTuong]", "Cá nhân", default=True)

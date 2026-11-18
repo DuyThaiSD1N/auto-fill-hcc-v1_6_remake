@@ -351,11 +351,33 @@ def test_tro_ly_bca_flow_nut_nop_soat_o_roi_bam_nut_cua_cong():
     assert "Đồng ý" in report(clicked=True, stage="submit", confirm=True).display_md
     r = report(clicked=True, stage="submit", message="Vui lòng chọn lịch hẹn")
     assert "chưa nộp được" in r.display_md and "Vui lòng chọn lịch hẹn" in r.display_md
+    # Cổng chặn nộp, extension đọc lại thấy ô bắt buộc tô đỏ → nêu số ô đỏ + nút Bổ sung (kể cả cổng không hiện toast).
+    for message in ("Dữ liệu không hợp lệ. Vui lòng kiểm tra lại", ""):
+        r = report(clicked=True, stage="submit", message=message, stats={"filled": 9, "optional": 3, "required": 1})
+        assert "chưa nộp được" in r.display_md and "1 ô bắt buộc" in r.display_md and "tô đỏ" in r.display_md
+        assert r.chips[0]["send"] == "__action:field_review_start"
+        assert conv["field_review"]["stats"]["required"] == 1
+    # Sang Bước 2 đặt lịch: ô đỏ của bước mới không phải lỗi nộp.
+    r = report(clicked=True, stage="next", button="Lưu và Tiếp tục", stats={"filled": 1, "optional": 0, "required": 2})
+    assert "sinh trắc học" in r.display_md
     assert report(clicked=True, stage="submit").display_md == ""  # đã bấm nộp: chờ watcher báo submitted
     assert "chưa thấy nút" in report(clicked=False).display_md
     # Extension cũ không có lệnh này.
     assert flow._bca_flow_handle({**conv, "client_capabilities": CAPS}, proc,
                                  Intent("action", "bca_submit")) is None
+
+
+def test_tro_ly_bca_bo_sung_khong_doc_ten_html():
+    """Extension không đọc được nhãn ô mà gửi tên HTML → hỏi theo tên phần, không đọc tên HTML (user 18/11/2026)."""
+    from app.channels.handfree.chat import field_review
+
+    f = field_review._field({"key": "accomStay_cboACCOMMODATION_TYPE", "name": "accomStay_cboACCOMMODATION_TYPE",
+                             "label": "accomStay_cboACCOMMODATION_TYPE", "section": "THÔNG TIN CƠ SỞ LƯU TRÚ",
+                             "kind": "select"})
+    assert "accomStay" not in f["label"] and f["label"].lower() == "cơ sở lưu trú" and f["where"] == ""
+    f = field_review._field({"key": "x", "name": "accomStay_cboACCOMMODATION_TYPE",
+                             "label": "Loại hình cơ sở lưu trú", "section": "THÔNG TIN CƠ SỞ LƯU TRÚ"})
+    assert f["label"] == "Loại hình cơ sở lưu trú" and f["where"].lower() == "cơ sở lưu trú"
 
 
 def test_tro_ly_bca_flow_noi_nop_ho_so_thi_hoi_xac_nhan():

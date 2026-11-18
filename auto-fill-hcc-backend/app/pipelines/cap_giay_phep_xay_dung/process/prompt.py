@@ -16,6 +16,9 @@ chứng chỉ hành nghề chủ nhiệm/chủ trì thiết kế và bản cam k
    chi tiết diện tích từng tầng, chiều cao, chi tiết chiều cao, số tầng.
 4. CCCD chỉ bổ sung ngày sinh đầy đủ, giới tính, ngày cấp/nơi cấp và số định danh của đúng người nộp/chủ hộ.
    Nếu đơn ghi địa chỉ thường trú khác CCCD, ưu tiên địa chỉ trong đơn.
+   Số định danh lấy CCCD/căn cước 12 số ghi trên ĐƠN (OCR hay đọc "cccd" thành "ecd"/"ccd") hoặc trên thẻ CCCD.
+   Giấy chứng nhận quyền sử dụng đất cấp trước thường ghi "CMND số" 9 số và chỉ "Năm sinh": KHÔNG lấy số CMND
+   đó khi đơn/CCCD đã có số 12 số của cùng người, KHÔNG lấy năm sinh trên GCN làm ngày sinh.
 5. Chứng chỉ năng lực ARECO hoặc giấy tương tự là nguồn cho tổ chức thiết kế và mã số doanh nghiệp/tổ chức.
    Chứng chỉ hành nghề là nguồn cho chủ nhiệm/chủ trì thiết kế và số chứng chỉ.
 6. Nếu hồ sơ không có giấy tờ thẩm tra thiết kế, không trả bất kỳ field ThamTra_* nào.

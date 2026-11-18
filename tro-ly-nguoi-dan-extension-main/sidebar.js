@@ -144,6 +144,14 @@
     // form kê khai, ô Tỉnh/Xã nhận kết quả (CongDan__fsTinhNhanKQ/XaNhanKQ) điền theo cascade. Thiếu cờ → BE báo thủ tục
     // cần cập nhật Trợ lý.
     supportsBcaDangKyXe: true,
+    // Cổng DVC Bộ Công an dichvucong.bocongan.gov.vn (đăng ký mẫu con dấu): ô Tỉnh → Phường/xã của địa chỉ cơ quan
+    // (CongDan__fs_BCAQueQuanMaTinh / _BCAQueQuanMaPX) điền theo cascade (fill-core isAreaSelectName). Thiếu cờ → BE báo
+    // thủ tục cần cập nhật Trợ lý.
+    supportsBcaConDau: true,
+    // Cổng DVC Bộ Công an dichvucong.bocongan.gov.vn (cấp hộ chiếu phổ thông 1.001456): ô Tỉnh → Phường/xã thường trú /
+    // tạm trú (_BCAQueQuanMaQH / _BCANoiOHienTaiMaQH) điền theo cascade, ô ngày sinh cha/mẹ chọn định dạng "Năm" trước khi
+    // gõ (fill-core pickStandardDateFormat). Thiếu cờ → BE báo thủ tục cần cập nhật Trợ lý.
+    supportsBcaHoChieu: true,
     // Cổng DVC Bộ Công an (dancuquocgia): sau khi điền tô ô xanh / cam / đỏ, vòng "Bổ sung các thông tin còn thiếu" và nút
     // Nộp hồ sơ (lệnh bca_submit → content/bca/field-review.js). Thiếu cờ → BE giữ luồng cũ (công dân tự soát, tự nộp).
     supportsBcaFlow: true,
@@ -1870,7 +1878,9 @@
     const res = await sendToContent(set
       ? { action: "lcResultSet", name: a.name, value: a.value, groups: a.groups || [] }
       // prepare:false = chỉ đọc lại (vd sau khi cổng chặn "Đồng ý và tiếp tục"), không làm sẵn gì thêm.
-      : { action: "lcResultScan", groups: a.groups || [], ...(a.prepare === false ? { prepare: false } : {}) });
+      : { action: "lcResultScan", groups: a.groups || [], ...(a.prepare === false ? { prepare: false } : {}),
+        // presets: ô trợ lý tự chọn trước (vd cơ quan giải quyết theo tỉnh công dân chọn lúc đầu — hộ chiếu 1.001456).
+        ...(Array.isArray(a.presets) && a.presets.length ? { presets: a.presets } : {}) });
     setStatus("");
     const report = { groups: res?.groups || [], missing: res?.missing || [], prepared: res?.prepared || [] };
     if (set) report.changed = { name: a.name, value: a.value, ok: !!res?.ok };
@@ -5827,6 +5837,14 @@
         pipeDone(); // dữ liệu về tới nơi — card tiến trình chốt ✓ dù WS có rớt
         if ($steps?.dataset.state === "running") await waitReplyTts(8000);
         setStatus("Đang điền form…");
+        // Cổng Bộ Công an: ô cam kết đã tích từ lượt trước thì bỏ tích — điền lại là dữ liệu mới, công dân phải cam đoan
+        // lại (BE hiện lại nút tích ô sau lượt điền). Trợ lý bỏ tích nên bộ theo dõi ô không báo "công dân tự bỏ tích".
+        if (a.fieldReview?.commitId || a.fieldReview?.commitLabel) {
+          await sendToContent({
+            action: "tickCommitBox", id: a.fieldReview.commitId || "", label: a.fieldReview.commitLabel || "",
+            checked: false,
+          });
+        }
         const secondPassId = String(a.secondPass?.requestId || "");
         const res = await sendToContent({
           action: "fillFields", fields: a.fields, toolAccount: a.toolAccount || null,

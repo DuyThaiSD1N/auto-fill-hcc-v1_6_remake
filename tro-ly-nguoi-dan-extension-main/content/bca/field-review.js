@@ -104,7 +104,8 @@
   // `group`) thì nhãn đó là của ô khác → null.
   function precedingLabel(container, target, group = []) {
     const labels = Array.from(container.querySelectorAll(LABEL_SEL)).filter((l) => !target.contains(l)
-      && !l.contains(target) && !optionLabel(l) && textOf(l) && shown(l) && (l.compareDocumentPosition(target) & FOLLOWING));
+      && !l.contains(target) && !optionLabel(l) && !isErrorNode(l) && textOf(l) && shown(l)
+      && (l.compareDocumentPosition(target) & FOLLOWING));
     const label = labels[labels.length - 1];
     if (!label) return null;
     const between = controlsIn(container).some((c) => !target.contains(c) && c !== target && !group.includes(c)
@@ -128,13 +129,95 @@
     return text ? text[0].toUpperCase() + text.slice(1) : "";
   }
 
-  const markedLabel = (label) => !!label && (/[*＊]/.test(label.textContent || "")
-    || !!label.querySelector(".required, .text-danger, .red, .star"));
+  // Dấu * cổng vẽ bằng CSS (".required::after { content: '*' }", trang Thông báo lưu trú) không nằm trong textContent
+  // → đọc cả nội dung ::before / ::after của nhãn và các thẻ con của nhãn.
+  function pseudoStar(el) {
+    for (const pseudo of ["::after", "::before"]) {
+      let content = "";
+      try { content = getComputedStyle(el, pseudo).content || ""; } catch (_) { content = ""; }
+      if (content !== "none" && /[*＊]/.test(content)) return true;
+    }
+    return false;
+  }
+
+  const REQUIRED_MARK_SEL = ".required, .text-danger, .red, .star, .asterisk, .mandatory, .text-red, .require";
+
+  function markedLabel(label) {
+    if (!label) return false;
+    if (/[*＊]/.test(label.textContent || "") || label.matches(REQUIRED_MARK_SEL)) return true;
+    if (label.querySelector(REQUIRED_MARK_SEL)) return true;
+    if ([label, ...Array.from(label.querySelectorAll("*")).slice(0, 8)].some(pseudoStar)) return true;
+    // "<label>Tên</label><span class="text-danger">*</span>": dấu * đứng ngay sau nhãn.
+    const after = label.nextElementSibling;
+    return !!after && /^[*＊]$/.test(textOf(after));
+  }
+
+  // Lời cổng báo dưới ô sau khi bấm nộp ("Vui lòng chọn loại hình cơ sở lưu trú", "Trường này không được để trống").
+  const ERROR_TEXT = /^(vui long (chon|nhap|dien|cung cap)|truong nay|khong duoc (de|bo) trong|bat buoc|ban chua (chon|nhap))/;
+  const ERROR_SEL = ".error, .invalid-feedback, .help-block, .text-danger, .field-validation-error, .error-message, "
+    + ".validation-message, .validate-error, .msg-error, .parsley-errors-list";
+  const isErrorNode = (el) => !!el && (/-error$/.test(el.id || "") || el.classList?.contains("error")
+    || ERROR_TEXT.test(fold(textOf(el))));
+
+  // Ô cổng đã gắn lỗi "bắt buộc" (sau lần bấm nộp bị chặn): coi là ô bắt buộc dù nhãn không có dấu * đọc được.
+  function portalFlagged(el, box) {
+    if (el.getAttribute("aria-invalid") === "true") return true;
+    if ([el, box].some((n) => n?.classList && (n.classList.contains("is-invalid")
+      || n.classList.contains("input-validation-error")))) return true;
+    const own = [
+      el.id ? document.getElementById(`${el.id}-error`) : null,
+      ...(el.id ? Array.from(document.querySelectorAll(`label.error[for="${CSS.escape(el.id)}"]`)) : []),
+      ...(el.name ? Array.from(document.querySelectorAll(`[data-valmsg-for="${CSS.escape(el.name)}"]`)) : []),
+    ];
+    if (own.some((n) => n && shown(n) && textOf(n))) return true;
+    // Dòng lỗi trong khối riêng của ô (khối không chứa ô khác).
+    let wrap = box?.parentElement || el.parentElement;
+    for (let level = 0; wrap && level < 3; wrap = wrap.parentElement, level += 1) {
+      if (controlsIn(wrap).some((c) => c !== el && counted(c) && c.type !== "radio")) break;
+      if (Array.from(wrap.querySelectorAll(ERROR_SEL)).some((n) => shown(n) && !n.contains(el)
+        && ERROR_TEXT.test(fold(textOf(n))))) return true;
+    }
+    return false;
+  }
+
+  // Nhãn không nằm trong thẻ label quen (trang Thông báo lưu trú: "Loại hình cơ sở lưu trú *" là span/div trơn) → lấy
+  // chữ đứng ngay trước ô trong khối riêng của ô (khối không chứa ô khác). Bỏ chữ trong ô chọn / select2 / dòng lỗi.
+  function looseLabel(anchor, group = []) {
+    let wrap = anchor.parentElement;
+    let best = null;
+    for (let level = 0; wrap && level < 4; wrap = wrap.parentElement, level += 1) {
+      if (controlsIn(wrap).some((c) => c !== anchor && !group.includes(c) && counted(c))) break;
+      const walker = document.createTreeWalker(wrap, NodeFilter.SHOW_TEXT);
+      let star = false;
+      let found = null;
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (!(node.compareDocumentPosition(anchor) & FOLLOWING)) break; // chỉ chữ đứng trước ô
+        const host = node.parentElement;
+        const text = String(node.textContent || "").replace(/\s+/g, " ").trim();
+        if (!text || !host || host.closest("select, option, script, style, .select2-container, [id^='tlnd']")
+          || host.closest(ERROR_SEL.replace(/\.text-danger, /, "")) || isErrorNode(host) || !shown(host)) continue;
+        if (/^[*＊]+$/.test(text)) { if (found) star = true; continue; }
+        found = host;
+        star = /[*＊]/.test(text);
+      }
+      if (found) {
+        // Lên tới thẻ bao trọn cả nhãn ("Loại hình <b>cơ sở</b> lưu trú") nhưng không bao ô.
+        let el = found;
+        while (el.parentElement && el.parentElement !== wrap && !el.parentElement.contains(anchor)
+          && textOf(el.parentElement).length <= 150) el = el.parentElement;
+        const text = cleanLabel(textOf(el));
+        if (text && text.length <= 150) { best = { text, marked: star || markedLabel(el) }; break; }
+      }
+    }
+    return best;
+  }
 
   // → { text, marked }: nhãn của ô + nhãn có dấu * hay không. Radio: `anchor` = radio đầu nhóm, `group` = cả nhóm.
   function labelOf(el, anchor, group = []) {
     if (el.id && el.type !== "radio") {
-      const own = Array.from(document.querySelectorAll(`label[for="${CSS.escape(el.id)}"]`)).find((l) => textOf(l));
+      // Bỏ nhãn lỗi jQuery validate (<label class="error" for=id>Vui lòng chọn …</label>) — không phải tên ô.
+      const own = Array.from(document.querySelectorAll(`label[for="${CSS.escape(el.id)}"]`))
+        .find((l) => textOf(l) && !isErrorNode(l));
       if (own) return { text: cleanLabel(textOf(own)), marked: markedLabel(own) };
     }
     const column = columnLabel(el);
@@ -150,8 +233,11 @@
       if (label) return { text: cleanLabel(textOf(label)), marked: markedLabel(label) };
       if (node.matches?.(".box, fieldset, form")) break;
     }
-    return { text: hintOf(el), marked: false };
+    return looseLabel(anchor, group) || { text: hintOf(el), marked: false };
   }
+
+  // Tên HTML (accomStay_cboACCOMMODATION_TYPE, data[x], txtNAME) không đọc cho công dân.
+  const htmlName = (text) => /^[\w.\-[\]#:]+$/.test(text) && (/[_[\]]/.test(text) || /[a-z][A-Z]/.test(text));
 
   function sectionOf(el) {
     const box = el.closest(".box, fieldset, .panel, .card");
@@ -219,8 +305,10 @@
       counts.set(name, occurrence + 1);
       out.push({
         key: occurrence ? `${name}#${occurrence}` : name, name, id: el.id || "", kind, el, box, occurrence,
-        label: text || name, section: sectionOf(el),
-        marker: marked || el.required || el.getAttribute("aria-required") === "true",
+        // Không đọc được nhãn: hỏi theo tên phần (BE bỏ "(phần)" khi nhãn trùng phần), không đưa tên HTML ra.
+        label: (text && !htmlName(text) ? text : "") || sectionOf(el) || "Ô còn trống", section: sectionOf(el),
+        marker: marked || el.required || el.getAttribute("aria-required") === "true"
+          || portalFlagged(group[0] || el, box),
         value, options,
       });
     }

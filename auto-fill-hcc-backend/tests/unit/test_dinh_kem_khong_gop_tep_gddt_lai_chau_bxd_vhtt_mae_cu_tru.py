@@ -94,7 +94,18 @@ def test_dien_tich_nha_o_to_khai_va_gcn_hai_tep_thanh_hai_item():
     assert [item.get("sourceSegments") for item in items] == [
         [{"fileIndex": 0, "pageIndexes": [0, 1]}], None, [{"fileIndex": 0, "pageIndexes": [2]}],
     ]
-    assert {item["componentName"] for item in items} == {dien_tich_nha_o._TO_KHAI_ROW["componentName"]}
+    # GCN đính RIÊNG qua "+ Thêm giấy tờ" (dự phòng dòng Tờ khai); Tờ khai + CCCD vẫn ở dòng 1.
+    to_khai_row = dien_tich_nha_o._TO_KHAI_ROW["componentName"]
+    assert [item["target"] for item in items] == ["attp-row", "add-document-dialog", "attp-row"]
+    assert [item["componentName"] for item in items] == [
+        to_khai_row, dien_tich_nha_o._GCN_ROW["componentName"], to_khai_row,
+    ]
+    gcn = items[1]
+    assert gcn["needsAddComponent"] is True
+    assert gcn["fallbackComponentName"] == to_khai_row
+    assert gcn["formOptionHints"][0] == "Giấy chứng nhận quyền sử dụng đất"
+    assert gcn["quantity"] == 1 and gcn["loaiBan"]
+    assert "componentIndex" not in gcn
 
 
 def test_dien_tich_nha_o_tat_tach_moi_tep_dinh_nguyen():
@@ -117,6 +128,9 @@ def test_dien_tich_nha_o_tat_tach_moi_tep_dinh_nguyen():
     assert [item["detectedType"] for item in items] == ["to_khai", "giay_chung_nhan", "other"]
     assert all(not item.get("sourceSegments") for item in items)
     assert items[0]["includedTypes"] == ["to_khai", "giay_chung_nhan"]
+    # Tệp mở đầu bằng GCN đính nguyên vào dòng riêng; tệp mở đầu bằng Tờ khai giữ dòng 1.
+    assert [item["target"] for item in items] == ["attp-row", "add-document-dialog", "attp-row"]
+    assert items[1]["fallbackComponentName"] == dien_tich_nha_o._TO_KHAI_ROW["componentName"]
     assert all(c["preservedFile"] for c in classified)
     assert any("Đã tắt" in w and "to_khai.pdf" in w for w in warnings)
     assert any("gpxd.pdf" in w for w in warnings)

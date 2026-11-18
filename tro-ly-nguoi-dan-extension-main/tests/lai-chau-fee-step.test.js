@@ -47,8 +47,26 @@ test("portal: chỉ trang tiếp nhận online của cổng Lai Châu, ô theo n
   // "Đến cơ quan giải quyết" (value 0) không có khối địa chỉ → không bấm lấy địa chỉ.
   assert.match(portal, /result\.value !== "0" && addressShown\(\) && addressEmpty\(\)/);
   // Ô chọn chỉ một lựa chọn thì chọn luôn; bị chặn thì đọc cả hộp thoại lẫn lời dưới ô (p.form-error).
-  assert.match(portal, /options\.length === 1 && setSelect\(select, textOf\(options\[0\]\)\)\) prepared\.push\(`auto:\$\{group\.name\}`\)/);
+  assert.match(portal, /options\.length === 1 && await setControl\(group\.name, textOf\(options\[0\]\)\)\) prepared\.push\(`auto:\$\{group\.name\}`\)/);
   assert.match(portal, /document\.querySelectorAll\("p\.form-error"\)/);
+});
+
+test("portal (Bộ Công an, hộ chiếu 1.001456): bootstrap-select đứng cạnh <select>, chọn bằng bấm mục, preset cơ quan theo tỉnh", () => {
+  // Khung div.bootstrap-select là anh em ngay sau thẻ <select> ẩn → vẫn tính là ô đang hiện.
+  assert.match(portal, /const controlShown = \(el\) => shown\(el\) \|\| shown\(bootstrapOf\(el\)\)/);
+  assert.match(portal, /for \(let sib = select\?\.nextElementSibling; sib; sib = sib\.nextElementSibling\)/);
+  // Chọn như người dùng (bootstrap-select tự bắn change + changed.bs.select), không được thì đặt value như cũ.
+  assert.match(portal, /bootstrapOf\(el\) && await pickBootstrap\(el, text\)\) return true;\s*if \(setSelect\(el, text\)\) return true;/);
+  // Lượt đọc đầu: chọn ô cơ quan theo preset BE gửi, chờ cổng hiện ô Trường hợp giải quyết rồi mới đọc.
+  assert.match(portal, /await prepare\(msg\.groups, msg\.presets\)/);
+  assert.match(portal, /const preset = await applyPresets\(groups, presets\);\s*[\s\S]{0,120}if \(preset\.length\) await settle\(\);/);
+  assert.match(portal, /options\.length === 1 && await setControl\(group\.name, options\[0\]\)\) prepared\.push\(`preset:\$\{group\.name\}`\)/);
+  assert.match(read("sidebar.js"), /presets: a\.presets/);
+  // Ảnh 18/11: ô cơ quan nạp chậm → khung dò bắt nhầm ô ngôn ngữ đầu trang (cbx_MA_NGON_NGU) → bỏ ô ngôn ngữ.
+  assert.match(portal, /\/ngon_\?ngu\|language\/i\.test\(name\)\) continue;/);
+  // Chờ ô cơ quan + lựa chọn của tỉnh nạp xong (tối đa 6 giây) rồi mới chọn; đọc lại (prepare:false) vẫn chọn bù.
+  assert.match(portal, /waited < 6000 && !target\?\.options\.length/);
+  assert.match(portal, /msg\.prepare === false && Array\.isArray\(msg\.presets\)[\s\S]{0,40}\s*prepared = await applyPresets/);
 });
 
 function runPortal({ title, hostname = "dichvucong.laichau.gov.vn", pathname = "/dich-vu-cong/tiep-nhan-online/nhap-le-phi-ho-so" }) {
@@ -94,7 +112,13 @@ test("portal: nhóm ô \"*\" = tự dò mọi ô chọn đang hiện trong khung
 
 
 test("portal (Bộ Công an): dò cả nhóm radio, chờ khung chọn trường hợp đứng yên, select2 nạp khi mở, lưới đỡ đọc lại", () => {
-  assert.match(portal, /querySelectorAll\("select\[name\], input\[type='radio'\]\[name\]"\)/);
+  // Ô "Cơ quan giải quyết hồ sơ" (đăng ký mẫu con dấu) có thể chỉ mang id → dò cả select[id]; bỏ ô ngôn ngữ đầu trang;
+  // lượt đọc tự dò đầu tiên chờ ô nạp (AJAX) tối đa 4 giây.
+  assert.match(portal, /const CASE_CONTROLS = "select\[name\], select\[id\], input\[type='radio'\]\[name\]";/);
+  assert.match(portal, /querySelectorAll\(CASE_CONTROLS\)/);
+  assert.match(portal, /el\.closest\("header, nav, \.dvc-header, #dvc-header-home"\)/);
+  assert.match(portal, /waited < 4000 && !discover\(\)\.length/);
+  assert.match(portal, /document\.getElementById\(name\)/);
   // Chọn xong chờ DOM khung chọn trường hợp đứng yên (cổng tải thêm ô qua AJAX), không chờ mốc cố định.
   assert.match(portal, /new MutationObserver\(\(\) => \{ lastChange = Date\.now\(\); \}\)/);
   assert.match(portal, /if \(ok\) await settle\(\);/);

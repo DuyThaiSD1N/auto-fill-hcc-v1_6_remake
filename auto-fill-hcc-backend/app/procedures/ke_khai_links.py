@@ -25,6 +25,15 @@ bảng (procedure_registry → agencySoByProvince).
 ở popup (vd "Đặc khu Cô Tô" cho các thủ tục Quảng Ninh chỉ nộp qua đặc khu). Chỉ dùng cùng thủ tục
 đặc thù của một tỉnh (nhãn "Tỉnh - …"), vì tỉnh được ép theo tiền tố nhãn ở popup.js:agencyLocationFor.
 
+`directSubmit`: trang chi tiết thủ tục KHÔNG bắt chọn Tỉnh/Thành phố hay Phường/Xã (vd 2.001428, 1.001456
+của Bộ Công an cấp tỉnh) — trợ lý bấm thẳng "Nộp hồ sơ" rồi "Nộp trực tuyến". Đi cùng `needsAgencySelect: false`
+để popup không đòi cán bộ chọn địa chỉ; content/agency-select.js lên đạn theo cờ này dù không có tỉnh.
+
+`bcaSubmit`: "Nộp trực tuyến" trên DVCQG ném sang trang thủ tục của Cổng DVC Bộ Công an
+(dichvucong.bocongan.gov.vn/bocongan/bothutuc/tthc?...MaTTHC=<mã>) → trợ lý bấm tiếp nút "Nộp hồ sơ"
+(`a.bca-search-btn`) bên đó, chỉ khi MaTTHC trên URL trùng `code`. Đi cùng `autoConfirm: false`: luồng này
+không có modal "Thông tin chung" trên DVCQG.
+
 `submitCardIncludes`: trang kết quả của Cổng QG ra NHIỀU thẻ cùng tên thủ tục, khác nhau ở "Cơ quan
 thực hiện" / "Đối tượng". Mặc định trợ lý lấy thẻ ĐẦU; khai chuỗi này thì nó tìm đúng thẻ chứa chuỗi
 đó (vd "Cơ quan thực hiện: Văn phòng Đăng ký đất đai") rồi mới bấm "Nộp trực tuyến" — bấm nhầm thẻ là

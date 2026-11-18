@@ -16,11 +16,15 @@
 // 4. Thủ tục do CẤP TỈNH tiếp nhận chỉ render MỘT ô (Tỉnh/Thành phố). Popup gắn cờ arm.provinceOnly
 //    (từ `provinceOnlyAgency` trong ke_khai_links.json của backend) -> bỏ hẳn bước Phường/Xã.
 (() => {
-  if (location.hostname !== "dichvucong.gov.vn") return;
+  // Thủ tục `bcaSubmit`: "Nộp trực tuyến" trên DVCQG ném sang trang thủ tục của Cổng DVC Bộ Công an,
+  // ở đó còn một nút "Nộp hồ sơ" nữa. Trên host này script CHỈ làm đúng việc đó (xem bcaStart).
+  const BCA_HOST = "dichvucong.bocongan.gov.vn";
+  const ON_BCA = location.hostname === BCA_HOST;
+  if (location.hostname !== "dichvucong.gov.vn" && !ON_BCA) return;
   if (window.top !== window) return;  // khối cơ quan chỉ có ở top frame
 
   // Cho content.js biết có script này -> nó khỏi trả lời thay ở action getPortalFlowState.
-  window.__HCC_AGENCY_FLOW__ = true;
+  if (!ON_BCA) window.__HCC_AGENCY_FLOW__ = true;
 
   const ARM_KEY = "autofill_agency_autoselect";
   const ARM_TTL_MS = 10 * 60 * 1000;   // cờ quá cũ = người dùng đã bỏ giữa chừng
@@ -53,6 +57,7 @@
    */
   function areaLabel(arm) {
     if (!arm) return "";
+    if (arm.directSubmit) return "cơ quan thực hiện";
     if (arm.soAgency) return `${arm.soAgency}, ${arm.province}`;
     return arm.provinceOnly ? String(arm.province || "") : `${arm.ward}, ${arm.province}`;
   }
@@ -418,6 +423,13 @@
       return void toast(`Đã chọn ${areaLabel(arm)}. Mời bấm "Nộp trực tuyến".`, "success");
     }
     // Đổi cờ TRƯỚC khi bấm: bấm xong là cổng điều hướng, không được bấm "Nộp trực tuyến" lần hai.
+    if (arm.bcaSubmit) {
+      // Cổng ném sang Cổng DVC Bộ Công an -> chặng "bca" bấm "Nộp hồ sơ" bên đó (bcaStage).
+      await setArm({ ...arm, stage: "bca", at: Date.now() });
+      notifyPopup();
+      realClick(button);
+      return void toast('Đã bấm "Nộp trực tuyến", đang chuyển sang Cổng DVC Bộ Công an…', "success");
+    }
     const next = arm.autoConfirm ? { ...arm, stage: "confirm", at: Date.now() } : null;
     if (next) await setArm(next); else await clearArm();
     // Đã vào được hồ sơ -> panel tự đổi về màn giấy tờ nhờ atPortalHome, chỉ cần báo cho nó biết.
@@ -507,6 +519,13 @@
       const next = { ...arm, stage: "submit", at: Date.now() };
       await setArm(next);
       return void await submitStage(next);
+    }
+    if (arm.directSubmit && findDirectSubmitButton()) {
+      // Về lại trang thủ tục không có ô Tỉnh/Xã -> bấm "Nộp hồ sơ" lại từ đầu.
+      const next = { ...arm, at: Date.now() };
+      delete next.stage;
+      await setArm(next);
+      return void await run();
     }
     const card = findAgencyCard();
     if (card && comboControls(card).some(isPlaceholder)) {
@@ -632,6 +651,9 @@
     if (arm.stage === "submit") return void await submitStage(arm);
     if (arm.stage === "login") return void await loginStage(arm);
     if (arm.stage === "confirm") return void await confirmStage(arm);
+    // Đã bấm "Nộp trực tuyến", chờ sang Cổng Bộ Công an — đừng bấm lại gì trên DVCQG.
+    if (arm.stage === "bca") return;
+    if (arm.directSubmit) return void await directSubmitStage(arm);
     // Chỉ cần tên tỉnh: popup gắn provinceOnly khi thủ tục cấp tỉnh HOẶC cán bộ không chọn xã.
     if (!arm.province || (!arm.provinceOnly && !arm.selectSo && !arm.ward)) return;
 
@@ -687,6 +709,31 @@
       return void toast(`Đã chọn ${areaLabel(arm)}. Mời bấm nút xác nhận.`, "success");
     }
     realClick(confirm);
+    await submitStage(next);
+  }
+
+  /**
+   * Thủ tục `directSubmit` (ke_khai_links.json): trang chi tiết không có ô Tỉnh/Xã, chỉ có nút
+   * "Nộp hồ sơ" -> bấm nó rồi sang giai đoạn 2 ("Nộp trực tuyến") như luồng thường.
+   */
+  function findDirectSubmitButton() {
+    // Bỏ menu đầu trang: thanh điều hướng của cổng cũng có thể có mục cùng chữ.
+    return Array.from(document.querySelectorAll("button, a"))
+      .filter(visible)
+      .filter((node) => !node.closest("header, nav"))
+      .find((node) => fold(node.textContent) === "nop ho so" && !node.disabled) || null;
+  }
+
+  async function directSubmitStage(arm) {
+    // Trang kết quả đã hiện sẵn (cổng nhớ lượt trước) -> vào thẳng giai đoạn 2.
+    const seen = await waitFor(
+      () => (submitButtons().length ? "submit" : (findDirectSubmitButton() ? "button" : null)),
+      15000, 300,
+    );
+    if (!seen) return;   // trang chưa tới -> giữ cờ cho nhịp điều hướng kế
+    const next = { ...arm, stage: "submit", at: Date.now() };
+    await setArm(next);
+    if (seen === "button") realClick(findDirectSubmitButton());
     await submitStage(next);
   }
 
@@ -811,6 +858,46 @@
       atPortalHome: !(onProcedurePage || infoModal || ownerInfo || ready || login.loginRequired),
       ownerStepHint: OWNER_STEP_HINT,
     };
+  }
+
+  // ---------- Cổng DVC Bộ Công an: trang thủ tục /bocongan/bothutuc/tthc?...MaTTHC=<mã> ----------
+  // Nút: <a href="/bo-cong-an/tiep-nhan-online/chon-truong-hop-ho-so?..." class="btn bca-search-btn">Nộp hồ sơ</a>.
+  // Menu đỏ đầu trang có "Nộp hồ sơ trực tuyến" — so khớp đúng cả cụm nên không dính.
+  function findBcaSubmitButton() {
+    const nodes = [
+      ...document.querySelectorAll("a.bca-search-btn, button.bca-search-btn"),
+      ...document.querySelectorAll("a, button"),
+    ];
+    return nodes
+      .filter(visible)
+      .filter((node) => !node.closest("header, nav, .dvc-header"))
+      .find((node) => fold(node.textContent) === "nop ho so") || null;
+  }
+
+  async function bcaStage(arm) {
+    // Chỉ bấm ở đúng trang thủ tục vừa chọn: URL mang MaTTHC (hoặc MaTTHCDP) = mã TTHC.
+    const params = new URLSearchParams(location.search);
+    const code = params.get("MaTTHC") || params.get("MaTTHCDP") || "";
+    if (!code) return;   // trang trung gian -> giữ cờ cho lần tải kế
+    if (arm.procedureCode && code !== arm.procedureCode) {
+      await clearArm();
+      return;
+    }
+    const button = await waitFor(findBcaSubmitButton, 15000, 300);
+    if (!button) return void toast('Không thấy nút "Nộp hồ sơ" — mời bấm tay.', "warning");
+    await clearArm();
+    realClick(button);
+    toast('Đã bấm "Nộp hồ sơ" trên Cổng DVC Bộ Công an.', "success");
+  }
+
+  if (ON_BCA) {
+    (async () => {
+      const arm = await readArm();
+      if (!arm || arm.stage !== "bca") return;
+      if (Date.now() - Number(arm.at || 0) > ARM_TTL_MS) return void await clearArm();
+      await bcaStage(arm);
+    })();
+    return;   // phần dưới (watcher, trạng thái luồng) chỉ dành cho dichvucong.gov.vn
   }
 
   // Popup hỏi trạng thái / nhờ bấm hộ modal. Chỉ top frame trả lời.

@@ -68,6 +68,10 @@ from app.pipelines.cap_the_can_cuoc_tu_du_14_tuoi.process import run as cap_the_
 from app.pipelines.dang_ky_xe_lan_dau_san_xuat_lap_rap_trong_nuoc.process import (
     run as dang_ky_xe_lan_dau_san_xuat_lap_rap_trong_nuoc_process,
 )
+from app.pipelines.dang_ky_mau_con_dau.process import run as dang_ky_mau_con_dau_process
+from app.pipelines.dang_ky_mau_con_dau.attach import plan as dang_ky_mau_con_dau_attach
+from app.pipelines.cap_ho_chieu_pho_thong_o_trong_nuoc.process import run as cap_ho_chieu_pho_thong_o_trong_nuoc_process
+from app.pipelines.cap_ho_chieu_pho_thong_o_trong_nuoc.attach import plan as cap_ho_chieu_pho_thong_o_trong_nuoc_attach
 from app.pipelines.dang_ky_thuong_tru.process import run as dang_ky_thuong_tru_process
 from app.pipelines.dang_ky_thuong_tru.attach import plan as dang_ky_thuong_tru_attach
 from app.pipelines.dieu_chinh_thong_tin_ve_cu_tru.process import run as dieu_chinh_thong_tin_ve_cu_tru_process
@@ -3996,11 +4000,24 @@ PROCEDURES: list[dict] = [
         # urlScope "<host>/vi/" (eForm cũ là /dich-vu-cong/…), mã TTHC + id apply-online; mục "<key>-test" cho
         # dichvucongtest sinh ở _IGATE_LAO_CAI cuối danh sách, kèm cụm textPriority chép từ mục cũ. Mục cũ khai
         # urlIncludes "1.115686" (khớp cả URL nền mới) → mục này PHẢI đứng trước.
-        # Bước 1 cùng form "FORM NGUOI NOP" (nội dung "Về việc"/"Ghi chú" cũ dồn vào ô Ghi chú); bước 2 vẫn là bảng 4
-        # dòng của cổng cũ.
+        # Bước 1 (crawl 18/11/2026) = form "FORM NGUOI NOP" (nội dung "Về việc"/"Ghi chú" cũ dồn vào ô Ghi chú) + eForm
+        # Đơn Mẫu 24 trùng tên ô data[fullname]… (mapper ghim occurrence); bước 2 vẫn là bảng 4 dòng của cổng cũ.
+        # Trang nộp nền mới KHÔNG in mã TTHC (tiêu đề "Lào Cai - Đính chính …") → cụm text của mục cũ (đòi "1.115686")
+        # không bao giờ khớp; khai cụm riêng không mã, dài hơn tổng cụm mục cũ để trang có in mã thì mục này vẫn thắng.
+        # Id 6aa4cbe1…a768 là trang nộp UBND Phường Yên Bái trên dichvucongtest (18/11/2026).
         "detect": {
             "urlScope": ["dichvucong.laocai.gov.vn/vi/"],
-            "urlIncludes": ["apply-online/6aa4cbe1be4ea839f303a730", "matthc=1.115686", "madvc=1.115686."],
+            "urlIncludes": [
+                "apply-online/6aa4cbe1be4ea839f303a730",
+                "apply-online/6aa4cbe1be4ea839f303a768",
+                "matthc=1.115686",
+                "madvc=1.115686.",
+            ],
+            "textIncludes": [
+                "lào cai - đính chính giấy chứng nhận",
+                "đính chính giấy chứng nhận đã cấp lần đầu có sai sót",
+            ],
+            "textPriority": True,
             "headingDisabled": True,
         },
         "label": (
@@ -4008,6 +4025,7 @@ PROCEDURES: list[dict] = [
         ),
         "mode": "agent",
         "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (
@@ -4019,10 +4037,12 @@ PROCEDURES: list[dict] = [
             "4. Văn bản ủy quyền nếu nộp thay.\n"
             "⚠ MỖI DÒNG KHÔNG QUÁ 6 MB.\n"
             "⚠ Họ tên, Số CCCD, Ngày sinh của khối người nộp cổng KHOÁ theo tài khoản định danh — phải đăng nhập đúng "
-            "tài khoản NGƯỜI ĐI NỘP. Trợ lý chỉ điền khối người nộp khi hồ sơ có giấy tờ của chính người đó.\n"
+            "tài khoản NGƯỜI ĐI NỘP (hoặc bật \"Lấy người nộp theo tờ khai\" để trợ lý mở khoá và ghi theo hồ sơ).\n"
+            "Đơn Mẫu 24 trên trang: trợ lý điền Kính gửi, người sử dụng đất (theo khối chủ hồ sơ), nội dung đính chính "
+            "kèm số hiệu Giấy chứng nhận, giấy tờ kèm theo và người viết đơn.\n"
             "Ô 'Ghi chú': trợ lý ghi nội dung đính chính, số hiệu Giấy chứng nhận, thửa đất và người đồng sử dụng.\n"
             "Thành phần hồ sơ: trợ lý tích + đính đúng 4 dòng; tài liệu chưa rõ loại đính chung dòng Đơn (vẫn là tệp "
-            "riêng)."
+            "riêng). Bật \"Tách giấy tờ\" thì một bản scan cả bộ được chia theo trang vào đúng dòng."
         ),
     },
     {
@@ -10936,6 +10956,76 @@ PROCEDURES: list[dict] = [
             "lượng xuất xưởng; nhập Email nếu giấy tờ không có."
         ),
     },
+    {
+        # 2.001428, Cổng DVC Bộ Công an (dichvucong.bocongan.gov.vn). Key TRÙNG ke_khai_links (link DVCQG, cờ directSubmit
+        # + bcaSubmit: "Nộp hồ sơ" → "Nộp trực tuyến" → "Nộp hồ sơ" ở trang thủ tục cổng Bộ Công an). Trang nhập thông tin
+        # tiep-nhan-online/nhap-thong-tin-nguoi-nop-ho-so?sid=<phiên> không mang mã → khớp tên thủ tục trong urlScope cổng
+        # Bộ Công an (trang thủ tục /bocongan/bothutuc/tthc?MaTTHC=2.001428 khớp mã qua urlIncludes ghép lúc trả API).
+        # Form-builder jQuery (ô CongDan__fs*) theo file mapping "Mapping_Dang_ky_mau_con_dau_moi". Điền xong người nộp chọn
+        # Hình thức nhận kết quả rồi bấm "Đồng ý và tiếp tục" → trang "Thông tin hồ sơ": bảng Thành phần hồ sơ 2 dòng
+        # (eForm Nth như Lai Châu, target fixed-slot) + "Giấy tờ khác" (ảnh ánh xạ 18/11/2026). Có tách giấy.
+        "key": "dang-ky-mau-con-dau",
+        "detect": {
+            "urlScope": ["dichvucong.bocongan.gov.vn"],
+            # Tiêu đề Phần 1 của form: "CƠ QUAN TIẾP NHẬN HỒ SƠ ĐĂNG KÝ MẪU CON DẤU" (trang có thể không in chữ "mới").
+            "textIncludes": [
+                "đăng ký mẫu con dấu",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Đăng ký mẫu con dấu mới (thực hiện tại cấp tỉnh)",
+        "mode": "agent",
+        "roles": [],
+        "useDangKyBy": False,
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Văn bản đề nghị đăng ký mẫu con dấu (Mẫu số 03) — tên, địa chỉ cơ quan, người nộp hồ sơ, nội dung đề nghị.\n"
+            "2. Quyết định thành lập / cho phép hoạt động của cơ quan, tổ chức.\n"
+            "3. Văn bản đồng ý cho khắc dấu của cơ quan có thẩm quyền (nếu có).\n"
+            "4. Thẻ căn cước của người đi nộp hồ sơ (nếu có).\n"
+            "Sau khi điền: chọn Hình thức nhận kết quả (chọn bưu chính thì nhập Địa chỉ nhận kết quả), kiểm tra Loại "
+            "hình con dấu, rồi bấm 'Đồng ý và tiếp tục'. Bước đính kèm: quyết định → dòng 'Quyết định công nhận tổ "
+            "chức', văn bản đề nghị (mục 6 giới thiệu người nộp) → dòng 'Giấy giới thiệu hoặc giấy ủy quyền', văn bản "
+            "đồng ý khắc dấu và CCCD → 'Giấy tờ khác'."
+        ),
+    },
+    {
+        # 1.001456, Cổng DVC Bộ Công an (dichvucong.bocongan.gov.vn), cùng nền form-builder Nth với mẫu con dấu. Key TRÙNG
+        # ke_khai_links (directSubmit + bcaSubmit: DVCQG "Nộp hồ sơ" → "Nộp trực tuyến" → "Nộp hồ sơ" ở trang thủ tục cổng
+        # Bộ Công an ?MaTTHC=1.001456). Trang nhập thông tin không mang mã → khớp chữ "hộ chiếu phổ thông" (nhãn mục 13
+        # "Hộ chiếu phổ thông gần nhất") trong urlScope cổng Bộ Công an. Điền theo file mapping "Mapping_Cap_ho_chieu_pho_
+        # thong_trong_nuoc_1.001456" (Tờ khai + hộ chiếu cũ + CCCD); ô khoá do CSDLQG về dân cư đổ sẵn không phát. Đính kèm
+        # theo ảnh ánh xạ 18/11/2026: bảng Thành phần hồ sơ 2 dòng (người đại diện hợp pháp / hộ chiếu cấp lần gần nhất),
+        # tờ khai đính chung dòng hộ chiếu. Có tách giấy. Chưa chạy cổng thật.
+        "key": "cap-ho-chieu-pho-thong-o-trong-nuoc",
+        "detect": {
+            "urlScope": ["dichvucong.bocongan.gov.vn"],
+            "textIncludes": [
+                "hộ chiếu phổ thông",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp hộ chiếu phổ thông ở trong nước (thực hiện tại cấp tỉnh)",
+        "mode": "agent",
+        "roles": [],
+        "useDangKyBy": False,
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai đề nghị cấp hộ chiếu phổ thông ở trong nước — nhân thân, địa chỉ, cha mẹ, vợ/chồng, nội dung đề "
+            "nghị, loại hộ chiếu (có / không gắn chip).\n"
+            "2. Hộ chiếu phổ thông cấp lần gần nhất (trang nhân thân + trang cơ quan cấp), nếu đã từng được cấp.\n"
+            "3. Thẻ căn cước (nếu có) — ngày cấp, nơi cấp.\n"
+            "Sau khi điền: tải Ảnh chân dung 4x6 nền trắng (.jpg dưới 2 MB), nhập Email và Đăng ký thông tin hoàn tiền "
+            "(số tài khoản, chủ tài khoản, ngân hàng). Bước đính kèm: hộ chiếu cũ và tờ khai đính chung dòng 'Hộ chiếu "
+            "phổ thông cấp lần gần nhất'; dòng người đại diện hợp pháp chỉ dùng cho người chưa đủ 14 tuổi."
+        ),
+    },
 ]
 
 # Mục iGate Lào Cai → mục eForm cũ cùng mã TTHC (mục cũ luôn đứng SAU mục iGate).
@@ -11112,6 +11202,8 @@ _PIPELINE = {
     "cap-the-can-cuoc-duoi-14-tuoi": cap_the_can_cuoc_duoi_14_tuoi_process,
     "cap-the-can-cuoc-tu-du-14-tuoi": cap_the_can_cuoc_tu_du_14_tuoi_process,
     "dang-ky-xe-lan-dau-san-xuat-lap-rap-trong-nuoc": dang_ky_xe_lan_dau_san_xuat_lap_rap_trong_nuoc_process,
+    "dang-ky-mau-con-dau": dang_ky_mau_con_dau_process,
+    "cap-ho-chieu-pho-thong-o-trong-nuoc": cap_ho_chieu_pho_thong_o_trong_nuoc_process,
     "dang-ky-thuong-tru": dang_ky_thuong_tru_process,
     "dieu-chinh-thong-tin-ve-cu-tru": dieu_chinh_thong_tin_ve_cu_tru_process,
     "xac-nhan-thong-tin-ve-cu-tru": xac_nhan_thong_tin_ve_cu_tru_process,
@@ -11473,6 +11565,8 @@ _ATTACH_PIPELINE = {
     "dang-ky-cap-giay-chung-nhan-doi-voi-toan-bo-dien-tich-dat-lai-chau":
         dang_ky_cap_giay_chung_nhan_doi_voi_toan_bo_dien_tich_dat_lai_chau_attach,
     "chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau": chuyen_muc_dich_su_dung_dat_mien_nui_lai_chau_attach,
+    "dang-ky-mau-con-dau": dang_ky_mau_con_dau_attach,
+    "cap-ho-chieu-pho-thong-o-trong-nuoc": cap_ho_chieu_pho_thong_o_trong_nuoc_attach,
     "giao-dat-cho-thue-dat-lai-chau": giao_dat_cho_thue_dat_lai_chau_attach,
     "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau": cap_lai_giay_chung_nhan_do_bi_mat_lai_chau_attach,
     "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh": cap_lai_gcn_do_bi_mat_bac_ninh_attach,

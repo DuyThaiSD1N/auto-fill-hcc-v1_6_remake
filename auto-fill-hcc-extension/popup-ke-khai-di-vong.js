@@ -28,6 +28,7 @@
   const TRUONG_TRANG_DVC = [
     "needsAgencySelect", "provinceOnlyAgency", "selectSo", "selectSoProvinces", "soAgencyByProvince",
     "submitCardIncludes", "submitCardIncludesByWard", "submitCardIndex", "autoConfirm", "agencyLevelByAccount",
+    "directSubmit", "bcaSubmit",
   ];
 
   function apDungDiVong(links, quyTac = QUY_TAC) {

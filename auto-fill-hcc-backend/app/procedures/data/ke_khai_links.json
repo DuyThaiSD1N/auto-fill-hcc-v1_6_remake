@@ -1479,10 +1479,22 @@
     {
       "key": "dang-ky-mau-con-dau",
       "code": "2.001428",
-      "label": "Đăng ký mẫu con dấu",
+      "label": "Đăng ký mẫu con dấu mới (thực hiện tại cấp tỉnh)",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf7-adfd-753a-8621-335a5395a571",
-      "needsAgencySelect": true,
-      "autoConfirm": true
+      "needsAgencySelect": false,
+      "directSubmit": true,
+      "bcaSubmit": true,
+      "autoConfirm": false
+    },
+    {
+      "key": "cap-ho-chieu-pho-thong-o-trong-nuoc",
+      "code": "1.001456",
+      "label": "Cấp hộ chiếu phổ thông ở trong nước (thực hiện tại cấp tỉnh)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf7-5fda-7370-bc07-6f1fd02ffcc4",
+      "needsAgencySelect": false,
+      "directSubmit": true,
+      "bcaSubmit": true,
+      "autoConfirm": false
     },
     {
       "key": "thong-bao-ket-qua-dai-hoi-phe-duyet-dieu-le-hoi-cap-bo",

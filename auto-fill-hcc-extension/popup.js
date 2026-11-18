@@ -6608,6 +6608,20 @@ function updateKeKhaiUI() {
     keKhaiStatus.className = 'status info';
     return;
   }
+  // Trang thủ tục không bắt chọn Tỉnh/Xã (directSubmit): bấm thẳng "Nộp hồ sơ" rồi "Nộp trực tuyến".
+  if (link.directSubmit && link.bcaSubmit) {
+    keKhaiStatus.textContent =
+      'Trợ lý sẽ bấm "Nộp hồ sơ", "Nộp trực tuyến" rồi bấm tiếp "Nộp hồ sơ" trên Cổng DVC Bộ Công an.';
+    keKhaiStatus.className = 'status info';
+    return;
+  }
+  if (link.directSubmit) {
+    keKhaiStatus.textContent = link.autoConfirm
+      ? 'Trợ lý sẽ bấm "Nộp hồ sơ", "Nộp trực tuyến" rồi "Xác nhận" để vào hồ sơ.'
+      : 'Trợ lý sẽ bấm "Nộp hồ sơ" rồi "Nộp trực tuyến" để mở biểu mẫu kê khai.';
+    keKhaiStatus.className = 'status info';
+    return;
+  }
   // Cổng React mới bắt chọn Tỉnh/Xã trước khi vào biểu mẫu → trợ lý điền hộ nếu đã có địa chỉ.
   if (link.needsAgencySelect && !locationIsCompleteFor(link)) {
     keKhaiStatus.textContent =
@@ -6683,7 +6697,23 @@ async function openKeKhaiPage() {
   const link = selectedKeKhaiLink();
   if (!link) return false;
   await onKeKhaiProcedureChosen();
-  if (link.needsAgencySelect && locationIsCompleteFor(link)) {
+  if (link.directSubmit) {
+    // Không có khối Tỉnh/Xã: content/agency-select.js chỉ bấm "Nộp hồ sơ" rồi đi tiếp như thường.
+    await chrome.storage.local.set({
+      [AGENCY_ARM_KEY]: {
+        directSubmit: true,
+        // "Nộp trực tuyến" ném sang Cổng DVC Bộ Công an -> bấm tiếp "Nộp hồ sơ" bên đó, chỉ ở trang đúng mã.
+        bcaSubmit: !!link.bcaSubmit,
+        procedureCode: link.code || "",
+        submitCardIncludes: submitCardIncludesFor(link),
+        submitCardIndex: Number(link.submitCardIndex) || 0,
+        procedureKey: link.key,
+        procedureLabel: link.cauLabel || link.label,
+        autoConfirm: !!link.autoConfirm,
+        at: Date.now(),
+      },
+    });
+  } else if (link.needsAgencySelect && locationIsCompleteFor(link)) {
     const area = agencyLocationFor(link);
     await chrome.storage.local.set({
       [AGENCY_ARM_KEY]: {

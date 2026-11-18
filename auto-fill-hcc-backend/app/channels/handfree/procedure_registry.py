@@ -7002,6 +7002,118 @@ PROCEDURES: list[dict] = [
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
     },
+    {
+        # 2.001428, Cổng DVC Bộ Công an dichvucong.bocongan.gov.vn, cùng nền eForm Nth với đăng ký xe (không bcaPortal).
+        # Bản lõi (Auto Fill) đi từ trang thủ tục DVCQG qua hai nút; trợ lý KHÔNG có engine bấm chuỗi đó nên mở THẲNG trang
+        # "Chọn trường hợp hồ sơ" của cổng Bộ Công an như đăng ký xe. Mã ma-thu-tuc-public=40852 SUY từ trang thủ tục
+        # (?matt=40852&MaTTHC=2.001428): hộ chiếu 1.001456 có matt=29497 và nút "Nộp hồ sơ" trỏ đúng
+        # chon-truong-hop-ho-so?ma-thu-tuc-public=29497. Trang chọn trường hợp dẫn bằng luồng trang 1 Lai Châu (tự dò ô);
+        # trang nhập thông tin đi luồng chung. Cờ riêng supportsBcaConDau: extension biết cascade Tỉnh → Phường/xã của địa
+        # chỉ cơ quan (CongDan__fs_BCAQueQuanMaTinh → _BCAQueQuanMaPX) và ô có waitMs (chờ danh sách nạp chậm). Đính kèm ở
+        # trang sau "Đồng ý và tiếp tục" (bảng Thành phần hồ sơ eForm Nth như Lai Châu + Giấy tờ khác). Toàn quốc.
+        # Detect y hệt lõi.
+        "key": "dang-ky-mau-con-dau",
+        "detect": {
+            "urlScope": ["dichvucong.bocongan.gov.vn"],
+            "textIncludes": [
+                "đăng ký mẫu con dấu",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Đăng ký mẫu con dấu mới (thực hiện tại cấp tỉnh)",
+        "shortLabel": "Đăng ký mẫu con dấu mới cho cơ quan, tổ chức",
+        "subtitle": "Đăng ký khắc con dấu cho cơ quan, tổ chức, đảng bộ mới thành lập",
+        "icon": "🔏",
+        "keKhaiUrl": "https://dichvucong.bocongan.gov.vn/bo-cong-an/tiep-nhan-online/chon-truong-hop-ho-so?ma-thu-tuc-public=40852",
+        "requiresCapability": "supportsBcaConDau",
+        # caseHint: trang chọn trường hợp chỉ có ô "Cơ quan giải quyết hồ sơ" (ảnh 18/11) — trợ lý nói ngay việc phải
+        # chọn, cả khi không đọc được ô. resultMethodHint: mục Nhận kết quả nằm cuối trang kê khai, giấy tờ không ghi →
+        # điền xong nhắc chọn Hình thức nhận kết quả + nhập Địa chỉ nhận kết quả rồi bấm "Đồng ý và tiếp tục" sang trang
+        # đính kèm (user 18/11).
+        "laiChauFeeStep": {
+            "capability": "supportsBcaCaseStep", "caseOnly": True, "caseGroups": "auto",
+            "caseHint": "**Cơ quan giải quyết hồ sơ** (Công an tỉnh, thành phố nơi cơ quan, tổ chức đặt trụ sở)",
+        },
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach
+        "resultMethodHint": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "van_ban_de_nghi", "name": "Văn bản đề nghị đăng ký mẫu con dấu (Mẫu số 03)", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "quyet_dinh", "name": "Quyết định thành lập cơ quan, tổ chức", "icon": "📜", "sides": 1,
+             "optional": True, "repeatable": True},
+            {"key": "cong_van", "name": "Văn bản đồng ý cho khắc dấu", "icon": "✉️", "sides": 1, "optional": True,
+             "repeatable": True},
+            {"key": "cccd", "name": "Thẻ căn cước của người đi nộp", "icon": "🪪", "sides": 2, "optional": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Văn bản đề nghị đăng ký mẫu con dấu (Mẫu số 03) — tên, địa chỉ cơ quan, người nộp hồ sơ, nội dung đề nghị.\n"
+            "2. Quyết định thành lập cơ quan, tổ chức.\n"
+            "3. Văn bản đồng ý cho khắc dấu (nếu có).\n"
+            "4. Thẻ căn cước của người đi nộp (nếu có).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        # 1.001456, cùng cổng + cùng khuôn với mẫu con dấu ngay trên: trợ lý mở THẲNG trang "Chọn trường hợp hồ sơ"
+        # ?ma-thu-tuc-public=29497 (nút "Nộp hồ sơ" trang thủ tục ?matt=29497&MaTTHC=1.001456 trỏ đúng trang này). Cờ riêng
+        # supportsBcaHoChieu: extension biết cascade Tỉnh → Phường/xã thường trú / tạm trú (CongDan__fs_BCAQueQuanMaQH,
+        # _BCANoiOHienTaiMaQH) và chọn định dạng "Năm" ở ô ngày sinh cha/mẹ (field.dateFormat). Nơi nhận hộ chiếu điền theo
+        # tờ khai nên không cần resultMethodHint. Đính kèm ở trang sau "Đồng ý và tiếp tục" (bảng Thành phần hồ sơ 2 dòng).
+        # caseHint SUY (chưa thấy trang chọn trường hợp của thủ tục này). Toàn quốc. Detect y hệt lõi.
+        "key": "cap-ho-chieu-pho-thong-o-trong-nuoc",
+        "detect": {
+            "urlScope": ["dichvucong.bocongan.gov.vn"],
+            "textIncludes": [
+                "hộ chiếu phổ thông",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp hộ chiếu phổ thông ở trong nước (thực hiện tại cấp tỉnh)",
+        "shortLabel": "Làm hộ chiếu phổ thông",
+        "subtitle": "Cấp hộ chiếu lần đầu, cấp lại khi hết hạn, mất, hỏng, đổi từ CMND sang căn cước",
+        "icon": "🛂",
+        "keKhaiUrl": "https://dichvucong.bocongan.gov.vn/bo-cong-an/tiep-nhan-online/chon-truong-hop-ho-so?ma-thu-tuc-public=29497",
+        "requiresCapability": "supportsBcaHoChieu",
+        # Trang chọn trường hợp (ảnh 18/11): "Cơ quan giải quyết hồ sơ" (Công an tỉnh …) rồi cổng mới hiện "Trường hợp giải
+        # quyết" (cho người từ đủ 14 tuổi / trẻ em dưới 14 tuổi). User 18/11: trợ lý tự chọn cơ quan theo tỉnh công dân
+        # chọn lúc đầu (caseAgencyByProvince), chỉ hỏi Trường hợp giải quyết.
+        "laiChauFeeStep": {
+            "capability": "supportsBcaCaseStep", "caseOnly": True, "caseGroups": "auto",
+            "caseAgencyByProvince": {"label": "Cơ quan giải quyết hồ sơ", "prefer": "cong an"},
+            "caseHint": "**Trường hợp giải quyết** (cấp cho người từ đủ 14 tuổi hay trẻ em dưới 14 tuổi); ô Cơ quan "
+                        "giải quyết hồ sơ tôi chọn theo tỉnh của công dân",
+        },
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "to_khai", "name": "Tờ khai đề nghị cấp hộ chiếu phổ thông", "icon": "📄", "sides": 1,
+             "repeatable": True},
+            {"key": "ho_chieu", "name": "Hộ chiếu cũ (nếu đã từng được cấp)", "icon": "🛂", "sides": 1,
+             "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Thẻ căn cước", "icon": "🪪", "sides": 2, "optional": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai đề nghị cấp hộ chiếu phổ thông ở trong nước.\n"
+            "2. Hộ chiếu cũ — trang có ảnh và trang cơ quan cấp (nếu đã từng được cấp).\n"
+            "3. Thẻ căn cước (nếu có).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
     # ── Đợt 26/10: 5 thủ tục, CHƯA chạy thử trên cổng thật. Cổng / cấp cơ quan suy từ code lõi; kiểm khi chạy. ──
     {
         "key": "dang-ky-noi-quy-lao-dong",
@@ -10742,6 +10854,8 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     # Vắng bảng theo dõi, user không nói phạm vi → toàn quốc (mặc định 16/11/2026).
     "cap-the-can-cuoc-tu-du-14-tuoi": _TAT_CA,
     "dang-ky-xe-lan-dau-san-xuat-lap-rap-trong-nuoc": _TAT_CA,  # 16/11/2026: ngoài bảng, chốt toàn quốc
+    "dang-ky-mau-con-dau": _TAT_CA,  # 18/11/2026: ngoài bảng, user không nói phạm vi → toàn quốc (mặc định)
+    "cap-ho-chieu-pho-thong-o-trong-nuoc": _TAT_CA,  # 18/11/2026: ngoài bảng, user không nói phạm vi → toàn quốc
     "thong-bao-luu-tru": _TAT_CA,
     "dang-ky-noi-quy-lao-dong": _TAT_CA,
     "cap-gcn-diem-tro-choi-dien-tu-cong-cong": _TAT_CA,

@@ -4993,9 +4993,14 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
         note = f"\n\n⚠️ **{len(missing)} ô chưa khớp được**: {', '.join(missing[:8])}" if missing else ""
         # Câu đuôi đi qua note= của _fmt: nối tay sẽ lẫn khối Việt–Mông và bắt giọng Mông
         # đọc chữ Việt (xem chú thích ở _fmt).
+        # resultMethodHint: mục Nhận kết quả cuối trang kê khai công dân tự chọn → câu đuôi nhắc chọn trước khi sang
+        # trang đính kèm.
+        result_hint = bool(proc.get("resultMethodHint"))
         tail = (
-            (vi.WAIT_ATTACHMENT_SAME_PAGE if same_page_attach else vi.WAIT_ATTACHMENT_PAGE)
+            (vi.WAIT_ATTACHMENT_SAME_PAGE if same_page_attach
+             else vi.WAIT_ATTACHMENT_RESULT_METHOD if result_hint else vi.WAIT_ATTACHMENT_PAGE)
             if auto_wait_attachment
+            else vi.REVIEW_RESULT_METHOD if result_hint
             else (vi.REVIEW_ATTACHMENT_SAME_PAGE if proc.get("samePageAttach") else vi.REVIEW_ATTACHMENT_ACTION)
         )
         v2 = (lien_thong.fill_report_reply(conv, proc, rep, intent.payload.get("review"))
@@ -5977,6 +5982,15 @@ def _bca_submit_report(conv: dict, proc: dict, payload: dict) -> Reply:
     if payload.get("confirm"):
         return Reply(*_fmt(vi.BCA_SUBMIT_CONFIRM_ON_PAGE))  # cổng hỏi lại "chắc chắn nộp?" → công dân tự bấm Đồng ý
     message = re.sub(r"\s+", " ", str(payload.get("message") or "")).strip()[:200]
+    stats = payload.get("stats") if isinstance(payload.get("stats"), dict) else None
+    if payload.get("stage") != "next" and stats and int(stats.get("required") or 0) > 0:
+        # Cổng chặn nộp và gắn lỗi dưới ô bắt buộc (extension đọc lại: ô đó tô đỏ) → nêu số ô đỏ, mời xem lại / Bổ sung.
+        required = field_review.update_stats(conv, stats)["required"]
+        r = Reply(*_fmt(vi.BCA_SUBMIT_FAILED_REQUIRED, message=f": *{message}*" if message else "",
+                        required=required))
+        r.chips = [*field_review.start_chips(conv, proc, _bca_keep_chips(conv, proc)),
+                   {**_bca_submit_chip(), "solid": False, "cta": False}]
+        return r
     if message:
         r = Reply(*_fmt(vi.BCA_SUBMIT_FAILED, message=f": *{message}*"))
         r.chips = [*field_review.start_chips(conv, proc, _bca_keep_chips(conv, proc)), _bca_submit_chip()]

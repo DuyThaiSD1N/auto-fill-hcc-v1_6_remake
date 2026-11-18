@@ -593,6 +593,30 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert bca_xe["hasAttachmentStep"] is False and "bcaPortal" not in bca_xe and "provinceOnly" not in bca_xe
     assert "wizard" not in bca_xe and "maePortal" not in bca_xe and "needsAgencySelect" not in bca_xe
     assert bca_xe["detect"]["urlScope"] == ["dichvucong.bocongan.gov.vn"]
+    # Đăng ký mẫu con dấu mới (cùng cổng, cùng khuôn đăng ký xe): mở thẳng trang chọn trường hợp, cờ riêng của extension.
+    bca_con_dau = procedures.pop("dang-ky-mau-con-dau")
+    for field in ("flowProfile", "bcaPortal", "wizard", "maePortal", "needsAgencySelect", "provinceOnly"):
+        assert bca_con_dau.get(field) == bca_xe.get(field), field
+    # Khác đăng ký xe: có trang đính kèm (bảng Thành phần hồ sơ eForm Nth), có tách giấy.
+    assert bca_con_dau["hasAttachmentStep"] is True and bca_con_dau["supportsSplitDocuments"] is True
+    # Trang chọn trường hợp dẫn như đăng ký xe, thêm câu nói rõ phải chọn gì; điền xong nhắc nhận kết quả rồi đính kèm.
+    assert {k: v for k, v in bca_con_dau["laiChauFeeStep"].items() if k != "caseHint"} == bca_xe["laiChauFeeStep"]
+    assert bca_con_dau["laiChauFeeStep"]["caseHint"] and bca_con_dau["resultMethodHint"] is True
+    assert bca_con_dau["detect"]["urlScope"] == bca_xe["detect"]["urlScope"]
+    assert bca_con_dau["requiresCapability"] == "supportsBcaConDau"
+    # Cấp hộ chiếu phổ thông (cùng cổng, cùng khuôn mẫu con dấu): có đính kèm + tách, cờ riêng; nơi nhận hộ chiếu điền theo
+    # tờ khai nên không nhắc nhận kết quả.
+    bca_ho_chieu = procedures.pop("cap-ho-chieu-pho-thong-o-trong-nuoc")
+    for field in ("flowProfile", "bcaPortal", "wizard", "maePortal", "needsAgencySelect", "provinceOnly",
+                  "hasAttachmentStep", "supportsSplitDocuments"):
+        assert bca_ho_chieu.get(field) == bca_con_dau.get(field), field
+    # Thêm: trợ lý tự chọn ô cơ quan theo tỉnh công dân chọn lúc đầu, chỉ hỏi Trường hợp giải quyết (user 18/11).
+    assert {k: v for k, v in bca_ho_chieu["laiChauFeeStep"].items()
+            if k not in ("caseHint", "caseAgencyByProvince")} == bca_xe["laiChauFeeStep"]
+    assert bca_ho_chieu["laiChauFeeStep"]["caseAgencyByProvince"]["label"] == "Cơ quan giải quyết hồ sơ"
+    # Thủ tục khác dùng laiChauFeeStep (Lai Châu, đăng ký xe, mẫu con dấu) KHÔNG tự chọn cơ quan.
+    assert "caseAgencyByProvince" not in bca_con_dau["laiChauFeeStep"] and "caseAgencyByProvince" not in bca_xe["laiChauFeeStep"]
+    assert "resultMethodHint" not in bca_ho_chieu and bca_ho_chieu["requiresCapability"] == "supportsBcaHoChieu"
 
     # Đợt 26/10. Nội quy lao động (Bộ Nội vụ): cùng khuôn cấp Sở với sửa đổi thông tin hồ sơ người có công.
     moha_labor = procedures.pop("dang-ky-noi-quy-lao-dong")
@@ -911,7 +935,9 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 tư pháp chọn Sở (18/11) "dang-ky-hoat-dong-trung-tam-tu-van-phap-luat" (1.000627, eForm TP-TVPL-01-sđ).
     # +1 tư pháp chọn Sở (18/11) "dang-ky-hanh-nghe-luat-su-voi-tu-cach-ca-nhan" (1.002153, eForm TP-LS-05-sđ).
     # +1 cổng Bộ Y tế cấp Sở (18/11) "cap-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te" (1.014076, luồng "xay-dung").
-    assert len(procedures) == 174
+    # +1 cổng Bộ Công an dichvucong.bocongan.gov.vn (18/11) "dang-ky-mau-con-dau" (2.001428).
+    # +1 cổng Bộ Công an dichvucong.bocongan.gov.vn (18/11) "cap-ho-chieu-pho-thong-o-trong-nuoc" (1.001456).
+    assert len(procedures) == 176
 
     for procedure in procedures:
         key = procedure["key"]

@@ -15,6 +15,10 @@ EXTRA_RULES = """
      trong giấy khai sinh.
 2. Mọi thuộc tính số giấy tờ, ngày cấp, nơi cấp, ngày sinh, địa chỉ, điện thoại phải đi theo đúng người
    (khớp họ tên và/hoặc số định danh).
+   Mục 1 của Đơn ghi NHIỀU người cùng sử dụng đất trên một dòng (vợ chồng, vd "a) Họ và tên: <A> SN: … – <B> SN: …",
+   "b) Giấy tờ nhân thân: <số A> - <số B>"): CHỦ HỒ SƠ là NGƯỜI ĐẦU TIÊN. Mỗi field ChuHoSo_*/NguoiNop_* chỉ chứa
+   MỘT người: một họ tên, một số giấy tờ (số đứng đầu), một ngày sinh, ngày cấp/nơi cấp theo CCCD của chính người
+   đó. TUYỆT ĐỐI không nối tên hay số giấy tờ của người cùng sử dụng đất bằng "–", "-", ",", "và".
 </source_and_role_rules>
 
 <missing_and_normalization_rules>

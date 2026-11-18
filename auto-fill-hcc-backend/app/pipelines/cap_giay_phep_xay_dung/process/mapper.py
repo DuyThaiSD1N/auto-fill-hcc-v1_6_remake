@@ -349,6 +349,29 @@ def _identity(value: Any) -> str | None:
     return digits if len(digits) in (9, 12) else None
 
 
+def _cccd_theo_ten(ocr_text: Any, name: Any) -> str | None:
+    """Số CCCD 12 số đứng ngay sau họ tên trong OCR ("<tên> cccd: 0560…", OCR hay đọc "ecd"/"ccd").
+
+    GCN cấp trước ghi "<tên> Năm sinh: 1975, CMND số: 2252…" (9 số): LLM có lượt lấy số CMND đó thay cho CCCD
+    trên Đơn. Chỉ nhận số 12 chữ số đứng riêng trong 60 ký tự sau tên, không vắt qua chữ số khác (năm sinh, CMND).
+    """
+    folded_name = _fold(name)
+    if not folded_name:
+        return None
+    pattern = re.escape(folded_name) + r"\b\D{0,60}?(?<!\d)(\d{12})(?!\d)"
+    match = re.search(pattern, _fold(ocr_text))
+    return match.group(1) if match else None
+
+
+def _identity_uu_tien_cccd(value: Any, name: Any, ocr_text: Any) -> str | None:
+    """Số định danh đã chuẩn hoá; LLM trả CMND 9 số (hoặc bỏ trống) mà OCR có CCCD 12 số ngay sau tên cùng người
+    thì lấy CCCD."""
+    identity = _identity(value)
+    if identity and len(identity) == 12:
+        return identity
+    return _cccd_theo_ten(ocr_text, name) or identity
+
+
 def _ma_so_doanh_nghiep(value: Any) -> str | None:
     """Chỉ nhận MÃ SỐ DOANH NGHIỆP hợp lệ: 10 chữ số, hoặc mã chi nhánh 10 số-3 số. Loại bỏ mã chứng
     chỉ năng lực (vd 'LAD 00038424') vì form validate theo đúng định dạng này."""
@@ -747,13 +770,17 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     #    nộp = NGƯỜI ĐƯỢC ỦY QUYỀN (Applicant_*). Không có ủy quyền → chính chủ hộ.
     #  - CHỦ HỘ / CHỦ ĐẦU TƯ (data[tenChuHo]…) = chủ sở hữu công trình (ChuHo_*).
     # (Trước đây gộp cả 2 vào owner_name=ChuHo → điền nhầm chủ hộ vào ô "Họ và tên người nộp".)
+    ocr_text = (options or {}).get("_ocr_text") or ""
     submitter_name = _text(_pick(values.get("Applicant_HoTen"), values.get("ChuHo_HoTen")))
-    submitter_identity = _identity(_pick(values.get("Applicant_SoDinhDanh"), values.get("ChuHo_SoDinhDanh")))
+    # CMND 9 số của GCN cũ mà Đơn có CCCD 12 số cùng người -> lấy CCCD (req thật 18/11/2026 điền nhầm số CMND).
+    submitter_identity = _identity_uu_tien_cccd(
+        _pick(values.get("Applicant_SoDinhDanh"), values.get("ChuHo_SoDinhDanh")), submitter_name, ocr_text)
     submitter_phone = _phone(_pick(values.get("Applicant_DienThoai"), values.get("ChuHo_DienThoai")))
     submitter_residence = _area(_pick(values.get("Applicant_NoiCuTru"), values.get("Dat_DiaDiemXayDung")))
 
     owner_name = _text(_pick(values.get("ChuHo_HoTen"), values.get("Applicant_HoTen")))
-    owner_identity = _identity(_pick(values.get("ChuHo_SoDinhDanh"), values.get("Applicant_SoDinhDanh")))
+    owner_identity = _identity_uu_tien_cccd(
+        _pick(values.get("ChuHo_SoDinhDanh"), values.get("Applicant_SoDinhDanh")), owner_name, ocr_text)
     owner_phone = _phone(_pick(values.get("ChuHo_DienThoai"), values.get("Applicant_DienThoai")))
 
     # Cài đặt "Lấy người nộp theo tờ khai" (options.submitterMode="owner_as_submitter", Auto Fill + trợ lý): bỏ
@@ -787,11 +814,20 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
 
     # Form luôn có 2 cặp Tỉnh/Phường: cặp 0 = khối người nộp, cặp 1 = địa điểm công trình. FE chọn ô
     # theo thứ tự này nên địa điểm công trình LUÔN ở cặp 1, kể cả khi bỏ qua khối người nộp.
+    def clear_if_missing(name: str) -> None:
+        # Ô ngày cổng đổ sẵn theo TÀI KHOẢN đăng nhập (vd ngày sinh của cán bộ). Người nộp là người khác mà giấy
+        # không có ngày đầy đủ (GCN cũ chỉ ghi "Năm sinh") -> trả TRỐNG + tô đỏ, không để ngày của người khác.
+        if (name, None) in seen or same_as_account:
+            return
+        out.append({"name": name, "comp": _ui_comp(name), "value": "", "clear": True, "markEmpty": True})
+        seen.add((name, None))
+
     if can_fill_applicant:
         add("data[chonDoiTuong]", "Cá nhân" if _looks_individual_owner(values) else "Tổ chức")
         add("data[fullname]", submitter_name)
         # Ngày sinh: ưu tiên ngày đầy đủ (đối chiếu chuẩn năm theo CCCD 12 số); fallback sang CCCD/năm sinh.
         add("data[birthday]", _birthday_from_year(values.get("Applicant_NgaySinh"), values.get("Applicant_NamSinh"), submitter_identity))
+        clear_if_missing("data[birthday]")
         # Giới tính: ưu tiên giá trị LLM; fallback trích từ số CCCD 12 số hoặc từ xưng hô Ông/Bà trong OCR text.
         _cccd_info = _extract_info_from_cccd(submitter_identity)
         _gender_llm = _text(values.get("Applicant_GioiTinh"))
@@ -816,6 +852,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("data[email]", _text(values.get("Applicant_Email")))
         add("data[identityNumber]", submitter_identity)
         add("data[identityDate]", _date(values.get("Applicant_NgayCap")))
+        clear_if_missing("data[identityDate]")
         add("data[identityAgency]", _issuer(values.get("Applicant_NoiCap")))
         add("data[phoneNumber]", submitter_phone)
         add("data[nation]", "Việt Nam" if submitter_name or submitter_identity else None)
@@ -873,10 +910,102 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     add("data[duongPho]", _text(_pick(values.get("Dat_DuongPho"), land_area.get("diaChi") if land_area else None)))
     add("data[thoiGianDuKienHoanThanh]", _number(values.get("CongTrinh_ThoiGianDuKienHoanThanh")))
 
+    construction_branch = _construction_branch(values, options)
+    # Người dùng chốt 18/11/2026: nhà ở riêng lẻ LUÔN tích "Cá nhân" ở "Tổ chức/cá nhân lập thiết kế" (như Đăk Cấm),
+    # kể cả khi giấy không có thông tin thiết kế; phát SAU "Loại hình công trình" vì chọn loại hình xong cổng đặt lại
+    # radio về mặc định "Tổ chức" (cùng lý do với radio thẩm tra).
+    individual_design = construction_branch == "nha_o_rieng_le"
+    if not individual_design:
+        _add_design(add, values, options, force_individual=False)
+
+    # Top-level "Loại hình công trình" không còn được mặc định. Hai panel có bộ
+    # field khác nhau nên phải xác định nhánh trước khi phát mapping.
+    floor_area_total, floor_area_detail, height_detail = _thong_so_san_va_chieu_cao(values)
+    if construction_branch == "nha_o_rieng_le":
+        # Select Choices.js LỌC option theo NHÃN (không theo value): FE gõ vào ô search rồi chọn option
+        # hiện ra. Phát MÃ số ("7") → search "7" không khớp nhãn nào → "No results found". Phải phát ĐÚNG
+        # NHÃN option "Nhà ở riêng lẻ" (value 7) để FE lọc & chọn được.
+        add("data[loaiCongTrinh]", "Nhà ở riêng lẻ")
+        # Người dùng chốt 18/11/2026: tên công trình nhánh nhà ở LUÔN là "Nhà ở riêng lẻ", không chép tên trên
+        # Đơn ("Nhà ở gia đình", "Nhà ở 3 tầng"…).
+        add("data[tenCongTrinhNhaO]", "Nhà ở riêng lẻ")
+        add("data[capCongTrinhNhaO]", _cap(values.get("CongTrinh_Cap")))
+        add("data[khoangLuiNhaO]", _number(values.get("CongTrinh_KhoangLui")))
+        add("data[cotXayDungNhaO]", _number(values.get("CongTrinh_CotXayDung")))
+        add("data[dienTichXayDungTang1NhaO]", _number(values.get("CongTrinh_DienTichXayDung")))
+        add("data[tongDienTichSanNhaO]", floor_area_total)
+        add("data[chiTietDienTichSanNhaO]", floor_area_detail)
+        add("data[chieuCaoCongTrinhNhaO]", _number(values.get("CongTrinh_ChieuCao")))
+        add("data[chiTietChieuCaoNhaO]", height_detail)
+        add("data[soTangNhaO]", _text(values.get("CongTrinh_SoTang")))
+        add("data[chiTietSoTangNhaO]", _text(values.get("CongTrinh_ChiTietSoTang")))
+    elif construction_branch == "khong_theo_tuyen":
+        # Phát NHÃN option (value 1) thay vì mã "1" — lý do như nhánh nhà ở riêng lẻ ở trên.
+        add("data[loaiCongTrinh]", "Công trình không theo tuyến, tín ngưỡng, tôn giáo")
+        add("data[tenCongTrinhKhongTheoTuyen]", _text(values.get("CongTrinh_Ten")))
+        add("data[loaiCongTrinhKhongTheoTuyen]", _construction_subtype_value(values))
+        add("data[capCongTrinhKhongTheoTuyen]", _cap(values.get("CongTrinh_Cap")))
+        add("data[dienTichXayDungKhongTheoTuyen]", _number(values.get("CongTrinh_DienTichXayDung")))
+        add("data[cotXayDungKhongTheoTuyen]", _number(values.get("CongTrinh_CotXayDung")))
+        add("data[khoangLuiKhongTheoTuyen]", _number(values.get("CongTrinh_KhoangLui")))
+        add("data[tongDienTichSanKhongTheoTuyen]", floor_area_total)
+        add("data[chiTietDienTichSanKhongTheoTuyen]", floor_area_detail)
+        add("data[chieuCaoCongTrinhKhongTheoTuyen]", _number(values.get("CongTrinh_ChieuCao")))
+        add("data[chiTietChieuCaoCongTrinhKhongTheoTuyen]", height_detail)
+        add("data[soTangCongTrinhKhongTheoTuyen]", _number(values.get("CongTrinh_SoTang")))
+        add("data[chiTietSoTangKhongTheoTuyen]", _text(values.get("CongTrinh_ChiTietSoTang")))
+    elif construction_branch in _BRANCH_LABELS:
+        add("data[loaiCongTrinh]", _BRANCH_LABELS[construction_branch])
+        _add_other_branch(add, construction_branch, values)
+    else:
+        warnings.append("Chưa xác định được nhánh loại hình công trình; không tự chọn mặc định.")
+
+    if individual_design:
+        _add_design(add, values, options, force_individual=True)
+
+    # Radio thẩm tra phát SAU "Loại hình công trình": req thật 18/11/2026 BE gửi "caNhan" trước ô loại hình,
+    # trên form vẫn ra "Tổ chức" (chọn loại hình xong cổng đặt lại radio về mặc định).
+    appraisal_kind = _fold(values.get("ThamTra_Loai"))
+    if construction_branch == "nha_o_rieng_le":
+        # Người dùng chốt 18/11/2026: nhà ở riêng lẻ LUÔN tích "Cá nhân" thẩm tra (không bắt buộc thẩm tra, nhánh
+        # cá nhân không bắt buộc tên/mã chứng chỉ). Giấy ghi đơn vị thẩm tra thì lấy chủ nhiệm thẩm tra làm cá nhân.
+        add("data[toChucCaNhanThamTraThietKe]", "caNhan")
+        appraiser_name = _text(values.get("ThamTra_CaNhan_HoTen"))
+        appraiser_certificate = _text(values.get("ThamTra_CaNhan_ChungChi"))
+        if not appraiser_name and not appraiser_certificate:
+            appraiser_name = _text(values.get("ThamTra_ChuNhiem_HoTen"))
+            appraiser_certificate = _text(values.get("ThamTra_ChuNhiem_ChungChi"))
+        add("data[tenCaNhanThamTraThietKe]", appraiser_name)
+        add("data[maSoChungChiCaNhanThamTraThietKe]", appraiser_certificate)
+    elif values.get("ThamTra_ToChuc_Ten") or values.get("ThamTra_ToChuc_MaSo") or "to chuc" in appraisal_kind:
+        add("data[toChucCaNhanThamTraThietKe]", "toChuc")
+        add("data[tenDoanhNghiepThamTraThietKe]", _text(values.get("ThamTra_ToChuc_Ten")))
+        add("data[maSoDoanhNghiepThamTraThietKe]", _text(values.get("ThamTra_ToChuc_MaSo")))
+        add("data[tenChuNhiemThamTraThietKeThietKe]", _text(values.get("ThamTra_ChuNhiem_HoTen")))
+        add("data[maSoChungChiChuNhiemThamTraThietKe]", _text(values.get("ThamTra_ChuNhiem_ChungChi")))
+    elif values.get("ThamTra_CaNhan_HoTen") or values.get("ThamTra_CaNhan_ChungChi"):
+        add("data[toChucCaNhanThamTraThietKe]", "caNhan")
+        add("data[tenCaNhanThamTraThietKe]", _text(values.get("ThamTra_CaNhan_HoTen")))
+        add("data[maSoChungChiCaNhanThamTraThietKe]", _text(values.get("ThamTra_CaNhan_ChungChi")))
+    else:
+        # Giấy tờ KHÔNG có thông tin thẩm tra → mặc định chọn "Cá nhân": nhánh cá nhân không bắt buộc điền
+        # tên/mã số chứng chỉ nên vẫn qua được bước sau; nếu để trống radio thì form chặn validate.
+        add("data[toChucCaNhanThamTraThietKe]", "caNhan")
+
+    if not owner_name or not owner_identity:
+        warnings.append("Thiếu thông tin chủ hộ/người nộp từ đơn hoặc CCCD.")
+    if not values.get("CongTrinh_DienTichXayDung") and not values.get("CongTrinh_TongDienTichSan"):
+        warnings.append("Chưa đọc được thông số xây dựng chính từ đơn/bản vẽ.")
+    return out, warnings
+
+
+def _add_design(add, values: dict, options: dict | None, *, force_individual: bool) -> None:
+    """Khối "Tổ chức/cá nhân lập thiết kế xây dựng". force_individual (nhà ở riêng lẻ) hoặc cờ Đăk Cấm -> luôn
+    "Cá nhân"; còn lại suy theo giấy tờ."""
     design_kind = _fold(values.get("LapThietKe_Loai"))
     has_design_org = bool(values.get("ThietKe_ToChuc_Ten") or values.get("ThietKe_ToChuc_MaSo")) or "to chuc" in design_kind
-    if (options or {}).get(FORCE_INDIVIDUAL_DESIGNER_OPTION) is True:
-        # Đăk Cấm: luôn "Cá nhân". Không có cá nhân thiết kế riêng thì lấy chủ nhiệm thiết kế — người
+    if force_individual or (options or {}).get(FORCE_INDIVIDUAL_DESIGNER_OPTION) is True:
+        # Luôn "Cá nhân". Không có cá nhân thiết kế riêng thì lấy chủ nhiệm thiết kế — người
         # đứng tên bản vẽ của công ty thiết kế.
         add("data[toChucCaNhanLapThietKe]", "caNhan")
         designer_name = _text(values.get("ThietKe_CaNhan_HoTen"))
@@ -919,81 +1048,3 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("data[toChucCaNhanLapThietKe]", "caNhan")
         add("data[tenCaNhanLapThietKe]", _text(values.get("ThietKe_CaNhan_HoTen")))
         add("data[maSoChungChiCaNhanLapThietKe]", _text(values.get("ThietKe_CaNhan_ChungChi")))
-
-    # Top-level "Loại hình công trình" không còn được mặc định. Hai panel có bộ
-    # field khác nhau nên phải xác định nhánh trước khi phát mapping.
-    construction_branch = _construction_branch(values, options)
-    floor_area_total, floor_area_detail, height_detail = _thong_so_san_va_chieu_cao(values)
-    if construction_branch == "nha_o_rieng_le":
-        # Select Choices.js LỌC option theo NHÃN (không theo value): FE gõ vào ô search rồi chọn option
-        # hiện ra. Phát MÃ số ("7") → search "7" không khớp nhãn nào → "No results found". Phải phát ĐÚNG
-        # NHÃN option "Nhà ở riêng lẻ" (value 7) để FE lọc & chọn được.
-        add("data[loaiCongTrinh]", "Nhà ở riêng lẻ")
-        # Người dùng chốt 18/11/2026: tên công trình nhánh nhà ở LUÔN là "Nhà ở riêng lẻ", không chép tên trên
-        # Đơn ("Nhà ở gia đình", "Nhà ở 3 tầng"…).
-        add("data[tenCongTrinhNhaO]", "Nhà ở riêng lẻ")
-        add("data[capCongTrinhNhaO]", _cap(values.get("CongTrinh_Cap")))
-        add("data[khoangLuiNhaO]", _number(values.get("CongTrinh_KhoangLui")))
-        add("data[cotXayDungNhaO]", _number(values.get("CongTrinh_CotXayDung")))
-        add("data[dienTichXayDungTang1NhaO]", _number(values.get("CongTrinh_DienTichXayDung")))
-        add("data[tongDienTichSanNhaO]", floor_area_total)
-        add("data[chiTietDienTichSanNhaO]", floor_area_detail)
-        add("data[chieuCaoCongTrinhNhaO]", _number(values.get("CongTrinh_ChieuCao")))
-        add("data[chiTietChieuCaoNhaO]", height_detail)
-        add("data[soTangNhaO]", _text(values.get("CongTrinh_SoTang")))
-        add("data[chiTietSoTangNhaO]", _text(values.get("CongTrinh_ChiTietSoTang")))
-    elif construction_branch == "khong_theo_tuyen":
-        # Phát NHÃN option (value 1) thay vì mã "1" — lý do như nhánh nhà ở riêng lẻ ở trên.
-        add("data[loaiCongTrinh]", "Công trình không theo tuyến, tín ngưỡng, tôn giáo")
-        add("data[tenCongTrinhKhongTheoTuyen]", _text(values.get("CongTrinh_Ten")))
-        add("data[loaiCongTrinhKhongTheoTuyen]", _construction_subtype_value(values))
-        add("data[capCongTrinhKhongTheoTuyen]", _cap(values.get("CongTrinh_Cap")))
-        add("data[dienTichXayDungKhongTheoTuyen]", _number(values.get("CongTrinh_DienTichXayDung")))
-        add("data[cotXayDungKhongTheoTuyen]", _number(values.get("CongTrinh_CotXayDung")))
-        add("data[khoangLuiKhongTheoTuyen]", _number(values.get("CongTrinh_KhoangLui")))
-        add("data[tongDienTichSanKhongTheoTuyen]", floor_area_total)
-        add("data[chiTietDienTichSanKhongTheoTuyen]", floor_area_detail)
-        add("data[chieuCaoCongTrinhKhongTheoTuyen]", _number(values.get("CongTrinh_ChieuCao")))
-        add("data[chiTietChieuCaoCongTrinhKhongTheoTuyen]", height_detail)
-        add("data[soTangCongTrinhKhongTheoTuyen]", _number(values.get("CongTrinh_SoTang")))
-        add("data[chiTietSoTangKhongTheoTuyen]", _text(values.get("CongTrinh_ChiTietSoTang")))
-    elif construction_branch in _BRANCH_LABELS:
-        add("data[loaiCongTrinh]", _BRANCH_LABELS[construction_branch])
-        _add_other_branch(add, construction_branch, values)
-    else:
-        warnings.append("Chưa xác định được nhánh loại hình công trình; không tự chọn mặc định.")
-
-    # Radio thẩm tra phát SAU "Loại hình công trình": req thật 18/11/2026 BE gửi "caNhan" trước ô loại hình,
-    # trên form vẫn ra "Tổ chức" (chọn loại hình xong cổng đặt lại radio về mặc định).
-    appraisal_kind = _fold(values.get("ThamTra_Loai"))
-    if construction_branch == "nha_o_rieng_le":
-        # Người dùng chốt 18/11/2026: nhà ở riêng lẻ LUÔN tích "Cá nhân" thẩm tra (không bắt buộc thẩm tra, nhánh
-        # cá nhân không bắt buộc tên/mã chứng chỉ). Giấy ghi đơn vị thẩm tra thì lấy chủ nhiệm thẩm tra làm cá nhân.
-        add("data[toChucCaNhanThamTraThietKe]", "caNhan")
-        appraiser_name = _text(values.get("ThamTra_CaNhan_HoTen"))
-        appraiser_certificate = _text(values.get("ThamTra_CaNhan_ChungChi"))
-        if not appraiser_name and not appraiser_certificate:
-            appraiser_name = _text(values.get("ThamTra_ChuNhiem_HoTen"))
-            appraiser_certificate = _text(values.get("ThamTra_ChuNhiem_ChungChi"))
-        add("data[tenCaNhanThamTraThietKe]", appraiser_name)
-        add("data[maSoChungChiCaNhanThamTraThietKe]", appraiser_certificate)
-    elif values.get("ThamTra_ToChuc_Ten") or values.get("ThamTra_ToChuc_MaSo") or "to chuc" in appraisal_kind:
-        add("data[toChucCaNhanThamTraThietKe]", "toChuc")
-        add("data[tenDoanhNghiepThamTraThietKe]", _text(values.get("ThamTra_ToChuc_Ten")))
-        add("data[maSoDoanhNghiepThamTraThietKe]", _text(values.get("ThamTra_ToChuc_MaSo")))
-        add("data[tenChuNhiemThamTraThietKeThietKe]", _text(values.get("ThamTra_ChuNhiem_HoTen")))
-        add("data[maSoChungChiChuNhiemThamTraThietKe]", _text(values.get("ThamTra_ChuNhiem_ChungChi")))
-    elif values.get("ThamTra_CaNhan_HoTen") or values.get("ThamTra_CaNhan_ChungChi"):
-        add("data[toChucCaNhanThamTraThietKe]", "caNhan")
-        add("data[tenCaNhanThamTraThietKe]", _text(values.get("ThamTra_CaNhan_HoTen")))
-        add("data[maSoChungChiCaNhanThamTraThietKe]", _text(values.get("ThamTra_CaNhan_ChungChi")))
-    else:
-        # Giấy tờ KHÔNG có thông tin thẩm tra → mặc định chọn "Cá nhân": nhánh cá nhân không bắt buộc điền
-        # tên/mã số chứng chỉ nên vẫn qua được bước sau; nếu để trống radio thì form chặn validate.
-        add("data[toChucCaNhanThamTraThietKe]", "caNhan")
-
-    if not owner_name or not owner_identity:
-        warnings.append("Thiếu thông tin chủ hộ/người nộp từ đơn hoặc CCCD.")
-    if not values.get("CongTrinh_DienTichXayDung") and not values.get("CongTrinh_TongDienTichSan"):
-        warnings.append("Chưa đọc được thông số xây dựng chính từ đơn/bản vẽ.")
-    return out, warnings

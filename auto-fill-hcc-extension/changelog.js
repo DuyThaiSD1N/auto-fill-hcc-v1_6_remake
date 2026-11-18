@@ -3,6 +3,20 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.28.18",
+    date: "18/11/2026",
+    items: [
+      "Thêm thủ tục Đăng ký mẫu con dấu và Cấp hộ chiếu phổ thông ở trong nước (Cổng dịch vụ công Bộ Công an): trang thủ tục trên Cổng dịch vụ công quốc gia không cần chọn Tỉnh/Xã, extension tự bấm \"Nộp hồ sơ\", \"Nộp trực tuyến\" rồi bấm tiếp \"Nộp hồ sơ\" trên Cổng dịch vụ công Bộ Công an; có tách giấy tờ khi đính kèm.",
+      "Cổng dịch vụ công Bộ Công an: ô Phường/Xã dạng danh sách thả xuống được chọn như người dùng bấm; ô ngày chỉ ghi năm (năm sinh cha, mẹ) chọn định dạng \"Năm\" trước khi gõ; tích được ô loại hộ chiếu.",
+      "Cấp giấy phép xây dựng nhà ở riêng lẻ: luôn chọn \"Cá nhân\" ở mục tổ chức/cá nhân lập thiết kế; lấy số căn cước 12 số thay cho số chứng minh 9 số của giấy chứng nhận cũ; người nộp khác tài khoản mà giấy không ghi đủ ngày sinh thì để trống ô ngày sinh để kiểm tra.",
+      "Đính chính Giấy chứng nhận đã cấp (cổng dịch vụ công mới của Lào Cai): có tách giấy tờ khi đính kèm.",
+      "Xác nhận điều kiện diện tích nhà ở để đăng ký thường trú: Giấy chứng nhận được đính vào dòng giấy tờ riêng.",
+      "Đăng ký đất đai lần đầu tại Khánh Hòa: đơn ghi chung nhiều người sử dụng đất trên một dòng chỉ lấy đúng người đầu tiên.",
+      "Điền lượt thứ hai: ô Phường/xã dạng Choices đang trống được ghi đúng; soát lại biểu mẫu cấp giấy phép xây dựng và cải chính hộ tịch.",
+      "Mốc tài khoản người nộp nay bật theo cài đặt thủ tục từ máy chủ, thủ tục mới không cần chờ phát hành lại extension.",
+    ],
+  },
+  {
     version: "1.28.12",
     date: "16/11/2026",
     items: [

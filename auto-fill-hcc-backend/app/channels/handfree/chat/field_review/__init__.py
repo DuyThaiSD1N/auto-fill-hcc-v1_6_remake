@@ -600,6 +600,14 @@ def _section(text) -> str:
     return text[:1].upper() + text[1:] if text else ""
 
 
+_HTML_NAME = re.compile(r"[A-Za-z0-9_.\-\[\]#:]+")
+
+
+def _html_name(text: str) -> bool:
+    """Tên thuộc tính HTML (txtNAME_T, accomStay_cboX, data[x]) chứ không phải nhãn tiếng Việt trên tờ khai."""
+    return bool(_HTML_NAME.fullmatch(text or "")) and bool(re.search(r"[_\[\]]|[a-z][A-Z]", text))
+
+
 def _field(raw, no_section: set[str] = frozenset(), copy_pair: tuple[str, ...] = (),
            strip_numbers: bool = False) -> dict | None:
     if not isinstance(raw, dict) or not _clean(raw.get("key")):
@@ -608,11 +616,16 @@ def _field(raw, no_section: set[str] = frozenset(), copy_pair: tuple[str, ...] =
         raw = {**raw, **{k: _OUTLINE_NUMBER.sub("", _clean(raw.get(k))) for k in ("label", "section")}}
     options = [_clean(o, 120) for o in (raw.get("options") or []) if _clean(o, 120)][:_MAX_OPTIONS]
     label = _label(raw.get("label")) or _clean(raw.get("name"))
+    # Extension không đọc được nhãn mà gửi tên HTML (accomStay_cboACCOMMODATION_TYPE) → hỏi theo tên phần, không đọc
+    # tên HTML cho công dân (user 18/11/2026).
+    html_label = _html_name(label)
+    if html_label:
+        label = _section(raw.get("section")) or "Ô còn trống"
     label += _unit_suffix(label, options)
     # Ô Tỉnh/Xã/Địa chỉ trong khối địa chỉ: nhãn chung chung, phải nêu khối (Nơi sinh, Quê quán…).
     # Tên khối lấy từ nhãn ô Quốc gia đầu khối ("Quốc gia nơi sinh của …") → bỏ chữ "Quốc gia".
     where = ""
-    if raw.get("name") in no_section:
+    if raw.get("name") in no_section or html_label or (raw.get("section") and _section(raw.get("section")) == label):
         where = None  # ô không thuộc phần nào trên tờ khai: hỏi không kèm tên phần
     elif raw.get("role") in {"tinh", "xa", "diaChi"}:
         where = re.sub(r"^Quốc gia\s+", "", _label(raw.get("group")), flags=re.IGNORECASE)
