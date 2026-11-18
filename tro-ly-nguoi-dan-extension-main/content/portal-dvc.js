@@ -869,9 +869,25 @@
     return { ok: true, cards: all.length };
   }
 
-  async function selectAgency({ province, ward, soMode = false, soAgency = "", cardIncludes = "" }) {
+  // Thủ tục "nộp thẳng" (BE agencyDirectSubmit — cùng cờ directSubmit của Auto Fill, vd 1.001194 Bộ Công an cấp tỉnh):
+  // KHÔNG chọn Tỉnh/Xã, bấm luôn "Nộp hồ sơ" của khối rồi "Nộp trực tuyến" ở danh sách hiện ra (Auto Fill
+  // content/agency-select.js::directSubmitStage đã chạy luồng này).
+  async function directSubmit(block) {
+    const SUBMIT_LABELS = ["nop ho so", "dong y"];
+    const submit = Array.from(block.querySelectorAll('button[type="submit"], button'))
+      .find((b) => isVisible(b) && SUBMIT_LABELS.includes(fold(b.textContent)) && !b.disabled);
+    if (!submit) return { error: 'Không thấy nút "Nộp hồ sơ" trong khối chọn cơ quan.' };
+    const submitLabel = submit.textContent.trim();
+    clickLikeUser(submit);
+    await sleep(500);
+    if (!await clickNopTrucTuyen()) return { error: 'Không thấy nút "Nộp trực tuyến" sau khi bấm Nộp hồ sơ.' };
+    return { ok: true, direct: true, submit: submitLabel, nop_truc_tuyen: true };
+  }
+
+  async function selectAgency({ province, ward, soMode = false, soAgency = "", cardIncludes = "", direct = false }) {
     const block = await waitFor(agencyBlock, 6000);
     if (!block) return { error: 'Không thấy khối "Chọn cơ quan thực hiện" trên trang.' };
+    if (direct) return directSubmit(block);
 
     const combos = Array.from(block.querySelectorAll('button[aria-haspopup="listbox"]'));
     if (combos.length < 2) return { error: `Chỉ thấy ${combos.length}/2 ô chọn tỉnh/xã.` };
@@ -943,6 +959,7 @@
       soMode: msg.soMode === true,
       soAgency: msg.soAgency || "",
       cardIncludes: msg.cardIncludes || "",
+      direct: msg.direct === true,
     })
       .then(sendResponse)
       .catch((e) => sendResponse({ error: String(e?.message || e) }));
@@ -1474,6 +1491,131 @@
     clickLikeUser(button);
     return { ok: true, rows: all.length };
   }
+
+  // ── Cổng DVC Bộ Công an: trang thủ tục /bocongan/bothutuc/tthc?...MaTTHC=<mã> (sau "Nộp trực tuyến" của DVCQG) ──
+  // Nút: <a href="/bo-cong-an/tiep-nhan-online/chon-truong-hop-ho-so?..." class="btn bca-search-btn">Nộp hồ sơ</a>, port
+  // Auto Fill content/agency-select.js::findBcaSubmitButton. Menu đầu trang có "Nộp hồ sơ trực tuyến" — so khớp đúng cả
+  // cụm nên không dính. Chỉ bấm khi MaTTHC trên URL trùng mã BE gửi (trang thủ tục khác thì để công dân tự xem).
+  function bcaTthcSubmitButton() {
+    const nodes = [
+      ...document.querySelectorAll("a.bca-search-btn, button.bca-search-btn"),
+      ...document.querySelectorAll("a, button"),
+    ];
+    return nodes
+      .filter(isVisible)
+      .filter((node) => !node.closest("header, nav, .dvc-header"))
+      .find((node) => fold(node.textContent) === "nop ho so") || null;
+  }
+
+  async function bcaTthcSubmit({ code = "" } = {}) {
+    const params = new URLSearchParams(location.search);
+    const onPage = params.get("MaTTHC") || params.get("MaTTHCDP") || "";
+    if (!onPage) return { ok: false, error: "trang chưa có mã thủ tục" };
+    if (code && onPage !== code) return { ok: false, error: `trang đang mở thủ tục ${onPage}, không phải ${code}` };
+    const button = await waitFor(bcaTthcSubmitButton, 12000, 300);
+    if (!button) return { ok: false, error: 'không thấy nút "Nộp hồ sơ"' };
+    button.scrollIntoView?.({ block: "center" });
+    clickLikeUser(button);
+    return { ok: true };
+  }
+
+  // ── eForm Nth Bộ Công an: trang "xác nhận thông tin nộp" (/tiep-nhan-online/xac-nhan-thong-tin-nop-moi, ảnh 18/11) ──
+  // Mã xác nhận (captcha) + ô "Tôi xin chịu trách nhiệm trước pháp luật về lời khai trên" + nút "Nộp hồ sơ". Công dân TỰ
+  // nhập mã và tự tích ô (user 18/11); lệnh bcaNthSubmit chỉ soát hai ô đó rồi bấm nút nộp. Cổng hỏi lại "chắc chắn
+  // nộp?" thì để công dân tự bấm Đồng ý (như content/bca/field-review.js).
+  const BCA_NTH_COMMIT = "chiu trach nhiem truoc phap luat";
+  const BCA_NTH_ALERT_SEL = ".modal.in, .modal.show, .jconfirm-box, .toast, .toast-message, .swal2-popup, .bootbox, "
+    + ".alert-danger, .noty_body";
+
+  function bcaNthCaptchaInput() {
+    const byName = Array.from(document.querySelectorAll(
+      'input[name*="captcha" i], input[id*="captcha" i], input[name*="maxacnhan" i], input[id*="maxacnhan" i]',
+    )).find(isVisible);
+    if (byName) return byName;
+    // Theo nhãn "Mã xác nhận (*)": khung gần nhất (≤ 4 tầng) có ô chữ đang hiện.
+    const label = Array.from(document.querySelectorAll("label, .control-label, span, div")).find((el) => {
+      const text = fold(el.textContent).replace(/[\s(*)]+$/, "");
+      return isVisible(el) && text.length < 30 && text.startsWith("ma xac nhan");
+    });
+    for (let node = label?.parentElement, depth = 0; node && depth < 4; node = node.parentElement, depth += 1) {
+      const input = Array.from(node.querySelectorAll('input[type="text"], input:not([type])')).find(isVisible);
+      if (input) return input;
+    }
+    return null;
+  }
+
+  // Ô tích chịu trách nhiệm: nhãn của ô, hoặc khung GẦN (≤ 4 tầng, chữ ngắn) chứa câu cam kết — không lấy khung to bao
+  // cả trang (ô "Nhận trực tiếp / qua bưu chính" cùng trang sẽ bị nhận nhầm).
+  function bcaNthCommitBox() {
+    const near = (box) => {
+      for (let node = box, depth = 0; node && depth < 4; node = node.parentElement, depth += 1) {
+        const text = fold(node.textContent);
+        if (text.includes(BCA_NTH_COMMIT)) return text.length < 250;
+      }
+      return false;
+    };
+    return Array.from(document.querySelectorAll('input[type="checkbox"]')).find((box) =>
+      Array.from(box.labels || []).some((l) => fold(l.textContent).includes(BCA_NTH_COMMIT)) || near(box)) || null;
+  }
+
+  // iCheck (cổng Bộ Công an) giữ trạng thái ở cả input lẫn khung bọc .checked.
+  const bcaNthTicked = (box) => !!box && (box.checked || !!box.parentElement?.classList?.contains("checked"));
+
+  function bcaNthAlerts() {
+    return Array.from(document.querySelectorAll(BCA_NTH_ALERT_SEL)).filter(isVisible).map((el) => {
+      const body = el.querySelector(".modal-body, .jconfirm-content, .swal2-html-container, .bootbox-body") || el;
+      const buttons = Array.from(el.querySelectorAll("button, a.btn")).filter(isVisible).map((b) => fold(b.textContent));
+      return { el, text: String(body.textContent || "").replace(/\s+/g, " ").trim().slice(0, 300), buttons };
+    }).filter((a) => a.text);
+  }
+
+  const bcaNthIsConfirm = (a) => /\?|chac chan|xac nhan/.test(fold(a.text))
+    && a.buttons.some((b) => /^(dong y|xac nhan|co|ok|nop)\b/.test(b));
+
+  async function bcaNthSubmit() {
+    const captcha = bcaNthCaptchaInput();
+    if (captcha && !String(captcha.value || "").trim()) {
+      captcha.scrollIntoView?.({ block: "center" });
+      captcha.focus?.();
+      return { clicked: false, missing: ["captcha"] };
+    }
+    const box = bcaNthCommitBox();
+    if (box && !bcaNthTicked(box)) {
+      box.scrollIntoView?.({ block: "center" });
+      return { clicked: false, missing: ["commit"] };
+    }
+    const button = bcaTthcSubmitButton();
+    if (!button) return { clicked: false, missing: [] };
+    const before = new Set(bcaNthAlerts().map((a) => a.el));
+    button.scrollIntoView?.({ block: "center" });
+    await sleep(300);
+    button.click();
+    let shown = null;
+    for (let waited = 0; waited < 3000 && !shown; waited += 250) {
+      await sleep(250);
+      shown = bcaNthAlerts().find((a) => !before.has(a.el)) || null;
+    }
+    if (shown && bcaNthIsConfirm(shown)) return { clicked: true, confirm: true };
+    return { clicked: true, message: shown && !/thanh cong/.test(fold(shown.text)) ? shown.text : "" };
+  }
+
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg?.action !== "bcaNthSubmit" || window.top !== window) return;
+    if (location.hostname !== "dichvucong.bocongan.gov.vn") return;
+    bcaNthSubmit()
+      .then(sendResponse)
+      .catch((error) => sendResponse({ clicked: false, error: String(error?.message || error) }));
+    return true;
+  });
+
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg?.action !== "bcaTthcSubmit" || window.top !== window) return;
+    if (location.hostname !== "dichvucong.bocongan.gov.vn") return;
+    bcaTthcSubmit(msg)
+      .then(sendResponse)
+      .catch((error) => sendResponse({ ok: false, error: String(error?.message || error) }));
+    return true;
+  });
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg?.action !== "pickProvinceRow" || window.top !== window) return;

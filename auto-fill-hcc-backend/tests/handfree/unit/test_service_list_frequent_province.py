@@ -88,8 +88,10 @@ def test_so_thu_tuc_moi_tinh_dung_bang_hoan_thien():
         # 18/11: +1 mọi tỉnh Bộ Y tế cap-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te (1.014076) (_TAT_CA, mặc định).
         # 18/11: +1 mọi tỉnh Bộ Công an dang-ky-mau-con-dau (2.001428) (_TAT_CA, mặc định toàn quốc).
         # 18/11: +1 mọi tỉnh Bộ Công an cap-ho-chieu-pho-thong-o-trong-nuoc (1.001456) (_TAT_CA, mặc định toàn quốc).
-        "laichau": 136, "bacninh": 142, "lamdong": 129, "danang": 133, "quangninh": 137, "ninhbinh": 126,
-        "quangngai": 127, "laocai": 125, "quangtri": 127, "khanhhoa": 132, "tuyenquang": 127,
+        # 18/11: +1 mọi tỉnh Bộ Công an cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam (1.001194) (_TAT_CA, mặc định).
+        # 19/11: +1 mọi tỉnh Bộ Công an cap-the-tam-tru-cho-nguoi-nuoc-ngoai-tai-viet-nam (1.003460) (_TAT_CA, mặc định).
+        "laichau": 138, "bacninh": 144, "lamdong": 131, "danang": 135, "quangninh": 139, "ninhbinh": 128,
+        "quangngai": 129, "laocai": 127, "quangtri": 129, "khanhhoa": 134, "tuyenquang": 129,
     }
 
 

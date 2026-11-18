@@ -558,9 +558,15 @@
     return { clicked: true, message: "" };
   }
 
+  // lcNext còn dùng cho nút "Đồng ý và tiếp tục" cuối trang kê khai eForm Nth Bộ Công an (thị thực 1.001194: đính kèm
+  // xong trên CÙNG trang, user 18/11 muốn nút cam bấm hộ) — đường dẫn trang đó chưa chắc nằm dưới /tiep-nhan-online/ →
+  // nhận mọi trang của host bocongan, nhưng chỉ khung trên cùng: iframe popup subModal của cổng không có nút, trả lời
+  // trước là nuốt lệnh.
+  const nextPage = () => ourPage() || (location.hostname === "dichvucong.bocongan.gov.vn" && window.top === window);
+
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     const action = String(msg?.action || "");
-    if (!action.startsWith("lc") || !ourPage()) return;
+    if (!action.startsWith("lc") || !(action === "lcNext" ? nextPage() : ourPage())) return;
     const run = {
       lcResultScan: () => caseTurn(msg.groups, () => scan(msg)),
       lcResultSet: () => caseTurn(msg.groups, () => setGroup(msg)),

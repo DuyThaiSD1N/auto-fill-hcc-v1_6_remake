@@ -491,6 +491,19 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
     "cap-ho-chieu-pho-thong-o-trong-nuoc": ["làm hộ chiếu", "xin cấp hộ chiếu đi nước ngoài", "làm passport",
                                             "hộ chiếu hết hạn cần làm lại", "mất hộ chiếu, xin cấp lại",
                                             "làm hộ chiếu gắn chip", "cấp hộ chiếu phổ thông"],
+    # Thị thực (visa) cho NGƯỜI NƯỚC NGOÀI đang ở Việt Nam, người thân / cơ quan ở Việt Nam đứng ra bảo lãnh — phân biệt
+    # hộ chiếu (công dân Việt Nam đi nước ngoài) và thẻ căn cước. "Gia hạn visa" vẫn chọn ở đây khi người dân nói xin visa.
+    "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam": ["xin visa cho chồng người nước ngoài", "làm visa cho vợ nước ngoài",
+                                                       "cấp thị thực cho người nước ngoài", "bảo lãnh visa thăm thân",
+                                                       "xin thị thực nhiều lần cho người nước ngoài",
+                                                       "người nước ngoài sắp hết hạn visa, xin cấp visa mới"],
+    # Thẻ tạm trú (giấy cư trú dài hạn có thời hạn 1–10 năm) cho người nước ngoài — thường do công ty / cơ quan bảo lãnh
+    # người lao động có giấy phép lao động. Khác thị thực (visa) ở trên: xin thẻ, không xin visa.
+    "cap-the-tam-tru-cho-nguoi-nuoc-ngoai-tai-viet-nam": ["xin thẻ tạm trú cho người nước ngoài",
+                                                          "làm thẻ tạm trú cho chuyên gia nước ngoài",
+                                                          "công ty bảo lãnh thẻ tạm trú cho lao động nước ngoài",
+                                                          "cấp thẻ tạm trú LĐ2", "thẻ cư trú cho chồng người nước ngoài",
+                                                          "người nước ngoài có giấy phép lao động xin thẻ tạm trú"],
     "cap-lai-cap-doi-gcn-ho-kinh-doanh": ["cấp lại giấy chứng nhận hộ kinh doanh",
                                           "mất giấy phép kinh doanh hộ gia đình", "làm lại giấy phép kinh doanh",
                                           "giấy đăng ký kinh doanh bị rách, hỏng",

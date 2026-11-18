@@ -72,6 +72,10 @@ from app.pipelines.dang_ky_mau_con_dau.process import run as dang_ky_mau_con_dau
 from app.pipelines.dang_ky_mau_con_dau.attach import plan as dang_ky_mau_con_dau_attach
 from app.pipelines.cap_ho_chieu_pho_thong_o_trong_nuoc.process import run as cap_ho_chieu_pho_thong_o_trong_nuoc_process
 from app.pipelines.cap_ho_chieu_pho_thong_o_trong_nuoc.attach import plan as cap_ho_chieu_pho_thong_o_trong_nuoc_attach
+from app.pipelines.cap_thi_thuc_cho_nguoi_nuoc_ngoai_tai_viet_nam.process import run as cap_thi_thuc_nnn_process
+from app.pipelines.cap_thi_thuc_cho_nguoi_nuoc_ngoai_tai_viet_nam.attach import plan as cap_thi_thuc_nnn_attach
+from app.pipelines.cap_the_tam_tru_cho_nguoi_nuoc_ngoai_tai_viet_nam.process import run as cap_the_tam_tru_nnn_process
+from app.pipelines.cap_the_tam_tru_cho_nguoi_nuoc_ngoai_tai_viet_nam.attach import plan as cap_the_tam_tru_nnn_attach
 from app.pipelines.dang_ky_thuong_tru.process import run as dang_ky_thuong_tru_process
 from app.pipelines.dang_ky_thuong_tru.attach import plan as dang_ky_thuong_tru_attach
 from app.pipelines.dieu_chinh_thong_tin_ve_cu_tru.process import run as dieu_chinh_thong_tin_ve_cu_tru_process
@@ -11170,6 +11174,79 @@ PROCEDURES: list[dict] = [
             "phổ thông cấp lần gần nhất'; dòng người đại diện hợp pháp chỉ dùng cho người chưa đủ 14 tuổi."
         ),
     },
+    {
+        # 1.001194, cùng cổng Bộ Công an + cùng khuôn hộ chiếu 1.001456: DVCQG "Nộp hồ sơ" → "Nộp trực tuyến" → "Nộp hồ
+        # sơ" trên cổng Bộ Công an (ke_khai_links directSubmit + bcaSubmit). Trang nhập thông tin không mang mã → khớp chữ
+        # "cấp thị thực" (ô "Cấp thị thực: một lần, nhiều lần" / dòng Tờ khai ở bảng đính kèm) + "nhập cảnh" ("Nhập cảnh
+        # Việt Nam ngày" / "Cục Quản lý xuất nhập cảnh" ở lưu ý bảng đính kèm): tổng độ dài phải hơn "hộ chiếu phổ thông"
+        # của 1.001456 vì ô Loại hộ chiếu điền xong hiện đúng chữ đó. Điền theo file mapping
+        # "Mapping_Cap_thi_thuc_NNN_tai_VN_cap_tinh" (Tờ khai NA5 + hộ chiếu + giấy kết hôn + căn cước người bảo lãnh);
+        # người bảo lãnh đăng nhập nên ô họ tên / ngày sinh / số CCCD của họ readonly, không phát. Đính kèm theo ảnh
+        # ánh xạ: dòng 1 tờ khai (+ hộ chiếu), dòng 3 giấy chứng minh lý do (+ căn cước), dòng 2 gia hạn tạm trú không
+        # tick; hồ sơ một tệp → đính nguyên tệp vào dòng 1 lẫn dòng 3. Có tách giấy. Chưa chạy cổng thật.
+        "key": "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam",
+        "detect": {
+            "urlScope": ["dichvucong.bocongan.gov.vn"],
+            "textIncludes": [
+                "cấp thị thực",
+                "nhập cảnh",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp thị thực cho người nước ngoài tại Việt Nam (thực hiện tại cấp tỉnh)",
+        "mode": "agent",
+        "roles": [],
+        "useDangKyBy": False,
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai đề nghị cấp thị thực, gia hạn tạm trú (Mẫu NA5) — người đề nghị, người bảo lãnh, nội dung đề nghị.\n"
+            "2. Hộ chiếu của người nước ngoài — trang nhân thân và trang dấu kiểm chứng nhập cảnh.\n"
+            "3. Giấy tờ chứng minh lý do (giấy chứng nhận kết hôn, giấy phép lao động, giấy chứng nhận đầu tư …).\n"
+            "4. Thẻ căn cước của người bảo lãnh (nếu có) — ngày cấp, nơi cư trú.\n"
+            "Sau khi điền: tải Ảnh chân dung 4x6 và ảnh Trang nhân thân hộ chiếu (.jpg dưới 2 MB) ở đầu biểu mẫu, chọn Nơi "
+            "nhận thị thực. Bước đính kèm: tờ khai + hộ chiếu vào dòng Tờ khai NA5, giấy chứng minh + căn cước vào dòng "
+            "Giấy tờ chứng minh lý do; dòng gia hạn tạm trú bỏ trống."
+        ),
+    },
+    {
+        # 1.003460, cùng cổng Bộ Công an + cùng khuôn thị thực 1.001194 ngay trên (DVCQG → "Nộp trực tuyến" → "Nộp hồ sơ"
+        # trên cổng Bộ Công an, ke_khai_links directSubmit + bcaSubmit). Trang nhập thông tin không mang mã → khớp chữ
+        # "cấp thẻ tạm trú" (ô "Cấp thẻ tạm trú đến ngày", dòng tờ khai / văn bản ở bảng đính kèm cùng trang) + "nhập
+        # cảnh": dài hơn cụm của thị thực ("cấp thị thực" + "nhập cảnh") và hộ chiếu nên thắng khi trang có cả hai. Điền
+        # theo file mapping "Mapping_Cap_the_tam_tru_NNN_1.003460" (Tờ khai NA8 + văn bản NA6/NA7 + hộ chiếu + GPLĐ); bên
+        # bảo lãnh readonly theo tài khoản, khối cơ quan ẩn (mapping CẦN XÁC NHẬN). Đính kèm theo ảnh ánh xạ: 3 dòng (giấy
+        # chứng minh / tờ khai NA8 / văn bản NA6) + "Giấy tờ khác" hộ chiếu; hồ sơ một tệp → đính nguyên tệp vào cả 4; ô Ghi
+        # chú ghi trang nào là giấy gì. Có tách giấy. Chưa chạy cổng thật.
+        "key": "cap-the-tam-tru-cho-nguoi-nuoc-ngoai-tai-viet-nam",
+        "detect": {
+            "urlScope": ["dichvucong.bocongan.gov.vn"],
+            "textIncludes": [
+                "cấp thẻ tạm trú",
+                "nhập cảnh",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp thẻ tạm trú cho người nước ngoài tại Việt Nam tại Công an cấp tỉnh",
+        "mode": "agent",
+        "roles": [],
+        "useDangKyBy": False,
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Văn bản đề nghị cấp thẻ tạm trú (Mẫu NA6 của cơ quan, tổ chức / NA7 của cá nhân).\n"
+            "2. Tờ khai đề nghị cấp thẻ tạm trú (Mẫu NA8).\n"
+            "3. Hộ chiếu của người nước ngoài — trang nhân thân, trang thị thực, dấu kiểm chứng nhập cảnh.\n"
+            "4. Giấy tờ chứng minh thuộc diện cấp thẻ (giấy phép lao động …).\n"
+            "Sau khi điền: tải Ảnh chân dung 4x6 và ảnh Trang nhân thân hộ chiếu (.jpg dưới 2 MB) ở đầu biểu mẫu, chọn Nơi "
+            "nhận kết quả. Bước đính kèm: giấy chứng minh / tờ khai / văn bản đề nghị vào đúng dòng, hộ chiếu vào Giấy tờ "
+            "khác."
+        ),
+    },
 ]
 
 # Mục iGate Lào Cai → mục eForm cũ cùng mã TTHC (mục cũ luôn đứng SAU mục iGate).
@@ -11348,6 +11425,8 @@ _PIPELINE = {
     "dang-ky-xe-lan-dau-san-xuat-lap-rap-trong-nuoc": dang_ky_xe_lan_dau_san_xuat_lap_rap_trong_nuoc_process,
     "dang-ky-mau-con-dau": dang_ky_mau_con_dau_process,
     "cap-ho-chieu-pho-thong-o-trong-nuoc": cap_ho_chieu_pho_thong_o_trong_nuoc_process,
+    "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam": cap_thi_thuc_nnn_process,
+    "cap-the-tam-tru-cho-nguoi-nuoc-ngoai-tai-viet-nam": cap_the_tam_tru_nnn_process,
     "dang-ky-thuong-tru": dang_ky_thuong_tru_process,
     "dieu-chinh-thong-tin-ve-cu-tru": dieu_chinh_thong_tin_ve_cu_tru_process,
     "xac-nhan-thong-tin-ve-cu-tru": xac_nhan_thong_tin_ve_cu_tru_process,
@@ -11711,6 +11790,8 @@ _ATTACH_PIPELINE = {
     "chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau": chuyen_muc_dich_su_dung_dat_mien_nui_lai_chau_attach,
     "dang-ky-mau-con-dau": dang_ky_mau_con_dau_attach,
     "cap-ho-chieu-pho-thong-o-trong-nuoc": cap_ho_chieu_pho_thong_o_trong_nuoc_attach,
+    "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam": cap_thi_thuc_nnn_attach,
+    "cap-the-tam-tru-cho-nguoi-nuoc-ngoai-tai-viet-nam": cap_the_tam_tru_nnn_attach,
     "giao-dat-cho-thue-dat-lai-chau": giao_dat_cho_thue_dat_lai_chau_attach,
     "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau": cap_lai_giay_chung_nhan_do_bi_mat_lai_chau_attach,
     "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh": cap_lai_gcn_do_bi_mat_bac_ninh_attach,

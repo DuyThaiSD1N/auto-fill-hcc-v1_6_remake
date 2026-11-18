@@ -495,7 +495,49 @@ def _docs_page_context(raw: dict | None) -> dict:
         "attachmentComponentCount": min(100, max(0, attachment_component_count)),
         # Cổng DVC Bộ Công an: có khối "Cơ quan thực hiện" = đang ở trang kê khai (form + cơ quan cùng trang).
         "bcaAgencyBlock": raw.get("bcaAgencyBlock") is True,
+        # eForm Nth dichvucong.bocongan.gov.vn: form kê khai đang hiện (True/False); None = extension cũ chưa báo cờ.
+        "bcaKeKhaiForm": raw["bcaKeKhaiForm"] if isinstance(raw.get("bcaKeKhaiForm"), bool) else None,
     }
+
+
+_BCA_NTH_HOST = "dichvucong.bocongan.gov.vn"
+
+
+def _bca_nth(proc: dict | None) -> bool:
+    """Thủ tục điền form + đính kèm trên eForm Nth cổng DVC Bộ Công an (dichvucong.bocongan.gov.vn: thị thực 1.001194,
+    hộ chiếu 1.001456, mẫu con dấu 2.001428…)."""
+    proc = proc or {}
+    return (proc.get("mode") != "attach" and bool(proc.get("hasAttachmentStep"))
+            and _BCA_NTH_HOST in ((proc.get("detect") or {}).get("urlScope") or []))
+
+
+def _bca_form_before_attach(conv: dict | None, proc: dict, page_context: dict | None) -> bool:
+    """eForm Nth cổng Bộ Công an: trang kê khai có thể mang LUÔN bảng Thành phần hồ sơ (ô GiayToCuaHoSoOnline_*) — thị
+    thực 1.001194 đặt bảng ngay dưới form, cùng một trang (ảnh chạy thật 18/11) → page_status báo attachmentTarget lúc
+    form còn trống và trợ lý đính kèm TRƯỚC khi điền. True = form kê khai đang hiện → phải ĐIỀN trước; đính kèm chạy
+    sau khi điền (cùng trang: ngay lập tức — _same_page_attach; khác trang: khi sang trang Thành phần hồ sơ).
+
+    Extension mới báo thẳng bcaKeKhaiForm (ô CongDan_* nhìn thấy). Extension cũ không báo → coi trang có form (formKind)
+    mà lượt điền chưa chạy là trang kê khai."""
+    if proc.get("samePageAttach") or not _bca_nth(proc):
+        return False
+    ctx = _docs_page_context(page_context)
+    if ctx["bcaKeKhaiForm"] is not None:
+        return ctx["bcaKeKhaiForm"]
+    return bool(ctx["formKind"]) and not (conv or {}).get("main_processing_started")
+
+
+def _bca_same_page(proc: dict, page_context: dict | None) -> bool:
+    """eForm Nth Bộ Công an mà trang vừa báo form kê khai VÀ bảng Thành phần hồ sơ cùng HIỆN (thị thực 1.001194)."""
+    ctx = _docs_page_context(page_context)
+    return _bca_nth(proc) and ctx["bcaKeKhaiForm"] is True and ctx["attachmentTarget"]
+
+
+def _same_page_attach(conv: dict, proc: dict) -> bool:
+    """Đính kèm CÙNG TRANG kê khai: không có trang "Thành phần hồ sơ" riêng để chờ — điền xong là lập kế hoạch và đính
+    ngay trên trang này. Khai tĩnh samePageAttach (cổng 2 tab Bắc Ninh) hoặc eForm Nth Bộ Công an mà trang gần nhất báo
+    form + bảng cùng hiện (đọc từ docs_page_context — mỗi lượt chat cập nhật theo trang thật)."""
+    return bool(proc.get("samePageAttach")) or _bca_same_page(proc, conv.get("docs_page_context"))
 
 
 def _account_anchor_pending(conv: dict, proc: dict, page_context: dict | None) -> bool:
@@ -516,6 +558,9 @@ def _resolve_docs_target(proc: dict, page_context: dict | None, conv: dict | Non
     Marker bước sau được ưu tiên vì SPA có thể còn giữ DOM/iframe của bước trước.
     """
     target = _resolve_page_docs_target(proc, page_context)
+    if target == "attachment" and _bca_form_before_attach(conv, proc, page_context):
+        # Trang kê khai eForm Nth Bộ Công an có bảng đính kèm ẩn sẵn: điền trước, điền xong mới chờ trang đính kèm.
+        return "declaration"
     if target == "attachment" and conv is not None and _eform_pending(conv, proc):
         # Tờ khai điện tử mở từ chính bảng Thành phần hồ sơ: giấy tờ nhận ở bước này trước hết để
         # điền tờ khai, công dân đi tiếp sang đính kèm thì mới là target attachment.
@@ -907,6 +952,10 @@ _ATTACH_HEADER_OPTIONAL_PROCEDURES = {"khai-sinh-dang-ky", "khai-tu-lien-thong"}
 def _attachment_page_reached(conv: dict, proc: dict, page_context: dict | None) -> bool:
     """Tin stepper, hoặc fallback bằng bảng hồ sơ thật thay vì nút chọn tệp đơn lẻ."""
     current = _docs_page_context(page_context)
+    if _bca_nth(proc) and current["bcaKeKhaiForm"] is True:
+        # Form kê khai eForm Nth Bộ Công an còn hiện: đã tới chỗ đính kèm chỉ khi bảng Thành phần hồ sơ HIỆN cùng trang
+        # (thị thực 1.001194); bảng ẩn / chưa có thì chờ công dân bấm "Đồng ý và tiếp tục" sang trang đính kèm.
+        return bool(current["attachmentTarget"])
     if proc.get("samePageAttach"):
         # Cổng 2-tab cùng trang (Bắc Ninh): ô đính kèm nằm ngay trên trang kê khai, engine FE
         # tự bấm tab "Tải thành phần hồ sơ" — chỉ cần trang còn báo có ô đính kèm là đủ.
@@ -956,6 +1005,9 @@ async def _continue_adjustment_on_attachment_page(
         return None
     if _eform_pending(conv, proc):
         # Tờ khai điện tử nằm ngay trong bảng Thành phần hồ sơ: đứng ở bước 3 vẫn là điền lại tờ khai.
+        return None
+    if _bca_nth(proc) and _docs_page_context(page_context)["bcaKeKhaiForm"] is True:
+        # Form kê khai Bộ Công an còn hiện (bảng đính kèm cùng trang): công dân chưa rời bước kê khai → vẫn điền lại.
         return None
     if not _attachment_page_reached(conv, proc, page_context):
         return None
@@ -1355,6 +1407,10 @@ async def _handle_turn_inner(
     bca_reply = _bca_flow_handle(conv, current_proc, intent)
     if bca_reply is not None:
         return bca_reply
+    # eForm Nth Bộ Công an: trang xác nhận (Mã xác nhận + ô chịu trách nhiệm) + nút Nộp hồ sơ của trợ lý — mọi bước.
+    bca_nth_reply = _bca_nth_confirm_handle(conv, current_proc, intent)
+    if bca_nth_reply is not None:
+        return bca_nth_reply
     bac_ninh_reply = bac_ninh.handle(conv, current_proc, intent)
     if bac_ninh_reply is not None:
         return bac_ninh_reply
@@ -2099,6 +2155,10 @@ def _start_guide_login(conv: dict) -> Reply:
     if url and proc.get("bcaPortal"):
         # Hướng dẫn chọn cơ quan nói lúc trang đã hiện khối đó (_bca_portal_on_page), không nói trước ở đây.
         r = Reply(*_fmt(vi.BCA_PORTAL_OPEN, procedure=_proc_label(conv)))
+        r.actions = [{"type": "navigate", "url": url}]
+    elif url and proc.get("agencyDirectSubmit"):
+        # Thủ tục nộp thẳng (vd 1.001194): không chọn Tỉnh/Xã, bấm chuỗi Nộp hồ sơ → Nộp trực tuyến → Nộp hồ sơ (BCA).
+        r = Reply(*_fmt(vi.GUIDE_AGENCY_DIRECT, procedure=_proc_label(conv)))
         r.actions = [{"type": "navigate", "url": url}]
     elif url and proc.get("needsAgencySelect") and proc.get("agencyProvinceOnly"):
         # Cổng bộ ngành (MAE): DVCQG chỉ cần chọn TỈNH rồi Đồng ý; kết quả đầu tiên
@@ -2991,6 +3051,37 @@ def _resolve_agency_plan(plan: list | None, loc: dict) -> list:
     return [{k: sub(v) for k, v in step.items()} for step in plan]
 
 
+def _agency_direct_on_page(conv: dict, proc: dict, ctx: dict, manual_check: bool) -> Reply | None:
+    """Thủ tục nộp thẳng (agencyDirectSubmit — cùng cờ directSubmit + bcaSubmit của Auto Fill, vd 1.001194 Bộ Công an
+    cấp tỉnh): trang DVCQG có khối "Chọn cơ quan thực hiện" nhưng KHÔNG chọn Tỉnh/Xã — extension bấm "Nộp hồ sơ" rồi
+    "Nộp trực tuyến"; cổng ném sang trang thủ tục của cổng Bộ Công an (/bocongan/bothutuc/tthc?MaTTHC=<mã>) → bấm tiếp
+    "Nộp hồ sơ" bên đó (chỉ khi MaTTHC trùng mã) để tới trang chọn trường hợp hồ sơ. None = không phải việc của nhánh này.
+    Hai lệnh cùng loại cách nhau ít nhất _AGENCY_DISPATCH_GAP_SECONDS: trang đổi nhiều nhịp, gửi lần hai là bấm trùng."""
+    if not proc.get("agencyDirectSubmit"):
+        return None
+    now = datetime.now(timezone.utc).timestamp()
+    if ctx.get("bcaTthcPage"):
+        code = str(proc.get("bcaTthcCode") or "")
+        if code and str(ctx.get("bcaTthcCode") or "") != code:
+            return Reply()  # trang thủ tục khác (công dân tự mở) → không bấm
+        if not manual_check and now - float(conv.get("bca_tthc_dispatched_at") or 0) < _AGENCY_DISPATCH_GAP_SECONDS:
+            return Reply()
+        conv["bca_tthc_dispatched_at"] = now
+        r = Reply()
+        r.actions = [{"type": "bca_tthc_submit", "code": code}]
+        return r
+    if ctx.get("agencyBlock"):
+        # Mốc thời gian riêng (agency_selected xoá agency_dispatched_at): đăng nhập xong cổng quăng về lại trang thủ tục
+        # thì bấm lại từ đầu như Auto Fill loginStage, nhưng không bấm trùng lúc trang đang chuyển đi.
+        if not manual_check and now - float(conv.get("agency_direct_at") or 0) < _AGENCY_DISPATCH_GAP_SECONDS:
+            return Reply()
+        conv["agency_direct_at"] = now
+        r = Reply()
+        r.actions = [{"type": "select_agency", "direct": True, "province": "", "ward": ""}]
+        return r
+    return None
+
+
 def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
     """Sidebar báo trạng thái trang (mở lại tab / watcher) → bot quyết theo cái THẤY.
 
@@ -3080,6 +3171,9 @@ def _guide_login_on_page(conv: dict, proc: dict, loc: dict, ctx: dict) -> Reply:
             action["infoFields"] = info_fields
         r.actions = [action]
         return r
+    direct_reply = _agency_direct_on_page(conv, proc, ctx, manual_check)
+    if direct_reply is not None:
+        return direct_reply
     if proc.get("needsAgencySelect") and not conv.get("agency_done") and ctx.get("agencyBlock"):
         # Lệnh chọn cơ quan đang chạy: trang đổi nhiều nhịp (danh sách kết quả hiện ra…) nên watcher báo trạng thái
         # MỚI giữa chừng — gửi lệnh lần hai là lần đó chạy đúng lúc trang chuyển đi, không ai trả lời → sidebar báo
@@ -3461,8 +3555,16 @@ def _handle_guide_login(conv: dict, intent: Intent) -> Reply:
             conv["agency_no_response"] = 1
             return _guide_login_on_page(conv, proc, loc, {"agencyBlock": True})
         conv["agency_no_response"] = 0
+        if proc.get("agencyDirectSubmit"):
+            return Reply(*_fmt(vi.AGENCY_DIRECT_FAILED, error=error or "không rõ"))
         return Reply(*_fmt(vi.AGENCY_SELECT_FAILED, error=error or "không rõ",
                            ward=_agency_ward_display(proc, loc), province=loc.get("province") or ""))
+    if intent.kind == "event" and intent.value == "bca_tthc_failed":
+        # Trang thủ tục cổng Bộ Công an: không thấy / không bấm được "Nộp hồ sơ" → dặn công dân bấm tay (nói một lần).
+        conv["bca_tthc_dispatched_at"] = 0
+        if _say_once(conv, "bca_tthc_failed"):
+            return Reply(*_fmt(vi.BCA_TTHC_FAILED, error=str(intent.payload.get("value") or "không rõ")))
+        return Reply()
     if intent.kind == "event" and intent.value == "agency_card_missing":
         # Tỉnh/xã + Đồng ý đã xong, chỉ không thấy thẻ đúng cơ quan để bấm "Nộp trực tuyến".
         # KHÔNG lùi về thẻ đầu (thẻ đầu là cấp Sở) — dặn công dân bấm đúng thẻ.
@@ -4970,7 +5072,8 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
         # chữ ký trang đổi) sẽ KHÔNG phát page_status nữa. Không được chờ chuyển bước — chạy
         # planner đính kèm ngay tại đây; attach_ready về sẽ phát action như thường.
         # Luồng tab Bắc Ninh: trợ lý tự dẫn sang tab Thành phần hồ sơ sau vòng bổ sung rồi mới đính (bac_ninh._arrive).
-        same_page_attach = (auto_wait_attachment and bool(proc.get("samePageAttach"))
+        # eForm Nth Bộ Công an có bảng Thành phần hồ sơ cùng trang form (thị thực 1.001194): cũng đính ngay sau khi điền.
+        same_page_attach = (auto_wait_attachment and _same_page_attach(conv, proc)
                             and not bac_ninh.enabled(conv, proc))
         conv["state"] = "attaching" if auto_wait_attachment else "reviewing"
         if same_page_attach:
@@ -4997,7 +5100,8 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
         # trang đính kèm.
         result_hint = bool(proc.get("resultMethodHint"))
         tail = (
-            (vi.WAIT_ATTACHMENT_SAME_PAGE if same_page_attach
+            ((vi.WAIT_ATTACHMENT_SAME_PAGE_BCA if _bca_nth(proc) else vi.WAIT_ATTACHMENT_SAME_PAGE)
+             if same_page_attach
              else vi.WAIT_ATTACHMENT_RESULT_METHOD if result_hint else vi.WAIT_ATTACHMENT_PAGE)
             if auto_wait_attachment
             else vi.REVIEW_RESULT_METHOD if result_hint
@@ -5297,7 +5401,7 @@ async def _handle_reviewing(conv: dict, intent: Intent) -> Reply:
         conv["state"] = "attaching"
         # Cổng đính kèm CÙNG TRANG kê khai (samePageAttach): không có trang "Thành phần hồ sơ" để chờ —
         # bấm đính kèm là chạy planner ngay trên trang hiện tại.
-        same_page = bool(proc.get("samePageAttach"))
+        same_page = _same_page_attach(conv, proc)
         if conv.get("docs_target") == "declaration" and not same_page:
             conv["pipeline_status"] = "waiting_attachment_page"
             conv["attachment_plan_started"] = False
@@ -5335,7 +5439,7 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
     if intent.kind == "event" and intent.value in {"attach_started", "attach_heartbeat"}:
         _renew_attach_action(conv, str(intent.payload.get("dispatch_id") or ""))
         return Reply()
-    same_page = bool((get_procedure(conv.get("procedure_key") or "") or {}).get("samePageAttach"))
+    same_page = _same_page_attach(conv, get_procedure(conv.get("procedure_key") or "") or {})
     if (intent.kind == "action" and intent.value == "request_attach"
             and conv.get("docs_target") == "declaration" and not same_page):
         return Reply(*_fmt(vi.ATTACH_REQUEST_ON_DECLARATION))
@@ -5517,6 +5621,9 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
                             note=recap, **{**recap_kw, "attached": attached}))
         else:
             done_tpl, commit = _attach_done_template(proc_done)
+            if not commit and proc_done.get("resultMethodHint") and _bca_same_page(proc_done, conv.get("docs_page_context")):
+                # eForm Nth Bộ Công an cùng trang: còn chọn Nơi nhận (cùng trang, trên bảng) rồi "Đồng ý và tiếp tục".
+                done_tpl = vi.ATTACH_DONE_SAME_PAGE_BCA
             r = Reply(*_fmt(done_tpl, note=recap, commit=commit, **{**recap_kw, "attached": attached}))
         # Luồng dẫn từng bước: thay lời "tự bấm Nộp hồ sơ" bằng nút chuyển sang bước nhận kết
         # quả. Chế độ tách hồ sơ VẪN có nút, chỉ khác câu chữ: nút bấm qua sendToContent gắn
@@ -5556,6 +5663,12 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
         else:
             r = tu_phap_v2.attach_done_reply(conv, proc_done, r, attached=attached, skipped=skipped, errors=errors,
                                              guided_step=bool(guided_step), split=conv.get("attach_mode") == "split")
+        if (not errors and _bca_same_page(proc_done, conv.get("docs_page_context"))
+                and lai_chau.enabled(conv, proc_done)
+                and not any(isinstance(c, dict) and c.get("cta") for c in r.chips or [])):
+            # eForm Nth Bộ Công an đính cùng trang (thị thực 1.001194): nút cam "Đồng ý và tiếp tục" — trợ lý bấm nút cùng
+            # tên cuối trang (lệnh lc_next, content/laichau/portal.js) sau khi công dân chọn Nơi nhận (user 18/11).
+            r.chips = [*(r.chips or []), lai_chau.next_chip()]
         # Đính tách nhiều tab: đính lại sẽ mở lại cả loạt hồ sơ → chỉ đính 1 tab mới có nút đính lại riêng tệp lỗi.
         split_mode = conv.get("attach_mode") == "split"
         r = attach_files.apply(
@@ -6017,6 +6130,65 @@ def _bca_flow_handle(conv: dict, proc: dict | None, intent: Intent) -> Reply | N
             return _voice_submit_confirm(conv, _BCA_SUBMIT_SEND)
         return _bca_submit_reply(conv, proc)
     return _bca_submit_report(conv, proc, payload)
+
+
+# ── eForm Nth cổng DVC Bộ Công an (dichvucong.bocongan.gov.vn): trang "xác nhận thông tin nộp" sau "Đồng ý và tiếp tục"
+# (thị thực 1.001194, ảnh 18/11): bản xem lại + Mã xác nhận (captcha) + ô "Tôi xin chịu trách nhiệm trước pháp luật về lời
+# khai trên" + nút "Nộp hồ sơ". Công dân TỰ nhập mã và tự tích ô (user 18/11), trợ lý hiện nút Nộp hồ sơ; bấm nút thì
+# extension (content/portal-dvc.js bcaNthSubmit) soát mã + ô tích rồi mới bấm nút nộp của cổng. ──
+_BCA_NTH_SUBMIT_SEND = "__action:bca_nth_submit"
+_BCA_NTH_COMMANDS = {"bca_nth_submit", "bca_nth_submit_report"}
+_BCA_NTH_CAPABILITY = "supportsBcaNthSubmit"
+
+
+def _bca_nth_submit_chip() -> dict:
+    return {"label": vi.BCA_SUBMIT_CHIP, "send": _BCA_NTH_SUBMIT_SEND, "solid": True, "cta": True}
+
+
+def _bca_nth_confirm_handle(conv: dict, proc: dict | None, intent: Intent) -> Reply | None:
+    """Trang xác nhận + nút Nộp hồ sơ của eForm Nth Bộ Công an → Reply; không phải → None (flow cũ xử lý)."""
+    if not _bca_nth(proc):
+        return None
+    payload = intent.payload if isinstance(intent.payload, dict) else {}
+    engine = (conv.get("client_capabilities") or {}).get(_BCA_NTH_CAPABILITY) is True
+    if intent.kind == "event" and intent.value == "page_status":
+        if payload.get("bcaConfirmPage") is not True:
+            return None
+        # Nói một lần mỗi lượt tới trang (watcher báo lại khi gõ mã / tích ô thì im).
+        if not _say_once(conv, "bca_nth_confirm"):
+            return Reply()
+        if not engine:
+            return Reply(*_fmt(vi.BCA_NTH_CONFIRM_MANUAL))
+        r = Reply(*_fmt(vi.BCA_NTH_CONFIRM_GUIDE))
+        r.chips = [_bca_nth_submit_chip()]
+        return r
+    if intent.kind != "action" or intent.value not in _BCA_NTH_COMMANDS or not engine:
+        return None
+    if intent.value == "bca_nth_submit":
+        r = Reply(*_fmt(vi.BCA_NTH_SUBMITTING))
+        r.actions = [{"type": "bca_nth_submit"}]
+        return r
+    # bca_nth_submit_report: kết quả lượt bấm (extension không trả lời = script chưa nạp, cổng tự xử lý tiếp).
+    missing = [str(m) for m in payload.get("missing") or []]
+    if payload.get("noEngine"):
+        return Reply(*_fmt(vi.BCA_NTH_NO_ENGINE))
+    if "captcha" in missing:
+        tpl = vi.BCA_NTH_MISSING_CAPTCHA
+    elif "commit" in missing:
+        tpl = vi.BCA_NTH_MISSING_COMMIT
+    elif payload.get("confirm"):
+        return Reply(*_fmt(vi.BCA_NTH_CONFIRM_ASK))  # cổng hỏi lại — công dân tự bấm Đồng ý, trợ lý không bấm thay
+    elif payload.get("clicked") and not payload.get("message"):
+        return Reply()  # cổng nhận, trang tự chuyển — watcher báo trang mới / nộp thành công
+    elif payload.get("message"):
+        r = Reply(*_fmt(vi.BCA_NTH_SUBMIT_BLOCKED, message=str(payload.get("message"))[:300]))
+        r.chips = [_bca_nth_submit_chip()]
+        return r
+    else:
+        tpl = vi.BCA_NTH_NO_BUTTON
+    r = Reply(*_fmt(tpl))
+    r.chips = [_bca_nth_submit_chip()]
+    return r
 
 
 def _bca_voice_intent(conv: dict, message: str) -> Intent | None:

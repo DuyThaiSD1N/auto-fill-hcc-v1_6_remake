@@ -152,6 +152,13 @@
     // tạm trú (_BCAQueQuanMaQH / _BCANoiOHienTaiMaQH) điền theo cascade, ô ngày sinh cha/mẹ chọn định dạng "Năm" trước khi
     // gõ (fill-core pickStandardDateFormat). Thiếu cờ → BE báo thủ tục cần cập nhật Trợ lý.
     supportsBcaHoChieu: true,
+    // Cổng DVC Bộ Công an dichvucong.bocongan.gov.vn (cấp thị thực cho người nước ngoài 1.001194): ô Tỉnh → Phường/xã của
+    // ba nhóm địa chỉ (_BCATinhTamTru / _BCATinhThuongTru / _BCATinhTamTruBaoLanh → _BCAXa…) điền theo cascade (fill-core
+    // isAreaSelectName). Thiếu cờ → BE báo thủ tục cần cập nhật Trợ lý.
+    supportsBcaThiThuc: true,
+    // eForm Nth cổng DVC Bộ Công an: trang xác nhận thông tin nộp — nút Nộp hồ sơ của trợ lý (lệnh bca_nth_submit →
+    // content/portal-dvc.js bcaNthSubmit soát Mã xác nhận + ô chịu trách nhiệm rồi bấm "Nộp hồ sơ" của cổng).
+    supportsBcaNthSubmit: true,
     // Cổng DVC Bộ Công an (dancuquocgia): sau khi điền tô ô xanh / cam / đỏ, vòng "Bổ sung các thông tin còn thiếu" và nút
     // Nộp hồ sơ (lệnh bca_submit → content/bca/field-review.js). Thiếu cờ → BE giữ luồng cũ (công dân tự soát, tự nộp).
     supportsBcaFlow: true,
@@ -505,7 +512,7 @@
   // thao tác — công dân nói đè giữa lúc trang đổi thì câu nói lạc lượt. Lệnh chỉ đọc trang không tính.
   const PAGE_WORK_ACTIONS = new Set([
     "fillFields", "patchFields", "fillOwnerFields", "selectAgency", "fillAgencyByPlan", "confirmInfoModal", "fillMaeAgency",
-    "pickProvinceRow",
+    "pickProvinceRow", "bcaTthcSubmit", "bcaNthSubmit",
     "fieldReviewNext", "guidedClickNext", "guidedSubmit", "selectResultMethod", "attachAuthorizationFile",
     "attachFilesByPlan", "declarationPreview", "declarationConfirm", "navigate", "fillBcaAgency", "tickCommitBox", "bcaSubmit",
     "prepareBusinessRegistration", "startBusinessRegistration", "bnShowTab", "bnAgency", "bnResult", "bnSubmit", "bnAccountSave",
@@ -1290,7 +1297,7 @@
       || c.vneidDataSharingPrompt || c.vneidPasscodePrompt
       || c.infoModal || c.wizardStep || c.attachmentTarget || c.businessHost
       || c.maeAgencyBlock || c.lienThongHome || c.bcaAgencyBlock
-      || c.provinceRows || c.provinceLoginDialog
+      || c.provinceRows || c.provinceLoginDialog || c.bcaTthcPage || c.bcaConfirmPage
   ));
   let lastVneidSidebarDebugSignature = "";
   // Khối người yêu cầu trên tờ khai đã có dữ liệu tài khoản chưa — mốc để BE biết ai đang đăng nhập khi phân vai.
@@ -1368,6 +1375,8 @@
       attachmentTarget: !!ctx?.attachmentTarget,
       // Cổng DVC Bộ Công an: trang có khối "Cơ quan thực hiện" chính là trang kê khai (form + cơ quan cùng trang).
       bcaAgencyBlock: !!ctx?.bcaAgencyBlock,
+      // eForm Nth cổng Bộ Công an: form kê khai đang hiện (bảng đính kèm dựng sẵn ẩn cùng DOM) → BE điền trước.
+      bcaKeKhaiForm: !!ctx?.bcaKeKhaiForm,
       businessHost: !!ctx?.businessHost,
       businessStage: String(ctx?.businessStage || ""),
       taiKhoan: String(ctx?.taiKhoan || ""),
@@ -1467,6 +1476,13 @@
       // Khối "Cơ quan thực hiện" của cổng Bộ Công an và đã chọn đủ Tỉnh + Xã chưa.
       bcaAgencyBlock: !!c.bcaAgencyBlock,
       bcaAgencyDone: !!c.bcaAgencyDone,
+      // Trang thủ tục của cổng Bộ Công an (sau "Nộp trực tuyến" DVCQG) + mã MaTTHC trên URL — BE bấm "Nộp hồ sơ" bên đó.
+      bcaTthcPage: !!c.bcaTthcPage,
+      bcaTthcCode: String(c.bcaTthcCode || ""),
+      // eForm Nth cổng Bộ Công an: form kê khai đang hiện → BE chưa đính kèm (chờ điền xong, sang trang đính kèm).
+      bcaKeKhaiForm: !!c.bcaKeKhaiForm,
+      // eForm Nth cổng Bộ Công an: trang xác nhận thông tin nộp (Mã xác nhận + ô chịu trách nhiệm + Nộp hồ sơ).
+      bcaConfirmPage: !!c.bcaConfirmPage,
       // Cổng tỉnh (/nop-ho-so): số nút "Nộp hồ sơ" trên bảng thủ tục + dialog "Đăng nhập bằng VNeID" riêng của cổng tỉnh.
       provinceRows: Number(c.provinceRows) || 0,
       provinceLoginDialog: !!c.provinceLoginDialog,
@@ -5896,6 +5912,8 @@
           soAgency: a.soAgency || "",
           // Trang kết quả nhiều thẻ mà thẻ đầu là cấp Sở: bấm "Nộp trực tuyến" ở thẻ có chữ này.
           cardIncludes: a.cardIncludes || "",
+          // Thủ tục nộp thẳng (agencyDirectSubmit, vd 1.001194): không chọn Tỉnh/Xã, bấm "Nộp hồ sơ" → "Nộp trực tuyến".
+          direct: a.direct === true,
         });
         const movedOn = !res?.ok && res?.code !== "card_not_found" && await agencyPageMovedOn();
         setStatus("");
@@ -5906,6 +5924,38 @@
         // Cổng đã sang trang kê khai / đăng nhập dù content không kịp trả lời → im lặng, watcher
         // gửi page_status của trang mới. Báo agency_failed ở đây là nhắc chọn tay trong khi đã vào form.
         else if (!movedOn) ask(`__event:agency_failed:${res?.error || "trang chưa sẵn sàng"}`, "system");
+      } else if (a.type === "bca_tthc_submit") {
+        // Trang thủ tục cổng Bộ Công an (/bocongan/bothutuc/tthc): bấm "Nộp hồ sơ" (a.bca-search-btn) sang trang chọn
+        // trường hợp hồ sơ. Thành công thì im — watcher báo trang mới; lỗi thì BE dặn công dân bấm tay.
+        setStatus("Đang bấm Nộp hồ sơ trên Cổng DVC Bộ Công an…");
+        const res = await sendToContent({ action: "bcaTthcSubmit", code: a.code || "" });
+        setStatus("");
+        if (!res?.ok) ask(`__event:bca_tthc_failed:${res?.error || "trang chưa sẵn sàng"}`, "system");
+      } else if (a.type === "bca_nth_submit") {
+        // Trang xác nhận eForm Nth Bộ Công an: soát Mã xác nhận + ô chịu trách nhiệm rồi bấm "Nộp hồ sơ" của cổng. Báo lại
+        // mọi kết quả (thiếu mã / chưa tích / cổng báo lỗi); trang không trả lời = script chưa nạp → BE dặn bấm tay.
+        setStatus("Đang nộp hồ sơ…");
+        const res = await sendToContent({ action: "bcaNthSubmit" });
+        let movedOn = false;
+        if (!res) {
+          // Không ai trả lời: cổng đã nhận và chuyển trang (script trang cũ mất theo) thì im — watcher báo trang mới;
+          // còn đứng ở trang xác nhận thì đúng là script chưa nạp → BE dặn công dân bấm tay.
+          for (let i = 0; i < 6; i += 1) {
+            const c = await readPageContext();
+            if (c?.ok && pageSignal(c)) {
+              movedOn = !c.bcaConfirmPage;
+              break;
+            }
+            await new Promise((r) => setTimeout(r, 800));
+          }
+        }
+        setStatus("");
+        if (!movedOn) {
+          await ask(`__action:bca_nth_submit_report:${JSON.stringify({
+            clicked: !!res?.clicked, missing: res?.missing || [], confirm: !!res?.confirm,
+            message: res?.message || res?.error || "", noEngine: !res,
+          })}`, "system");
+        }
       } else if (a.type === "pick_province_row") {
         // Cổng tỉnh (thủ tục đặc thù): bấm "Nộp hồ sơ" ở đúng dòng bảng thủ tục. Thành công thì im — cổng mở modal
         // Thông tin chung / dialog đăng nhập, watcher báo trạng thái mới. Không thấy dòng đúng thì BE dặn bấm tay.

@@ -222,6 +222,13 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # (_BCAQueQuanMaQH, _BCANoiOHienTaiMaQH) điền theo cascade, ô ngày sinh cha/mẹ chọn định dạng "Năm" theo
         # field.dateFormat. Thiếu cờ → thủ tục báo cần cập nhật Trợ lý.
         "supportsBcaHoChieu": raw.get("supportsBcaHoChieu") is True,
+        # Cổng dichvucong.bocongan.gov.vn (cấp thị thực cho người nước ngoài 1.001194): ô Tỉnh → Phường/xã của ba nhóm
+        # địa chỉ (_BCATinhTamTru / _BCATinhThuongTru / _BCATinhTamTruBaoLanh → _BCAXa…) điền theo cascade. Thiếu cờ →
+        # thủ tục báo cần cập nhật Trợ lý.
+        "supportsBcaThiThuc": raw.get("supportsBcaThiThuc") is True,
+        # eForm Nth cổng dichvucong.bocongan.gov.vn: trang xác nhận thông tin nộp (Mã xác nhận + ô chịu trách nhiệm) — lệnh
+        # bca_nth_submit soát mã + ô tích rồi bấm "Nộp hồ sơ" (content/portal-dvc.js). Thiếu cờ → dặn công dân tự bấm.
+        "supportsBcaNthSubmit": raw.get("supportsBcaNthSubmit") is True,
         # Cổng DVC Bộ Công an (dancuquocgia): đọc / tô xanh-cam-đỏ ô sau khi điền, vòng "Bổ sung các thông tin còn
         # thiếu", nút Nộp hồ sơ (content/bca/field-review.js). Thiếu cờ → luồng cũ (công dân tự soát, tự bấm nộp).
         "supportsBcaFlow": raw.get("supportsBcaFlow") is True,

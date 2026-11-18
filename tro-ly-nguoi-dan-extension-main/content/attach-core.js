@@ -87,6 +87,20 @@ function hasAttachmentTarget() {
   // (điều chỉnh thông tin cư trú) có sẵn bảng #tblGiayToDinhKem, ô chọn tệp ẩn trong label.btn-file.
   if (globalThis.location?.hostname === "dichvucong.dancuquocgia.gov.vn"
     && document.querySelector('[id^="tphs_new_"], #tblGiayToDinhKem, input[type="file"][id^="fileUpload"]')) return true;
+  // Cổng DVC Bộ Công an eForm Nth: trang KÊ KHAI có khối tải ảnh 4x6 / trang hộ chiếu (isBcaPhotoUploadInput) mà chưa
+  // có ô tệp của bảng thành phần hồ sơ (GiayToCuaHoSoOnline_<id>_fileGiayTo, Giấy tờ khác) → chưa phải trang đính kèm.
+  // Đặt SAU khối dancuquocgia (hai host khác nhau, thứ tự không đổi kết quả): tests/bca-guest-list.test.js dò
+  // #tblGiayToDinhKem trong 600 ký tự đầu thân hàm.
+  if (globalThis.location?.hostname === "dichvucong.bocongan.gov.vn") {
+    // eForm Nth: bảng Thành phần hồ sơ (ô GiayToCuaHoSoOnline_*) có thể nằm CÙNG trang form kê khai (thị thực 1.001194,
+    // ảnh chạy thật 18/11: bảng ngay dưới "Nơi nhận thị thực") → chỉ tính khi dòng của bảng thật sự HIỆN. Thứ tự điền
+    // trước / đính sau do BE quyết theo cờ bcaKeKhaiForm của page_status, không chặn ở đây (chặn là không đính được).
+    const slots = Array.from(document.querySelectorAll(
+      'input[type="file"][name^="GiayToCuaHoSoOnline_"], input[name="HoSoOnline_giayToKhac[]"]',
+    ));
+    if (slots.length) return slots.some((input) => isVisible(input.closest?.("tr, li") || input));
+    if (Array.from(document.querySelectorAll('input[type="file"]')).some(isBcaPhotoUploadInput)) return false;
+  }
   if (findCopyCertificationAttachmentRow()) return true;
   // Cổng Bộ VHTTDL (liz): input file trong <app-upload-flie-multi>, nút upload là icon (không chữ "Chọn tệp").
   if (document.querySelector('app-upload-flie-multi input[type="file"]')) return true;
@@ -313,10 +327,27 @@ function isFilledComponentTableRow(row, componentTables = new Map()) {
   return componentTables.get(table) && rowHasAttachedFile(row);
 }
 
+// Cổng DVC Bộ Công an (dichvucong.bocongan.gov.vn — form cấp thị thực 1.001194, hộ chiếu 1.001456): khối tải ảnh ĐẦU
+// trang kê khai (#A08-checkimg; "Ảnh chân dung" filename46 / "Trang nhân thân hộ chiếu" filenamehc, input
+// .custom-file-input id custom-file-input-* mang thuộc tính typeimg) nằm trong <tr> có input file. Nó KHÔNG phải dòng
+// thành phần hồ sơ: nhận nhầm là page_status báo attachmentTarget ngay trên trang kê khai → BE nhảy sang đính kèm trước
+// khi điền (user 18/11), rồi engine bấm nút "Tải ảnh" làm bật hộp chọn tệp của Windows.
+function isBcaPhotoUploadInput(input) {
+  return !!input && (input.hasAttribute?.("typeimg") || /^custom-file-input-/i.test(input.id || "")
+    || /^filename(46|hc)$/i.test(input.name || "") || !!input.closest?.("#A08-checkimg"));
+}
+
+function isBcaPhotoUploadRow(row) {
+  if (row?.closest?.("#A08-checkimg")) return true;
+  const inputs = Array.from(row?.querySelectorAll?.('input[type="file"]') || []);
+  return inputs.length > 0 && inputs.every(isBcaPhotoUploadInput);
+}
+
 function findAttachmentCandidateRows() {
   const componentTables = new Map();
   return Array.from(document.querySelectorAll("tr")).filter((row) => {
     if (isAddAttachmentRow(row)) return false;
+    if (isBcaPhotoUploadRow(row)) return false; // khối tải ảnh đầu form Bộ Công an, không phải thành phần hồ sơ
     if (isAuthorizationAttachmentRow(row)) return false; // dòng giấy ủy quyền ở bước chủ hồ sơ
     return hasAttachmentChooseControl(row) || isFilledComponentTableRow(row, componentTables);
   });
@@ -1985,6 +2016,7 @@ function fixedSlotKeywords(item) {
 
 // input[type=file] thuộc bảng thành phần hồ sơ (có nút "Chọn tệp tin"/btn_upload gần đó).
 function isUploadSlotInput(input) {
+  if (isBcaPhotoUploadInput(input)) return false; // ô ảnh 4x6 / trang hộ chiếu đầu form Bộ Công an
   // Cổng Bộ VHTTDL (liz): input file nằm trong <app-upload-flie-multi>, nút upload là icon fa-upload
   // (không có text "Chọn tệp") → nhận diện thẳng theo custom element bọc input.
   if (input.closest && input.closest("app-upload-flie-multi")) return true;
@@ -2907,6 +2939,33 @@ async function attachFilesByBcaPlan(payloadFiles, attachments) {
   }
 }
 
+// Đính kèm gán tệp thẳng vào input bằng DataTransfer (setFilesOnInput) — KHÔNG bao giờ cần hộp chọn tệp của hệ điều
+// hành. Nhưng cổng hay tự gọi input.click() khi engine bấm mục "Chọn tệp tin" / nút "Tải ảnh" (eForm Nth Bộ Công an),
+// và cú bấm "Đã đưa đủ giấy tờ" trong sidebar vừa cấp user activation cho trang → cửa sổ chọn tệp Windows bật ra giữa
+// lượt đính (user 18/11). Suốt lượt đính kèm, chặn hành vi mặc định (mở hộp chọn tệp) của mọi cú click vào
+// input[type=file]; gỡ chặn trễ một nhịp vì trang có thể gọi input.click() ngay sau thao tác cuối.
+let nativePickerBlockers = 0;
+function blockNativeFilePicker(event) {
+  const target = event.target;
+  if (target?.tagName === "INPUT" && String(target.type || "").toLowerCase() === "file") event.preventDefault();
+}
+
+async function withNativeFilePickerBlocked(run) {
+  nativePickerBlockers += 1;
+  document.addEventListener("click", blockNativeFilePicker, true);
+  try {
+    return await run();
+  } finally {
+    setTimeout(() => {
+      nativePickerBlockers -= 1;
+      if (nativePickerBlockers <= 0) {
+        nativePickerBlockers = 0;
+        document.removeEventListener("click", blockNativeFilePicker, true);
+      }
+    }, 1500);
+  }
+}
+
 async function attachFilesByPlan(payloadFiles, attachments, procedure = "", opts = {}) {
   await accountSettingsReady; // cờ đổi tên tệp phải có trước khi dựng File đầu tiên
   if (isBcaPortal() && Array.isArray(attachments) && attachments.some((item) => item?.target === "bca-row")) {
@@ -3217,7 +3276,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     // Chỉ frame có ĐÚNG bảng giấy ủy quyền trả lời; frame khác im (all_frames).
     if (!findAuthorizationAttachmentRow()) return;
     if (!msg.file) { sendResponse({ error: "Không có tệp giấy ủy quyền." }); return; }
-    attachAuthorizationFile(msg.file)
+    withNativeFilePickerBlocked(() => attachAuthorizationFile(msg.file))
       .then(sendResponse)
       .catch((e) => sendResponse({ error: `Lỗi đính giấy ủy quyền: ${e?.message || e}` }));
     return true; // async
@@ -3228,9 +3287,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     const attachments = Array.isArray(msg.attachments) ? msg.attachments : [];
     if (!files.length) { sendResponse({ error: "Không có file nào để đính kèm." }); return; }
     if (!attachments.length) { sendResponse({ error: "Không có kế hoạch đính kèm từ backend." }); return; }
-    attachFilesByPlan(files, attachments, msg.procedure || "", {
+    withNativeFilePickerBlocked(() => attachFilesByPlan(files, attachments, msg.procedure || "", {
       mode: msg.mode || "merge", clearExisting: msg.clearExisting === true,
-    })
+    }))
       .then(sendResponse)
       .catch((e) => sendResponse({ error: `Lỗi đính kèm: ${e?.message || e}` }));
     return true; // async
@@ -3239,13 +3298,15 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (!hasAttachmentTarget()) return;
     const files = Array.isArray(msg.files) ? msg.files : [];
     if (!files.length) { sendResponse({ error: "Không có file nào để đính kèm." }); return; }
-    attachFilesToRequiredCopyCertification(files).then(sendResponse);
+    withNativeFilePickerBlocked(() => attachFilesToRequiredCopyCertification(files)).then(sendResponse);
     return true;
   }
 });
 
 Object.assign(H, {
-  attachFilesByPlan, collectAttachmentContext, hasAttachmentTarget,
+  // split-attach.js gọi qua H → cũng đi qua lớp chặn hộp chọn tệp như listener.
+  attachFilesByPlan: (...args) => withNativeFilePickerBlocked(() => attachFilesByPlan(...args)),
+  collectAttachmentContext, hasAttachmentTarget,
   hasAuthorizationAttachmentBlock,
   dataUrlToFile, dataUrlFilesForBatch, setFilesOnInput, payloadForPlanItem, collectProcedureSignals,
 });

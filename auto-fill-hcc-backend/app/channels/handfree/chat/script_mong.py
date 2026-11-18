@@ -118,6 +118,12 @@ PROCEDURE_HMONG = {
     "dang-ky-mau-con-dau": "Cuv npe qauv foob tshiab",
     # BẢN NHÁP chờ anh Dư soát — "ua" (làm) + "phau ntawv hla teb chaws" (hộ chiếu, nghĩa đen: sổ đi qua nước).
     "cap-ho-chieu-pho-thong-o-trong-nuoc": "Ua phau ntawv hla teb chaws",
+    # BẢN NHÁP chờ anh Dư soát — "ua" (làm) + "ntawv tso cai nkag teb chaws" (thị thực, nghĩa đen: giấy cho phép vào
+    # nước) + "rau neeg txawv teb chaws" (cho người nước ngoài).
+    "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam": "Ua ntawv tso cai nkag teb chaws rau neeg txawv teb chaws",
+    # BẢN NHÁP chờ anh Dư soát — "ua daim npav" (làm thẻ) + "nyob ib ntus" (tạm trú) + "rau neeg txawv teb chaws" (cho
+    # người nước ngoài).
+    "cap-the-tam-tru-cho-nguoi-nuoc-ngoai-tai-viet-nam": "Ua daim npav nyob ib ntus rau neeg txawv teb chaws",
     # BẢN NHÁP chờ anh Dư soát (Bộ GD&ĐT — bản sao văn bằng/chứng chỉ từ sổ gốc).
     "cap-ban-sao-van-bang-so-goc": "Daim ntawv theej ntawv pov thawj kawm ntawv",
     # BẢN NHÁP chờ anh Dư soát (Bộ Xây dựng — thuê/thuê mua nhà ở xã hội).
@@ -680,6 +686,77 @@ GUIDE_AGENCY_SELECT = {
         "({ward}, {province}) thiab nias Nộp trực tuyến pab pej xeem."
     ),
     "tts": "Kuv yuav xaiv qhov chaw ua {ward} {province} thiab xa online pab pej xeem.",
+}
+
+# BẢN NHÁP chờ anh Dư soát — câu ghép từ GUIDE_AGENCY_SELECT ngay trên (bỏ phần chọn xã, tỉnh).
+GUIDE_AGENCY_DIRECT = {
+    "md": (
+        "Kuv tab tom qhib nplooj ntawv {procedure}. Kuv yuav nias Nộp hồ sơ, Nộp trực tuyến thiab Nộp hồ sơ "
+        "ntawm Cổng dịch vụ công Bộ Công an pab pej xeem."
+    ),
+    "tts": "Kuv yuav nias xa ntaub ntawv online pab pej xeem.",
+}
+
+# BẢN NHÁP chờ anh Dư soát — đính kèm cùng trang eForm Bộ Công an (thị thực 1.001194).
+WAIT_ATTACHMENT_SAME_PAGE_BCA = {
+    "md": "Tam sim no kuv muab cov ntaub ntawv txuas rau Thành phần hồ sơ hauv qab no, pej xeem tos me ntsis.",
+    "tts": "Tam sim no kuv muab cov ntaub ntawv txuas rau hauv qab no, pej xeem tos me ntsis.",
+}
+
+# BẢN NHÁP chờ anh Dư soát.
+ATTACH_DONE_SAME_PAGE_BCA = {
+    "md": "Kuv txuas tiav {attached} daim ntawv lawm. Pej xeem xaiv qhov chaw txais ntawv, ces nias Đồng ý và tiếp tục.",
+    "tts": "Kuv txuas tiav lawm. Pej xeem xaiv qhov chaw txais ntawv, ces nias Đồng ý và tiếp tục.",
+}
+
+# BẢN NHÁP chờ anh Dư soát — trang xác nhận + nút Nộp hồ sơ eForm Bộ Công an (thị thực 1.001194).
+BCA_NTH_CONFIRM_GUIDE = {
+    "md": "Pej xeem sau Mã xác nhận, nias lub npov Tôi xin chịu trách nhiệm, ces nias Nộp hồ sơ hauv qab no.",
+    "tts": "Pej xeem sau tus lej, nias lub npov, ces nias Nộp hồ sơ hauv qab no.",
+}
+BCA_NTH_CONFIRM_MANUAL = {
+    "md": "Pej xeem sau Mã xác nhận, nias lub npov Tôi xin chịu trách nhiệm, ces nias Nộp hồ sơ hauv qab nplooj ntawv.",
+    "tts": "Pej xeem sau tus lej, nias lub npov, ces nias Nộp hồ sơ.",
+}
+BCA_NTH_SUBMITTING = {
+    "md": "Kuv tab tom nias Nộp hồ sơ.",
+    "tts": "Kuv tab tom nias Nộp hồ sơ.",
+}
+BCA_NTH_MISSING_CAPTCHA = {
+    "md": "Pej xeem tseem tsis tau sau Mã xác nhận. Sau tas ces nias Nộp hồ sơ dua.",
+    "tts": "Pej xeem tseem tsis tau sau tus lej. Sau tas ces nias dua.",
+}
+BCA_NTH_MISSING_COMMIT = {
+    "md": "Pej xeem tseem tsis tau nias lub npov Tôi xin chịu trách nhiệm. Nias tas ces nias Nộp hồ sơ dua.",
+    "tts": "Pej xeem tseem tsis tau nias lub npov. Nias tas ces nias dua.",
+}
+BCA_NTH_CONFIRM_ASK = {
+    "md": "Lub vev xaib nug dua — pej xeem nias Đồng ý.",
+    "tts": "Lub vev xaib nug dua, pej xeem nias Đồng ý.",
+}
+BCA_NTH_SUBMIT_BLOCKED = {
+    "md": "⚠️ Lub vev xaib tseem tsis tau txais. Pej xeem kho ces nias Nộp hồ sơ dua.",
+    "tts": "Lub vev xaib tseem tsis tau txais. Pej xeem kho ces nias dua.",
+}
+BCA_NTH_NO_BUTTON = {
+    "md": "Kuv tsis pom Nộp hồ sơ. Pej xeem nqes mus hauv qab ces nias dua.",
+    "tts": "Kuv tsis pom lub pob. Pej xeem nqes mus hauv qab ces nias dua.",
+}
+BCA_NTH_NO_ENGINE = {
+    "md": "Nplooj ntawv tsis txais kuv cov lus. Pej xeem nias Nộp hồ sơ hauv qab.",
+    "tts": "Pej xeem nias Nộp hồ sơ hauv qab.",
+}
+
+# BẢN NHÁP chờ anh Dư soát.
+AGENCY_DIRECT_FAILED = {
+    "md": "⚠️ Kuv nias tsis tau. Pej xeem nias Nộp hồ sơ, ces nias Nộp trực tuyến.",
+    "tts": "Kuv nias tsis tau. Pej xeem nias Nộp hồ sơ, ces nias Nộp trực tuyến.",
+}
+
+# BẢN NHÁP chờ anh Dư soát.
+BCA_TTHC_FAILED = {
+    "md": "Kuv nias tsis tau Nộp hồ sơ. Pej xeem nias Nộp hồ sơ ntawm nplooj ntawv pab kuv.",
+    "tts": "Kuv nias tsis tau. Pej xeem nias Nộp hồ sơ ntawm nplooj ntawv pab kuv.",
 }
 
 AGENCY_MANUAL_GUIDE = {

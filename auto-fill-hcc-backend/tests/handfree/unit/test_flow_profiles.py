@@ -617,6 +617,22 @@ def test_registered_procedures_use_their_declared_flow_family():
     # Thủ tục khác dùng laiChauFeeStep (Lai Châu, đăng ký xe, mẫu con dấu) KHÔNG tự chọn cơ quan.
     assert "caseAgencyByProvince" not in bca_con_dau["laiChauFeeStep"] and "caseAgencyByProvince" not in bca_xe["laiChauFeeStep"]
     assert "resultMethodHint" not in bca_ho_chieu and bca_ho_chieu["requiresCapability"] == "supportsBcaHoChieu"
+    # Cấp thị thực cho người nước ngoài (cùng cổng, cùng khuôn hộ chiếu): tự chọn cơ quan theo tỉnh như hộ chiếu; nơi
+    # nhận thị thực giấy tờ không ghi → nhắc nhận kết quả như mẫu con dấu; cờ riêng.
+    bca_thi_thuc = procedures.pop("cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam")
+    for field in ("flowProfile", "bcaPortal", "wizard", "maePortal", "needsAgencySelect", "provinceOnly",
+                  "hasAttachmentStep", "supportsSplitDocuments"):
+        assert bca_thi_thuc.get(field) == bca_ho_chieu.get(field), field
+    same_step = {k: v for k, v in bca_ho_chieu["laiChauFeeStep"].items() if k != "caseHint"}
+    assert {k: v for k, v in bca_thi_thuc["laiChauFeeStep"].items() if k != "caseHint"} == same_step
+    assert bca_thi_thuc["resultMethodHint"] is True and bca_thi_thuc["requiresCapability"] == "supportsBcaThiThuc"
+    # Cấp thẻ tạm trú (cùng cổng, cùng khuôn thị thực, cùng bộ ô Tỉnh → Phường/xã nên dùng chung cờ): nộp thẳng như thị thực.
+    bca_the_tam_tru = procedures.pop("cap-the-tam-tru-cho-nguoi-nuoc-ngoai-tai-viet-nam")
+    for field in ("flowProfile", "bcaPortal", "wizard", "maePortal", "needsAgencySelect", "provinceOnly",
+                  "hasAttachmentStep", "supportsSplitDocuments", "resultMethodHint", "requiresCapability",
+                  "agencyDirectSubmit"):
+        assert bca_the_tam_tru.get(field) == bca_thi_thuc.get(field), field
+    assert bca_the_tam_tru["bcaTthcCode"] == "1.003460" and bca_thi_thuc["bcaTthcCode"] == "1.001194"
 
     # Đợt 26/10. Nội quy lao động (Bộ Nội vụ): cùng khuôn cấp Sở với sửa đổi thông tin hồ sơ người có công.
     moha_labor = procedures.pop("dang-ky-noi-quy-lao-dong")
@@ -937,7 +953,9 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 cổng Bộ Y tế cấp Sở (18/11) "cap-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te" (1.014076, luồng "xay-dung").
     # +1 cổng Bộ Công an dichvucong.bocongan.gov.vn (18/11) "dang-ky-mau-con-dau" (2.001428).
     # +1 cổng Bộ Công an dichvucong.bocongan.gov.vn (18/11) "cap-ho-chieu-pho-thong-o-trong-nuoc" (1.001456).
-    assert len(procedures) == 176
+    # +1 cổng Bộ Công an dichvucong.bocongan.gov.vn (18/11) "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam" (1.001194).
+    # +1 cổng Bộ Công an dichvucong.bocongan.gov.vn (19/11) "cap-the-tam-tru-cho-nguoi-nuoc-ngoai-tai-viet-nam" (1.003460).
+    assert len(procedures) == 178
 
     for procedure in procedures:
         key = procedure["key"]

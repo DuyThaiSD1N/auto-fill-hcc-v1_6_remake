@@ -1497,6 +1497,26 @@
       "autoConfirm": false
     },
     {
+      "key": "cap-the-tam-tru-cho-nguoi-nuoc-ngoai-tai-viet-nam",
+      "code": "1.003460",
+      "label": "Cấp thẻ tạm trú cho người nước ngoài tại Việt Nam tại Công an cấp tỉnh",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf7-6f41-722b-876f-5f62759452d4",
+      "needsAgencySelect": false,
+      "directSubmit": true,
+      "bcaSubmit": true,
+      "autoConfirm": false
+    },
+    {
+      "key": "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam",
+      "code": "1.001194",
+      "label": "Cấp thị thực cho người nước ngoài tại Việt Nam (thực hiện tại cấp tỉnh)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf7-5f69-70ab-9d13-d5340d911532",
+      "needsAgencySelect": false,
+      "directSubmit": true,
+      "bcaSubmit": true,
+      "autoConfirm": false
+    },
+    {
       "key": "thong-bao-ket-qua-dai-hoi-phe-duyet-dieu-le-hoi-cap-bo",
       "code": "1.012931",
       "label": "Thông báo kết quả đại hội và phê duyệt đổi tên hội, phê duyệt điều lệ hội (cấp bộ)",

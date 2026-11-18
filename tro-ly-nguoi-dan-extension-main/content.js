@@ -1853,6 +1853,23 @@
       // trang chọn trường hợp. Chỉ trang nhập thông tin sau nút "Đồng ý và tiếp tục" mới là form kê khai.
       const bcaCasePage = location.hostname === "dichvucong.bocongan.gov.vn"
         && location.pathname.includes("/chon-truong-hop-ho-so");
+      // Trang THỦ TỤC của cổng Bộ Công an (/bocongan/bothutuc/tthc?...MaTTHC=<mã>) mà "Nộp trực tuyến" của DVCQG ném
+      // sang (thủ tục nộp thẳng, vd 1.001194): BE ra lệnh bcaTthcSubmit bấm "Nộp hồ sơ" (portal-dvc.js). Không phải form.
+      const bcaTthcPage = location.hostname === "dichvucong.bocongan.gov.vn"
+        && /\/bothutuc\/tthc/i.test(location.pathname);
+      // eForm Nth cổng Bộ Công an (thị thực 1.001194, hộ chiếu, mẫu con dấu): form kê khai (ô CongDan_* NHÌN THẤY) đang
+      // hiện. Trang này dựng SẴN bảng Thành phần hồ sơ ẩn trong DOM → BE dựa cờ này để luôn ĐIỀN trước, đính kèm sau
+      // (chạy thật 18/11: trợ lý đính kèm ngay trên trang kê khai còn trống).
+      const bcaKeKhaiForm = location.hostname === "dichvucong.bocongan.gov.vn"
+        && Array.from(document.querySelectorAll(
+          'input[name^="CongDan_"]:not([type="hidden"]):not([type="file"]), textarea[name^="CongDan_"]',
+        )).some(isPageVisible);
+      // Trang "xác nhận thông tin nộp" của eForm Nth Bộ Công an (/tiep-nhan-online/xac-nhan-thong-tin-nop-moi, sau "Đồng
+      // ý và tiếp tục"): Mã xác nhận + ô chịu trách nhiệm + nút Nộp hồ sơ → BE dặn công dân rồi hiện nút Nộp hồ sơ.
+      const bcaConfirmPage = location.hostname === "dichvucong.bocongan.gov.vn"
+        && /\/xac-nhan-thong-tin-nop/i.test(location.pathname);
+      const bcaTthcParams = new URLSearchParams(location.search);
+      const bcaTthcCode = bcaTthcPage ? (bcaTthcParams.get("MaTTHC") || bcaTthcParams.get("MaTTHCDP") || "") : "";
       // Trang CHỦ cổng liên thông (thẻ thủ tục có id mã TTHC, vd "2_000987"): đăng nhập VNeID xong cổng đưa về đây
       // chứ không quay lại link kê khai đang mở dở → báo BE để BE mở lại đúng link kê khai của thủ tục.
       const lienThongHome = location.hostname === "lienthong.dichvucong.gov.vn" && !keKhaiForm
@@ -1978,9 +1995,14 @@
         // "standard" (ô tìm kiếm) luôn null khi có agencyBlock. loginPage/infoModal/wizard≠2 null mọi loại.
         // Trang chọn cơ quan MAE có 3 input radio mang name → detectFormKind dương tính giả
         // "standard"; maeAgencyBlock null formKind để BE không tưởng đã vào kê khai.
-        formKind: (loginPage || infoModal || maeAgencyBlock || bcaCasePage || (wizardStep && wizardStep !== 2)
+        formKind: (loginPage || infoModal || maeAgencyBlock || bcaCasePage || bcaTthcPage || bcaConfirmPage
+          || (wizardStep && wizardStep !== 2)
           || (agencyBlock && (rawFormKind === "standard" || !keKhaiForm))) ? "" : rawFormKind,
         agencyBlock,
+        bcaTthcPage,
+        bcaTthcCode,
+        bcaKeKhaiForm,
+        bcaConfirmPage,
         maeAgencyBlock,
         bcaAgencyBlock,
         bcaAgencyDone,

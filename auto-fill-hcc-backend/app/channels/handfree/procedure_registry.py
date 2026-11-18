@@ -7116,6 +7116,129 @@ PROCEDURES: list[dict] = [
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
     },
+    {
+        # 1.001194, cùng cổng + cùng khuôn với hộ chiếu ngay trên. Người dùng trợ lý là THÂN NHÂN bảo lãnh (công dân Việt
+        # Nam đăng nhập VNeID — cổng tự đổ họ tên / ngày sinh / số CCCD của họ vào khối bảo lãnh), người đề nghị là người
+        # nước ngoài. keKhaiUrl là trang thủ tục DVCQG (ke_khai_links) và đi như Auto Fill (directSubmit + bcaSubmit):
+        # agencyDirectSubmit → trợ lý KHÔNG chọn Tỉnh/Xã, bấm "Nộp hồ sơ" → "Nộp trực tuyến" (select_agency direct), sang
+        # trang thủ tục cổng Bộ Công an ?MaTTHC=bcaTthcCode bấm tiếp "Nộp hồ sơ" (bca_tthc_submit) tới trang chọn trường
+        # hợp hồ sơ (user 18/11: "tro-ly chọn giống autofill"). Cờ riêng supportsBcaThiThuc: extension biết hai lệnh đó và
+        # cascade Tỉnh → Phường/xã của ba nhóm địa chỉ (CongDan__fs_BCATinhTamTru → _BCAXaTamTru, _BCATinhThuongTru →
+        # _BCAXaThuongTru, _BCATinhTamTruBaoLanh → _BCAXaTamTruBaoLanh). Trang chọn trường hợp + caseHint SUY theo hộ
+        # chiếu (chưa thấy trang của thủ tục này). Nơi nhận thị thực giấy tờ không ghi → resultMethodHint. Toàn quốc.
+        # Detect y hệt lõi.
+        "key": "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam",
+        "detect": {
+            "urlScope": ["dichvucong.bocongan.gov.vn"],
+            "textIncludes": [
+                "cấp thị thực",
+                "nhập cảnh",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp thị thực cho người nước ngoài tại Việt Nam (thực hiện tại cấp tỉnh)",
+        "shortLabel": "Xin cấp thị thực (visa) cho người nước ngoài",
+        "subtitle": "Người thân ở Việt Nam bảo lãnh cấp visa một lần / nhiều lần cho người nước ngoài đang tạm trú",
+        "icon": "🛂",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf7-5f69-70ab-9d13-d5340d911532",
+        "agencyDirectSubmit": True,
+        "bcaTthcCode": "1.001194",
+        "requiresCapability": "supportsBcaThiThuc",
+        "laiChauFeeStep": {
+            "capability": "supportsBcaCaseStep", "caseOnly": True, "caseGroups": "auto",
+            "caseAgencyByProvince": {"label": "Cơ quan giải quyết hồ sơ", "prefer": "cong an"},
+            "caseHint": "**Trường hợp giải quyết** của hồ sơ cấp thị thực; ô Cơ quan giải quyết hồ sơ tôi chọn theo tỉnh "
+                        "của công dân",
+        },
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach
+        "resultMethodHint": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "to_khai", "name": "Tờ khai đề nghị cấp thị thực, gia hạn tạm trú (Mẫu NA5)", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "ho_chieu", "name": "Hộ chiếu của người nước ngoài (trang nhân thân + dấu nhập cảnh)", "icon": "🛂",
+             "sides": 1, "repeatable": True},
+            {"key": "chung_minh", "name": "Giấy tờ chứng minh lý do (giấy chứng nhận kết hôn, giấy phép lao động …)",
+             "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Thẻ căn cước của người bảo lãnh", "icon": "🪪", "sides": 2, "optional": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai đề nghị cấp thị thực, gia hạn tạm trú (Mẫu NA5).\n"
+            "2. Hộ chiếu của người nước ngoài — trang có ảnh và trang dấu nhập cảnh.\n"
+            "3. Giấy tờ chứng minh lý do: giấy chứng nhận kết hôn, giấy phép lao động, giấy chứng nhận đầu tư ….\n"
+            "4. Thẻ căn cước của người bảo lãnh (nếu có).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        # 1.003460, cùng cổng + cùng khuôn với thị thực ngay trên: trợ lý nộp thẳng như Auto Fill (agencyDirectSubmit —
+        # DVCQG "Nộp hồ sơ" → "Nộp trực tuyến", trang thủ tục cổng Bộ Công an ?MaTTHC=1.003460 bấm "Nộp hồ sơ"), trang chọn
+        # trường hợp tự chọn cơ quan theo tỉnh, form + bảng Thành phần hồ sơ CÙNG trang (điền xong đính ngay, nút cam
+        # "Đồng ý và tiếp tục"), trang xác nhận dặn nhập mã + tích ô rồi nút Nộp hồ sơ. Cùng bộ ô Tỉnh → Phường/xã với thị
+        # thực (_BCATinhTamTru / _BCATinhThuongTru → _BCAXa…) nên dùng chung cờ supportsBcaThiThuc. Người đăng nhập là bên
+        # bảo lãnh (cổng khoá "Thân nhân"); hồ sơ do cơ quan NA6 bảo lãnh thì mục quan hệ / địa chỉ mapping ghi CẦN XÁC NHẬN.
+        # Toàn quốc (user không nói phạm vi). Detect y hệt lõi.
+        "key": "cap-the-tam-tru-cho-nguoi-nuoc-ngoai-tai-viet-nam",
+        "detect": {
+            "urlScope": ["dichvucong.bocongan.gov.vn"],
+            "textIncludes": [
+                "cấp thẻ tạm trú",
+                "nhập cảnh",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp thẻ tạm trú cho người nước ngoài tại Việt Nam tại Công an cấp tỉnh",
+        "shortLabel": "Xin cấp thẻ tạm trú cho người nước ngoài",
+        "subtitle": "Cơ quan, doanh nghiệp hoặc người thân ở Việt Nam bảo lãnh cấp thẻ tạm trú cho người nước ngoài",
+        "icon": "🪪",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf7-6f41-722b-876f-5f62759452d4",
+        "agencyDirectSubmit": True,
+        "bcaTthcCode": "1.003460",
+        "requiresCapability": "supportsBcaThiThuc",
+        "laiChauFeeStep": {
+            "capability": "supportsBcaCaseStep", "caseOnly": True, "caseGroups": "auto",
+            "caseAgencyByProvince": {"label": "Cơ quan giải quyết hồ sơ", "prefer": "cong an"},
+            "caseHint": "**Trường hợp giải quyết** của hồ sơ cấp thẻ tạm trú; ô Cơ quan giải quyết hồ sơ tôi chọn theo "
+                        "tỉnh của công dân",
+        },
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach
+        "resultMethodHint": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "van_ban", "name": "Văn bản đề nghị cấp thẻ tạm trú (Mẫu NA6 / NA7)", "icon": "📄", "sides": 1,
+             "repeatable": True},
+            {"key": "to_khai", "name": "Tờ khai đề nghị cấp thẻ tạm trú (Mẫu NA8)", "icon": "📄", "sides": 1,
+             "repeatable": True},
+            {"key": "ho_chieu", "name": "Hộ chiếu của người nước ngoài (nhân thân, thị thực, dấu nhập cảnh)", "icon": "🛂",
+             "sides": 1, "repeatable": True},
+            {"key": "chung_minh", "name": "Giấy phép lao động / giấy tờ chứng minh thuộc diện cấp thẻ", "icon": "📜",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Thẻ căn cước của người đăng nhập (bên bảo lãnh)", "icon": "🪪", "sides": 2,
+             "optional": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Văn bản đề nghị cấp thẻ tạm trú (Mẫu NA6 của cơ quan, tổ chức / NA7 của cá nhân).\n"
+            "2. Tờ khai đề nghị cấp thẻ tạm trú (Mẫu NA8).\n"
+            "3. Hộ chiếu của người nước ngoài — trang có ảnh, trang thị thực, dấu nhập cảnh.\n"
+            "4. Giấy phép lao động hoặc giấy tờ chứng minh thuộc diện cấp thẻ tạm trú.\n"
+            "5. Thẻ căn cước của người đăng nhập (nếu có).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
     # ── Đợt 26/10: 5 thủ tục, CHƯA chạy thử trên cổng thật. Cổng / cấp cơ quan suy từ code lõi; kiểm khi chạy. ──
     {
         "key": "dang-ky-noi-quy-lao-dong",
@@ -10858,6 +10981,8 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "dang-ky-xe-lan-dau-san-xuat-lap-rap-trong-nuoc": _TAT_CA,  # 16/11/2026: ngoài bảng, chốt toàn quốc
     "dang-ky-mau-con-dau": _TAT_CA,  # 18/11/2026: ngoài bảng, user không nói phạm vi → toàn quốc (mặc định)
     "cap-ho-chieu-pho-thong-o-trong-nuoc": _TAT_CA,  # 18/11/2026: ngoài bảng, user không nói phạm vi → toàn quốc
+    "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam": _TAT_CA,  # 18/11/2026: ngoài bảng, không nói phạm vi → toàn quốc
+    "cap-the-tam-tru-cho-nguoi-nuoc-ngoai-tai-viet-nam": _TAT_CA,  # 19/11/2026: ngoài bảng, không nói phạm vi → toàn quốc
     "thong-bao-luu-tru": _TAT_CA,
     "dang-ky-noi-quy-lao-dong": _TAT_CA,
     "cap-gcn-diem-tro-choi-dien-tu-cong-cong": _TAT_CA,

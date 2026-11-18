@@ -6680,7 +6680,10 @@
     //   (CongDan__fs_BCAQueQuanMaTinh → CongDan__fs_BCAQueQuanMaPX; ô tỉnh đã khớp "matinh"), xã nạp qua API theo tỉnh.
     // quequanmaqh/noiohientaimaqh: Phường/Xã thường trú / tạm trú của form cấp hộ chiếu phổ thông 1.001456 cùng cổng
     //   (CongDan__fs_BCAQueQuanMaTinh → _BCAQueQuanMaQH, _BCANoiOHienTaiMaTinh → _BCANoiOHienTaiMaQH).
-    return /province|district|village|ward|matinh|maphuongxa|maxa|tinhthanhphonopdon|tinhthanhpho|quanhuyen|tinhtp|px1|country_idfld|city_idfld|ward_idfld|street_numberfld|addr[a-z]*ctl|change_owner_type_idfld|diachihoatdong\]\[(tinhthanh|xaphuong)|phuongxaaa|tinhthanhqwaasa|tinhnhankq|xanhankq|quequanmapx|quequanmaqh|noiohientaimaqh/.test(String(name || "").toLowerCase());
+    // bcatinh/bcaxa + tamtru|thuongtru: ba nhóm Tỉnh → Phường/xã của form cấp thị thực 1.001194 cùng cổng
+    //   (CongDan__fs_BCATinhTamTru → _BCAXaTamTru, _BCATinhThuongTru → _BCAXaThuongTru, _BCATinhTamTruBaoLanh →
+    //   _BCAXaTamTruBaoLanh) — tên không chứa mẫu nào ở trên.
+    return /province|district|village|ward|matinh|maphuongxa|maxa|tinhthanhphonopdon|tinhthanhpho|quanhuyen|tinhtp|px1|country_idfld|city_idfld|ward_idfld|street_numberfld|addr[a-z]*ctl|change_owner_type_idfld|diachihoatdong\]\[(tinhthanh|xaphuong)|phuongxaaa|tinhthanhqwaasa|tinhnhankq|xanhankq|quequanmapx|quequanmaqh|noiohientaimaqh|bca(tinh|xa)(tamtru|thuongtru)/.test(String(name || "").toLowerCase());
   }
 
   function isAreaSelectField(f) {

@@ -123,6 +123,34 @@ GUIDE_AGENCY_SELECT = {
     "tts": "Tôi đang mở trang và tự chọn cơ quan. Công dân chờ tôi chút ạ.",
 }
 
+# Thủ tục nộp thẳng (agencyDirectSubmit, vd cấp thị thực 1.001194): trang DVCQG không cần chọn tỉnh/xã — trợ lý bấm
+# Nộp hồ sơ → Nộp trực tuyến, sang Cổng DVC Bộ Công an bấm tiếp Nộp hồ sơ.
+GUIDE_AGENCY_DIRECT = {
+    "md": (
+        "Tôi đang mở **{procedure}**, tự bấm **Nộp hồ sơ** → **Nộp trực tuyến**, rồi bấm **Nộp hồ sơ** trên Cổng dịch "
+        "vụ công Bộ Công an. Công dân chờ chút ạ."
+    ),
+    "tts": "Tôi đang mở trang và tự bấm nộp hồ sơ. Công dân chờ tôi chút ạ.",
+}
+
+# Trang DVCQG của thủ tục nộp thẳng: không bấm được "Nộp hồ sơ" / "Nộp trực tuyến" → công dân bấm tay (KHÔNG chọn tỉnh/xã).
+AGENCY_DIRECT_FAILED = {
+    "md": (
+        "⚠️ Tôi chưa tự bấm được (*{error}*).\n\n"
+        "Công dân bấm **Nộp hồ sơ** (không cần chọn tỉnh, xã) → **Nộp trực tuyến** ạ."
+    ),
+    "tts": "Dạ, tôi chưa tự bấm được. Công dân bấm Nộp hồ sơ, rồi Nộp trực tuyến ạ.",
+}
+
+# Trang thủ tục của cổng Bộ Công an: không bấm được "Nộp hồ sơ" → công dân bấm tay.
+BCA_TTHC_FAILED = {
+    "md": (
+        "Tôi chưa bấm được **Nộp hồ sơ** trên trang thủ tục của Cổng dịch vụ công Bộ Công an ({error}). "
+        "Công dân bấm nút **Nộp hồ sơ** trên trang giúp tôi ạ."
+    ),
+    "tts": "Tôi chưa bấm được nút nộp hồ sơ. Công dân bấm nút Nộp hồ sơ trên trang giúp tôi ạ.",
+}
+
 # Thủ tục cổng Bộ NN&MT (agencyProvinceOnly): trang DVCQG chỉ cần chọn TỈNH rồi Đồng ý;
 # kết quả đầu tiên "Nộp trực tuyến" chính là Sở chuyên ngành.
 GUIDE_AGENCY_SELECT_PROVINCE = {
@@ -793,6 +821,73 @@ WAIT_ATTACHMENT_SAME_PAGE = {
     "tts": " Giờ tôi tự đính kèm giấy tờ, công dân chờ chút ạ.",
 }
 # Chốt kết quả CẢ HAI bước (điền đơn + đính kèm) sau khi luồng cùng-trang chạy liền mạch.
+# eForm Nth cổng DVC Bộ Công an có bảng Thành phần hồ sơ NGAY DƯỚI form kê khai (thị thực 1.001194): điền xong tự đính
+# luôn vào bảng trên chính trang này, không chờ sang trang khác.
+WAIT_ATTACHMENT_SAME_PAGE_BCA = {
+    "md": "\n\nGiờ tôi đính kèm giấy tờ vào mục **Thành phần hồ sơ** ngay bên dưới trên trang này, công dân chờ chút ạ…",
+    "tts": " Giờ tôi đính kèm giấy tờ vào mục thành phần hồ sơ ngay bên dưới, công dân chờ chút ạ.",
+}
+# Đính xong trên trang đó: còn chọn Nơi nhận (ngay trên bảng) rồi bấm "Đồng ý và tiếp tục" của cổng.
+ATTACH_DONE_SAME_PAGE_BCA = {
+    "md": (
+        "✓ Đã đính **{attached} tệp** vào mục **Thành phần hồ sơ**.\n\n"
+        "👉 Công dân rà lại cả trang, chọn **Nơi nhận** (Nhận trực tiếp hoặc Nhận qua bưu chính — chọn bưu chính thì "
+        "nhập địa chỉ nhận). Ô tải ảnh ở **đầu trang** (Ảnh chân dung 4x6, ảnh trang nhân thân hộ chiếu) chưa có thì tải "
+        "trước — cổng bắt buộc. Xong bấm **Đồng ý và tiếp tục** ạ."
+    ),
+    "tts": ("Dạ, tôi đính kèm xong. Công dân xem lại, chọn nơi nhận, tải ảnh ở đầu trang nếu chưa có, rồi bấm Đồng ý và "
+            "tiếp tục ạ."),
+}
+
+# Trang "xác nhận thông tin nộp" eForm Nth Bộ Công an (sau "Đồng ý và tiếp tục"): công dân tự nhập Mã xác nhận + tích ô
+# chịu trách nhiệm, trợ lý hiện nút Nộp hồ sơ (user 18/11).
+BCA_NTH_CONFIRM_GUIDE = {
+    "md": (
+        "Đã sang trang **xác nhận thông tin** ạ.\n\n"
+        "👉 Công dân rà lại thông tin, nhập **Mã xác nhận** (đúng chữ trong ảnh) rồi tích ô **Tôi xin chịu trách nhiệm "
+        "trước pháp luật về lời khai trên**. Xong bấm nút **Nộp hồ sơ** bên dưới, tôi nộp giúp ạ."
+    ),
+    "tts": "Công dân nhập mã xác nhận, tích ô tôi xin chịu trách nhiệm, rồi bấm nút Nộp hồ sơ bên dưới ạ.",
+}
+BCA_NTH_CONFIRM_MANUAL = {
+    "md": (
+        "Đã sang trang **xác nhận thông tin** ạ.\n\n"
+        "👉 Công dân rà lại thông tin, nhập **Mã xác nhận** (đúng chữ trong ảnh), tích ô **Tôi xin chịu trách nhiệm "
+        "trước pháp luật về lời khai trên** rồi bấm **Nộp hồ sơ** cuối trang ạ."
+    ),
+    "tts": "Công dân nhập mã xác nhận, tích ô tôi xin chịu trách nhiệm, rồi bấm Nộp hồ sơ cuối trang ạ.",
+}
+BCA_NTH_SUBMITTING = {
+    "md": "Dạ tôi bấm **Nộp hồ sơ** trên trang ạ…",
+    "tts": "Dạ tôi bấm nộp hồ sơ trên trang ạ.",
+}
+BCA_NTH_MISSING_CAPTCHA = {
+    "md": "Công dân chưa nhập **Mã xác nhận** — nhập đúng chữ trong ảnh rồi bấm **Nộp hồ sơ** lại ạ.",
+    "tts": "Công dân chưa nhập mã xác nhận. Nhập đúng chữ trong ảnh rồi bấm nộp hồ sơ lại ạ.",
+}
+BCA_NTH_MISSING_COMMIT = {
+    "md": ("Công dân chưa tích ô **Tôi xin chịu trách nhiệm trước pháp luật về lời khai trên** — tích xong bấm "
+           "**Nộp hồ sơ** lại ạ."),
+    "tts": "Công dân chưa tích ô tôi xin chịu trách nhiệm. Tích xong bấm nộp hồ sơ lại ạ.",
+}
+BCA_NTH_CONFIRM_ASK = {
+    "md": "Cổng hỏi xác nhận nộp hồ sơ — công dân bấm **Đồng ý** trên trang ạ.",
+    "tts": "Cổng hỏi xác nhận nộp hồ sơ, công dân bấm Đồng ý trên trang ạ.",
+}
+BCA_NTH_SUBMIT_BLOCKED = {
+    "md": ("⚠️ Cổng chưa nhận hồ sơ: *{message}*\n\nCông dân sửa theo lời cổng (vd nhập lại **Mã xác nhận**) rồi bấm "
+           "**Nộp hồ sơ** lại ạ."),
+    "tts": "Cổng chưa nhận hồ sơ. Công dân sửa theo lời cổng, rồi bấm nộp hồ sơ lại ạ.",
+}
+BCA_NTH_NO_BUTTON = {
+    "md": "Tôi chưa thấy nút **Nộp hồ sơ** trên trang — công dân kéo xuống cuối trang rồi bấm lại giúp tôi ạ.",
+    "tts": "Tôi chưa thấy nút nộp hồ sơ trên trang. Công dân kéo xuống cuối trang rồi bấm lại ạ.",
+}
+BCA_NTH_NO_ENGINE = {
+    "md": "Trang chưa nhận lệnh nộp của tôi — công dân bấm **Nộp hồ sơ** cuối trang giúp tôi ạ.",
+    "tts": "Trang chưa nhận lệnh của tôi. Công dân bấm nộp hồ sơ cuối trang giúp tôi ạ.",
+}
+
 SAME_PAGE_TWO_STEP_SUMMARY = {
     "md": "\n\n📋 **Đơn đăng ký**: {filled} ô ✓ · **Thành phần hồ sơ**: {attached} tệp ✓",
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
