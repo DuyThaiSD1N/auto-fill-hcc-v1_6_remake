@@ -211,6 +211,11 @@ def _step_report(conv: dict, proc: dict | None, payload: dict):
     note = f": *{message}*" if message else ""
     r = _reply(_say(vi.LC_BLOCKED, message=note))
     r.chips = [{"label": vi.LC_RETRY_CHIP, "send": NEXT_SEND, "solid": True}]
+    from app.channels.handfree.chat import field_review
+
+    if _at(conv) != CASE and field_review.bca_nth(proc) and field_review.flow_v2(conv, proc):
+        # eForm Nth Bộ Công an có vòng bổ sung ô: cổng chặn vì ô còn trống → mời hỏi từng ô (bộ đọc tô lại theo lỗi cổng).
+        r.chips = [*field_review.start_chips(conv, proc, [next_chip()]), *r.chips]
     if _at(conv) == CASE and _auto(proc, CASE):
         # Trang chọn trường hợp tự dò: đọc lại các ô (không làm sẵn gì) để thẻ chọn hiện đúng ô cổng đang đòi.
         r.actions = [_case_rescan(conv, proc)]

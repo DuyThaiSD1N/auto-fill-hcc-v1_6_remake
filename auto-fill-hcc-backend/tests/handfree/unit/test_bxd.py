@@ -99,6 +99,7 @@ def test_cau_hinh_bo_sung_o_doc_dau_bat_buoc_cua_form_io():
     ("cap-lai-to-quoc-ghi-cong", ("ghiChu",)), ("cap-bo-sung-cap-lai-giay-chung-nhan-nguoi-co-cong", ("ghiChu",)),
     ("bo-sung-than-nhan-liet-si", ("ghiChu",)), ("tham-vieng-mo-liet-si", ("ghiChu",)),
     ("giai-quyet-che-do-khang-chien", ("ghiChu",)), ("sua-doi-thong-tin-ho-so-nguoi-co-cong", ("ghiChu",)),
+    ("cong-nhan-che-do-khang-chien-nhiem-chat-doc-hoa-hoc", ("ghiChu",)),
     ("mai-tang-dan-cong-hoa-tuyen", ("ghiChu",)), ("dang-ky-noi-quy-lao-dong", ("ghiChu",)),
     # Cổng Bộ Y tế nộp tại Sở, có hộp thoại "Chọn trường hợp giải quyết" như GPXD.
     ("cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te", ("ghiChu",)), ("dang-ky-hanh-nghe", ("ghiChu",)),
@@ -119,6 +120,13 @@ def test_cau_hinh_bo_sung_o_doc_dau_bat_buoc_cua_form_io():
     ("cap-giay-phep-lien-van-viet-lao", ("tenHoSo", "AuthorityApplicantPhoneNumber", "LoaiPhuongTien", "BienSoXe",
                                          "MauSon", "NienHanSuDung", "HinhThucHoatDong", "CuaKhau", "NhanHieu",
                                          "NamSanXuat", "SoChoNgoi", "SoKhung", "NgayCap", "NgayHetHan", "SoMay")),
+    # Bản ba nước: thêm khối tuyến cố định / loại hình (chỉ xe chở khách tuyến cố định), không hỏi.
+    ("cap-giay-phep-lien-van-viet-lao-campuchia", (
+        "tenHoSo", "AuthorityApplicantPhoneNumber",
+        "LoaiHinhKinhDoanhQuocTe1", "T_TuyenVanTaiQuocTe", "tuyendi", "diemden", "benxedi", "tinhdi", "benxeden", "tinhden",
+        "culy", "hanhtrinh", "thongbao", "congvan", "ngaycongvan",
+        "LoaiPhuongTien", "BienSoXe", "MauSon", "NienHanSuDung", "HinhThucHoatDong", "CuaKhau", "NhanHieu",
+        "NamSanXuat", "SoChoNgoi", "SoKhung", "NgayCap", "NgayHetHan", "SoMay")),
 ])
 def test_thu_tuc_bxd_khac_cung_luong_4_buoc_va_cung_cau_hinh_bo_sung_o(key, no_ask):
     from app.channels.handfree.chat.field_review import registry
@@ -254,7 +262,8 @@ _KH_CAPS = {**CAPS, "supportsBxdFlowKhanhHoa": True}
 
 
 @pytest.mark.parametrize("key", ["dang-ky-dat-dai-lan-dau-lam-dong", "dang-ky-dien-tich-tang-them-lam-dong",
-                                 "giao-thue-dat-giao-rung-gia-han-su-dung-dat"])
+                                 "giao-thue-dat-giao-rung-gia-han-su-dung-dat",
+                                 "tinh-tien-su-dung-dat-nd-50-2026-lam-dong"])
 def test_cong_lam_dong_can_co_rieng_ban_cu_giu_luong_cu(key):
     """Cổng tỉnh Lâm Đồng (dichvucong.lamdong.gov.vn, nền iGate): bản extension cũ chưa chạy content/bxd/*.js trên host
     này → thiếu supportsBxdFlowLamDong thì không bật luồng 4 bước, không bổ sung ô (cờ Khánh Hòa không mở được)."""

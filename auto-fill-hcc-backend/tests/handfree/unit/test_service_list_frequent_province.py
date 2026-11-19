@@ -90,8 +90,12 @@ def test_so_thu_tuc_moi_tinh_dung_bang_hoan_thien():
         # 18/11: +1 mọi tỉnh Bộ Công an cap-ho-chieu-pho-thong-o-trong-nuoc (1.001456) (_TAT_CA, mặc định toàn quốc).
         # 18/11: +1 mọi tỉnh Bộ Công an cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam (1.001194) (_TAT_CA, mặc định).
         # 19/11: +1 mọi tỉnh Bộ Công an cap-the-tam-tru-cho-nguoi-nuoc-ngoai-tai-viet-nam (1.003460) (_TAT_CA, mặc định).
-        "laichau": 138, "bacninh": 144, "lamdong": 131, "danang": 135, "quangninh": 139, "ninhbinh": 128,
-        "quangngai": 129, "laocai": 127, "quangtri": 129, "khanhhoa": 134, "tuyenquang": 129,
+        # 19/11: +1 mọi tỉnh Bộ Nội vụ cong-nhan-che-do-khang-chien-nhiem-chat-doc-hoa-hoc (1.010816) (_TAT_CA,
+        # người dùng: toàn quốc).
+        # 19/11: +1 mọi tỉnh Bộ Xây dựng cap-giay-phep-lien-van-viet-lao-campuchia (1.002877) (_TAT_CA, mặc định).
+        # 19/11: +1 riêng Lâm Đồng tinh-tien-su-dung-dat-nd-50-2026-lam-dong (1.115148) (provinceOnly lamdong).
+        "laichau": 140, "bacninh": 146, "lamdong": 134, "danang": 137, "quangninh": 141, "ninhbinh": 130,
+        "quangngai": 131, "laocai": 129, "quangtri": 131, "khanhhoa": 136, "tuyenquang": 131,
     }
 
 
@@ -114,7 +118,7 @@ def test_tinh_chi_thay_thu_tuc_da_hoan_thien():
     assert all("cap-the-huong-dan-vien-du-lich-quoc-te" in _card_keys(s) for s in registry._TINH_THEO_DOI)
     # 12/11: 1.116360 + 1.116356 bản Lâm Đồng mở riêng cho Lâm Đồng.
     for key in ("dang-ky-dat-dai-lan-dau-lam-dong", "dang-ky-dien-tich-tang-them-lam-dong",
-                "giao-thue-dat-giao-rung-gia-han-su-dung-dat"):
+                "giao-thue-dat-giao-rung-gia-han-su-dung-dat", "tinh-tien-su-dung-dat-nd-50-2026-lam-dong"):
         assert key in _card_keys("lamdong") and key not in _card_keys("khanhhoa"), key
     # 1.013997: STT 230, cả 11 tỉnh
     assert all("ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat" in _card_keys(s) for s in registry._TINH_THEO_DOI)

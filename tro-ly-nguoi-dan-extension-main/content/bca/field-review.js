@@ -13,12 +13,18 @@
 //   - nút Nộp hồ sơ của trợ lý (lệnh bcaSubmit): soát lại ô bắt buộc + ô cam kết, đủ thì bấm nút nộp của cổng; trang căn
 //     cước Bước 1 chưa có nút nộp thì bấm "Lưu và Tiếp tục" (nextIds) sang Bước 2 đặt lịch. Cổng hỏi xác nhận thì để công
 //     dân tự bấm Đồng ý — trợ lý không bấm thay câu xác nhận nộp.
+// Cổng DVC Bộ Công an thứ hai (dichvucong.bocongan.gov.vn, eForm Nth: hộ chiếu, mẫu con dấu, thị thực, thẻ tạm trú — cờ
+// supportsBcaNthReview, user 19/11/2026) dùng chung bộ đọc này cho tô ô + vòng "Bổ sung các thông tin còn thiếu": ô chọn là
+// bootstrap-select (<select> ẩn, nút .dropdown-toggle hiện), chỉ đọc ô của form kê khai (ô CongDan_* hoặc cùng <form>), bỏ
+// bảng Thành phần hồ sơ, mã xác nhận, ô chọn ngôn ngữ. Nút đi tiếp ở cổng này là "Đồng ý và tiếp tục" (BE, lệnh lc_next).
 (() => {
   if (window.__TLND_FIELD_REVIEW_BCA__) return;
   window.__TLND_FIELD_REVIEW_BCA__ = true;
   const H = (window.__TLND__ = window.__TLND__ || {});
 
   const HOST = "dichvucong.dancuquocgia.gov.vn";
+  const NTH_HOST = "dichvucong.bocongan.gov.vn";
+  const NTH_FORM_SEL = 'input[name^="CongDan_"]:not([type="hidden"]):not([type="file"]), textarea[name^="CongDan_"]';
   const ASKING = "tlnd-fr-asking";
   const OPTIONAL = "tlnd-fr-optional";
   const MARKS = ["autofill-filled", "autofill-not-filled", "autofill-default", OPTIONAL];
@@ -28,11 +34,18 @@
   const FOLLOWING = Node.DOCUMENT_POSITION_FOLLOWING;
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const textOf = (el) => String(el?.textContent || "").replace(/\s+/g, " ").trim();
-  const cleanLabel = (s) => String(s || "").replace(/[*＊]/g, "").replace(/\s+/g, " ").replace(/[\s:]+$/, "").trim();
+  // "Số tài khoản (*)" (eForm Nth) → bỏ cả cặp ngoặc của dấu *.
+  const cleanLabel = (s) => String(s || "").replace(/\(\s*[*＊]\s*\)/g, "").replace(/[*＊]/g, "").replace(/\s+/g, " ")
+    .replace(/[\s:]+$/, "").trim();
   const fold = (s) => String(s || "").replace(/Đ/g, "D").replace(/đ/g, "d").normalize("NFD")
     .replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
   const shown = (el) => !!el && el.getClientRects().length > 0;
-  const ourPage = () => location.hostname === HOST && window.top === window && H.detectFormKind?.() === "standard";
+  const nthPage = () => location.hostname === NTH_HOST;
+  // eForm Nth: trang nhập thông tin = ô CongDan_* NHÌN THẤY (cùng dấu hiệu bcaKeKhaiForm của content.js); trang chọn trường
+  // hợp / xác nhận nộp không có.
+  const nthForm = () => Array.from(document.querySelectorAll(NTH_FORM_SEL)).some(shown);
+  const ourPage = () => window.top === window
+    && (location.hostname === HOST ? H.detectFormKind?.() === "standard" : nthPage() && nthForm());
 
   function injectStyles() {
     if (typeof H.injectAutofillStyles === "function") H.injectAutofillStyles();
@@ -63,8 +76,26 @@
       if (next?.classList?.contains("select2")) return next.querySelector(".select2-selection") || next;
       const old = el.id ? document.getElementById(`s2id_${el.id}`) : null;
       if (old) return old;
+      // bootstrap-select (eForm Nth): <select> ẩn trong / ngay trước div.bootstrap-select, ô công dân thấy là nút mở menu.
+      const bs = el.closest(".bootstrap-select") || (next?.classList?.contains("bootstrap-select") ? next : null);
+      if (bs) return bs.querySelector("button.dropdown-toggle") || bs;
     }
     return el;
+  }
+
+  // eForm Nth: chỉ ô của form kê khai. Bỏ ô trong bảng Thành phần hồ sơ (ô Số bản cạnh ô chọn tệp), mục Giấy tờ khác, mã
+  // xác nhận và ô chọn ngôn ngữ đầu trang. Ô không mang tên CongDan_* (Nơi nhận, tài khoản ngân hàng…) phải cùng <form>
+  // với ô CongDan_*.
+  function nthScoped(el) {
+    const name = String(el.getAttribute("name") || "");
+    if (el.closest("tr")?.querySelector('input[type="file"]') || el.closest("li")?.querySelector('input[type="file"]')) {
+      return false;
+    }
+    if (/^(HoSoOnline_|GiayToCuaHoSoOnline_)/.test(name)) return false;
+    if (/captcha|xacnhan|xac_nhan|ngon_?ngu/i.test(`${el.id || ""} ${name}`)) return false;
+    if (/^CongDan_/.test(name)) return true;
+    const form = document.querySelector(NTH_FORM_SEL)?.closest("form");
+    return !!form && form.contains(el);
   }
 
   const isDateInput = (el) => el.tagName === "INPUT" && (
@@ -97,7 +128,7 @@
   const controlsIn = (root) => Array.from(root.querySelectorAll("input, select, textarea"));
   // Radio tự vẽ (ô gốc ẩn, nhãn hiện) vẫn là ô đang hiện.
   const radioShown = (r) => shown(r) || shown(r.closest("label")) || shown(r.parentElement);
-  const counted = (c) => !SKIP_TYPES.test(c.type || "") && !c.closest(".select2-container")
+  const counted = (c) => !SKIP_TYPES.test(c.type || "") && !c.closest(".select2-container, .bs-searchbox")
     && (c.type === "radio" ? radioShown(c) : shown(boxOf(c)));
 
   // Nhãn gần nhất phía trước `target` trong `container`; giữa nhãn và ô có ô khác (không tính các radio cùng nhóm
@@ -267,6 +298,7 @@
     const out = [];
     for (const el of controlsIn(document)) {
       if (!counted(el) || el.disabled || el.closest("[id^='tlnd'], .tlnd-panel")) continue;
+      if (nthPage() && !nthScoped(el)) continue;
       const kind = el.tagName === "SELECT" ? "select" : el.type === "radio" ? "radio" : isDateInput(el) ? "date"
         : "text";
       // Ô chỉ đọc (địa chỉ trạm công an tự hiện theo cơ quan…) không hỏi; ô ngày của datepicker có khi để readonly.

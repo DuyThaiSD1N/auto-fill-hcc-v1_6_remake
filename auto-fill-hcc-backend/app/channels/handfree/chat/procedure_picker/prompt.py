@@ -357,6 +357,13 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "người có huy chương kháng chiến xin trợ cấp", "chế độ cho người tham gia bảo vệ Tổ quốc",
         "làm nghĩa vụ quốc tế xin hưởng chế độ",
     ],
+    # Người hoạt động kháng chiến BỊ NHIỄM CHẤT ĐỘC HÓA HỌC (chất độc da cam) xin công nhận, hưởng chế độ. KHÁC
+    # "giai-quyet-che-do-khang-chien" ngay trên: chỉ khi có nhắc chất độc hóa học / da cam / dioxin.
+    "cong-nhan-che-do-khang-chien-nhiem-chat-doc-hoa-hoc": [
+        "chế độ người bị nhiễm chất độc da cam", "bố tôi bị nhiễm chất độc hóa học trong kháng chiến",
+        "xin hưởng chế độ nhiễm chất độc hóa học", "công nhận người hoạt động kháng chiến nhiễm dioxin",
+        "trợ cấp chất độc da cam",
+    ],
     # DÂN CÔNG HỎA TUYẾN đã mất, thân nhân xin tiền MAI TÁNG. KHÁC các thủ tục mai táng của Bộ Y tế
     # ("ho-tro-mai-tang-1116910", "ho-tro-mai-tang-huu-tri-xa-hoi"): chỉ khi người mất là dân công hỏa tuyến.
     "mai-tang-dan-cong-hoa-tuyen": [
@@ -602,6 +609,12 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
                                                     "xin thuê đất", "gia hạn sử dụng đất hết thời hạn",
                                                     "giao đất giao rừng, thuê đất thuê rừng",
                                                     "chuyển mục đích sử dụng đất ở lâm đồng"],
+    # Bản Lâm Đồng (provinceOnly) 1.115148: đất ĐÃ được giao / chuyển mục đích, nay xin cơ quan TÍNH hoặc TÍNH LẠI số
+    # tiền sử dụng đất phải nộp (NĐ 50/2026) — KHÁC xin giao đất / chuyển mục đích (1.116366) và miễn giảm tiền thuê đất.
+    "tinh-tien-su-dung-dat-nd-50-2026-lam-dong": ["tính lại tiền sử dụng đất", "xin tính tiền sử dụng đất",
+                                                  "tiền sử dụng đất tính sai muốn tính lại",
+                                                  "đề nghị tính lại tiền sử dụng đất theo nghị định 50",
+                                                  "tính tiền sử dụng đất ở lâm đồng"],
     "dang-ky-dat-dai-lan-dau-bac-ninh": ["làm sổ đỏ lần đầu", "đất chưa có sổ đỏ muốn xin cấp sổ",
                                          "cấp giấy chứng nhận quyền sử dụng đất lần đầu",
                                          "đăng ký đất đai lần đầu", "xin cấp sổ đỏ cho đất ông bà để lại",
@@ -677,6 +690,11 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
     "cap-giay-phep-lien-van-viet-lao": ["giấy phép liên vận Lào", "xin giấy phép cho xe đi Lào",
                                         "cấp lại giấy phép liên vận Việt Lào",
                                         "xe ô tô sang Lào"],
+    # Liên vận BA nước, xe đi CAMPUCHIA (hoặc Lào + Campuchia). KHÁC "cap-giay-phep-lien-van-viet-lao" ngay trên: chỉ
+    # khi có nhắc Campuchia.
+    "cap-giay-phep-lien-van-viet-lao-campuchia": ["giấy phép liên vận Campuchia", "xin giấy phép cho xe đi Campuchia",
+                                                  "giấy phép liên vận Việt Nam Lào Campuchia",
+                                                  "cấp lại giấy phép liên vận Campuchia", "xe công ty sang Campuchia"],
     # Cây xanh đô thị (chặt hạ / di dời). KHÁC cấp phép xây dựng và khác dùng tạm lòng đường, vỉa hè:
     # chỉ nhận cụm có "cây".
     "cap-giay-phep-chat-ha-cay-xanh": ["xin phép chặt cây xanh", "chặt hạ cây trước nhà",

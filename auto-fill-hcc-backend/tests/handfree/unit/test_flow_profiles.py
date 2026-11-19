@@ -201,6 +201,7 @@ def test_registered_procedures_use_their_declared_flow_family():
                 "sua-chua-cai-tao-gpxd-cong-trinh",
                 "cung-cap-thong-tin-quy-hoach", "cap-phep-long-duong-via-he",
                 "cap-giay-phep-lien-van-viet-lao", "cap-giay-phep-chat-ha-cay-xanh",
+                "cap-giay-phep-lien-van-viet-lao-campuchia",
                 "chap-thuan-dau-noi-tam", "gia-han-luu-hanh-phuong-tien-lao",
                 "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan", "xoa-dang-ky-phuong-tien-thuy",
                 "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san", "gia-han-giay-phep-xay-dung",
@@ -214,7 +215,8 @@ def test_registered_procedures_use_their_declared_flow_family():
     # tạm thì không → chọn đủ Tỉnh + Xã như lòng đường, vỉa hè.
     for key in ("gia-han-luu-hanh-phuong-tien-lao", "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan",
                 "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san", "tham-dinh-bcnckt",
-                "cap-bo-sung-xe-tap-lai-cap-lai-giay-phep-xe-tap-lai", "cap-cap-lai-phu-hieu-xe-kinh-doanh-van-tai"):
+                "cap-bo-sung-xe-tap-lai-cap-lai-giay-phep-xe-tap-lai", "cap-cap-lai-phu-hieu-xe-kinh-doanh-van-tai",
+                "cap-giay-phep-lien-van-viet-lao-campuchia"):
         moc_so = moc_by_key[key]
         assert moc_so["agencyProvinceOnly"] is True and moc_so["agencySoFirst"] is True, key
         assert moc_so["agencyDeptLabel"] == "Sở Xây dựng", key
@@ -392,7 +394,7 @@ def test_registered_procedures_use_their_declared_flow_family():
                           "cap-lai-to-quoc-ghi-cong", "cap-bo-sung-cap-lai-giay-chung-nhan-nguoi-co-cong",
                           "bo-sung-than-nhan-liet-si", "tham-vieng-mo-liet-si", "giai-quyet-che-do-khang-chien",
                           "mai-tang-dan-cong-hoa-tuyen", "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat",
-                          "hoa-giai-tranh-chap-dat-dai"):
+                          "hoa-giai-tranh-chap-dat-dai", "cong-nhan-che-do-khang-chien-nhiem-chat-doc-hoa-hoc"):
         moha_ward = procedures.pop(moha_ward_key)
         assert moha_ward.get("flowProfile") is None
         assert moha_ward["needsAgencySelect"] is True
@@ -720,7 +722,7 @@ def test_registered_procedures_use_their_declared_flow_family():
     # Cổng iGate Lâm Đồng (12/11): 1.116360 / 1.116356 do UBND cấp xã giải quyết → DVCQG chọn đủ Tỉnh + Xã, rồi luồng
     # chung "xay-dung" như Khánh Hòa; cờ extension riêng supportsBxdFlowLamDong.
     for key in ("dang-ky-dat-dai-lan-dau-lam-dong", "dang-ky-dien-tich-tang-them-lam-dong",
-                "giao-thue-dat-giao-rung-gia-han-su-dung-dat"):
+                "giao-thue-dat-giao-rung-gia-han-su-dung-dat", "tinh-tien-su-dung-dat-nd-50-2026-lam-dong"):
         ld = procedures.pop(key)
         assert ld["provinceOnly"] == ["lamdong"], key
         assert ld["flowProfile"] == "xay-dung" and ld["maePortal"] is True, key
@@ -955,7 +957,10 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 cổng Bộ Công an dichvucong.bocongan.gov.vn (18/11) "cap-ho-chieu-pho-thong-o-trong-nuoc" (1.001456).
     # +1 cổng Bộ Công an dichvucong.bocongan.gov.vn (18/11) "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam" (1.001194).
     # +1 cổng Bộ Công an dichvucong.bocongan.gov.vn (19/11) "cap-the-tam-tru-cho-nguoi-nuoc-ngoai-tai-viet-nam" (1.003460).
-    assert len(procedures) == 178
+    # +1 cổng Bộ Nội vụ (19/11) "cong-nhan-che-do-khang-chien-nhiem-chat-doc-hoa-hoc" (1.010816): tỉnh → Sở, xã → xã.
+    # +1 cổng Bộ Xây dựng (19/11) "cap-giay-phep-lien-van-viet-lao-campuchia" (1.002877): toàn quốc, chọn Sở Xây dựng.
+    # +1 cổng iGate Lâm Đồng (19/11) "tinh-tien-su-dung-dat-nd-50-2026-lam-dong" (1.115148), luồng "xay-dung".
+    assert len(procedures) == 181
 
     for procedure in procedures:
         key = procedure["key"]

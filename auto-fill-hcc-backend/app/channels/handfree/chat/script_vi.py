@@ -624,6 +624,11 @@ BCA_OPTIONAL_PHASE = {
             "dưới ạ. "),
 }
 BCA_SUBMIT_CHIP = "📨 Nộp hồ sơ"
+# eForm Nth cổng dichvucong.bocongan.gov.vn (hộ chiếu, mẫu con dấu, thị thực, thẻ tạm trú — cờ supportsBcaNthReview): nút đi
+# tiếp là "Đồng ý và tiếp tục" của cổng; chưa có nút trợ lý bấm hộ (trang đính kèm ở bước sau) thì công dân tự bấm.
+BCA_NTH_NEXT_NONE = {"md": "bấm **Đồng ý và tiếp tục** cuối trang",
+                     "tts": "bấm Đồng ý và tiếp tục cuối trang"}
+BCA_NTH_REFILL_CHIP = "🔁 Điền lại tờ khai"
 # Điền xong (trang không có mục đính kèm) mà trang không trả số ô tô màu: vẫn dẫn bằng nút tích cam đoan rồi Nộp hồ sơ.
 BCA_COMMIT_SUBMIT_HINT = {
     "md": ("\n\nCông dân rà lại thông tin, rồi bấm nút **☑️ tích ô cam đoan** bên dưới để tôi tích; tích xong tôi hiện "

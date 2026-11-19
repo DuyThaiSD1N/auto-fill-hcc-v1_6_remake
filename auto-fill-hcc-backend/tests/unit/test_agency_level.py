@@ -214,3 +214,27 @@ def test_lao_cai_chuoi_the_khop_ten_chi_nhanh_tren_cong():
         # Chuỗi của chi nhánh này không lọt vào thẻ chi nhánh khác (vd "Yên Bái" / "Yên Bình", "Văn Yên" / "Bảo Yên").
         for other in chi_nhanh - {wanted}:
             assert _fold(wanted) not in _fold(f"Cơ quan thực hiện: Chi nhánh VPĐKĐĐ {other}"), (wanted, other)
+
+
+@pytest.mark.parametrize(("user", "select_so"), [
+    ({"role": "province", "tinh": "Tỉnh Lâm Đồng", "xa": ""}, True),
+    ({"role": "province", "tinh": "Tỉnh Bắc Ninh", "xa": "Phường Kinh Bắc"}, True),
+    ({"role": "commune", "tinh": "Tỉnh Lâm Đồng", "xa": "Phường Xuân Hương - Đà Lạt"}, False),
+    ({"role": "commune", "tinh": "Tỉnh Bắc Ninh", "xa": "Phường Kinh Bắc"}, False),
+])
+def test_link_moi_19_11_cap_co_quan_va_pham_vi_tinh(user, select_so):
+    """19/11/2026: 1.115148 Lâm Đồng chỉ tài khoản Lâm Đồng thấy; 1.002877 liên vận VN-Lào-Campuchia toàn quốc, luôn
+    tick "Sở"; 1.010816 chất độc hóa học toàn quốc, HCC tỉnh tick "Sở", tài khoản phường/xã chọn Phường/Xã."""
+    links = {link["key"]: link for link in asyncio.run(procedures_router.ke_khai_links(user))["links"]}
+    lam_dong = "tinh-tien-su-dung-dat-nd-50-2026-lam-dong"
+    if user["tinh"] == "Tỉnh Lâm Đồng":
+        assert links[lam_dong]["provinceOnly"] == ["lamdong"]
+    else:
+        assert lam_dong not in links
+
+    lien_van = links["cap-giay-phep-lien-van-viet-lao-campuchia"]
+    assert lien_van["selectSo"] is True and "provinceOnly" not in lien_van
+
+    chat_doc = links["cong-nhan-che-do-khang-chien-nhiem-chat-doc-hoa-hoc"]
+    assert bool(chat_doc.get("selectSo")) is select_so
+    assert "provinceOnly" not in chat_doc

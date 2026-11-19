@@ -1542,6 +1542,9 @@ function hasStrongProcedureIdentity(key, signals) {
       .some((part) => part && url.includes(String(part).toLowerCase()));
     if (urlMatch) return true;
   }
+  // Mã TTHC in trên trang khớp (detect.codeOnPage) → chắc chắn đã sang thủ tục này, được đổi kể cả khi panel còn tệp
+  // của hồ sơ trước.
+  if (pageCodeMatches(procedure, signals)) return true;
   // Heading đúng toàn bộ tên thủ tục là bằng chứng điều hướng mạnh. Không dùng bodyText vì trang
   // đính kèm thường liệt kê tên nhiều thủ tục/tài liệu liên quan và dễ gây đổi nhầm pipeline.
   const expected = normDetect(detect.heading || procedure.label);
@@ -1596,6 +1599,18 @@ function detectUrlScopeOk(detect, url) {
   const scope = detect.urlScope || [];
   if (!scope.length) return true;
   return scope.some((u) => u && url.includes(String(u).toLowerCase()));
+}
+
+// Mã TTHC in trên trang (signals.pageProcedureCodes, content.js quét cả trang) trùng mã của thủ tục trong
+// ke_khai_links → bằng chứng mạnh như khớp URL. Chỉ cho thủ tục BE khai `detect.codeOnPage` + `urlScope` (cổng in
+// đúng mã của thủ tục đang làm ở đầu form, vd Bộ Công an "1.001456 - Cấp hộ chiếu…"); trang danh sách in nhiều mã
+// của cổng khác không lọt vào.
+function pageCodeMatches(procedure, signals) {
+  const detect = procedure?.detect;
+  if (!detect?.codeOnPage || !(detect.urlScope || []).length || typeof procedureCode !== "function") return false;
+  if (!detectUrlScopeOk(detect, String(signals?.url || "").toLowerCase())) return false;
+  const code = procedureCode(procedure.key);
+  return !!code && (signals?.pageProcedureCodes || []).includes(code);
 }
 
 // Cổng DVC quốc gia (dichvucong.gov.vn): chỉ biểu mẫu /nop-ho-so mới là trang của MỘT thủ tục. Mọi trang
@@ -1761,6 +1776,13 @@ function detectProcedureKeyFromSignals(signals) {
 
   // Trang thông tin của Cổng DVC quốc gia: bỏ mọi bước khớp chữ/heading (xem isDvcqgInfoPageUrl).
   const dvcqgInfoPage = isDvcqgInfoPageUrl(url);
+
+  // 0a) Mã TTHC in trên trang (detect.codeOnPage): đúng MỘT thủ tục khớp mới nhận, nhiều thủ tục cùng mã / trang in
+  //     nhiều mã thì để các bước chữ bên dưới phân xử.
+  if (!dvcqgInfoPage) {
+    const byCode = detectables.filter((p) => pageCodeMatches(p, signals));
+    if (byCode.length === 1) return byCode[0].key;
+  }
 
   // 0) Một số thủ tục dùng chung URL cổng chứng thực, nên cần ưu tiên cụm tên thủ tục
   //    rất đặc trưng trước rule URL chung.
@@ -5547,7 +5569,10 @@ ocrBtn.addEventListener("click", async () => {
       // để biết tài khoản có phải chủ hồ sơ không (tích "Người nộp là chủ hồ sơ") — thiếu mốc BE để trống Phần I.
       cfg.key === "chia-tach-sap-nhap-hop-nhat-hoi-cap-tinh" ||
       // [Bắc Ninh] Điền thông tin tài khoản: cổng prefill Họ tên + Số định danh (VNeID) → mốc chọn người.
-      cfg.key === "dien-thong-tin-tai-khoan-bac-ninh"
+      cfg.key === "dien-thong-tin-tai-khoan-bac-ninh" ||
+      // [Bộ Công an] 1.001456 (cấp hộ chiếu phổ thông): Họ và tên / Số CCCD / cha mẹ cổng khoá theo VNeID → mốc tài khoản
+      // (CongDan_tenCongDan / CongDan_soCmnd) để BE không điền khi giấy tờ là của người khác chủ tài khoản.
+      cfg.key === "cap-ho-chieu-pho-thong-o-trong-nuoc"
     ) {
       const ctxRes = await sendToContent({ action: "collectFormContext" });
       if (ctxRes?.formContext) options.formContext = ctxRes.formContext;

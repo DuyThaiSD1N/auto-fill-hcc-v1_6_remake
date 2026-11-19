@@ -146,6 +146,31 @@ def test_fallback_ocr_khi_llm_bo_sot():
     assert fields["ToKhai_NoiDungDeNghi"] == "Cấp hộ chiếu lần đầu" and fields["ToKhai_LoaiHoChieu"] == "khong_chip"
 
 
+def test_chan_khi_giay_to_cua_nguoi_khac_chu_tai_khoan():
+    fields = [{"name": k, "value": v} for k, v in HO_SO.items()]
+
+    def run(context):
+        return mapper.enrich(fields, {"formContext": context})
+
+    # Ô khoá Họ và tên / Số CCCD của tài khoản khác người trên tờ khai → không phát ô nào, chỉ một câu báo.
+    out, warnings = run({"applicantFullname": "LÊ THỊ MAI", "applicantIdentityNumber": "001190000002"})
+    assert out == [] and len(warnings) == 1
+    assert "TRẦN VĂN AN" in warnings[0] and "LÊ THỊ MAI" in warnings[0] and "không điền" in warnings[0]
+    # Chỉ có tên (cổng chưa đổ số) mà tên khác → vẫn chặn.
+    assert run({"applicantFullname": "Lê Thị Mai"})[0] == []
+    # Đúng chủ tài khoản → điền như thường, không cảnh báo đối chiếu.
+    out, warnings = run({"applicantFullname": "TRẦN VĂN AN", "applicantIdentityNumber": "034085000001"})
+    assert _by(out)["CongDan__fsBCAHoCongDan"] == "TRẦN"
+    assert not any("không điền" in w or "Chưa đối chiếu" in w for w in warnings)
+    # Trùng số định danh, OCR đọc lệch tên → số thắng, vẫn điền.
+    assert run({"applicantFullname": "TRẦN VĂN ÂN", "applicantIdentityNumber": "034085000001"})[0]
+    # Lệch số nhưng tên trùng (OCR đọc nhầm chữ số) → không chặn.
+    assert run({"applicantFullname": "Trần Văn An", "applicantIdentityNumber": "034085000009"})[0]
+    # Không có mốc tài khoản (extension cũ) → điền như cũ, kèm nhắc kiểm tra.
+    out, warnings = _enrich(HO_SO)
+    assert out and mapper.NO_ACCOUNT_WARNING in warnings
+
+
 def test_noi_sinh_nuoc_ngoai_va_dia_chi_cccd_du_phong():
     values = {**HO_SO, "HoChieu_NoiSinh": "NHẬT BẢN", "Cccd_HoTen": "Trần Văn An", "Cccd_SoDinhDanh": "034085000001",
               "Cccd_NgayCap": "10/06/2021", "Cccd_NoiCap": "Cục trưởng Cục Cảnh sát quản lý hành chính về trật tự xã hội",
@@ -366,3 +391,108 @@ def test_dinh_kem_tach_loi_quay_ve_khong_tach(monkeypatch):
     assert result["extracted"]["attachmentMode"] == "whole"
     assert _slots(result)[1]["sourceFileIndexes"] == [0, 1]
     assert not any(a.get("sourceSegments") for a in result["attachments"])
+
+
+# ── Trợ lý: vòng bổ sung ô trên eForm Nth Bộ Công an (cờ supportsBcaNthReview, user 19/11/2026) ──
+NTH_CAPS = {**CAPS, "supportsLaiChauFeeStep": True, "supportsBcaCaseStep": True, "supportsFieldReview": True,
+            "supportsBcaNthReview": True}
+SAME_PAGE = {"pageContextCaptured": True, "formKind": "standard", "attachmentTarget": True,
+             "attachmentComponentCount": 2, "bcaKeKhaiForm": True}
+
+
+def _nth_conv(caps: dict, **extra) -> dict:
+    return {"_id": "t-nth-review", "state": "attaching", "history": [], "procedure_key": KEY, "upload_session_id": "s1",
+            "docs_target": "declaration", "docs_page_context": flow._docs_page_context(SAME_PAGE),
+            "client_capabilities": dict(caps), **extra}
+
+
+def _attach_done(conv: dict, review: dict | None = None, errors: list | None = None):
+    conv.update(attach_plan=[{"fileIndex": 0, "target": "fixed-slot", "slotIndex": 1}],
+                attach_action_in_progress=True, attach_action_dispatch_id="d1", fill_report={"filled": 30})
+    payload = {"attached": 1, "skipped": 0, "errors": errors or [], "dispatch_id": "d1"}
+    if review is not None:
+        payload["review"] = review
+    return asyncio.run(flow._handle_attaching(conv, Intent("action", "attach_report", payload)))
+
+
+def test_tro_ly_bca_nth_an_dong_y_va_tiep_tuc_khi_con_o_bat_buoc_trong():
+    from app.channels.handfree.chat import field_review, lai_chau
+    from app.channels.handfree.chat import script_vi as vi
+    from app.channels.handfree.chat.router import _clean_client_capabilities
+    from app.channels.handfree import procedure_registry as hf
+
+    proc = hf.get_procedure(KEY)
+    assert _clean_client_capabilities({"supportsBcaNthReview": True})["supportsBcaNthReview"] is True
+    assert field_review.bca_nth(proc) and not field_review.bca(proc)
+    assert field_review.active(_nth_conv(NTH_CAPS), proc)
+    assert not field_review.active(_nth_conv({**NTH_CAPS, "supportsBcaNthReview": False}), proc)
+    # Lệnh điền mang bộ quy tắc ô → extension tô 3 màu và đếm trên host bocongan.
+    assert field_review.fill_action_extra(_nth_conv(NTH_CAPS), proc) is not None
+
+    # Đính xong cùng trang mà form còn 2 ô bắt buộc trống → KHÔNG có "Đồng ý và tiếp tục", có Bổ sung + Điền lại tờ khai.
+    conv = _nth_conv(NTH_CAPS)
+    r = _attach_done(conv, review={"filled": 20, "optional": 3, "required": 2})
+    sends = [c["send"] for c in r.chips]
+    assert lai_chau.NEXT_SEND not in sends and not [c for c in r.chips if c.get("cta")]
+    assert sends[0] == "__action:field_review_start" and "__action:refill" in sends
+    assert any(c["label"] == vi.BCA_NTH_REFILL_CHIP for c in r.chips)
+    trail = " ".join(a.get("md", "") for a in r.actions if a.get("type") == "trail_message")
+    assert "**2 ô bắt buộc**" in trail
+    # Công dân tự gõ đủ trên trang → hiện "Đồng ý và tiếp tục" (cta) kèm câu đủ ô.
+    r = asyncio.run(flow._handle_turn_inner(conv, Intent("event", "field_review_status",
+                                                         {"stats": {"filled": 22, "optional": 3, "required": 0}})))
+    assert [c for c in r.chips if c.get("cta")] == [lai_chau.next_chip()]
+    assert "Đồng ý và tiếp tục" in r.display_md
+
+    # Đủ ô ngay khi đính xong → nút cam "Đồng ý và tiếp tục" như cũ.
+    r = _attach_done(_nth_conv(NTH_CAPS), review={"filled": 22, "optional": 0, "required": 0})
+    assert [c for c in r.chips if c.get("cta")] == [lai_chau.next_chip()]
+    assert "__action:refill" in [c["send"] for c in r.chips]
+    # Extension cũ (chưa có bộ đọc ô trên host bocongan) → giữ luồng cũ: nút hiện ngay, không có Bổ sung.
+    old = _attach_done(_nth_conv({**NTH_CAPS, "supportsBcaNthReview": False}))
+    assert [c for c in old.chips if c.get("cta")] == [lai_chau.next_chip()]
+    assert "__action:field_review_start" not in [c["send"] for c in old.chips]
+    # Lệnh đính kèm cùng trang xin extension đếm lại ô sau khi đính.
+    action = flow._attach_plan_action(_nth_conv(NTH_CAPS), [{"fileIndex": 0, "target": "fixed-slot"}])
+    assert isinstance(action.get("fieldReview"), dict)
+    # Bấm "Bổ sung…" → hỏi từng ô (extension tìm ô trống đầu tiên).
+    conv = _nth_conv(NTH_CAPS, state="done")
+    _attach_done(conv, review={"filled": 20, "optional": 3, "required": 2})
+    conv["state"] = "done"
+    r = asyncio.run(flow._handle_turn_inner(conv, Intent("action", "field_review_start", {})))
+    assert r.actions[0]["type"] == "field_review_next" and r.actions[0]["requiredFirst"] is True
+
+
+def test_tro_ly_bca_nth_dien_lai_to_khai_sau_khi_da_dinh_kem(monkeypatch):
+    from app.channels.handfree.chat import pipeline_runner
+    from app.channels.handfree.chat import script_vi as vi
+
+    calls = []
+    monkeypatch.setattr(pipeline_runner, "run_process", lambda *a: calls.append("process"))
+    monkeypatch.setattr(pipeline_runner, "run_attach", lambda *a: calls.append("attach"))
+    monkeypatch.setattr(pipeline_runner, "spawn", lambda _job: None)
+
+    async def save(_conv):
+        return None
+
+    monkeypatch.setattr(flow.conv_store, "save", save)
+
+    # Điền xong (form + bảng cùng trang): nút "Điền lại tờ khai" có ngay; đính cùng trang chạy luôn, chưa mời bổ sung.
+    conv = _nth_conv(NTH_CAPS, state="filling", auto_attach_after_fill=True)
+    r = asyncio.run(flow._handle_filling(conv, Intent("action", "fill_report", {
+        "filled": 20, "notFound": [], "review": {"filled": 20, "optional": 3, "required": 2}})))
+    assert calls == ["attach"] and conv["state"] == "attaching"
+    assert [c["label"] for c in r.chips][0] == vi.BCA_NTH_REFILL_CHIP
+    assert "__action:field_review_start" not in [c["send"] for c in r.chips]
+
+    # Đã đính xong (state done, docs_target đã sang attachment): "Điền lại tờ khai" chạy lại lượt điền, KHÔNG đính lại.
+    conv = _nth_conv(NTH_CAPS, state="done", docs_target="attachment", attach_done=True, auto_attach_after_fill=True)
+    calls.clear()
+    asyncio.run(flow._handle_turn_inner(conv, Intent("action", "refill", {})))
+    assert calls == ["process"] and conv["state"] == "filling" and conv["docs_target"] == "declaration"
+    assert conv["auto_attach_after_fill"] is False
+    calls.clear()
+    r = asyncio.run(flow._handle_filling(conv, Intent("action", "fill_report", {
+        "filled": 22, "notFound": [], "review": {"filled": 22, "optional": 1, "required": 0}})))
+    assert calls == [] and conv["state"] == "done"
+    assert [c for c in r.chips if c.get("cta")][0]["send"] == "__action:lc_next"

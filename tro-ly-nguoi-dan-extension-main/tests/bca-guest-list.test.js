@@ -372,3 +372,15 @@ test("hộ chiếu: vòng điền chuẩn ở cổng Bộ Công an thử bootstr
   const body = RAW_SRC.slice(RAW_SRC.indexOf("const trySelect = async (attempt) => {"));
   assert.match(body.slice(0, 1500), /dichvucong\.bocongan\.gov\.vn[\s\S]*pickBootstrapSelectItem\(el, f\.value/);
 });
+// ── eForm Nth cổng bocongan (cờ supportsBcaNthReview, user 19/11/2026): cùng bộ đọc ô, gỡ tệp cũ bằng thùng rác ──
+test("bộ đọc ô Bộ Công an chạy thêm eForm Nth bocongan: bootstrap-select, chỉ ô của form kê khai", () => {
+  assert.match(sidebar, /supportsBcaNthReview: true/);
+  assert.match(bcaReview, /const NTH_HOST = "dichvucong\.bocongan\.gov\.vn"/);
+  assert.match(bcaReview, /if \(nthPage\(\) && !nthScoped\(el\)\) continue;/);
+  assert.match(bcaReview, /el\.closest\("\.bootstrap-select"\)/);
+  // Đính xong cùng trang: sidebar đếm lại ô khi BE gửi fieldReview kèm lệnh đính.
+  assert.match(sidebar, /if \(a\.fieldReview && res\) \{/);
+  // Đính kèm lại: gỡ tệp lượt trước bằng thùng rác của bảng (cổng nhận thêm bản trùng chứ không thay).
+  const core = read("content/attach-core.js");
+  assert.match(core, /if \(isBcaNthAttachPage\(\)\) return await clearBcaNthAttachedFiles\(\);/);
+});

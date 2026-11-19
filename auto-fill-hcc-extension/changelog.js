@@ -3,6 +3,14 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.28.20",
+    date: "19/11/2026",
+    items: [
+      "Thêm thủ tục Cấp, cấp lại Giấy phép liên vận giữa Việt Nam, Lào và Campuchia; Công nhận và giải quyết chế độ ưu đãi người hoạt động kháng chiến bị nhiễm chất độc hóa học; Tính hoặc tính lại tiền sử dụng đất theo Nghị định số 50/2026/NĐ-CP (Lâm Đồng); có tách giấy tờ khi đính kèm.",
+      "Cấp hộ chiếu phổ thông ở trong nước: nhận diện đúng thủ tục theo mã in trên trang Cổng dịch vụ công Bộ Công an; họ tên, số căn cước và thông tin cha mẹ đã khoá theo tài khoản VNeID thì không điền đè khi giấy tờ là của người khác.",
+    ],
+  },
+  {
     version: "1.28.19",
     date: "19/11/2026",
     items: [

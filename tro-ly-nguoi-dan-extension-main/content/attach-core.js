@@ -2325,13 +2325,19 @@ function rememberUploadedFiles(files) {
 // Vị trí tệp đang hiện (fingerprint) mà tệp này đã chiếm, -1 nếu chưa có.
 //  - Đã nhớ tệp nguồn: so với các tên nó từng lên cổng; cổng cắt ngắn tên hiển thị ("…khuyết ....pdf") → nhận tiền tố.
 //  - Chưa nhớ: chỉ trùng TRỌN tên — nhiều tệp khác nhau có thể cùng nhãn, bỏ nhầm là sót tệp.
+//  - Cổng lưu tệp dưới tên mới: bỏ dấu, dấu cách → "_", thêm mốc giờ (eForm Nth Bộ Công an, ảnh chạy thật 19/11:
+//    "Hộ chiếu phổ thông cấp lần gần nhất.pdf" hiện thành "Ho_chieu_pho_thong_cap_lan_gan_nhat_1795056740.pdf") → so cả
+//    bản bỏ mốc giờ (10 chữ số giây / 13 chữ số mili giây ở cuối), vẫn đòi trùng trọn tên.
 function shownIndexForFile(shown, file, memory) {
+  const stampless = (fp) => [fp, ...[10, 13].filter((n) => fp.length > n + 5 && new RegExp(`\\d{${n}}$`).test(fp))
+    .map((n) => fp.slice(0, -n))];
   const remembered = (memory[attachSourceKey(file)] || []).map(attpDocFingerprint);
   if (remembered.length) {
-    return shown.findIndex((fp) => remembered.some((name) => name === fp || (fp.length >= 12 && name.startsWith(fp))));
+    return shown.findIndex((fp) => remembered.some((name) => stampless(fp).includes(name)
+      || (fp.length >= 12 && name.startsWith(fp))));
   }
   const own = attpDocFingerprint(file.name);
-  return shown.findIndex((fp) => fp === own);
+  return shown.findIndex((fp) => stampless(fp).includes(own));
 }
 
 // Đính kèm lại: tệp đã nằm trên dòng thì không gắn nữa (cổng nhận thêm bản trùng chứ không thay).
@@ -2631,14 +2637,71 @@ async function clearLizAttachedFiles() {
   return { removedRows: 0, removedFiles };
 }
 
+// eForm Nth cổng DVC Bộ Công an (dichvucong.bocongan.gov.vn — hộ chiếu, mẫu con dấu, thị thực, thẻ tạm trú): mỗi tệp đã
+// đính trong cột "Tệp tin" của bảng Thành phần hồ sơ là [thùng rác][tải về][biểu tượng + tên tệp]. Cổng nhận thêm bản
+// trùng chứ không thay (ảnh chạy thật 19/11: "Hoàn tất điều chỉnh, đính kèm lại" xong dòng hộ chiếu mang HAI tệp) → gỡ
+// từng tệp bằng thùng rác. DOM nút thùng rác SUY từ ảnh (chưa crawl): icon fa-trash / glyphicon-trash, ảnh delete/trash
+// hoặc title "Xóa" nằm trong ô chứa input[type=file]; khối tải ảnh chân dung đầu trang không đụng tới.
+const BCA_NTH_HOST = "dichvucong.bocongan.gov.vn";
+const BCA_NTH_TRASH = "i.fa-trash, i.fa-trash-o, i.fa-trash-alt, .glyphicon-trash, img[src*='delete'], img[src*='trash'], "
+  + "[title='Xóa'], [title='Xoá'], [title='Xóa tệp'], [title='Xóa file'], [title='Xoá tệp']";
+const BCA_NTH_DIALOGS = ".modal.in, .modal.show, .bootbox, .jconfirm-box, .swal2-popup, [role='dialog'], [role='alertdialog']";
+
+function isBcaNthAttachPage() {
+  return typeof location !== "undefined" && location.hostname === BCA_NTH_HOST;
+}
+
+function bcaNthTrashButtons() {
+  const seen = new Set();
+  return Array.from(document.querySelectorAll("tr"))
+    .filter((row) => row.querySelector('input[type="file"]') && !isBcaPhotoUploadRow(row))
+    .flatMap((row) => {
+      const cell = row.querySelector('input[type="file"]').closest("td") || row;
+      return Array.from(cell.querySelectorAll(BCA_NTH_TRASH)).map((icon) => icon.closest("a, button, [onclick]") || icon);
+    })
+    .filter((button) => {
+      if (seen.has(button) || !isVisible(button) || button.disabled) return false;
+      seen.add(button);
+      return true;
+    });
+}
+
+async function clearBcaNthAttachedFiles() {
+  let removedFiles = 0;
+  const failed = new Set();
+  for (let guard = 0; guard < 30; guard++) {
+    const buttons = bcaNthTrashButtons();
+    const target = buttons.find((button) => !failed.has(button));
+    if (!target) break;
+    const dialogsBefore = new Set(Array.from(document.querySelectorAll(BCA_NTH_DIALOGS)).filter(isVisible));
+    target.click();
+    const gone = () => !target.isConnected || !isVisible(target) || bcaNthTrashButtons().length < buttons.length;
+    // Cổng hỏi lại "Bạn có chắc chắn muốn xóa?" (hộp bootstrap / bootbox / jconfirm) → chỉ bấm hộp MỚI mọc sau cú bấm.
+    const dialog = await waitFor(() => Array.from(document.querySelectorAll(BCA_NTH_DIALOGS))
+      .find((d) => isVisible(d) && !dialogsBefore.has(d)) || (gone() ? "gone" : null), 2000, 100);
+    if (dialog && dialog !== "gone") {
+      const yes = findButtonByText(dialog, ["Đồng ý", "Xác nhận", "Xóa", "Xoá", "Có", "OK"])
+        || Array.from(dialog.querySelectorAll("a.btn")).find((a) => isVisible(a)
+          && /^(dong y|xac nhan|xoa|co|ok)\b/.test(foldedNodeText(a)));
+      if (yes) { yes.click(); await sleep(300); }
+    }
+    if (await waitFor(gone, 4000, 100)) removedFiles++;
+    else failed.add(target); // không gỡ được → bỏ qua tệp này, tránh lặp vô hạn
+  }
+  console.log("[TLND-Attach] gỡ tệp lượt trước (Bộ Công an)", { removedFiles, failed: failed.size });
+  return { removedRows: 0, removedFiles };
+}
+
 // Đính kèm LẠI trên cùng hồ sơ (đổi gộp/tách, điều chỉnh giấy tờ): gỡ sạch tệp của lượt trước rồi
 // mới đính theo kế hoạch mới — giữ tệp cũ thì đổi gộp ↔ tách vẫn ra bảng của lượt trước.
 //  - dòng thêm từ "Thêm thành phần hồ sơ" → bấm thùng rác (xóa cả dòng);
 //  - dòng có sẵn trong form → bấm X trên tên tệp (dòng giữ nguyên, chỉ bỏ tệp);
-//  - cổng Bộ VHTTDL (liz) → bấm thùng rác trên từng tệp (clearLizAttachedFiles).
+//  - cổng Bộ VHTTDL (liz) → bấm thùng rác trên từng tệp (clearLizAttachedFiles);
+//  - eForm Nth cổng Bộ Công an → bấm thùng rác trên từng tệp (clearBcaNthAttachedFiles).
 // Dòng không có X (vd Tờ khai do cổng tự sinh ở STT1) và dòng giấy ủy quyền thì không đụng tới.
 async function clearPreviousAttachments() {
   if (isLizAttachPage()) return await clearLizAttachedFiles();
+  if (isBcaNthAttachPage()) return await clearBcaNthAttachedFiles();
   const removedRows = await clearAddedAttachmentRows();
   let removedFiles = 0;
   const failed = new Set();

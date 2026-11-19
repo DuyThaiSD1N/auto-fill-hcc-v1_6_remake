@@ -75,6 +75,8 @@ PROCEDURE_HMONG = {
     "dang-ky-dien-tich-tang-them-lam-dong": "Cuv npe daim av loj ntxiv, muab daim ntawv av (Lâm Đồng)",
     # BẢN NHÁP chờ anh Dư soát — chép thẻ giao đất, chuyển mục đích Khánh Hòa / Tuyên Quang ("hloov daim av"), đổi tỉnh.
     "giao-thue-dat-giao-rung-gia-han-su-dung-dat": "Hloov daim av (Lâm Đồng)",
+    # BẢN NHÁP chờ anh Dư soát — chép thẻ tính lại tiền sử dụng đất Quảng Ninh, đổi tên tỉnh.
+    "tinh-tien-su-dung-dat-nd-50-2026-lam-dong": "Suav nyiaj siv av dua tshiab (Lâm Đồng)",
     # BẢN NHÁP chờ anh Dư soát — chép thẻ cấp đổi GCN Bắc Ninh ("pauv daim ntawv av tshiab"), đổi tên tỉnh.
     "cap-doi-gcn-khanh-hoa": "Pauv daim ntawv av tshiab (Khánh Hòa)",
     # BẢN NHÁP chờ anh Dư soát — chép thẻ đăng ký biến động Bắc Ninh ("cuv npe hloov daim av, muag daim av"), đổi tỉnh.
@@ -270,6 +272,9 @@ PROCEDURE_HMONG = {
     "bo-sung-than-nhan-liet-si": "Ntxiv tsev neeg rau ntaub ntawv neeg tuag rau lub teb chaws",
     "tham-vieng-mo-liet-si": "Mus xyuas ntxa neeg tuag rau lub teb chaws",
     "giai-quyet-che-do-khang-chien": "Nyiaj pab neeg tau koom tsov rog tiv thaiv teb chaws",
+    # BẢN NHÁP chờ anh Dư soát — ghép từ "giai-quyet-che-do-khang-chien"; "raug tshuaj lom" (bị nhiễm chất độc) là
+    # TỪ MỚI.
+    "cong-nhan-che-do-khang-chien-nhiem-chat-doc-hoa-hoc": "Nyiaj pab neeg tau koom tsov rog raug tshuaj lom",
     "sua-doi-thong-tin-ho-so-nguoi-co-cong": "Kho ntaub ntawv tus neeg muaj nuj nqi rau teb chaws",
     "mai-tang-dan-cong-hoa-tuyen": "Nyiaj pab faus neeg tau pab tub rog thaum tsov rog",
     "uu-dai-ncc-tu-tran": "Pab tsev neeg ntawm neeg muaj nuj nqi rau teb chaws uas tuag lawm",
@@ -313,6 +318,8 @@ PROCEDURE_HMONG = {
     "cung-cap-thong-tin-quy-hoach": "Muab ntaub ntawv npaj nroog thiab zos",
     "cap-phep-long-duong-via-he": "Ntawv tso cai siv txoj kev, ntug kev ib ntus",
     "cap-giay-phep-lien-van-viet-lao": "Ntawv tso cai tsheb mus los Nyab Laj thiab Nplog",
+    # BẢN NHÁP chờ anh Dư soát — ghép từ "cap-giay-phep-lien-van-viet-lao"; "Kas Pus Cias" (Campuchia) là TỪ MỚI.
+    "cap-giay-phep-lien-van-viet-lao-campuchia": "Ntawv tso cai tsheb mus los Nyab Laj, Nplog thiab Kas Pus Cias",
     # BẢN NHÁP chờ anh Dư soát (Bộ Xây dựng — chặt hạ, dịch chuyển cây xanh 1.002693); "ntawv tso cai",
     # "los yog", "tsiv" đã có trong file, TỪ MỚI "txiav" (chặt) + "ntoo" (cây).
     "cap-giay-phep-chat-ha-cay-xanh": "Ntawv tso cai txiav los yog tsiv ntoo",

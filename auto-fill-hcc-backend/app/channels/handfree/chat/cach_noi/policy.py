@@ -280,11 +280,14 @@ async def _di_tiep(conv: dict, proc: dict, page_context: dict | None, meta: dict
             return await _run(conv, picked, page_context, meta)
     if ho_luong.o_ke_khai(state, conv) and field_review.flow_v2(conv, proc):
         required = ((conv.get("field_review") or {}).get("stats") or {}).get("required") or 0
+        # eForm Nth Bộ Công an không có Xem trước: nút đi tiếp ("Đồng ý và tiếp tục") chỉ hiện khi đủ ô bắt buộc.
+        no_preview = field_review.bca_nth(proc)
         if required:
             r = _say(vi.CN_DI_TIEP_THIEU_O, required=required)
-            r.chips = [field_review._start_chip(), field_review._preview_chip()]
+            r.chips = [field_review._start_chip(), *([] if no_preview else [field_review._preview_chip()])]
             return r
-        return await _run(conv, Intent("action", "field_review_preview"), page_context, meta)
+        if not no_preview:
+            return await _run(conv, Intent("action", "field_review_preview"), page_context, meta)
     if state in ("attaching", "done") and proc.get("wizard") and guided.result_flow_enabled(conv, proc):
         step = flow._docs_page_context(page_context)["wizardStep"] if page_context else 0
         if step == flow._wizard_step(proc, "attachmentStep", 3):

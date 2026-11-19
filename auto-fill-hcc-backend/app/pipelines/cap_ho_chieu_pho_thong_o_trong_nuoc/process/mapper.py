@@ -272,10 +272,54 @@ def ocr_fallback(raw_fields, documents: list[dict]) -> dict:
     return fields
 
 
+NO_ACCOUNT_WARNING = (
+    "Chưa đối chiếu được giấy tờ với tài khoản VNeID đang đăng nhập (không đọc được ô Họ và tên / Số CCCD trên form) — "
+    "kiểm tra giấy tờ đúng là của chủ tài khoản trước khi nộp."
+)
+
+
+def account_mismatch(values: dict, options: dict | None) -> str | None:
+    """Câu báo khi giấy tờ là của người KHÁC chủ tài khoản VNeID đang đăng nhập, ngược lại None.
+
+    Cổng khoá Họ và tên / Số CCCD / cha mẹ… theo CSDLQG của tài khoản đăng nhập (extension gửi hai ô readonly
+    ``CongDan_tenCongDan`` / ``CongDan_soCmnd`` qua ``options.formContext``) → điền giấy của người khác chỉ ra form trộn
+    hai người, không nộp được. So số định danh trước; số khác mà tên vẫn trùng thì coi là OCR đọc lệch số, không chặn.
+    """
+    context = (options or {}).get("formContext") or {}
+    account_id = _id_number(context.get("applicantIdentityNumber") or context.get("identityNumber"))
+    account_name = _text(context.get("applicantFullname"))
+    doc_name = " ".join(filter(None, (_text(values.get("ToKhai_Ho")), _text(values.get("ToKhai_ChuDemTen"))))) \
+        or _text(values.get("Cccd_HoTen")) or _text(values.get("HoChieu_HoTen"))
+    doc_id = _id_number(values.get("ToKhai_SoDinhDanh")) or _id_number(values.get("Cccd_SoDinhDanh"))
+    if account_id and doc_id and len(account_id) == len(doc_id):
+        mismatch = account_id != doc_id and not (account_name and doc_name and _same_person(account_name, doc_name))
+    elif account_name and doc_name:
+        mismatch = not _same_person(account_name, doc_name)
+    else:
+        return None
+    if not mismatch:
+        return None
+    doc_label = doc_name or f"số định danh {doc_id}"
+    account_label = account_name or f"số định danh {account_id}"
+    return (
+        f"Giấy tờ tải lên là của {doc_label}, khác chủ tài khoản VNeID đang đăng nhập ({account_label}) — không điền "
+        "để tránh form lẫn thông tin hai người. Người có tên trên giấy tờ cần đăng nhập VNeID của chính mình rồi chạy "
+        "lại; Họ và tên, Số CCCD, cha mẹ… cổng khoá theo tài khoản nên không điền đè được."
+    )
+
+
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
     values = _by_name(fields)
+    context = (options or {}).get("formContext") or {}
+    if any(context.get(key) for key in ("applicantIdentityNumber", "identityNumber", "applicantFullname")):
+        blocked = account_mismatch(values, options)
+        if blocked:
+            return [], [blocked]
+        account_warnings: list[str] = []
+    else:
+        account_warnings = [NO_ACCOUNT_WARNING]
     out: list[dict] = []
-    warnings: list[str] = []
+    warnings: list[str] = account_warnings
     seen: set[str] = set()
 
     def add(name: str, value, **extra) -> None:

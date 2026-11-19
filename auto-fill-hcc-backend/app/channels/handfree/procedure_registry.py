@@ -3902,6 +3902,69 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "cong-nhan-che-do-khang-chien-nhiem-chat-doc-hoa-hoc",
+        # Mã TTHC 1.010816, cổng Bộ Nội vụ — cùng khuôn "giai-quyet-che-do-khang-chien" (Form.io + bxdFlow). Key TRÙNG
+        # lõi → process/attach (attp-row 4 dòng, có tách giấy) tự nối. 19/11/2026 người dùng chốt: toàn quốc; tài
+        # khoản HCC tỉnh (hoặc chưa có xã) → chỉ chọn Tỉnh, gạt "Sở" (Sở Nội vụ); tài khoản cấp phường/xã → Tỉnh +
+        # Phường/Xã, hộp thoại cổng bộ gạt "Phường/Xã". Cùng luật agencyLevelByAccount của ke_khai_links (Auto Fill).
+        "detect": {
+            "urlScope": ["dichvucongbnv.moha.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": ["MaTTHC=1.010816", "019d2bfa-fc29-7229-b30a-9311da45f3ca"],
+            # Hai cụm đi cùng nhau (AND): thủ tục con đẻ của người bị nhiễm chất độc hóa học không có cụm đầu.
+            "textIncludes": ["công nhận và giải quyết chế độ ưu đãi", "nhiễm chất độc hóa học"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Công nhận và giải quyết chế độ ưu đãi người hoạt động kháng chiến bị nhiễm chất độc hóa học",
+        "shortLabel": "Chế độ người hoạt động kháng chiến bị nhiễm chất độc hóa học",
+        "subtitle": "Hưởng chế độ cho người bị nhiễm chất độc da cam",
+        "icon": "🎖️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-fc29-7229-b30a-9311da45f3ca",
+        "needsAgencySelect": True,
+        "maePortal": True,
+        "maeAgencyLevel": "ward",
+        "agencyLevelByAccount": {
+            "xa": {},
+            "so": {"agencyProvinceOnly": True, "agencySoFirst": True, "maeAgencyLevel": "",
+                   "agencyDeptLabel": "Sở Nội vụ"},
+        },
+        "supportsSplitDocuments": True,
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
+        "hasAttachmentStep": True,
+        # Bước "Thành phần hồ sơ" có 4 dòng attp-row (planner core): Bản khai / giấy tờ kháng chiến / xác nhận không
+        # có con đẻ / giấy tờ mắc bệnh; căn cước đính chung dòng Bản khai.
+        "requiredDocs": [
+            {"key": "ban_khai", "name": "Bản khai Mẫu số 09 (Nghị định 131/2021/NĐ-CP) của người hoạt động kháng chiến "
+             "bị nhiễm chất độc hóa học — đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "giay_to_khang_chien", "name": "Giấy tờ ghi nhận thời gian tham gia kháng chiến (giấy X Y Z, quyết "
+             "định phục viên / xuất ngũ, lý lịch…)", "icon": "🎖️", "sides": 1, "repeatable": True},
+            {"key": "benh_an", "name": "Bản tóm tắt hồ sơ bệnh án ghi nhận mắc bệnh", "icon": "🏥", "sides": 1,
+             "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người hoạt động kháng chiến", "icon": "🪪", "sides": 1,
+             "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ khác nếu có: giấy xác nhận giải mã phiên hiệu (Mẫu 37), giấy xác nhận có "
+             "vợ hoặc chồng nhưng không có con đẻ", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Bản khai theo Mẫu số 09 (Phụ lục I Nghị định 131/2021/NĐ-CP), đã ký — nguồn chính để điền form.\n"
+            "2. Căn cước công dân của người hoạt động kháng chiến.\n"
+            "3. Giấy tờ ghi nhận thời gian tham gia kháng chiến tại vùng quân đội Mỹ sử dụng chất độc hóa học.\n"
+            "4. Bản tóm tắt hồ sơ bệnh án ghi nhận mắc bệnh (trường hợp vô sinh: giấy xác nhận có vợ hoặc có chồng "
+            "nhưng không có con đẻ của UBND cấp xã).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước Thành phần hồ sơ: Bản khai vào dòng 1, giấy tờ kháng chiến vào dòng 2, giấy xác nhận không có con "
+            "đẻ vào dòng 3, bản tóm tắt bệnh án vào dòng 4."
+        ),
+    },
+    {
         "key": "sua-doi-thong-tin-ho-so-nguoi-co-cong",
         # Cổng Bộ Nội vụ, chọn cơ quan CẤP SỞ như "di-chuyen-ho-so-nguoi-huong-tro-cap": đơn Mẫu 26 gửi Sở nơi
         # quản lý hồ sơ gốc người có công (Điều 174 NĐ 131/2021) → agencyProvinceOnly + agencySoFirst.
@@ -4897,6 +4960,49 @@ PROCEDURES: list[dict] = [
             "4. Nếu có: hợp đồng/tài liệu công trình, dự án tại Lào; quyết định cử đi công tác (xe "
             "công vụ); hợp đồng thuê phương tiện (xe không chính chủ).\n"
             "Danh sách phương tiện trên đơn: bạn tự bấm 'Thêm xe' và chọn biển số đã đăng ký.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "cap-giay-phep-lien-van-viet-lao-campuchia",
+        # Mã TTHC 1.002877 — cổng Bộ Xây dựng iGate, cùng khuôn "cap-giay-phep-lien-van-viet-lao" (Form.io + bxdFlow,
+        # chọn Sở Xây dựng). Key TRÙNG lõi → process/attach (attp-row 7 dòng thương mại / phi thương mại, có tách giấy)
+        # tự nối. Toàn quốc (người dùng không giới hạn tỉnh).
+        "flowProfile": "xay-dung",
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
+        "detect": {
+            "urlIncludes": ["MaTTHC=1.002877", "019d2bfe-2abc-701d-ba41-05871a46a2dc"],
+            "textIncludes": ["giấy phép liên vận giữa Việt Nam, Lào và Campuchia"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp, cấp lại Giấy phép liên vận giữa Việt Nam, Lào và Campuchia",
+        "shortLabel": "Giấy phép liên vận Việt Nam - Lào - Campuchia",
+        "subtitle": "Cấp mới / cấp lại giấy phép cho xe đi Lào, Campuchia",
+        "icon": "🚚",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-2abc-701d-ba41-05871a46a2dc",
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyDeptLabel": "Sở Xây dựng",
+        "supportsSplitDocuments": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Giấy đề nghị cấp, cấp lại Giấy phép liên vận Việt Nam, Lào và Campuchia — đã ký, "
+             "đóng dấu", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "dang_ky_xe", "name": "Giấy chứng nhận đăng ký xe ô tô của phương tiện", "icon": "🚗", "sides": 1,
+             "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đứng đơn", "icon": "🪪", "sides": 1,
+             "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Hợp đồng công trình, dự án tại Lào/Campuchia, hợp đồng thuê xe (nếu có)",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy đề nghị cấp, cấp lại Giấy phép liên vận giữa Việt Nam, Lào và Campuchia, đã ký, đóng dấu.\n"
+            "2. Giấy chứng nhận đăng ký xe ô tô của phương tiện xin cấp phép.\n"
+            "3. Nếu có: hợp đồng/tài liệu công trình, dự án tại Lào, Campuchia; hợp đồng thuê phương tiện (xe không "
+            "chính chủ); căn cước của người đứng đơn.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
     },
@@ -7078,6 +7184,7 @@ PROCEDURES: list[dict] = [
             ],
             "headingDisabled": True,
             "textPriority": True,
+            "codeOnPage": True,  # cờ của Auto Fill (khớp mã TTHC in trên trang); giữ detect y hệt lõi
         },
         "label": "Cấp hộ chiếu phổ thông ở trong nước (thực hiện tại cấp tỉnh)",
         "shortLabel": "Làm hộ chiếu phổ thông",
@@ -8450,6 +8557,51 @@ PROCEDURES: list[dict] = [
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
             "Bước đính kèm: Đơn + giấy ủy quyền + CCCD → dòng 13; Giấy chứng nhận, mảnh trích đo → dòng 24 'Giấy tờ khác "
             "có liên quan'; giấy thuế, miễn giảm, dự án, rừng → dòng riêng."
+        ),
+    },
+    {
+        "key": "tinh-tien-su-dung-dat-nd-50-2026-lam-dong",
+        "provinceOnly": ["lamdong"],  # bản riêng Lâm Đồng (key/label mang tên tỉnh): chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.115148 (19/11/2026), cùng mã với bản Quảng Ninh / Quảng Ngãi → urlScope chống tráo tỉnh. Form Phần
+        # I-III như 1.116366 (+ ô Ghi chú ghi số thửa / tờ bản đồ / diện tích); bảng đính kèm chỉ một dòng "Văn bản đề
+        # nghị tính hoặc tính lại tiền sử dụng đất", mọi tệp vào dòng đó; có chế độ tách giấy tờ.
+        "detect": {
+            "urlScope": ["lamdong.gov.vn"],
+            "textIncludes": ["tính lại tiền sử dụng đất", "50/2026/NĐ-CP"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Thủ tục tính hoặc tính lại tiền sử dụng đất theo quy định tại các điểm a, b, c và d khoản 2 Điều 12 Nghị "
+            "định số 50/2026/NĐ-CP"
+        ),
+        "shortLabel": "Tính lại tiền sử dụng đất",
+        "subtitle": "Mã 1.115148 · Đề nghị tính hoặc tính lại tiền sử dụng đất tại Lâm Đồng",
+        "icon": "💰",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019e8732-a3da-753b-85f5-0590fe1e27c7",
+        "flowProfile": "xay-dung",
+        "agencyProvince": "Lâm Đồng",
+        "bxdFlow": _LD_BXD_FLOW,
+        "supportsSplitDocuments": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Văn bản / Đơn đề nghị tính hoặc tính lại tiền sử dụng đất — đã ký", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người sử dụng đất", "icon": "🪪", "sides": 2,
+             "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận quyền sử dụng đất (nếu có)", "icon": "📜", "sides": 1,
+             "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Thông báo / chứng từ nộp tiền sử dụng đất, Giấy ủy quyền (nếu nộp thay)",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên (mỗi bộ giấy có thể là một PDF gộp):\n"
+            "1. Văn bản / Đơn đề nghị tính hoặc tính lại tiền sử dụng đất đã ký — nguồn chính điền chủ hồ sơ, thửa đất.\n"
+            "2. Căn cước công dân của người sử dụng đất.\n"
+            "3. Nếu có: Giấy chứng nhận quyền sử dụng đất, thông báo / chứng từ nộp tiền sử dụng đất; nộp thay: giấy ủy "
+            "quyền hoặc CCCD người đi nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: cổng chỉ có một dòng 'Văn bản đề nghị tính hoặc tính lại tiền sử dụng đất' — mọi tệp đính "
+            "vào dòng này."
         ),
     },
     # ── Thủ tục toàn quốc đã có pipeline Auto Fill, đưa lên trợ lý (01/11/2026) ──
@@ -10918,6 +11070,7 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "bo-sung-than-nhan-liet-si": _TAT_CA,
     "tham-vieng-mo-liet-si": _TAT_CA,
     "giai-quyet-che-do-khang-chien": _TAT_CA,
+    "cong-nhan-che-do-khang-chien-nhiem-chat-doc-hoa-hoc": _TAT_CA,
     "sua-doi-thong-tin-ho-so-nguoi-co-cong": _TAT_CA,
     "mai-tang-dan-cong-hoa-tuyen": _TAT_CA,
     "uu-dai-ncc-tu-tran": _TAT_CA,
@@ -10937,6 +11090,7 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "cung-cap-thong-tin-quy-hoach": frozenset({"laichau", "bacninh"}),  # STT 98: chỉ Lai Châu, Bắc Ninh hoàn thiện
     "cap-phep-long-duong-via-he": frozenset({"danang"}),  # STT 138: chỉ Đà Nẵng hoàn thiện
     "cap-giay-phep-lien-van-viet-lao": _TAT_CA,
+    "cap-giay-phep-lien-van-viet-lao-campuchia": _TAT_CA,
     "cap-giay-phep-chat-ha-cay-xanh": _TAT_CA,
     "chap-thuan-dau-noi-tam": _TAT_CA,  # STT 232
     "gia-han-luu-hanh-phuong-tien-lao": _TAT_CA,
@@ -11009,6 +11163,8 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "dang-ky-dien-tich-tang-them-lam-dong": frozenset({"lamdong"}),
     # 12/11/2026: 1.116366 bản Lâm Đồng, provinceOnly ["lamdong"] → chỉ mở cho Lâm Đồng như hai thủ tục trên.
     "giao-thue-dat-giao-rung-gia-han-su-dung-dat": frozenset({"lamdong"}),
+    # 19/11/2026: 1.115148 bản Lâm Đồng, provinceOnly ["lamdong"] → chỉ mở cho Lâm Đồng như các thủ tục trên.
+    "tinh-tien-su-dung-dat-nd-50-2026-lam-dong": frozenset({"lamdong"}),
     "thong-bao-san-pham-quang-cao-bang-ron": _TAT_CA,
     "cap-giay-phep-xuat-ban-tai-lieu-khong-kinh-doanh": _TAT_CA,
     "cap-the-huong-dan-vien-du-lich-noi-dia": _TAT_CA,

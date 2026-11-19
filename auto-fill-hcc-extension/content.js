@@ -2551,7 +2551,13 @@
     document.querySelectorAll(".text-2xl.font-bold, h1, h2")
       .forEach((el) => push(nodeText(el), isVisible(el)));
     // Văn bản hiển thị (cắt ngắn) — để nhận diện cổng SPA không có heading (vd laichau): khớp tên thủ tục.
-    const bodyText = String(document.body?.innerText || "").replace(/\s+/g, " ").trim().slice(0, 6000);
+    const fullText = String(document.body?.innerText || "").replace(/\s+/g, " ").trim();
+    const bodyText = fullText.slice(0, 6000);
+    // Mã TTHC in trên trang (vd cổng Bộ Công an: "1.001456 - Cấp hộ chiếu phổ thông…") — quét CẢ trang, không cắt
+    // 6000 ký tự. Popup chỉ dùng cho thủ tục BE khai detect.codeOnPage (xem pageCodeMatches ở popup.js).
+    const pageProcedureCodes = Array.from(new Set(
+      Array.from(fullText.matchAll(/(?:^|[^\d.])([123]\.\d{6})(?![\d.])/g), (m) => m[1])
+    )).slice(0, 30);
     // HkdOnline có cùng URL/domain cho nhiều loại hồ sơ. Hint dựa vào marker của ACTIVE wizard step
     // và loại hồ sơ đang hiển thị, tránh suy thủ tục chỉ vì tên option xuất hiện trong body.
     const businessProcedureHint = typeof H.detectBusinessProcedureHint === "function"
@@ -2570,6 +2576,7 @@
       headings,
       visibleHeadings,
       bodyText,
+      pageProcedureCodes,
       businessProcedureHint,
       enterpriseProcedureHint,
       enterpriseEntityLabel,

@@ -29,6 +29,9 @@ Cổng DVC Bộ Công an (registry bcaPortal, trang jQuery + select2, form + đ�
 content/bca/field-review.js → cần cờ supportsBcaFlow; không cần file field_review.py riêng (ô bắt buộc = dấu * trên
 nhãn của cổng). Đủ ô bắt buộc thì nút đi tiếp là "Đính kèm giấy tờ" (trang có mục đính kèm) hoặc tích ô cam kết +
 "Nộp hồ sơ" (flow.py, nhánh _bca_*).
+eForm Nth cổng DVC Bộ Công an (dichvucong.bocongan.gov.vn: hộ chiếu, mẫu con dấu, thị thực, thẻ tạm trú — form + bảng Thành
+phần hồ sơ thường cùng trang) dùng chung bộ đọc content/bca/field-review.js → cần cờ supportsBcaNthReview. Không có Xem
+trước; nút đi tiếp là "Đồng ý và tiếp tục" (lệnh lc_next, chat/lai_chau.py), chỉ hiện khi đủ ô bắt buộc (user 19/11/2026).
 Chế độ tiếng Mông giữ luồng cũ: nhãn ô lấy nguyên văn tiếng Việt trên tờ khai.
 """
 import json
@@ -51,6 +54,8 @@ LIZ_COMMIT_CAPABILITY = "supportsLizCommitSelf"
 OTHER_TEXT_CAPABILITY = "supportsFieldReviewOtherText"
 NESTED_CAPABILITY = "supportsFieldReviewNested"
 BCA_CAPABILITY = "supportsBcaFlow"
+BCA_NTH_CAPABILITY = "supportsBcaNthReview"
+_BCA_NTH_HOST = "dichvucong.bocongan.gov.vn"
 # Cổng Bộ Công an: bộ đọc tự nhận ô bắt buộc theo dấu * của cổng → thủ tục không cần khai REQUIRED riêng.
 _BCA_CONFIG = {"required": (), "noSection": (), "noAsk": (), "zeroIsEmpty": (), "textDates": (), "lookup": ()}
 _COMMANDS = {"field_review_start", "field_review_skip", "field_review_stop", "field_review_back",
@@ -80,7 +85,7 @@ _MAX_TEXT = 160
 
 def config(proc: dict | None) -> dict | None:
     found = registry.get((proc or {}).get("key"))
-    return found if found is not None or not bca(proc) else _BCA_CONFIG
+    return found if found is not None or not (bca(proc) or bca_nth(proc)) else _BCA_CONFIG
 
 
 def single_page(proc: dict | None) -> bool:
@@ -92,9 +97,17 @@ def bca(proc: dict | None) -> bool:
     return bool((proc or {}).get("bcaPortal"))
 
 
+def bca_nth(proc: dict | None) -> bool:
+    """eForm Nth cổng DVC Bộ Công an (dichvucong.bocongan.gov.vn) có điền form + đính kèm: hộ chiếu 1.001456, mẫu con
+    dấu 2.001428, thị thực 1.001194, thẻ tạm trú 1.003460 (cùng điều kiện flow._bca_nth)."""
+    proc = proc or {}
+    return (proc.get("mode") != "attach" and bool(proc.get("hasAttachmentStep"))
+            and _BCA_NTH_HOST in ((proc.get("detect") or {}).get("urlScope") or []))
+
+
 def _one_page(proc: dict | None) -> bool:
     """Trang không có Xem trước / chuyển bước: trang nộp một trang (tư pháp mới, liz) và cổng Bộ Công an."""
-    return single_page(proc) or bca(proc)
+    return single_page(proc) or bca(proc) or bca_nth(proc)
 
 
 def liz(proc: dict | None) -> bool:
@@ -160,6 +173,8 @@ def active(conv: dict, proc: dict | None) -> bool:
         and (not liz(proc) or caps.get(LIZ_CAPABILITY) is True)
         # Ô trang Bộ Công an (input/select2 theo id) chỉ content/bca/field-review.js đọc được.
         and (not bca(proc) or caps.get(BCA_CAPABILITY) is True)
+        # Ô eForm Nth cổng bocongan (bootstrap-select) — bộ đọc content/bca/field-review.js bản chạy thêm host này.
+        and (not bca_nth(proc) or caps.get(BCA_NTH_CAPABILITY) is True)
         # Extension chỉ có bộ đọc eForm / SurveyJS không đọc được form Angular của cổng liên thông.
         and (not lien_thong(proc) or lien_thong_supported(caps, proc))
         # Tờ khai Form.io của cổng Bộ Xây dựng chỉ bộ đọc content/bxd/field-review-formio.js đọc được.
@@ -180,7 +195,7 @@ def legacy_wizard(proc: dict | None) -> bool:
 
 def flow_v2(conv: dict, proc: dict | None) -> bool:
     caps = conv.get("client_capabilities") or {}
-    if lien_thong(proc) or bxd(proc) or bac_ninh(proc) or bca(proc):
+    if lien_thong(proc) or bxd(proc) or bac_ninh(proc) or bca(proc) or bca_nth(proc):
         return active(conv, proc)
     return ((single_page(proc) or legacy_wizard(proc)) and active(conv, proc)
             and caps.get(FLOW_V2_CAPABILITY) is True)
@@ -308,14 +323,18 @@ def _small_chips(chips: list[dict]) -> list[dict]:
 _ATTACH_SEND = "__action:confirm_review"
 
 
-def _bca_next(st: dict) -> tuple[str, str]:
+def _bca_next(st: dict, proc: dict | None = None) -> tuple[str, str]:
     """Cổng Bộ Công an: câu "bấm …" theo đúng các nút đi tiếp (cta) đã lưu của lượt — Đính kèm giấy tờ, hoặc ô cam kết
-    rồi Nộp hồ sơ."""
+    rồi Nộp hồ sơ; eForm Nth: "Đồng ý và tiếp tục"."""
     cta = [c for c in st.get("chips") or [] if c.get("cta")]
     labels = [re.sub(r"^\W+", "", str(c.get("label") or "")).strip() for c in cta]
+    if bca_nth(proc):
+        labels = [re.sub(r"[\s▶►>›»]+$", "", label) for label in labels]  # "Đồng ý và tiếp tục ▶" → bỏ mũi tên
     labels = [label for label in labels if label]
     if not labels:
-        return vi.BCA_NEXT_NONE["md"], vi.BCA_NEXT_NONE["tts"]
+        # eForm Nth mà chưa có nút trợ lý bấm hộ (trang đính kèm ở bước sau): công dân bấm nút cùng tên trên trang.
+        none = vi.BCA_NTH_NEXT_NONE if bca_nth(proc) else vi.BCA_NEXT_NONE
+        return none["md"], none["tts"]
     if cta[-1].get("send") == "__action:tick_commit":
         # Nút cuối là nút tích ô cam kết: Nộp hồ sơ chỉ hiện sau khi ô đã tích.
         return _say(vi.BCA_NEXT_COMMIT, label=labels[-1])
@@ -368,9 +387,9 @@ def _ready(proc: dict | None, st: dict, conv: dict | None = None) -> tuple[str, 
                     optional_tts=vi.FLOW2_OPTIONAL_LEFT_TTS.format(optional=optional) if optional else "",
                     optional_hint_md=vi.FLOW2_OPTIONAL_HINT["md"] if optional else "",
                     optional_hint_tts=vi.FLOW2_OPTIONAL_HINT["tts"] if optional else "")
-    if bca(proc):
+    if bca(proc) or bca_nth(proc):
         optional = (st.get("stats") or {}).get("optional") or 0
-        next_md, next_tts = _bca_next(st)
+        next_md, next_tts = _bca_next(st, proc)
         return _say(vi.BCA_FILL_READY, next_md=next_md, next_tts=next_tts,
                     optional_md=vi.FLOW2_OPTIONAL_LEFT.format(optional=optional) if optional else "",
                     optional_tts=vi.FLOW2_OPTIONAL_LEFT_TTS.format(optional=optional) if optional else "")
@@ -395,11 +414,12 @@ def _ready(proc: dict | None, st: dict, conv: dict | None = None) -> tuple[str, 
     return _say(vi.FLOW2_READY if label else vi.FLOW2_READY_NO_DEFAULT, done=done, label=label)
 
 
-def conclusion_trail(conv: dict, proc: dict | None, reply, keep: list[dict]) -> None:
+def conclusion_trail(conv: dict, proc: dict | None, reply, keep: list[dict], *, keep_actions: bool = False) -> None:
     """Khung kết luận thành bong bóng phụ ngay sau khung kết quả điền (Cổng DVC Bộ Công an): thay nút của reply bằng
-    nút kết luận. Nối lời đọc ở đây (không ở flow.py) như các decorate_* — cả hai khung đều chỉ có tiếng Việt."""
+    nút kết luận. Nối lời đọc ở đây (không ở flow.py) như các decorate_* — cả hai khung đều chỉ có tiếng Việt.
+    `keep_actions`: giữ action sẵn có của reply (vd lượt đính xong eForm Nth), bong bóng kết luận nối vào cuối."""
     md, tts, chips = conclusion(conv, proc, keep)
-    reply.actions = [{"type": "trail_message", "md": md}]
+    reply.actions = [*(reply.actions if keep_actions else []), {"type": "trail_message", "md": md}]
     reply.tts_text += tts if tts.startswith(" ") else f" {tts}"
     reply.chips = chips
 
@@ -424,8 +444,8 @@ def conclusion(conv: dict, proc: dict | None, keep: list[dict]) -> tuple[str, st
         if liz_commit_self(conv, proc):
             _ask_commit(st)
             md, tts = _say(vi.LIZ_COMMIT_OPTIONAL_ONLY, commit=liz_commit_label(proc), **stats)
-        elif bca(proc):
-            next_md, next_tts = _bca_next(st)
+        elif bca(proc) or bca_nth(proc):
+            next_md, next_tts = _bca_next(st, proc)
             md, tts = _say(vi.BCA_OPTIONAL_ONLY, next_md=next_md, next_tts=next_tts, **stats)
         else:
             md, tts = _say(vi.LIZ_OPTIONAL_ONLY if liz(proc) else vi.FLOW2_OPTIONAL_ONLY, **stats)
@@ -459,6 +479,11 @@ def _waiting_ready(conv: dict, proc: dict | None, st: dict) -> bool:
     if bca(proc):
         # Cổng Bộ Công an: rà sau điền (chờ đính kèm / nộp) hoặc đã đính xong — cùng một trang.
         return conv.get("state") in {"reviewing", "done"}
+    if bca_nth(proc):
+        # eForm Nth: đính xong (cùng trang), hoặc điền xong đang chờ công dân sang trang đính kèm — không báo lúc trợ lý
+        # đang đính cùng trang (kết luận đi cùng câu đính xong).
+        return conv.get("state") == "done" or (conv.get("state") in {"reviewing", "attaching"}
+                                               and not conv.get("attachment_plan_started"))
     return conv.get("state") == "done"
 
 
@@ -1142,7 +1167,7 @@ def _optional_phase(conv: dict, proc: dict | None, st: dict, field: dict) -> tup
         return "", ""
     st["optional_said"] = True
     template = (vi.LT_OPTIONAL_PHASE if lien_thong(proc) else vi.BXD_OPTIONAL_PHASE if bxd(proc) else
-                vi.BN_OPTIONAL_PHASE if bac_ninh(proc) else vi.BCA_OPTIONAL_PHASE if bca(proc) else
+                vi.BN_OPTIONAL_PHASE if bac_ninh(proc) else vi.BCA_OPTIONAL_PHASE if bca(proc) or bca_nth(proc) else
                 vi.FR_OPTIONAL_PHASE_LEGACY if legacy_wizard(proc) else vi.FR_OPTIONAL_PHASE_SINGLE)
     return _say(template, optional=stats.get("optional") or 0)
 

@@ -90,3 +90,27 @@ for (const [label, file] of SOURCES) {
     assert.deepEqual(pending.map((f) => f.name), ["Căn cước công dân.pdf"]);
   });
 }
+
+// eForm Nth Bộ Công an (ảnh chạy thật 19/11): cổng lưu tệp dưới tên bỏ dấu + "_" + mốc giờ → "Đính kèm lại" từng đính
+// thêm bản thứ hai vào dòng hộ chiếu. Chỉ bản trợ lý (attach-core.js) có so bản bỏ mốc giờ.
+for (const [label, file] of SOURCES.filter(([name]) => name === "handfree")) {
+  const TEN = "Hộ chiếu phổ thông cấp lần gần nhất.pdf";
+  const HIEN = "Ho_chieu_pho_thong_cap_lan_gan_nhat_1795056740.pdf";
+
+  test(`${label}: cổng đổi tên + thêm mốc giờ → vẫn nhận ra tệp đã đính (chưa nhớ và đã nhớ tệp nguồn)`, () => {
+    const { filesNotOnRow, rememberUploadedFiles, ctx, makeFile } = load(file);
+    ctx.shownOnRow = [HIEN];
+    assert.equal(filesNotOnRow({}, [makeFile(TEN, SCAN)]).length, 0);
+    rememberUploadedFiles([makeFile(TEN, SCAN)]);
+    assert.equal(filesNotOnRow({}, [makeFile("Giấy tờ khác.pdf", SCAN)]).length, 0);
+  });
+
+  test(`${label}: mốc giờ không nuốt số thứ tự của tệp thứ hai cùng nhãn`, () => {
+    const { filesNotOnRow, ctx, makeFile } = load(file);
+    ctx.shownOnRow = [HIEN];
+    const pending = filesNotOnRow({}, [makeFile(TEN, SCAN), makeFile("Hộ chiếu phổ thông cấp lần gần nhất 2.pdf", SCAN_KHAC)]);
+    assert.deepEqual(pending.map((f) => f.name), ["Hộ chiếu phổ thông cấp lần gần nhất 2.pdf"]);
+    ctx.shownOnRow = ["Ho_chieu_pho_thong_cap_lan_gan_nhat_2_1795056986.pdf"];
+    assert.equal(filesNotOnRow({}, [makeFile(TEN, SCAN)]).length, 1);
+  });
+}

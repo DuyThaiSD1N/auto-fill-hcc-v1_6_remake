@@ -232,6 +232,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Cổng DVC Bộ Công an (dancuquocgia): đọc / tô xanh-cam-đỏ ô sau khi điền, vòng "Bổ sung các thông tin còn
         # thiếu", nút Nộp hồ sơ (content/bca/field-review.js). Thiếu cờ → luồng cũ (công dân tự soát, tự bấm nộp).
         "supportsBcaFlow": raw.get("supportsBcaFlow") is True,
+        # eForm Nth cổng dichvucong.bocongan.gov.vn: content/bca/field-review.js tô ô + vòng "Bổ sung các thông tin còn
+        # thiếu" trên host này; nút "Đồng ý và tiếp tục" chỉ hiện khi đủ ô bắt buộc. Thiếu cờ → luồng cũ.
+        "supportsBcaNthReview": raw.get("supportsBcaNthReview") is True,
         # Cổng DVC Bộ Công an dichvucong.bocongan.gov.vn: trang "Chọn trường hợp hồ sơ" (Loại xe…) dẫn bằng luồng trang 1
         # của Lai Châu (content/laichau/portal.js chạy thêm host bocongan, tự dò ô). Thiếu cờ → công dân tự chọn như cũ.
         "supportsBcaCaseStep": raw.get("supportsBcaCaseStep") is True,

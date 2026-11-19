@@ -926,6 +926,12 @@ def _attach_plan_action(conv: dict, plan: list) -> dict:
     keep_existing = conv.pop("attach_keep_existing", False)
     if conv.get("attach_has_files") and not keep_existing:
         action["clearExisting"] = True
+    if _bca_nth_review(conv, proc) and _bca_same_page(proc, conv.get("docs_page_context")):
+        # eForm Nth Bộ Công an, form + bảng cùng trang: đính xong extension đếm lại ô của form (kèm vào attach_report) để
+        # kết luận "Bổ sung…" / "Đồng ý và tiếp tục" theo số ô hiện tại.
+        review = field_review.fill_action_extra(conv, proc)
+        if review:
+            action["fieldReview"] = review
     dispatch_id = _begin_attach_action(conv)
     if dispatch_id:
         action["dispatch_id"] = dispatch_id
@@ -5120,6 +5126,11 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
         if bca_fill is not None:
             _clear_documents_adjustment(conv)
             return bca_fill
+        nth_fill = _bca_nth_fill_report_reply(conv, proc, rep, intent.payload.get("review"), note=note, tail=tail,
+                                              auto_wait=auto_wait_attachment, same_page=same_page_attach)
+        if nth_fill is not None:
+            _clear_documents_adjustment(conv)
+            return nth_fill
         if proc.get("bcaGuestList"):
             _clear_documents_adjustment(conv)
             return _bca_stay_review_reply(conv, proc, rep["filled"], note)
@@ -5381,6 +5392,7 @@ async def _handle_reviewing(conv: dict, intent: Intent) -> Reply:
         if eform_reply is not None:
             return eform_reply
     if intent.kind == "action" and intent.value == "refill":
+        _bca_nth_refill_ready(conv, proc)
         return await _restart_declaration_pipeline(conv)
     if intent.kind == "action" and intent.value == "add_documents":
         if conv.get("docs_target") != "declaration":
@@ -5431,6 +5443,7 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
             # Công dân mở lại một tờ khai để sửa: điền lại đúng mẫu đang mở, không đụng đính kèm.
             return await _eform_fill(conv, proc)
     if intent.kind == "action" and intent.value == "refill":
+        _bca_nth_refill_ready(conv, get_procedure(conv.get("procedure_key") or "") or {})
         return await _restart_declaration_pipeline(conv)
     if intent.kind == "action" and intent.value == "add_documents":
         if conv.get("docs_target") != "declaration":
@@ -5549,6 +5562,11 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
         # FE báo kết quả đính THẬT trên trang → hoàn thành (bước nộp cuối người dân tự bấm).
         files = attach_files.parse(conv, intent.payload)
         attach_files.ensure_errors(intent.payload, files)
+        if isinstance(intent.payload.get("review"), dict) and field_review.flow_v2(
+                conv, get_procedure(conv.get("procedure_key") or "")):
+            # eForm Nth Bộ Công an: extension đếm lại ô của form cùng trang sau lượt đính (_attach_plan_action
+            # fieldReview) → kết luận đính xong theo số ô mới nhất.
+            field_review.update_stats(conv, intent.payload["review"])
         attached = int(intent.payload.get("attached") or 0)
         skipped = int(intent.payload.get("skipped") or 0)
         errors = [str(e) for e in (intent.payload.get("errors") or []) if e]
@@ -5663,7 +5681,11 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
         else:
             r = tu_phap_v2.attach_done_reply(conv, proc_done, r, attached=attached, skipped=skipped, errors=errors,
                                              guided_step=bool(guided_step), split=conv.get("attach_mode") == "split")
-        if (not errors and _bca_same_page(proc_done, conv.get("docs_page_context"))
+        if _bca_nth_review(conv, proc_done) and _bca_same_page(proc_done, conv.get("docs_page_context")):
+            # eForm Nth có vòng bổ sung ô (supportsBcaNthReview, user 19/11): kết luận theo số ô của form cùng trang —
+            # còn ô bắt buộc trống thì chưa hiện "Đồng ý và tiếp tục", chỉ "Bổ sung…" + Điền lại tờ khai.
+            r = _bca_nth_attach_done_reply(conv, proc_done, r, errors=errors)
+        elif (not errors and _bca_same_page(proc_done, conv.get("docs_page_context"))
                 and lai_chau.enabled(conv, proc_done)
                 and not any(isinstance(c, dict) and c.get("cta") for c in r.chips or [])):
             # eForm Nth Bộ Công an đính cùng trang (thị thực 1.001194): nút cam "Đồng ý và tiếp tục" — trợ lý bấm nút cùng
@@ -5821,6 +5843,14 @@ async def _handle_done(conv: dict, intent: Intent) -> Reply:
     if intent.kind == "action" and intent.value == "business_refill":
         return _business_refill(conv)
 
+    if intent.kind == "action" and intent.value == "refill" and not conv.get("submitted_completed"):
+        # eForm Nth Bộ Công an: đính xong cùng trang, form kê khai vẫn hiện → "Điền lại tờ khai" chạy lại lượt điền (không
+        # đính lại). Thủ tục khác giữ hành vi cũ (lệnh nội bộ ở bước này bị nuốt).
+        proc = get_procedure(conv.get("procedure_key") or "") or {}
+        if _bca_nth(proc):
+            _bca_nth_refill_ready(conv, proc)
+            return await _restart_declaration_pipeline(conv)
+
     if intent.kind == "action" and intent.value == attach_files.RETRY_ACTION:
         return _retry_failed_attach(conv)
     if intent.kind == "action" and intent.value == "tick_commit":
@@ -5941,6 +5971,11 @@ async def _handle_done(conv: dict, intent: Intent) -> Reply:
     # Nuốt im lặng để báo cáo trùng không sinh thêm bubble "đã đính xong".
     if intent.kind in {"event", "action"}:
         return Reply()
+    proc_done = get_procedure(conv.get("procedure_key") or "") or {}
+    if (_bca_nth_review(conv, proc_done) and (conv.get("field_review") or {}).get("chips")
+            and (conv.get("field_review") or {}).get("stats")):
+        # eForm Nth: câu lạ sau khi đính = nhắc lại kết luận (số ô đỏ + Bổ sung, hoặc nút Đồng ý và tiếp tục).
+        return _bca_conclusion_reply(conv, proc_done)
     done_tpl, commit = _attach_done_template(get_procedure(conv.get("procedure_key") or "") or {})
     r = Reply(*_fmt(done_tpl, commit=commit, attached=len(conv.get("attach_plan") or [])))
     r.chips = [_supplement_documents_chip(), *_commit_chip(conv, get_procedure(conv.get("procedure_key") or "") or {})]
@@ -6143,6 +6178,76 @@ _BCA_NTH_CAPABILITY = "supportsBcaNthSubmit"
 
 def _bca_nth_submit_chip() -> dict:
     return {"label": vi.BCA_SUBMIT_CHIP, "send": _BCA_NTH_SUBMIT_SEND, "solid": True, "cta": True}
+
+
+# ── eForm Nth Bộ Công an, vòng bổ sung ô (extension cờ supportsBcaNthReview, user 19/11/2026) ──
+# Điền xong extension (content/bca/field-review.js chạy thêm host bocongan) tô ô xanh / cam / đỏ và đếm. Kết luận sau khi
+# đính cùng trang: còn ô bắt buộc trống thì chỉ "Bổ sung các thông tin còn thiếu" + nút sửa nhỏ, đủ thì thêm nút cam
+# "Đồng ý và tiếp tục" (lệnh lc_next). Công dân tự gõ đủ trên trang → field_review_status hiện nút. Có "Điền lại tờ khai"
+# cả sau khi đã đính (form vẫn trên trang): điền lại không đính lại.
+def _bca_nth_review(conv: dict, proc: dict | None) -> bool:
+    return _bca_nth(proc) and field_review.flow_v2(conv, proc)
+
+
+def _bca_nth_refill_chip() -> dict:
+    return {"label": vi.BCA_NTH_REFILL_CHIP, "send": "__action:refill"}
+
+
+def _bca_nth_keep(conv: dict, proc: dict, *, next_ok: bool, small: list[dict] | None = None) -> list[dict]:
+    """Bộ nút rà của eForm Nth: nút sửa nhỏ (Điều chỉnh giấy tờ, Điền lại tờ khai) + nút cam "Đồng ý và tiếp tục" khi
+    trợ lý bấm hộ được (form + bảng cùng trang, đã đính)."""
+    small = [dict(c) for c in (small if small is not None else [_supplement_documents_chip()])
+             if not c.get("cta") and c.get("send") != "__action:refill"]
+    keep = [*small, _bca_nth_refill_chip()]
+    if next_ok and lai_chau.enabled(conv, proc):
+        keep.append(lai_chau.next_chip())
+    return keep
+
+
+def _bca_nth_fill_report_reply(conv: dict, proc: dict, rep: dict, review, *, note: str, tail: dict | None,
+                               auto_wait: bool, same_page: bool) -> Reply | None:
+    """Báo cáo điền eForm Nth có vòng bổ sung ô; None = luồng cũ (extension chưa có bộ đọc ô trên host này)."""
+    if not _bca_nth_review(conv, proc) or not isinstance(review, dict):
+        return None
+    if conv.pop("bca_nth_refill_after_attach", False) and conv.get("attach_done"):
+        # Điền lại tờ khai sau khi đã đính cùng trang: không đính lại, kết luận luôn theo số ô.
+        conv["state"] = "done"
+        conv["pipeline_status"] = ""
+        field_review.begin(conv, review)
+        r = Reply(*_fmt(vi.FILL_REPORT_REVIEW, filled=rep["filled"], missing_note=note))
+        next_ok = _bca_same_page(proc, conv.get("docs_page_context"))
+        field_review.conclusion_trail(conv, proc, r, _bca_nth_keep(conv, proc, next_ok=next_ok))
+        return r
+    r = Reply(*_fmt(vi.FILL_REPORT_REVIEW, filled=rep["filled"], missing_note=note, note=tail))
+    r.chips = [_bca_nth_refill_chip(), _supplement_documents_chip()]
+    if not auto_wait:
+        r.chips.insert(0, {"label": "📎 Đính kèm giấy tờ ▶", "send": "__action:confirm_review", "solid": True})
+    # Đính cùng trang chạy ngay sau lượt này → chưa mời bổ sung (con trỏ hỏi ô và lượt tải tệp cùng cuộn một trang),
+    # đính xong mới kết luận (_bca_nth_attach_done_reply).
+    field_review.decorate_single_page_fill(conv, proc, r, review, offer=not same_page)
+    return r
+
+
+def _bca_nth_attach_done_reply(conv: dict, proc: dict, r: Reply, *, errors: list[str]) -> Reply:
+    """Đính xong cùng trang: kết luận theo số ô của form. Chưa có số ô (bộ đọc không trả lời) → nút cũ + Điền lại."""
+    keep = _bca_nth_keep(conv, proc, next_ok=not errors, small=r.chips or [])
+    st = conv.get("field_review") or {}
+    if not st.get("stats") or st.get("running"):
+        r.chips = keep
+        return r
+    field_review.conclusion_trail(conv, proc, r, keep, keep_actions=True)
+    return r
+
+
+def _bca_nth_refill_ready(conv: dict, proc: dict | None) -> None:
+    """"Điền lại tờ khai" ở eForm Nth: form kê khai còn hiện (bảng đính kèm cùng trang) thì đích là tờ khai dù lượt đính
+    đã đổi docs_target; đã đính xong thì lượt điền lại không đính lại (tệp đã nằm trên bảng)."""
+    if not _bca_nth(proc) or _docs_page_context(conv.get("docs_page_context"))["bcaKeKhaiForm"] is not True:
+        return
+    conv["docs_target"] = "declaration"
+    if conv.get("attach_done"):
+        conv["auto_attach_after_fill"] = False
+        conv["bca_nth_refill_after_attach"] = True
 
 
 def _bca_nth_confirm_handle(conv: dict, proc: dict | None, intent: Intent) -> Reply | None:

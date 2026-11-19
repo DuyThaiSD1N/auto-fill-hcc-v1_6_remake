@@ -162,6 +162,10 @@
     // Cổng DVC Bộ Công an (dancuquocgia): sau khi điền tô ô xanh / cam / đỏ, vòng "Bổ sung các thông tin còn thiếu" và nút
     // Nộp hồ sơ (lệnh bca_submit → content/bca/field-review.js). Thiếu cờ → BE giữ luồng cũ (công dân tự soát, tự nộp).
     supportsBcaFlow: true,
+    // eForm Nth cổng DVC Bộ Công an dichvucong.bocongan.gov.vn (hộ chiếu, mẫu con dấu, thị thực, thẻ tạm trú): content/bca/
+    // field-review.js tô ô + vòng "Bổ sung các thông tin còn thiếu" trên host này (bootstrap-select). Thiếu cờ → BE giữ
+    // luồng cũ (nút "Đồng ý và tiếp tục" hiện ngay sau khi đính kèm).
+    supportsBcaNthReview: true,
     // Cổng DVC Bộ Công an dichvucong.bocongan.gov.vn (đăng ký xe): trang "Chọn trường hợp hồ sơ" (Loại xe…) dẫn như trang 1
     // của Lai Châu — content/laichau/portal.js chạy thêm host này, tự dò ô chọn. Thiếu cờ → công dân tự chọn như cũ.
     supportsBcaCaseStep: true,
@@ -5574,6 +5578,12 @@
           ? ["Trang không nhận lệnh đính kèm — chưa thấy bảng Thành phần hồ sơ hoặc trang vừa tải lại"]
           : res.error ? [res.error] : (res.errors || []),
       };
+      if (a.fieldReview && res) {
+        // eForm Nth Bộ Công an (form + bảng Thành phần hồ sơ cùng trang): đếm lại ô của form sau lượt đính để BE chỉ hiện
+        // "Đồng ý và tiếp tục" khi đủ ô bắt buộc (content/bca/field-review.js).
+        const marked = await sendToContent({ ...a.fieldReview, action: "fieldReviewMark" });
+        if (marked?.stats) report.review = marked.stats;
+      }
       await heartbeatPromise;
       ask(`__action:attach_report:${JSON.stringify({
         ...report, mode: a.mode || "merge", ...(dispatchId ? { dispatch_id: dispatchId } : {}),
