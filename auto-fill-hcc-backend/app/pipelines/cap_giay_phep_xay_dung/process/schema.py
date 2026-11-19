@@ -55,7 +55,9 @@ FIELDS: list[dict] = [
     {"name": "Dat_ToBanDoSo", "desc": "Tờ bản đồ số nếu có."},
     {"name": "Dat_DienTich", "desc": "Diện tích lô đất/thửa đất, đơn vị m2, chỉ trả số."},
     {"name": "Dat_SoNha", "desc": "Số nhà/tổ dân phố/thôn bản của địa điểm xây dựng nếu tách được."},
-    {"name": "Dat_DuongPho", "desc": "Đường/phố của địa điểm xây dựng nếu tách được."},
+    {"name": "Dat_DuongPho", "desc": "Đường/phố của địa điểm xây dựng nếu tách được (giữ tổ / thôn đơn ghi kèm). KHÔNG "
+        "kèm số lô / thửa / tờ bản đồ, tên phường xã; bỏ nhãn khung mẫu còn chấm điền chưa ghi gì ('Số nhà ....', "
+        "'tổ ....')."},
 
     # E. Design organization / individual.
     {"name": "LapThietKe_Loai", "desc": 'Loại lập thiết kế: "Tổ chức" nếu có công ty/tổ chức thiết kế; "Cá nhân" nếu cá nhân tự thiết kế.'},
@@ -104,7 +106,8 @@ FIELDS: list[dict] = [
         'ĐOẠN cho công trình theo tuyến trong đô thị); "du_an" (cấp giấy phép cho DỰ ÁN — có tên dự án, quyết định '
         'phê duyệt dự án, danh sách công trình thuộc dự án). Mẫu đơn in sẵn tiêu đề mọi loại; chọn theo mục CÓ DỮ '
         'LIỆU, không theo tiêu đề in sẵn. Không đủ bằng chứng thì để trống.'},
-    {"name": "CongTrinh_Cap", "desc": "Cấp công trình, ví dụ Cấp III hoặc Cấp IV."},
+    {"name": "CongTrinh_Cap", "desc": "Cấp công trình ở dòng 'Cấp công trình' của đơn: 'Cấp III' hoặc 'Cấp IV' (đơn ghi số "
+        "'3' / '4' → 'Cấp III' / 'Cấp IV'). Dòng đó không ghi cấp → bỏ trống, không lấy chữ của dòng khác."},
     {"name": "CongTrinh_DienTichXayDung",
      "desc": "Diện tích xây dựng TẦNG 1 (diện tích chiếm đất của công trình), m2, chỉ trả số. Lấy ở "
              "dòng 'Diện tích xây dựng tầng 1: …' trong mục 'Nội dung đề nghị cấp phép' của đơn. ⚠ Dòng "
@@ -119,20 +122,26 @@ FIELDS: list[dict] = [
              "BẮT BUỘC trả, kể cả khi đã trả CongTrinh_TongDienTichSan. Nhận cả 3 kiểu trình bày: sau chữ "
              "'Trong đó:', trong ngoặc đơn cùng dòng, hoặc nối tiếp trên cùng dòng ngăn bằng dấu phẩy "
              "(vd 'Diện tích xây dựng tầng 1: 30m², tầng 2: 43,2 m², tầng 3: 43,2 m²'). Chép NGUYÊN VĂN, "
-             "không tự cộng/sửa số."},
+             "không tự cộng/sửa số. Mẫu đơn in sẵn khung các tầng với chấm điền ('Tầng hầm ....m²; Tầng 2: ....m²') "
+             "và chữ hướng dẫn trong ngoặc ('ghi rõ diện tích sàn các tầng hầm …'): CHỈ chép tầng người khai đã điền "
+             "số, bỏ tầng còn chấm chấm và chữ hướng dẫn. Không lấy dòng 'Cốt …' vào đây."},
     {"name": "CongTrinh_ChieuCao", "desc": "Chiều cao công trình, m, chỉ trả số."},
     {"name": "CongTrinh_ChiTietChieuCao",
      "desc": "Phần LIỆT KÊ chiều cao TỪNG TẦNG (ô 'Trong đó' dưới Chiều cao công trình), thường nằm "
              "TRONG NGOẶC ĐƠN ngay sau chiều cao tổng — vd 'Chiều cao công trình: 11,9m (tầng 1: 3,4m, "
              "tầng 2: 3m, tầng tum: 2,5m)'. Đọc được thì BẮT BUỘC trả, kể cả khi đã trả "
              "CongTrinh_ChieuCao. Chép NGUYÊN VĂN phần trong ngoặc, giữ nguyên số của đơn kể cả khi số "
-             "trông vô lý (đó là lỗi của người khai, không phải việc của ta sửa)."},
+             "trông vô lý (đó là lỗi của người khai, không phải việc của ta sửa). Khung mẫu chấm điền ('Tầng 2: ....m') "
+             "và chữ hướng dẫn 'ghi rõ chiều cao các tầng …' → bỏ, chỉ chép tầng có số. Không lấy dòng 'Cốt …' vào "
+             "đây."},
     {"name": "CongTrinh_SoTang", "desc": "Số tầng chính, chỉ trả số nếu có thể."},
     {"name": "CongTrinh_ChiTietSoTang",
      "desc": "Cách ghi số tầng NGUYÊN VĂN trên đơn (ô 'Trong đó' dưới Số tầng) — vd '02 tầng + mái', "
              "'3 tầng', '2 tầng + 1 tum'. Đọc được thì BẮT BUỘC trả, kể cả khi đã trả CongTrinh_SoTang "
-             "và kể cả khi nội dung gần như trùng."},
-    {"name": "CongTrinh_ThoiGianDuKienHoanThanh", "desc": "Thời gian dự kiến hoàn thành nếu hồ sơ ghi rõ."},
+             "và kể cả khi nội dung gần như trùng. Bỏ chấm điền và chữ hướng dẫn 'ghi rõ số tầng hầm, tầng trên mặt "
+             "đất …' của mẫu đơn."},
+    {"name": "CongTrinh_ThoiGianDuKienHoanThanh", "desc": "Số THÁNG dự kiến hoàn thành công trình nếu hồ sơ ghi rõ (vd "
+        "'06 tháng'); số nằm giữa chấm điền ('....3.... tháng') → '3 tháng'. Không lấy năm, ngày tháng của đơn."},
     {"name": "CongTrinh_TongChieuDai", "desc": "Tổng chiều dài công trình THEO TUYẾN, m, chỉ trả số (chỉ có ở "
         "công trình theo tuyến / theo giai đoạn cho công trình theo tuyến)."},
     {"name": "CongTrinh_KhuVuc", "desc": "Mảng các đoạn/khu vực của công trình THEO TUYẾN kê trong đơn, giữ đúng thứ "

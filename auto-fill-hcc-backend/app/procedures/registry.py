@@ -5743,6 +5743,9 @@ PROCEDURES: list[dict] = [
             "và nhà ở riêng lẻ"
         ),
         "mode": "agent",
+        # Điền đợt 2 (4 thanh tra: thông số, địa điểm, định danh, thiết kế — app/second_pass) trên form Form.io cổng Bộ
+        # Xây dựng: chỉ chạy khi extension báo secondPassFormio.
+        "secondPass": "formio",
         "hasAttachmentStep": True,
         "roles": [],
         "useDangKyBy": False,

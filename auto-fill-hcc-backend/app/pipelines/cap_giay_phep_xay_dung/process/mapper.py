@@ -311,8 +311,8 @@ def _thong_so_san_va_chieu_cao(values: dict) -> tuple[str | None, str | None, st
     tầng thì phép suy là tất định nên chốt bằng code; giá trị LLM đọc được từ giấy tờ luôn được ưu tiên.
     """
     total = _number(values.get("CongTrinh_TongDienTichSan"))
-    area_detail = _text(values.get("CongTrinh_ChiTietDienTichSan"))
-    height_detail = _text(values.get("CongTrinh_ChiTietChieuCao"))
+    area_detail = _clean_detail(values.get("CongTrinh_ChiTietDienTichSan"))
+    height_detail = _clean_detail(values.get("CongTrinh_ChiTietChieuCao"))
     if _mot_tang_khong_tum(values):
         area = _number(values.get("CongTrinh_DienTichXayDung"))
         height = _number(values.get("CongTrinh_ChieuCao"))
@@ -460,16 +460,104 @@ def _infer_gender_from_title(ocr_text: str, name: str | None) -> str | None:
     return None
 
 
+_CAP_DIGITS = {"1": "I", "2": "II", "3": "III", "4": "IV"}
+
+
 def _cap(value: Any) -> str | None:
+    """Cấp công trình chỉ là I / II / III / IV (đơn hay viết số "3", "cấp 4"). Giá trị khác (chữ đọc nhầm dòng khác:
+    "Hàng rào", "A") → bỏ trống, để cán bộ chọn thay vì chọn bừa."""
+    folded = _fold(_text(value))
+    if not folded:
+        return None
+    roman = re.search(r"\b(iv|iii|ii|i)\b", folded)
+    if roman:
+        return roman.group(1).upper()
+    digit = re.fullmatch(r"(?:cap\s*)?([1-4])", folded.replace(".", "").strip())
+    return _CAP_DIGITS[digit.group(1)] if digit else None
+
+
+# Mẫu đơn GPXD in sẵn khung chấm điền ("Tầng 2: ....m²", "Tại số nhà: ....đường...tổ....") và chữ hướng dẫn trong ngoặc
+# ("(ghi rõ diện tích sàn các tầng hầm ...)"): chép nguyên khung là đưa chữ mẫu lên form.
+_HINT_RE = re.compile(r"\(\s*(?:trong đó\s*:?\s*)?ghi rõ[^)]*\)?|\(\s*nếu có\s*\)", re.IGNORECASE)
+_DOTS_RE = re.compile(r"\.{2,}|…+")
+_FLOOR_LABEL_RE = re.compile(r"(?i)\b(?:tầng|tâng|lầu)\s*(?:lầu\s*)?\d+\b")
+
+
+def _slot_values(text: str) -> list[float]:
+    """Các số GIÁ TRỊ của một mục liệt kê (bỏ số thứ tự tầng trong nhãn "Tầng 2")."""
+    rest = _FLOOR_LABEL_RE.sub(" ", text)
+    return [float(n.replace(",", ".")) for n in re.findall(r"\d+(?:[.,]\d+)?", rest)]
+
+
+def _clean_detail(value: Any) -> str | None:
+    """Ô "Trong đó" (chi tiết số tầng / diện tích sàn / chiều cao): bỏ chữ hướng dẫn, chấm điền, mục khung mẫu chưa điền
+    số và mục bằng 0 ("Tầng hầm 0m²", "0 tầng hầm"). Còn lại giữ nguyên chữ của đơn."""
     text = _text(value)
     if not text:
         return None
-    folded = _fold(text)
-    if re.search(r"\biii\b", folded):
-        return "III"
-    if re.search(r"\biv\b", folded):
-        return "IV"
-    return text.replace("Cấp", "").replace("cấp", "").strip() or text
+    text = _HINT_RE.sub(" ", text)
+    text = re.sub(r"(?i)(trong đó\s*:\s*){2,}", "trong đó: ", text)
+    # Tầng hầm bằng 0 nằm giữa câu ("0 tầng hầm, 01 tầng trên mặt đất"): nhà không có hầm, mục đó là chữ thừa.
+    text = re.sub(r"(?i)\b0+\s*tầng\s*hầm\s*[,;+]?\s*|\btầng\s*hầm\s*:?\s*0+(?:[.,]0+)?\s*m?²?\s*[,;]?\s*", "", text)
+    blanked = _DOTS_RE.search(text) is not None
+    text = " ".join(_DOTS_RE.sub(" ", text).split())
+    parts = [part.strip(" ,;:-") for part in re.split(r"\s*;\s*|,\s+(?=[^\d\s])", text)]
+    kept = [part for part in parts if part and (lambda nums: nums and any(nums))(_slot_values(part))]
+    if not kept:
+        return None
+    if len(kept) == len([part for part in parts if part]) and not blanked:
+        return _text(text)
+    joined = re.sub(r"\s+\)", ")", "; ".join(kept))
+    opened, closed = joined.count("("), joined.count(")")
+    joined = joined + ")" * (opened - closed) if opened > closed else joined.replace(")", "", closed - opened)
+    return _text(joined)
+
+
+_LOT_RE = re.compile(r"(?i)\b(?:lô đất|thửa(?: đất)?|tờ bản đồ)\s*(?:có\s*)?(?:số\s*(?:thửa)?)?\s*:?\s*[\w/.-]*\d[\w/.-]*\s*[,;.]?")
+_SLOT_LABELS = ("so nha", "to", "to (thon)", "thon", "ngo", "ngach", "hem", "kiet", "duong/pho", "duong", "pho")
+_HOUSE_NO_RE = re.compile(r"(?i)^(?:(?:số nhà|số|sn)\s*:?\s*([0-9][\w/.-]*)|([0-9][0-9a-z]*(?:/[0-9a-z]+)*)(?=\s+\S))\s*[,;]?\s*")
+# Nhãn mẫu đứng ngay trước một nhãn khác ("Số nhà đường X" khi số nhà chưa điền).
+_LEADING_BLANK_RE = re.compile(r"(?i)^(số nhà|tổ\s*\(thôn\)|tổ|thôn)\s*:?\s+(?=(đường|phố|tổ|thôn|ngõ|kiệt|hẻm)\b)")
+
+
+def _clean_street(street: Any, house: Any) -> tuple[str | None, str | None]:
+    """(số nhà, đường/phố) của địa điểm xây dựng. Ô Đường/Phố bỏ số lô / thửa / tờ bản đồ, chấm điền và nhãn khung mẫu
+    chưa ghi gì ("Số nhà ....", "tổ ...."), đổi nhãn mẫu "đường/phố" thành "đường"; số nhà đứng đầu trùng ô Số nhà thì
+    bỏ khỏi ô đường. Chữ của đơn (tổ, thôn, số nhà ghi liền tên đường) giữ nguyên."""
+    house_text = _text(house)
+    text = _text(street)
+    if not text:
+        return house_text, None
+    text = _LOT_RE.sub(" ", text)
+    text = " ".join(_DOTS_RE.sub(" ", text).split())
+    segments = []
+    for segment in re.split(r"\s*[,;]\s*", text):
+        segment = _LEADING_BLANK_RE.sub("", segment.strip(" :-"))
+        if segment and _fold(segment).strip(" :") not in _SLOT_LABELS:
+            segments.append(segment)
+    text = re.sub(r"(?i)\bđường/phố\b", "đường", ", ".join(segments))
+    lead = _HOUSE_NO_RE.match(text)
+    if lead and house_text and _fold(lead.group(1) or lead.group(2)) == _fold(house_text):
+        text = text[lead.end():]
+    return house_text, _text(text)
+
+
+def _months(value: Any) -> str | None:
+    """Thời gian dự kiến hoàn thành (tháng). Số ghi theo năm ("1 năm") đổi ra tháng; số ≥ 100 là năm dương lịch, không
+    phải số tháng → bỏ trống."""
+    text = _text(value)
+    number = _number(text)
+    if not number:
+        return None
+    try:
+        amount = float(number)
+    except ValueError:
+        return None
+    if "nam" in _fold(text).split() and "thang" not in _fold(text) and amount <= 5:
+        amount *= 12
+    if amount < 1 or amount >= 100:
+        return None
+    return str(int(amount)) if amount == int(amount) else number
 
 
 # Nhân thân riêng của NGƯỜI KÝ ĐƠN (Applicant_*) — không được gán cho chủ đầu tư khác khi đổi người nộp.
@@ -906,9 +994,11 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("data[district]", _commune_label(land_area.get("xa")), occurrence=1)
     # soNha CHỈ lấy số nhà rõ ràng (Dat_SoNha) — KHÔNG fallback sang diaChi vì diaChi là tên đường
     # ("Đường Vạn Hạnh") sẽ nhồi cả đường vào ô Số nhà (trùng duongPho). Đường/phố lấy diaChi.
-    add("data[soNha]", _text(values.get("Dat_SoNha")))
-    add("data[duongPho]", _text(_pick(values.get("Dat_DuongPho"), land_area.get("diaChi") if land_area else None)))
-    add("data[thoiGianDuKienHoanThanh]", _number(values.get("CongTrinh_ThoiGianDuKienHoanThanh")))
+    house_no, street = _clean_street(
+        _pick(values.get("Dat_DuongPho"), land_area.get("diaChi") if land_area else None), values.get("Dat_SoNha"))
+    add("data[soNha]", house_no)
+    add("data[duongPho]", street)
+    add("data[thoiGianDuKienHoanThanh]", _months(values.get("CongTrinh_ThoiGianDuKienHoanThanh")))
 
     construction_branch = _construction_branch(values, options)
     # Người dùng chốt 18/11/2026: nhà ở riêng lẻ LUÔN tích "Cá nhân" ở "Tổ chức/cá nhân lập thiết kế" (như Đăk Cấm),
@@ -938,7 +1028,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("data[chieuCaoCongTrinhNhaO]", _number(values.get("CongTrinh_ChieuCao")))
         add("data[chiTietChieuCaoNhaO]", height_detail)
         add("data[soTangNhaO]", _text(values.get("CongTrinh_SoTang")))
-        add("data[chiTietSoTangNhaO]", _text(values.get("CongTrinh_ChiTietSoTang")))
+        add("data[chiTietSoTangNhaO]", _clean_detail(values.get("CongTrinh_ChiTietSoTang")))
     elif construction_branch == "khong_theo_tuyen":
         # Phát NHÃN option (value 1) thay vì mã "1" — lý do như nhánh nhà ở riêng lẻ ở trên.
         add("data[loaiCongTrinh]", "Công trình không theo tuyến, tín ngưỡng, tôn giáo")
@@ -953,7 +1043,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("data[chieuCaoCongTrinhKhongTheoTuyen]", _number(values.get("CongTrinh_ChieuCao")))
         add("data[chiTietChieuCaoCongTrinhKhongTheoTuyen]", height_detail)
         add("data[soTangCongTrinhKhongTheoTuyen]", _number(values.get("CongTrinh_SoTang")))
-        add("data[chiTietSoTangKhongTheoTuyen]", _text(values.get("CongTrinh_ChiTietSoTang")))
+        add("data[chiTietSoTangKhongTheoTuyen]", _clean_detail(values.get("CongTrinh_ChiTietSoTang")))
     elif construction_branch in _BRANCH_LABELS:
         add("data[loaiCongTrinh]", _BRANCH_LABELS[construction_branch])
         _add_other_branch(add, construction_branch, values)

@@ -3,6 +3,14 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.28.19",
+    date: "19/11/2026",
+    items: [
+      "Thêm thủ tục Cấp thị thực cho người nước ngoài tại Việt Nam (thực hiện tại cấp tỉnh) và Cấp thẻ tạm trú cho người nước ngoài tại Việt Nam (Cổng dịch vụ công Bộ Công an): trang thủ tục trên Cổng dịch vụ công quốc gia không cần chọn Tỉnh/Xã, extension tự bấm \"Nộp hồ sơ\", \"Nộp trực tuyến\" rồi bấm tiếp \"Nộp hồ sơ\" trên Cổng dịch vụ công Bộ Công an; có tách giấy tờ khi đính kèm.",
+      "Cổng dịch vụ công Bộ Công an: điền được ô Tỉnh và Phường/Xã của địa chỉ tạm trú, địa chỉ thường trú và nơi tạm trú của người bảo lãnh trên form cấp thị thực.",
+    ],
+  },
+  {
     version: "1.28.18",
     date: "18/11/2026",
     items: [
