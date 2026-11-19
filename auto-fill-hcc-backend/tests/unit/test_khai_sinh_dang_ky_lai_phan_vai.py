@@ -212,3 +212,23 @@ def test_ngay_cap_nguoi_yeu_cau_theo_the_trong_ho_so_khi_cung_so_tai_khoan():
                                "applicantIdDate": "27/04/2024"}}
     assert mapper._with_account(requester, options)["ngay_cap"] == "30/08/2021"
     assert mapper._with_account({**requester, "ngay_cap": ""}, options)["ngay_cap"] == "27/04/2024"
+
+
+def _card_no_colon(name: str, number: str, birth: str, gender: str) -> dict:
+    # OCR thẻ rụng dấu ":" sau nhãn song ngữ số thẻ và giới tính.
+    card = _card(name, number, birth, gender)
+    text = card["text"].replace("Số / No.: ", "Số / No ").replace("Giới tính / Sex: ", "Giới tính / Sex ")
+    return {**card, "text": text}
+
+
+def test_the_ocr_thieu_dau_hai_cham_van_la_mot_nguoi_khi_phan_vai():
+    child = _card_no_colon("LÊ VĂN THỬ", "001076000003", "01/01/1976", "Nam")
+    person = reason._person_from_document(child)
+    assert person and person["id"] == "001076000003" and person["year"] == 1976
+    documents = [
+        _death("TRẦN THỊ MẪU", "01/01/1941", "Nữ"),
+        child,
+        _card("LÊ VĂN GỐC", "001039000002", "01/01/1939", "Nam"),
+    ]
+    # Hai thẻ người còn sống → không phải ca "thẻ duy nhất của người góa", người con không bị hạ vai.
+    assert reason._single_card_spouse(documents) is None

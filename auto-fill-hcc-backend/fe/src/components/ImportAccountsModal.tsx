@@ -25,7 +25,7 @@ const STATUS_META: Record<ImportRowStatus, { label: string; cls: string }> = {
 const STATUS_ORDER: ImportRowStatus[] = [
   "create", "created", "error", "exists", "exists_deleted", "duplicate_in_file",
 ];
-const ROLE_LABEL = { province: "HCC tỉnh", commune: "HCC xã", "": "—" } as const;
+const ROLE_LABEL = { province: "HCC tỉnh", commune: "HCC xã", bca: "Bộ Công an", "": "—" } as const;
 
 type Filter = "all" | ImportRowStatus;
 

@@ -92,8 +92,8 @@ async def require_dashboard(user: dict = Depends(require_auth)) -> dict:
         return user
     if role == "admin":
         return user
-    # HCC xã (commune) / HCC tỉnh (province) tự xem chính mình — kể cả tài khoản tỉnh không có xã.
-    if role in ("commune", "province"):
+    # HCC xã (commune) / HCC tỉnh (province) / Bộ Công an (bca, tester bca) tự xem chính mình — kể cả khi không có xã.
+    if role in ("commune", "province", "bca", "bca_tester"):
         return user
     if user.get("tinh") and user.get("xa"):
         return user

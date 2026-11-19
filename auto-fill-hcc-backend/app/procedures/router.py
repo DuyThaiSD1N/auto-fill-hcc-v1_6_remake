@@ -14,6 +14,7 @@ from app.procedures.ke_khai_links import (
 )
 from app.form_snapshots.step_rules import portal_step_rules
 from app.procedures.agency_level import with_agency_level
+from app.procedures.bca import for_role
 from app.procedures.portal_submit import portal_submit_rules
 from app.procedures.registry import public_list
 
@@ -41,7 +42,8 @@ async def procedures(user: dict = Depends(require_auth)):
     # Handfree đã dùng chính bộ này qua đường chat. Một nguồn, hai kênh.
     # Thủ tục riêng của tỉnh (provinceOnly) chỉ trả cho tài khoản đúng tỉnh — lọc ở đây nên
     # extension không thấy, không tự nhận diện được thủ tục tỉnh khác.
-    listed = with_province_only(public_list(), procedure_province_slugs)
+    # Tài khoản Bộ Công an chỉ nhận thủ tục Bộ Công an: không thấy, không tự nhận diện thủ tục khác.
+    listed = for_role(with_province_only(public_list(), procedure_province_slugs), user.get("role"))
     return {
         "procedures": with_ke_khai_detect_urls(
             visible_in_province(listed, account_province_slug(user))
@@ -64,5 +66,5 @@ async def ke_khai_links(user: dict | None = Depends(_optional_user)):
         return {"links": [with_agency_level(link, "", "") for link in KE_KHAI_LINKS]}
     by_key = {str(p.get("key") or ""): p for p in public_list()}
     links = with_province_only(KE_KHAI_LINKS, lambda link: link_province_slugs(link, by_key))
-    links = [with_agency_level(link, user.get("role"), user.get("xa")) for link in links]
+    links = [with_agency_level(link, user.get("role"), user.get("xa")) for link in for_role(links, user.get("role"))]
     return {"links": visible_in_province(links, account_province_slug(user))}

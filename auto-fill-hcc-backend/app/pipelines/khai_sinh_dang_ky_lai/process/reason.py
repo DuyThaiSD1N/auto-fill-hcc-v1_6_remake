@@ -720,8 +720,10 @@ def _person_from_document(document: dict) -> dict | None:
         )) or birth
     # Thẻ mẫu cũ in ngày sinh và giới tính trên CÙNG một dòng ("28/05/1955 Giới tính / Sex: Nữ").
     birth = _cut_at(birth, (r"Gi[oớ]i\s*t[ií]nh", r"\bSex\b"))
+    # OCR thẻ hay rụng dấu ":" sau nhãn song ngữ ("Giới tính / Sex Nam", "Số / No 0..."); bắt buộc ":" thì
+    # cả tấm thẻ mất số + giới tính và biến khỏi bước phân vai.
     gender = _first_match(block, (
-        r"Giới\s*tính(?:\s*/\s*Sex)?\s*:\s*(Nam|Nữ|Male|Female)",
+        r"Giới\s*tính(?:\s*/\s*Sex)?\s*:?\s*(Nam|Nữ|Male|Female)",
     ))
     if is_death:
         # Giấy khai tử: chỉ dòng "Số định danh cá nhân" ĐẦU TIÊN là của người chết. Dòng đó trống thì người
@@ -735,7 +737,7 @@ def _person_from_document(document: dict) -> dict | None:
         id_number = (label.group(1) or "").strip() if label else ""
     else:
         id_number = _first_match(block, (
-            r"Số\s*/\s*No\.?\s*:\s*([0-9 ]{9,})",
+            r"Số\s*/\s*No\.?\s*:?\s*([0-9 ]{9,})",
             r"Số\s+định\s+danh\s+cá\s+nhân(?:\s*/[^:\n]+)?\s*:\s*([0-9 ]{9,})",
         ))
     ethnicity = _first_match(block, (

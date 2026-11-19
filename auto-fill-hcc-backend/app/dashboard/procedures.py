@@ -12,6 +12,7 @@ Chỉ trả tên, mã TTHC, tỉnh áp dụng và Trợ lý điền/đính kèm;
 import re
 
 from app.channels.handfree.procedure_registry import is_ready_in_province, public_list
+from app.procedures.bca import allowed_for_role
 from app.locations.catalog import find_province, province_by_slug
 from app.procedures.ke_khai_links import KE_KHAI_LINKS
 from app.reports.integration import fold
@@ -66,7 +67,11 @@ def catalog(scope: dict) -> dict:
     slug = "" if see_all else account_province_slug(scope)
     items: list[dict] = []
     counts: dict[str, int] = {}
+    role = (scope.get("self") or {}).get("role") or scope.get("role")
     for proc in public_list():
+        # Tài khoản Bộ Công an: danh mục chỉ gồm thủ tục Bộ Công an, đúng như trợ lý hiện cho tài khoản này.
+        if not see_all and not allowed_for_role(proc["key"], role):
+            continue
         only = sorted(proc.get("provinceOnly") or [])
         if only and not see_all and slug not in only:
             continue

@@ -13,34 +13,46 @@ from app.core.errors import AppError
 from app.db.mongo import get_db
 from app.reports.integration import fold, province_name
 from app.users.roles import (
+    BCA_GROUP,
     NOT_DELETED,
     OFFICIAL_ACCOUNT_ROLES,
     PROVINCE_ADMIN_ROLE,
+    REPORT_UNIT_ROLES,
+    is_bca_role,
     normalized_role,
+    stats_province,
 )
 
 _UNIT_PROJECTION = {"name": 1, "username": 1, "xa": 1, "tinh": 1, "role": 1, "access_disabled": 1}
 
 
 def _unit_of(user: dict) -> dict:
-    return {
+    unit = {
         "unitId": str(user.get("_id") or user.get("id")),
         "name": user.get("name") or user.get("username"),
         "xa": (user.get("xa") or "").strip() or None,
-        "tinh": (user.get("tinh") or "").strip() or None,
+        # Tài khoản Bộ Công an: `tinh` của đơn vị = nhóm "Bộ Công an" để mọi nơi gom theo tỉnh (chọn tỉnh,
+        # khóa ghép Handfree, báo cáo hằng ngày, báo lỗi…) tự tách riêng, không cộng vào tỉnh đã gán.
+        "tinh": stats_province(user),
         "role": normalized_role(user.get("role")),
         "accessDisabled": user.get("access_disabled") is True,
     }
+    if is_bca_role(user.get("role")):
+        unit["accountTinh"] = (user.get("tinh") or "").strip() or None
+    return unit
 
 
 async def _units_matching(province: str | None) -> list[dict]:
     """Đơn vị = tài khoản nghiệp vụ HCC xã/tỉnh (role commune/province). Truyền tỉnh → lọc đúng tỉnh.
 
     Dùng role thay vì "có xã" vì tài khoản HCC tỉnh có thể không gán xã nhưng vẫn là một đơn vị.
+    Toàn hệ thống (không truyền tỉnh) có thêm tài khoản Bộ Công an — nhóm riêng "Bộ Công an"; phạm vi
+    một tỉnh (tài khoản Tỉnh) không bao giờ có.
     """
     target = fold(province_name(province)) if province else None
+    roles = OFFICIAL_ACCOUNT_ROLES if province else REPORT_UNIT_ROLES
     rows = await get_db().users.find(
-        {**NOT_DELETED, "role": {"$in": list(OFFICIAL_ACCOUNT_ROLES)}}, _UNIT_PROJECTION
+        {**NOT_DELETED, "role": {"$in": list(roles)}}, _UNIT_PROJECTION
     ).to_list(5000)
     units: list[dict] = []
     for row in rows:
@@ -81,11 +93,11 @@ async def resolve_dashboard_scope(user: dict) -> dict:
             "self": self_unit,
             "units": units,
         }
-    # Phường/xã: chỉ chính mình.
+    # Phường/xã (và tài khoản Bộ Công an): chỉ chính mình.
     return {
         "role": role,
         "scopeKind": "unit",
-        "province": province_name(self_tinh) or self_tinh or None,
+        "province": BCA_GROUP if is_bca_role(role) else (province_name(self_tinh) or self_tinh or None),
         "canViewUnits": False,
         "self": self_unit,
         "units": [self_unit],

@@ -13,7 +13,13 @@ from app.reports.schemas import ExcelExportRequest
 from app.stats import cutover
 from app.traces import repo as traces_repo
 from app.traces.date_range import parse_stats_range
-from app.users.roles import NOT_DELETED, TDP_ROLE, is_official_account_role, normalized_role
+from app.users.roles import (
+    NOT_DELETED,
+    TDP_ROLE,
+    is_report_unit_role,
+    normalized_role,
+    stats_province,
+)
 
 
 MAX_EXPORT_ACCOUNTS = 200
@@ -61,7 +67,9 @@ async def _all_accounts() -> list[dict]:
     cursor = get_db().users.find(
         {**NOT_DELETED, "role": {"$ne": TDP_ROLE}}, projection,
     ).sort("username", 1)
-    return [account async for account in cursor]
+    # Tài khoản Bộ Công an vào nhóm "Bộ Công an" (chọn như một tỉnh), không vào tỉnh đã gán — báo cáo
+    # của tỉnh không lẫn hồ sơ Bộ Công an, khóa ghép Handfree cũng không trùng xã HCC cùng tên.
+    return [{**account, "tinh": stats_province(account)} async for account in cursor]
 
 
 def build_options(accounts: list[dict]) -> dict:
@@ -80,7 +88,7 @@ def build_options(accounts: list[dict]) -> dict:
             "officialAccountCount": 0,
         })
         item["accountCount"] += 1
-        if is_official_account_role(account.get("role")):
+        if is_report_unit_role(account.get("role")):
             item["officialAccountCount"] += 1
     return {
         "provinces": sorted(provinces.values(), key=lambda item: _fold(item["label"])),
@@ -112,7 +120,7 @@ def select_accounts(accounts: list[dict], body: ExcelExportRequest) -> list[dict
         selected = (
             [
                 account for account in province_accounts
-                if is_official_account_role(account.get("role"))
+                if is_report_unit_role(account.get("role"))
             ]
             if official_only
             else province_accounts
@@ -136,12 +144,12 @@ def select_accounts(accounts: list[dict], body: ExcelExportRequest) -> list[dict
         if body.reportLayout == "daily_summary":
             non_official = [
                 account for account in selected
-                if not is_official_account_role(account.get("role"))
+                if not is_report_unit_role(account.get("role"))
             ]
             if non_official:
                 raise AppError(
                     "REPORT_DAILY_OFFICIAL_ONLY",
-                    "Báo cáo tổng hợp theo ngày chỉ hỗ trợ tài khoản HCC xã hoặc HCC tỉnh.",
+                    "Báo cáo tổng hợp theo ngày chỉ hỗ trợ tài khoản HCC xã, HCC tỉnh hoặc Bộ Công an.",
                     400,
                 )
 

@@ -1,7 +1,10 @@
 // "commune"/"province" (Hành chính công xã/tỉnh): như "user" — không vào panel, chỉ khác nhãn.
 // "province_admin": tài khoản Tỉnh CHỈ để xem bảng thống kê đa đơn vị (khác "province" của HCC).
 // "tdp" (Tổ dân phố): con của một HCC xã (`parent_id`), tỉnh/xã lấy theo xã cha.
-export type Role = "admin" | "user" | "commune" | "province" | "province_admin" | "tdp";
+// "bca" (Hành chính công Bộ Công an): chỉ làm thủ tục Bộ Công an; thống kê thành nhóm "Bộ Công an" riêng,
+// không cộng vào tỉnh nào dù vẫn gán tỉnh/xã.
+// "bca_tester" (Tester HCC Bộ Công an): thủ tục như "bca", thống kê như "user" (không là đơn vị).
+export type Role = "admin" | "user" | "commune" | "province" | "province_admin" | "tdp" | "bca" | "bca_tester";
 
 /** HCC xã làm cha của tổ dân phố (rút gọn). */
 export interface ParentAccount {
@@ -78,6 +81,8 @@ export interface AccountExportProvince {
   label: string;
   communeCount: number;
   provinceCount: number;
+  /** Nhóm "Bộ Công an"; backend cũ không trả. */
+  bcaCount?: number;
   missingPasswordCount: number;
 }
 

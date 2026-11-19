@@ -42,11 +42,13 @@ const ANALYSIS_TABS: { key: AnalysisTab; label: string }[] = [
 ];
 const ROLE_META: Record<Role, { label: string; cls: string }> = {
   admin: { label: "Quản trị", cls: "role-admin" },
-  user: { label: "Người dùng", cls: "role-user" },
+  user: { label: "Tester", cls: "role-user" },
   commune: { label: "HCC xã", cls: "role-commune" },
   province: { label: "HCC tỉnh", cls: "role-province" },
-  province_admin: { label: "Tỉnh (báo cáo)", cls: "role-province" },
+  province_admin: { label: "Quản trị viên tỉnh", cls: "role-province" },
   tdp: { label: "Tổ dân phố", cls: "role-tdp" },
+  bca: { label: "Bộ Công an", cls: "role-bca" },
+  bca_tester: { label: "Tester Bộ Công an", cls: "role-user" },
 };
 const ACCOUNT_ROLE_OPTIONS: Record<StatsScope, { key: AccountRoleFilter; label: string }[]> = {
   official: [
@@ -57,9 +59,11 @@ const ACCOUNT_ROLE_OPTIONS: Record<StatsScope, { key: AccountRoleFilter; label: 
   all: [
     { key: "all", label: "Tất cả vai trò" },
     { key: "admin", label: "Quản trị" },
-    { key: "user", label: "Người dùng" },
+    { key: "user", label: "Tester" },
     { key: "commune", label: "HCC xã" },
     { key: "province", label: "HCC tỉnh" },
+    { key: "bca", label: "Bộ Công an" },
+    { key: "bca_tester", label: "Tester Bộ Công an" },
     { key: "unknown", label: "Không xác định" },
   ],
 };

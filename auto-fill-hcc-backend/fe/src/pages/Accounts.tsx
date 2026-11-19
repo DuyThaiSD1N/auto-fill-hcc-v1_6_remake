@@ -58,11 +58,13 @@ const EMPTY_FORM: FormState = {
 // Nhãn hiển thị + class badge theo role. commune = "Hành chính công xã" (như user, chỉ khác nhãn).
 const ROLE_META: Record<Role, { label: string; cls: string }> = {
   admin: { label: "Quản trị", cls: "role-admin" },
-  user: { label: "Người dùng", cls: "role-user" },
+  user: { label: "Tester", cls: "role-user" },
   commune: { label: "Hành chính công xã", cls: "role-commune" },
   province: { label: "Hành chính công tỉnh", cls: "role-province" },
-  province_admin: { label: "Tỉnh (báo cáo)", cls: "role-province" },
+  province_admin: { label: "Quản trị viên tỉnh", cls: "role-province" },
   tdp: { label: "Tổ dân phố", cls: "role-tdp" },
+  bca: { label: "Hành chính công Bộ Công an", cls: "role-bca" },
+  bca_tester: { label: "Tester HCC Bộ Công an", cls: "role-user" },
 };
 
 // Vai trò quyết định địa bàn cần nhập. Tài khoản cấp tỉnh KHÔNG có xã/phường — ép nhập là
@@ -77,6 +79,8 @@ const ROLE_LOCATION: Record<Role, { tinh: Exclude<LocationRule, "hidden">; xa: L
   province: { tinh: "required", xa: "hidden" },
   province_admin: { tinh: "required", xa: "hidden" },
   tdp: { tinh: "inherited", xa: "inherited" },
+  bca: { tinh: "required", xa: "optional" },
+  bca_tester: { tinh: "optional", xa: "optional" },
 };
 
 // Hai vai trò "tỉnh" nghe gần giống nhau nhưng hậu quả ngược nhau — một cái là ĐƠN VỊ được
@@ -90,21 +94,27 @@ const ROLE_HINT: Record<Role, string> = {
     "Chỉ XEM báo cáo của mọi xã/phường trong tỉnh. Không xử lý hồ sơ, không tính vào số liệu đơn vị.",
   tdp:
     "Thuộc một HCC xã/phường, dùng extension như cán bộ xã. Địa bàn lấy theo xã cha; hồ sơ được CỘNG vào số liệu của xã cha, không thành đơn vị riêng.",
+  bca:
+    "Chỉ thấy và làm các thủ tục Bộ Công an (cư trú, căn cước, lưu trú, xe, hộ chiếu…). Số liệu thuộc nhóm \"Bộ Công an\" riêng, KHÔNG cộng vào tỉnh/xã đã gán.",
+  bca_tester:
+    "Tài khoản thử luồng Bộ Công an: chỉ thấy và làm các thủ tục Bộ Công an như HCC Bộ Công an, nhưng KHÔNG tính vào số liệu đơn vị.",
 };
 
 const PAGE_SIZE = 20;
 // Tổ dân phố không phải đơn vị nhưng hồ sơ của nó được cộng vào xã cha → cũng vào "Hồ sơ thực tế".
 const isOfficialRole = (role: Role | null): boolean =>
-  role === "commune" || role === "province" || role === "tdp";
+  role === "commune" || role === "province" || role === "tdp" || role === "bca";
 type RoleFilter = "all" | Role;
 const ROLE_FILTER_OPTIONS: { key: RoleFilter; label: string }[] = [
   { key: "all", label: "Tất cả vai trò" },
   { key: "admin", label: "Quản trị" },
-  { key: "user", label: "Người dùng" },
+  { key: "user", label: "Tester" },
   { key: "commune", label: "Hành chính công xã" },
   { key: "province", label: "Hành chính công tỉnh" },
-  { key: "province_admin", label: "Tỉnh (báo cáo)" },
+  { key: "province_admin", label: "Quản trị viên tỉnh" },
   { key: "tdp", label: "Tổ dân phố" },
+  { key: "bca", label: "Hành chính công Bộ Công an" },
+  { key: "bca_tester", label: "Tester HCC Bộ Công an" },
 ];
 
 const STATUS_FILTER_OPTIONS: { key: UserStatusFilter; label: string }[] = [
@@ -859,11 +869,13 @@ export default function Accounts({ user, onLogout, view, onNavigate }: Props) {
                   });
                 }}
               >
-                <option value="user">Người dùng</option>
+                <option value="user">Tester</option>
                 <option value="commune">Hành chính công xã</option>
                 <option value="province">Hành chính công tỉnh</option>
                 <option value="tdp">Tổ dân phố (thuộc HCC xã)</option>
-                <option value="province_admin">Tỉnh (xem báo cáo thống kê)</option>
+                <option value="bca">Hành chính công Bộ Công an</option>
+                <option value="bca_tester">Tester HCC Bộ Công an</option>
+                <option value="province_admin">Quản trị viên tỉnh (xem báo cáo thống kê)</option>
                 <option value="admin">Quản trị</option>
               </select>
             </label>

@@ -51,12 +51,13 @@ export default function AccountExport({ user, onLogout, view, onNavigate }: Prop
       (sum, p) => ({
         commune: sum.commune + p.communeCount,
         province: sum.province + p.provinceCount,
+        bca: sum.bca + (p.bcaCount ?? 0),
         missing: sum.missing + p.missingPasswordCount,
       }),
-      { commune: 0, province: 0, missing: 0 },
+      { commune: 0, province: 0, bca: 0, missing: 0 },
     );
   }, [provinces, province]);
-  const totalSelected = selected.commune + selected.province;
+  const totalSelected = selected.commune + selected.province + selected.bca;
   const selectedLabel = province === ALL ? "tất cả tỉnh/thành" : province;
 
   async function runExport(event: React.FormEvent) {
@@ -117,6 +118,7 @@ export default function AccountExport({ user, onLogout, view, onNavigate }: Prop
                       <th>Tỉnh / thành</th>
                       <th className="num">HCC xã</th>
                       <th className="num">HCC tỉnh</th>
+                      <th className="num">Bộ Công an</th>
                       <th className="num">Chưa lưu mật khẩu</th>
                     </tr>
                   </thead>
@@ -127,6 +129,7 @@ export default function AccountExport({ user, onLogout, view, onNavigate }: Prop
                         label: "Tất cả tỉnh/thành",
                         communeCount: provinces.reduce((s, p) => s + p.communeCount, 0),
                         provinceCount: provinces.reduce((s, p) => s + p.provinceCount, 0),
+                        bcaCount: provinces.reduce((s, p) => s + (p.bcaCount ?? 0), 0),
                         missingPasswordCount: provinces.reduce((s, p) => s + p.missingPasswordCount, 0),
                       },
                       ...provinces,
@@ -150,6 +153,7 @@ export default function AccountExport({ user, onLogout, view, onNavigate }: Prop
                         </td>
                         <td className="num">{num(p.communeCount)}</td>
                         <td className="num">{num(p.provinceCount)}</td>
+                        <td className="num">{num(p.bcaCount ?? 0)}</td>
                         <td className="num">
                           {p.missingPasswordCount ? num(p.missingPasswordCount) : <span className="muted">0</span>}
                         </td>
@@ -180,6 +184,7 @@ export default function AccountExport({ user, onLogout, view, onNavigate }: Prop
             <h2 id="export-summary-title">Xuất {selectedLabel}</h2>
             <p>
               {num(totalSelected)} tài khoản · {num(selected.commune)} HCC xã · {num(selected.province)} HCC tỉnh
+              {selected.bca > 0 && ` · ${num(selected.bca)} Bộ Công an`}
               {selected.missing ? ` · ${num(selected.missing)} chưa lưu mật khẩu` : ""}
               {province === ALL && provinces.length > 1 ? ` · mỗi tỉnh/thành một sheet (${num(provinces.length)} sheet)` : ""}
             </p>

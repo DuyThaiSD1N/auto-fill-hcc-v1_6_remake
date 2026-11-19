@@ -1742,6 +1742,10 @@ tbody tr:last-child td {
   background: #fdf0d5;
   color: #8a5a12;
 }
+.badge.role-bca {
+  background: #e3ecfb;
+  color: #1d3f8a;
+}
 
 /* ---------- Modal ---------- */
 .modal-backdrop {

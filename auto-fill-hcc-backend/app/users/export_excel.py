@@ -15,9 +15,10 @@ from app.core.errors import AppError
 from app.db.mongo import get_db
 from app.reports.integration import fold, province_name
 from app.users import password_vault
-from app.users.roles import NOT_DELETED, OFFICIAL_ACCOUNT_ROLES
+from app.users.roles import NOT_DELETED, REPORT_UNIT_ROLES, stats_province
 
-ROLE_LABELS = {"commune": "Hành chính công xã", "province": "Hành chính công tỉnh"}
+ROLE_LABELS = {"commune": "Hành chính công xã", "province": "Hành chính công tỉnh", "bca": "Hành chính công Bộ Công an"}
+_COUNT_KEY = {"commune": "communeCount", "bca": "bcaCount"}
 HEADERS = ["Tên đăng nhập", "Mật khẩu", "Tên", "Tỉnh", "Xã/Phường", "Vai trò", "Trạng thái"]
 _WIDTHS = (26, 18, 36, 24, 28, 22, 14)
 _VN = timezone(timedelta(hours=7))
@@ -25,13 +26,14 @@ _VN = timezone(timedelta(hours=7))
 
 async def _accounts() -> list[dict]:
     cursor = get_db().users.find(
-        {**NOT_DELETED, "role": {"$in": sorted(OFFICIAL_ACCOUNT_ROLES)}},
+        {**NOT_DELETED, "role": {"$in": sorted(REPORT_UNIT_ROLES)}},
         {"username": 1, "name": 1, "tinh": 1, "xa": 1, "role": 1, "access_disabled": 1,
          "password_enc": 1},
     )
     out = []
     async for doc in cursor:
-        label = province_name(doc.get("tinh"))
+        # Tài khoản Bộ Công an xuất theo nhóm "Bộ Công an" (chọn như một tỉnh), cột Tỉnh vẫn ghi tỉnh đã gán.
+        label = province_name(stats_province(doc))
         if not label:
             continue  # chưa gán tỉnh → không thuộc tỉnh nào để xuất
         out.append({**doc, "_province": label, "_province_key": fold(label)})
@@ -46,9 +48,10 @@ async def options() -> dict:
             "label": doc["_province"],
             "communeCount": 0,
             "provinceCount": 0,
+            "bcaCount": 0,
             "missingPasswordCount": 0,
         })
-        item["communeCount" if doc.get("role") == "commune" else "provinceCount"] += 1
+        item[_COUNT_KEY.get(doc.get("role"), "provinceCount")] += 1
         if not doc.get("password_enc"):
             item["missingPasswordCount"] += 1
     return {
@@ -63,9 +66,9 @@ def _row(doc: dict) -> list[str]:
         doc.get("username") or "",
         password_vault.decrypt(doc.get("password_enc")) or "",
         doc.get("name") or "",
-        doc["_province"],
+        province_name(doc.get("tinh")) if role == "bca" else doc["_province"],
         # HCC tỉnh là đơn vị cấp tỉnh: dữ liệu cũ có thể còn sót `xa`, không đưa vào danh sách.
-        (doc.get("xa") or "") if role == "commune" else "",
+        (doc.get("xa") or "") if role in ("commune", "bca") else "",
         ROLE_LABELS.get(role, role or ""),
         "Tạm khoá" if doc.get("access_disabled") is True else "Hoạt động",
     ]

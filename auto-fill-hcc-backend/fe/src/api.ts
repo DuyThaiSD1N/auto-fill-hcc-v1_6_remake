@@ -306,7 +306,7 @@ export interface ImportRow {
   username: string;
   tinh: string;
   xa: string;
-  role: "" | "commune" | "province";
+  role: "" | "commune" | "province" | "bca";
   status: ImportRowStatus;
   message: string;
 }

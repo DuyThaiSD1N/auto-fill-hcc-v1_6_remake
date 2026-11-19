@@ -150,3 +150,12 @@ def test_thang_viet_tay_net_gach_doc_thanh_so_1():
     out = mapper.enrich([{"name": "Mother_FullName", "comp": "x-input", "value": "Phan Thị A"},
                          {"name": "Mother_BirthDateOrYear", "comp": "x-input", "value": "10/21/1937"}], {})
     assert {f["name"]: f.get("value") for f in out}.get("NamSinhMeKS") in ("10/2/1937", "10/02/1937")
+
+
+def test_the_ocr_thieu_dau_hai_cham_van_doc_duoc_so_va_gioi_tinh():
+    text = ("CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nCĂN CƯỚC CÔNG DÂN\nSố / No 012076000011\n"
+            "Họ và tên / Full name:\nLÒ VĂN C\nNgày sinh / Date of birth: 03/07/1976\nGiới tính / Sex Nam Quốc tịch / Nationality Việt Nam\n"
+            "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nCĂN CƯỚC CÔNG DÂN\nSố / No 012039000012\n"
+            "Họ và tên / Full name:\nLÒ VĂN D\nNgày sinh / Date of birth: 15/07/1939\nGiới tính / Sex Nam\n")
+    people = [reason._person_from_document(unit) for unit in reason._identity_units([{"name": "the.pdf", "text": text}])]
+    assert [(p["name"], p["id"]) for p in people] == [("LÒ VĂN C", "012076000011"), ("LÒ VĂN D", "012039000012")]

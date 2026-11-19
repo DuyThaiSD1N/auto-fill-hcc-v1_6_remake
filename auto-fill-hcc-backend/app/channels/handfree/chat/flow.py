@@ -53,6 +53,7 @@ from app.channels.handfree.procedure_registry import (
 )
 from app.channels.handfree.profiles import service as profile_service
 from app.procedures.agency_level import with_agency_level
+from app.procedures.bca import allowed_for_role, for_role
 from app.procedures.portal_submit import needs_submit_click
 from app.form_snapshots.step_rules import form_snapshot_config
 from app.channels.handfree.documents import service as upload_service
@@ -207,6 +208,15 @@ def _account_province_slug(conv: dict | None) -> str:
     return str(((conv or {}).get("auth_user") or {}).get("province_slug") or "")
 
 
+def _account_role(conv: dict | None) -> str:
+    return str(((conv or {}).get("auth_user") or {}).get("role") or "")
+
+
+def _account_procedures(conv: dict | None) -> list[dict]:
+    """Thủ tục tài khoản được thấy: theo tỉnh tài khoản, rồi theo role (Bộ Công an chỉ thủ tục Bộ Công an)."""
+    return for_role(public_list_for(_account_province_slug(conv)), _account_role(conv))
+
+
 def _service_list_card(conv: dict | None = None) -> dict:
     # hiddenFromList: thủ tục ẩn khỏi card nhưng VẪN chạy khi người dân gọi tên
     # hoặc extension detect đúng trang.
@@ -215,7 +225,7 @@ def _service_list_card(conv: dict | None = None) -> dict:
     # Chế độ tiếng Mông: thẻ thêm titleHmong (FE hiện dòng nghiêng dưới tên Việt như mockup).
     hmong = _TURN_LANG.get() == "hmong"
     items = []
-    for p in public_list_for(_account_province_slug(conv)):
+    for p in _account_procedures(conv):
         if p.get("hiddenFromList"):
             continue
         order = frequent_order(p["key"])
@@ -1774,7 +1784,7 @@ def _confirm_procedure_refresh(conv: dict) -> Reply:
 def _procedure_not_recognized(conv: dict) -> Reply:
     conv["procedure_candidates"] = []
     r = Reply(*_fmt(vi.PROCEDURE_NOT_RECOGNIZED,
-                    count=len(public_list_for(_account_province_slug(conv)))))
+                    count=len(_account_procedures(conv))))
     r.cards = [_service_list_card(conv)]
     return r
 
@@ -1786,7 +1796,8 @@ def _procedure_unclear(conv: dict, keys: list) -> Reply:
     ("cái thứ hai", "người mất là người khuyết tật") với câu trước.
     """
     slug = _account_province_slug(conv)
-    procs = [p for k in keys if (p := get_procedure(str(k))) and is_visible_in_province(p, slug)][:3]
+    procs = [p for k in keys if (p := get_procedure(str(k))) and is_visible_in_province(p, slug)
+             and allowed_for_role(p["key"], _account_role(conv))][:3]
     if not procs:
         return _procedure_not_recognized(conv)
     conv["procedure_candidates"] = [p["key"] for p in procs]
@@ -1850,6 +1861,10 @@ def _to_confirm_procedure(conv: dict, key: str) -> Reply:
     if not proc:
         return _procedure_not_recognized(conv)
     conv["procedure_candidates"] = []
+    # Tài khoản Bộ Công an chỉ làm thủ tục Bộ Công an: thủ tục khác coi như không có trong danh mục của
+    # tài khoản (cùng choke point nên bấm ô / gọi tên / detect trang đều chặn như nhau).
+    if not allowed_for_role(key, _account_role(conv)):
+        return _procedure_not_recognized(conv)
     # Khóa theo tỉnh: choke point DUY NHẤT cho mọi lối chọn (bấm ô, gọi tên, detect). Account
     # khác tỉnh → không mở, giữ state greet, mời chọn thủ tục khác.
     if not is_allowed_in_province(proc, account_slug):
@@ -1964,7 +1979,7 @@ def _answer_question(conv: dict, question: str, mentioned_key: str | None = None
     elif proc:
         r = Reply(*_fmt(vi.ANSWER_ONLY_DOCS_AND_STEPS, procedure=label))
     else:
-        visible = public_list_for(_account_province_slug(conv))
+        visible = _account_procedures(conv)
         names = ", ".join((p.get("shortLabel") or p["label"]) for p in visible)
         r = Reply(*_fmt(vi.OFF_SCOPE, count=len(visible), procedures=names))
         r.cards = [_service_list_card(conv)]

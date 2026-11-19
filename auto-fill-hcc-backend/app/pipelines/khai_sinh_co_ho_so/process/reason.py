@@ -684,8 +684,10 @@ def _person_from_document(document: dict) -> dict | None:
         )) or birth
     # Thẻ mẫu cũ in ngày sinh và giới tính trên CÙNG một dòng ("28/05/1955 Giới tính / Sex: Nữ").
     birth = _cut_at(birth, (r"Gi[oớ]i\s*t[ií]nh", r"\bSex\b"))
+    # OCR thẻ hay rụng dấu ":" sau nhãn song ngữ ("Giới tính / Sex Nam", "Số / No 0..."); bắt buộc ":" thì
+    # cả tấm thẻ mất số + giới tính và biến khỏi bước phân vai.
     gender = _first_match(block, (
-        r"Giới\s*tính(?:\s*/\s*Sex)?\s*:\s*(Nam|Nữ|Male|Female)",
+        r"Giới\s*tính(?:\s*/\s*Sex)?\s*:?\s*(Nam|Nữ|Male|Female)",
     ))
     # Mẫu 2024 in hai nhãn trên MỘT dòng ("Date of birth:  Giới tính / Sex:") và ngày sinh + giới tính
     # ở DÒNG DƯỚI ("01/01/1990 Nam").
@@ -712,7 +714,7 @@ def _person_from_document(document: dict) -> dict | None:
         id_number = (label.group(1) or "").strip() if label else ""
     else:
         id_number = _first_match(block, (
-            r"Số\s*/\s*No\.?\s*:\s*([0-9 ]{9,})",
+            r"Số\s*/\s*No\.?\s*:?\s*([0-9 ]{9,})",
             r"Số\s+định\s+danh\s+cá\s+nhân(?:\s*/[^:\n]+)?\s*:\s*([0-9 ]{9,})",
             r"^\s*SỐ\s+([0-9 ]{9,})",
         ))
@@ -1539,7 +1541,7 @@ _UNIT_NAME_LINE_RE = re.compile(
 
 
 # CMND mẫu cũ in "SỐ 0xxxxxxxx" đầu dòng, không có nhãn song ngữ.
-_CARD_FRONT_ID_RE = re.compile(r"(?:Số\s*/\s*No\.?\s*:|^\s*SỐ\s+)\s*([0-9 ]{9,})", flags=re.MULTILINE)
+_CARD_FRONT_ID_RE = re.compile(r"(?:Số\s*/\s*No\.?\s*:?|^\s*SỐ\s+)\s*([0-9 ]{9,})", flags=re.MULTILINE)
 _CARD_FRONT_HEADER_RE = re.compile(r"^\s*C[OỘ]NG\s+H[OÒ]A\s+X[AÃ]\s+H[OỘ]I", flags=re.IGNORECASE | re.MULTILINE)
 
 

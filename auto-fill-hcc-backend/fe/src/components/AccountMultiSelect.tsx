@@ -5,11 +5,13 @@ import type { ReportAccount, Role } from "../types";
 
 const ROLE_LABEL: Record<Role, string> = {
   admin: "Quản trị",
-  user: "Người dùng",
+  user: "Tester",
   commune: "HCC xã",
   province: "HCC tỉnh",
-  province_admin: "Tỉnh (báo cáo)",
+  province_admin: "Quản trị viên tỉnh",
   tdp: "Tổ dân phố",
+  bca: "Bộ Công an",
+  bca_tester: "Tester Bộ Công an",
 };
 
 function fold(value: string): string {

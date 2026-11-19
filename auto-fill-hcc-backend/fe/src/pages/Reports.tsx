@@ -21,14 +21,15 @@ interface Props {
 }
 
 const MAX_EXPORT_ACCOUNTS = 200;
-const OFFICIAL_ROLES = new Set(["commune", "province"]);
+// Khớp backend REPORT_UNIT_ROLES: tài khoản Bộ Công an cũng là đơn vị báo cáo (nhóm "Bộ Công an" riêng).
+const OFFICIAL_ROLES = new Set(["commune", "province", "bca"]);
 
 function isOfficialAccount(account: ReportAccount): boolean {
   return OFFICIAL_ROLES.has(account.role);
 }
 
 function officialRoleLabel(account: ReportAccount): string {
-  return account.role === "province" ? "HCC tỉnh" : "HCC xã";
+  return account.role === "province" ? "HCC tỉnh" : account.role === "bca" ? "Bộ Công an" : "HCC xã";
 }
 
 function vietnamDay(): string {

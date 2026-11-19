@@ -71,7 +71,9 @@ def place_of(unit: dict) -> str:
 
 
 def prov_of(unit: dict) -> str:
-    return _lower_first(province_name(unit.get("tinh")) or "")
+    # Đơn vị Bộ Công an mang `tinh` = nhóm "Bộ Công an" trên thống kê; dòng tỉnh trên biên bản là tỉnh thật.
+    tinh = unit.get("accountTinh") if "accountTinh" in unit else unit.get("tinh")
+    return _lower_first(province_name(tinh) or "")
 
 
 def eval_default(place: str) -> list[str]:

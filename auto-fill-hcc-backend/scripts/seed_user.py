@@ -58,7 +58,7 @@ def main() -> None:
     p.add_argument("--name", default=None)
     p.add_argument("--xa", default=None, help="Tên xã/phường")
     p.add_argument("--tinh", default=None, help="Tên tỉnh/thành")
-    p.add_argument("--role", default="user", choices=["admin", "user", "commune", "province"])
+    p.add_argument("--role", default="user", choices=["admin", "user", "commune", "province", "bca", "bca_tester"])
     args = p.parse_args()
     if len(args.password) < 8:
         raise SystemExit("Mật khẩu phải >= 8 ký tự")

@@ -6,7 +6,9 @@ from pydantic import BaseModel, field_validator
 # extension), chỉ khác nhãn phân loại. Mọi cổng quyền check == "admin" nên coi là non-admin.
 # "province_admin": tài khoản Tỉnh CHỈ để xem bảng thống kê (đa đơn vị cùng tỉnh), không xử lý hồ sơ.
 # "tdp" (Tổ dân phố): con của một HCC xã (`parent_id`), tỉnh/xã lấy theo xã cha.
-Role = Literal["admin", "user", "commune", "province", "province_admin", "tdp"]
+# "bca" (Hành chính công Bộ Công an): chỉ làm thủ tục Bộ Công an; thống kê thành nhóm riêng, không thuộc tỉnh nào.
+# "bca_tester" (Tester HCC Bộ Công an): như "bca" về thủ tục, như "user" về thống kê (không là đơn vị).
+Role = Literal["admin", "user", "commune", "province", "province_admin", "tdp", "bca", "bca_tester"]
 
 
 class UserManaged(BaseModel):

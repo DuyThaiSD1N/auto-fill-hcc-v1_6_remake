@@ -42,12 +42,12 @@ HEADER_SCAN_ROWS = 5
 # server hàng chục giây với file ~100 dòng. Đẩy sang thread (bcrypt nhả GIL) và giới hạn luồng.
 HASH_WORKERS = 4
 
-ROLE_LABELS = {"province": "Hành chính công tỉnh", "commune": "Hành chính công xã"}
+ROLE_LABELS = {"province": "Hành chính công tỉnh", "commune": "Hành chính công xã", "bca": "Hành chính công Bộ Công an"}
 # File nhập CHỈ tạo được hai loại tài khoản nghiệp vụ. Không có đường nào để một file tải lên
 # tạo admin / tài khoản xem thống kê tỉnh.
 _ROLE_BY_TEXT = {
     fold(label): role for role, label in ROLE_LABELS.items()
-} | {"province": "province", "commune": "commune"}
+} | {"province": "province", "commune": "commune", "bca": "bca"}
 
 # Tên cột (đã bỏ dấu) → trường. Khớp BẰNG hoặc là TIỀN TỐ của tiêu đề; nhiều cột cùng khớp thì
 # lấy bí danh dài nhất ("ten tinh" thắng "ten"). Cột lạ (STT, Mã cơ quan, Ghi chú…) bỏ qua.
@@ -159,7 +159,7 @@ def _validate(raw: dict) -> dict:
 
     role = _ROLE_BY_TEXT.get(fold(raw["role"]))
     if not role:
-        return error("Role chỉ nhận 'Hành chính công tỉnh' hoặc 'Hành chính công xã'.")
+        return error("Role chỉ nhận 'Hành chính công tỉnh', 'Hành chính công xã' hoặc 'Hành chính công Bộ Công an'.")
     result["role"] = role
 
     try:

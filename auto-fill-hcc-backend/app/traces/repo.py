@@ -21,7 +21,7 @@ from app.users.roles import NOT_DELETED, OFFICIAL_ACCOUNT_ROLES, normalized_role
 
 # Nhãn hiển thị model OCR theo provider key.
 _OCR_LABELS = {"tiengnoi": "vintern-v12"}
-_ALL_STATS_ROLES = ("admin", "user", "commune", "province")
+_ALL_STATS_ROLES = ("admin", "user", "commune", "province", "bca", "bca_tester")
 _FILE_SUFFIX_RE = re.compile(r"\.[^./\\]+$")
 # Mốc migration cố định: 00:00 25/08/2026 giờ Việt Nam.
 # Trước mốc giữ nguyên số lịch sử; từ mốc mới bỏ phần mở rộng khi so tên file.
