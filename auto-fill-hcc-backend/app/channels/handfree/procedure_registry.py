@@ -7210,6 +7210,9 @@ PROCEDURES: list[dict] = [
             {"key": "ho_chieu", "name": "Hộ chiếu cũ (nếu đã từng được cấp)", "icon": "🛂", "sides": 1,
              "optional": True, "repeatable": True},
             {"key": "cccd", "name": "Thẻ căn cước", "icon": "🪪", "sides": 2, "optional": True},
+            # Cổng bắt buộc ô Ảnh chân dung đầu trang kê khai (.jpg dưới 2 MB): runner nhận tệp ảnh ít chữ / tên "chân
+            # dung", đổi sang JPEG rồi extension gắn vào ô (comp bca-photo).
+            {"key": "anh_chan_dung", "name": "Ảnh chân dung 4x6 nền trắng (tệp .jpg)", "icon": "🖼️", "sides": 1},
         ],
         "mode": "agent",
         "review": False,
@@ -7220,6 +7223,8 @@ PROCEDURES: list[dict] = [
             "1. Tờ khai đề nghị cấp hộ chiếu phổ thông ở trong nước.\n"
             "2. Hộ chiếu cũ — trang có ảnh và trang cơ quan cấp (nếu đã từng được cấp).\n"
             "3. Thẻ căn cước (nếu có).\n"
+            "4. Ảnh chân dung 4x6 nền trắng, tệp ảnh riêng, định dạng .jpg (cổng chỉ nhận .jpg dưới 2 MB; ảnh .png / "
+            ".heic hệ thống tự đổi sang .jpg). Tôi tự gắn ảnh vào ô Ảnh chân dung đầu tờ khai.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
     },
@@ -7331,6 +7336,9 @@ PROCEDURES: list[dict] = [
              "sides": 1, "repeatable": True},
             {"key": "cccd", "name": "Thẻ căn cước của người đăng nhập (bên bảo lãnh)", "icon": "🪪", "sides": 2,
              "optional": True},
+            # Ô Ảnh chân dung đầu trang (.jpg dưới 2 MB) — runner đổi JPEG, extension gắn (comp bca-photo), như hộ chiếu.
+            {"key": "anh_chan_dung", "name": "Ảnh chân dung 4x6 nền trắng của người nước ngoài (tệp .jpg)",
+             "icon": "🖼️", "sides": 1},
         ],
         "mode": "agent",
         "review": False,
@@ -7343,6 +7351,8 @@ PROCEDURES: list[dict] = [
             "3. Hộ chiếu của người nước ngoài — trang có ảnh, trang thị thực, dấu nhập cảnh.\n"
             "4. Giấy phép lao động hoặc giấy tờ chứng minh thuộc diện cấp thẻ tạm trú.\n"
             "5. Thẻ căn cước của người đăng nhập (nếu có).\n"
+            "6. Ảnh chân dung 4x6 nền trắng của người nước ngoài, tệp ảnh riêng, định dạng .jpg (cổng chỉ nhận .jpg dưới "
+            "2 MB; ảnh .png / .heic hệ thống tự đổi sang .jpg). Tôi tự gắn ảnh vào ô Ảnh chân dung đầu tờ khai.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
     },

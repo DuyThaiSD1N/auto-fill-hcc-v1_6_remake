@@ -28,13 +28,39 @@ def _by(out: list[dict]) -> dict:
     return {f["name"]: f["value"] for f in out}
 
 
+def _field(out: list[dict], name: str) -> dict:
+    return next(f for f in out if f["name"] == name)
+
+
 def test_tu_ke_khai_thu_tu_va_gia_tri():
     out = _enrich(SELF)
     names = [f["name"] for f in out]
     by = _by(out)
-    # Không đụng khối người cần cấp (cổng ẩn khi tự kê khai) và Phần I khoá theo tài khoản.
-    assert not {"txtFULLNAME_NCC", "txtIDENTIFY_NUMBER_NCC", "cboRELATIONSHIP_WITH_NDN", "txtFULLNAME_NDN"} & set(by)
-    assert by["radIsNCC"] == "Người kê khai là người cần cấp đổi căn cước"
+    # Phần I khoá theo tài khoản → không ghi họ tên / số định danh người kê khai.
+    assert not {"txtFULLNAME_NDN", "txtIDENTIFY_NUMBER_NDN"} & set(by)
+    # Radio người kê khai do extension chọn theo TÀI KHOẢN đăng nhập (so với người cần cấp đổi trên giấy), không theo giấy.
+    declarant = _field(out, "radIsNCC")
+    assert declarant["comp"] == "bca-declarant"
+    assert declarant["value"]["subject"] == {"name": "NGUYEN VAN AN", "id": "012201000001"}
+    assert declarant["value"]["selfLabel"] == "Người kê khai là người cần cấp đổi căn cước"
+    assert declarant["value"]["otherLabel"] == ("Người kê khai là cha/mẹ/người đại diện hợp pháp của người cần cấp "
+                                                "đổi căn cước")
+    assert declarant["value"]["accountNameId"] == "txtFULLNAME_NDN"
+    assert declarant["value"]["accountIdId"] == "txtIDENTIFY_NUMBER_NDN"
+    # Khối người cần cấp đổi chỉ điền khi tài khoản là người khác (bcaOtherOnly), đứng sau radio.
+    for name in ("txtFULLNAME_NCC", "txtBIRTHDATE_NCC", "cboGENDER_ID_NCC", "txtIDENTIFY_NUMBER_NCC",
+                 "cboRELATIONSHIP_WITH_NDN"):
+        assert _field(out, name).get("bcaOtherOnly") is True
+        assert names.index("radIsNCC") < names.index(name)
+    assert not any(f.get("bcaOtherOnly") or f.get("bcaSelfOnly") for f in out if f["name"] in ("cboLyDoCap", "cboORG"))
+    # SĐT / email người cần cấp đổi chỉ vào Phần I khi tài khoản chính là người đó (tài khoản khác → để ô cho chủ tài
+    # khoản tự nhập, không ghi số / email người trên giấy).
+    for name in ("txtPHONE_NUMBER_NDN", "txtEMAIL_ADDRESS_NDN"):
+        assert _field(out, name).get("bcaSelfOnly") is True and not _field(out, name).get("bcaOtherOnly")
+    assert by["txtFULLNAME_NCC"] == "NGUYEN VAN AN" and by["txtIDENTIFY_NUMBER_NCC"] == "012201000001"
+    # Giấy không ghi mục II → tài khoản khác người cần cấp đổi thì chọn "Người đại diện hợp pháp".
+    assert by["cboRELATIONSHIP_WITH_NDN"]["people"] == []
+    assert by["cboRELATIONSHIP_WITH_NDN"]["fallback"] == "Người đại diện hợp pháp"
     assert by["txtPHONE_NUMBER_NDN"] == "0912000111" and by["txtEMAIL_ADDRESS_NDN"] == "an.mau@example.com"
     assert by["cboLyDoCap"] == "Đổi thẻ căn cước khi công dân đủ 25 tuổi"
     # Lý do trước nhóm nhận kết quả; radio cấp thực hiện trước ô cơ quan.
@@ -58,21 +84,45 @@ def test_cha_me_ke_khai_thay_khai_nguoi_can_cap_o_phan_ii():
     out = _enrich(values)
     names = [f["name"] for f in out]
     by = _by(out)
-    assert by["radIsNCC"] == "Người kê khai là cha/mẹ/người đại diện hợp pháp của người cần cấp đổi căn cước"
+    assert by["radIsNCC"]["subject"] == {"name": "NGUYEN VAN AN", "id": "012201000001"}
     assert names.index("radIsNCC") < names.index("txtFULLNAME_NCC")
     assert by["txtFULLNAME_NCC"] == "NGUYEN VAN AN" and by["txtBIRTHDATE_NCC"] == "01/02/2001"
     assert by["txtIDENTIFY_NUMBER_NCC"] == "012201000001"
     # Không đọc được giới tính → chữ số thứ 4 của số định danh (2 = chẵn = nam).
     assert by["cboGENDER_ID_NCC"] == "Nam"
-    assert by["cboRELATIONSHIP_WITH_NDN"] == "Mẹ"
-    # SĐT Phần I là của người kê khai (mục II.5), không lấy SĐT người cần cấp.
+    # Quan hệ theo tài khoản: trùng người ở mục II thì "Mẹ", không trùng thì "Người đại diện hợp pháp".
+    assert by["cboRELATIONSHIP_WITH_NDN"]["people"] == [
+        {"relation": "Mẹ", "name": "TRAN THI BINH", "id": "012170000002"}]
+    assert by["cboRELATIONSHIP_WITH_NDN"]["fallback"] == "Người đại diện hợp pháp"
+    # SĐT Phần I là của người kê khai (mục II.5), không lấy SĐT người cần cấp; chỉ điền khi tài khoản là người khác.
     assert by["txtPHONE_NUMBER_NDN"] == "0987000222"
+    phone = _field(out, "txtPHONE_NUMBER_NDN")
+    assert phone.get("bcaOtherOnly") is True and not phone.get("bcaSelfOnly")
     assert "txtEMAIL_ADDRESS_NDN" not in by
 
 
 def test_muc_ii_ghi_chinh_nguoi_can_cap_van_la_tu_ke_khai():
-    by = _by(_enrich({**SELF, "NguoiDaiDien_HoTen": "Nguyễn Văn An", "NguoiDaiDien_SoDinhDanh": "012201000001"}))
-    assert by["radIsNCC"] == "Người kê khai là người cần cấp đổi căn cước"
+    by = _by(_enrich({**SELF, "NguoiDaiDien_HoTen": "Nguyễn Văn An", "NguoiDaiDien_SoDinhDanh": "012201000001",
+                      "NguoiDaiDien_QuanHe": "Mẹ"}))
+    # Mục II ghi chính người cần cấp → không phải người kê khai thay: SĐT của người cần cấp, quan hệ không lấy mục II.
+    assert by["txtPHONE_NUMBER_NDN"] == "0912000111"
+    assert by["cboRELATIONSHIP_WITH_NDN"]["people"] == []
+
+
+def test_giay_chi_co_ho_ten_van_so_tai_khoan_theo_ho_ten():
+    values = {k: v for k, v in SELF.items() if k != "NguoiCanCap_SoDinhDanh"}
+    out = _enrich(values)
+    assert _field(out, "radIsNCC")["value"]["subject"] == {"name": "NGUYEN VAN AN"}
+    assert "txtIDENTIFY_NUMBER_NCC" not in _by(out)
+
+
+def test_khong_doc_duoc_nguoi_can_cap_thi_khong_chon_radio():
+    values = {k: v for k, v in SELF.items() if not k.startswith("NguoiCanCap_")}
+    out = _enrich(values)
+    by = _by(out)
+    assert not {"radIsNCC", "txtFULLNAME_NCC", "cboRELATIONSHIP_WITH_NDN"} & set(by)
+    # Không có radio thì không gắn cờ theo người kê khai (extension không bỏ qua ô).
+    assert not any(f.get("bcaSelfOnly") or f.get("bcaOtherOnly") for f in out)
 
 
 def test_nop_cong_an_tinh_chi_chon_tinh_va_nhan_tinh_theo_cong():

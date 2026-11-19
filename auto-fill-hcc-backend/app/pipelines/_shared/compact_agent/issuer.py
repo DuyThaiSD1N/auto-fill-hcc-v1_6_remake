@@ -53,7 +53,8 @@ def normalize_issuer(place) -> str:
         or (folded.startswith("cuc") and "quan ly" in folded and re.search(r"\b(trat|trai|chat) tu xa hoi\b", folded))
     ):
         return ISSUER_CUC
-    if "bo cong an" in folded or "ministry of public security" in folded:
+    # Đơn / bản cam đoan viết tay hay ghi tắt "Bộ CA (cấp)".
+    if "bo cong an" in folded or "ministry of public security" in folded or re.fullmatch(r"bo\s*c\.?\s*a\.?(\s+cap)?", folded):
         return ISSUER_BO_CONG_AN
     return text
 

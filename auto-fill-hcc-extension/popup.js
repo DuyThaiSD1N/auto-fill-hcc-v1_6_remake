@@ -5618,6 +5618,15 @@ ocrBtn.addEventListener("click", async () => {
     lastProcessSession = res.sessionId ? { procedure: cfg.key, sessionId: res.sessionId } : null;
     showSupportCode(res.requestId || res.sessionId);
 
+    // BE cố ý không điền (vd giấy tờ của người khác chủ tài khoản VNeID, mapper.account_block): hiện đúng câu BE gửi,
+    // không rơi xuống câu chung "Không đọc được thông tin từ giấy tờ", không chạy đính kèm.
+    if (res.blocked?.message) {
+      console.warn("[AutoFill] BE không điền:", res.blocked);
+      setStatus(String(res.blocked.message), "err");
+      await showPageToast(String(res.blocked.message), "warn");
+      return;
+    }
+
     const fillOutcome = await dispatchFill(res.fields || [], res.errors || [], page, res.requestId);
 
     // Rà soát bbox: thủ tục bật review → nạp sources + đẩy xuống content + hiện card "Xem trên ảnh".

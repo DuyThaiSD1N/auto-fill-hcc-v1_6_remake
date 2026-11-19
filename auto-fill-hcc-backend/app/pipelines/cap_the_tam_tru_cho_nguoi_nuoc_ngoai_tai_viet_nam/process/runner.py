@@ -8,6 +8,7 @@ tiêu đề của bước đính kèm (attach/dinh_kem_khong_tach/planner.page_t
 import re
 
 from app.pipelines._shared.compact_agent import runner
+from app.pipelines.cap_ho_chieu_pho_thong_o_trong_nuoc.process import mapper as ho_chieu_mapper
 from app.pipelines.cap_the_tam_tru_cho_nguoi_nuoc_ngoai_tai_viet_nam.attach.dinh_kem_khong_tach import planner as attach
 from app.pipelines.cap_the_tam_tru_cho_nguoi_nuoc_ngoai_tai_viet_nam.process import mapper
 from app.pipelines.cap_the_tam_tru_cho_nguoi_nuoc_ngoai_tai_viet_nam.process.prompt import EXTRA_RULES
@@ -87,6 +88,16 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
     values = {f["name"]: f.get("value") for f in res.get("fields") or [] if isinstance(f, dict) and f.get("name")}
     note = ghi_chu(str(res.get("ocr_text") or ""), [n for n in names if n], values)
     res["fields"], warnings = mapper.enrich(res["fields"], options, ghi_chu=note)
+    # Ảnh chân dung 4x6 (ô tải ảnh filename46 đầu trang, cùng khuôn hộ chiếu 1.001456): tệp ảnh gần như không chữ trong
+    # bộ giấy → JPEG dưới 2 MB, phát đầu danh sách; không có thì nhắc tải ảnh .jpg.
+    files = runner.flatten(files_by_role or {})
+    by_name = _ocr_by_file(str(res.get("ocr_text") or ""), [n for n in names if n])
+    texts = {i: by_name.get(str(f.get("name") or ""), "") for i, f in enumerate(files)}
+    photo, notes = ho_chieu_mapper.portrait_field(files, texts)
+    if photo:
+        res["fields"] = [photo, *res["fields"]]
+        warnings = [mapper.PASSPORT_PAGE_WARNING if w == mapper.PHOTO_WARNING else w for w in warnings]
+    warnings = [*notes, *warnings]
     if warnings:
         res.setdefault("errors", []).extend(warnings)
     return res

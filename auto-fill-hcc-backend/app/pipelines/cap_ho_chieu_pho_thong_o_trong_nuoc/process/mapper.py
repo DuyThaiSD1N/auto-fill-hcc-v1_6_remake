@@ -66,12 +66,149 @@ _OLD_PROVINCE_FIX = {"ha tay": "Hà Nội"}
 _POLICE_UNIT_RE = re.compile(r"c[ôo]ng\s+an\s+(t[ỉi]nh|th[àa]nh\s+ph[ốo]|tp\.?)\s+([^,;.\n()]+)", re.IGNORECASE)
 
 PORTRAIT_WARNING = (
-    "Tải Ảnh chân dung 4x6 nền trắng (tệp .jpg dưới 2 MB) ở đầu biểu mẫu — ảnh dán trên tờ khai không được cắt tự động."
+    "Chưa thấy ảnh chân dung 4x6 trong giấy tờ tải lên — cổng bắt buộc ô Ảnh chân dung ở đầu biểu mẫu (ảnh nền trắng, "
+    "định dạng .jpg, dưới 2 MB). Tải thêm ảnh chân dung rồi điền lại để hệ thống tự gắn (ảnh .png / .heic / .webp hệ "
+    "thống tự đổi sang .jpg), hoặc bấm Tải ảnh trên cổng. Ảnh dán trên tờ khai không được cắt tự động."
 )
 REFUND_WARNING = (
     "Mục Đăng ký thông tin hoàn tiền (*): nhập Số tài khoản, Tên chủ tài khoản, Tên ngân hàng của người đề nghị "
     "(giấy tờ không có)."
 )
+
+
+# ── Ảnh chân dung 4x6 (ô tải ảnh đầu trang kê khai) ──
+# Cổng chỉ nhận .jpg dưới 2 MB. Tệp ảnh người dùng tải lên có thể là .png / .webp / .bmp (HEIC đã đổi sang JPG lúc nhận
+# tệp, app/services/heic.py) → đổi hết sang JPEG, cạnh dài tối đa 1200 px, hạ chất lượng tới khi dưới ngưỡng.
+PORTRAIT_MAX_BYTES = 1_900_000
+PORTRAIT_MAX_SIDE = 1200
+PORTRAIT_FILE_NAME = "anh_chan_dung_4x6.jpg"
+_IMAGE_EXT_RE = re.compile(r"\.(jpe?g|png|webp|bmp|gif|tiff?|jfif)$", re.IGNORECASE)
+_PORTRAIT_NAME_RE = re.compile(r"(chan\s*dung|4\s*x\s*6|anh\s*the|portrait|avatar|anh\s*46|chan_dung|anh_the)")
+# Ảnh chân dung gần như không có chữ; giấy tờ chụp (tờ khai, hộ chiếu, CCCD) luôn có hàng chục chữ trở lên.
+_PORTRAIT_MAX_LETTERS = 40
+
+
+def _image_bytes(file: dict) -> bytes | None:
+    data_url = str(file.get("dataUrl") or "")
+    mime = str(file.get("type") or "").lower()
+    if data_url.startswith("data:"):
+        mime = data_url[5:].split(";", 1)[0].split(",", 1)[0].lower() or mime
+    name = str(file.get("name") or "")
+    if not (mime.startswith("image/") or _IMAGE_EXT_RE.search(name)):
+        return None
+    try:
+        import base64
+
+        return base64.b64decode(data_url.split(",", 1)[1] if "," in data_url else data_url)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _portrait_shape(data: bytes) -> tuple[float, float] | None:
+    """(tỉ lệ rộng/cao, độ sáng trung bình viền ngoài 0–255) — None khi không mở được ảnh."""
+    import io
+
+    from PIL import Image, ImageOps, ImageStat
+
+    try:
+        with Image.open(io.BytesIO(data)) as image:
+            image = ImageOps.exif_transpose(image).convert("L")
+            width, height = image.size
+            if not width or not height:
+                return None
+            band = max(1, min(width, height) // 12)
+            strips = [image.crop((0, 0, width, band)), image.crop((0, 0, band, height)),
+                      image.crop((width - band, 0, width, height))]
+            brightness = sum(ImageStat.Stat(s).mean[0] for s in strips) / len(strips)
+            return width / height, brightness
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def find_portrait(files: list[dict], texts: dict[int, str] | None = None) -> int | None:
+    """Chỉ số tệp ảnh chân dung trong bộ giấy, None khi không có.
+
+    Tên tệp có "chân dung" / "4x6" / "ảnh thẻ" / "portrait" → nhận ngay (vẫn phải là ảnh, ít chữ). Không thì nhận ảnh
+    dọc (rộng/cao 0,55–0,9), gần như không có chữ OCR, viền sáng (nền trắng / sáng). Nhiều ảnh khớp → ảnh có tỉ lệ gần
+    4x6 nhất."""
+    texts = texts or {}
+    best: tuple[int, float, int] | None = None  # (ưu tiên tên, độ lệch tỉ lệ, chỉ số)
+    for index, file in enumerate(files or []):
+        data = _image_bytes(file)
+        if not data:
+            continue
+        letters = len(re.findall(r"[0-9A-Za-zÀ-ỹ]", texts.get(index, "") or ""))
+        if letters > _PORTRAIT_MAX_LETTERS:
+            continue
+        shape = _portrait_shape(data)
+        if not shape:
+            continue
+        ratio, brightness = shape
+        by_name = bool(_PORTRAIT_NAME_RE.search(fold(str(file.get("name") or ""))))
+        if not by_name and not (0.55 <= ratio <= 0.9 and brightness >= 150):
+            continue
+        rank = (0 if by_name else 1, abs(ratio - 2 / 3), index)
+        if best is None or rank < best:
+            best = rank
+    return best[2] if best else None
+
+
+def portrait_jpeg(data: bytes) -> bytes:
+    """Ảnh bất kỳ PIL mở được → JPEG RGB (nền trong suốt thành trắng), xoay theo EXIF, dưới PORTRAIT_MAX_BYTES."""
+    import io
+
+    from PIL import Image, ImageOps
+
+    with Image.open(io.BytesIO(data)) as source:
+        image = ImageOps.exif_transpose(source)
+        if image.mode in ("RGBA", "LA") or (image.mode == "P" and "transparency" in image.info):
+            rgba = image.convert("RGBA")
+            image = Image.new("RGB", rgba.size, (255, 255, 255))
+            image.paste(rgba, mask=rgba.split()[-1])
+        else:
+            image = image.convert("RGB")
+        image.thumbnail((PORTRAIT_MAX_SIDE, PORTRAIT_MAX_SIDE))
+        out = b""
+        while True:
+            for quality in (92, 85, 75, 65):
+                buffer = io.BytesIO()
+                image.save(buffer, format="JPEG", quality=quality)
+                out = buffer.getvalue()
+                if len(out) <= PORTRAIT_MAX_BYTES:
+                    return out
+            if min(image.size) < 200:
+                return out
+            image = image.resize((int(image.width * 0.8), int(image.height * 0.8)))
+
+
+def portrait_field(files: list[dict], texts: dict[int, str] | None = None) -> tuple[dict | None, list[str]]:
+    """(ô ``filename46`` comp ``bca-photo`` mang sẵn ảnh JPEG, câu báo). Không có ảnh → (None, [PORTRAIT_WARNING])."""
+    import base64
+
+    from app.pipelines.cap_ho_chieu_pho_thong_o_trong_nuoc.process.schema import PORTRAIT_FIELD
+
+    index = find_portrait(files, texts)
+    if index is None:
+        return None, [PORTRAIT_WARNING]
+    source = files[index]
+    source_name = str(source.get("name") or f"file-{index + 1}")
+    try:
+        jpeg = portrait_jpeg(_image_bytes(source) or b"")
+    except Exception:  # noqa: BLE001
+        return None, [f"Không đọc được ảnh chân dung '{source_name}' — tải lại ảnh dạng .jpg (dưới 2 MB) ở ô Ảnh chân "
+                      "dung đầu biểu mẫu."]
+    field = {
+        "name": PORTRAIT_FIELD,
+        "comp": "bca-photo",
+        "value": {"name": PORTRAIT_FILE_NAME, "type": "image/jpeg",
+                  "dataUrl": "data:image/jpeg;base64," + base64.b64encode(jpeg).decode("ascii")},
+        "sourceFileName": source_name,
+    }
+    converted = not re.search(r"\.jpe?g$", source_name, re.IGNORECASE)
+    note = (f"Đã gắn ảnh '{source_name}' vào ô Ảnh chân dung đầu biểu mẫu"
+            + (" (đã tự đổi sang định dạng .jpg)" if converted else "")
+            + " — kiểm tra đúng ảnh chân dung 4x6 nền trắng của người đề nghị. Lần sau nên chụp / lưu ảnh dạng .jpg.")
+    return field, [note]
 
 
 def _text(value) -> str | None:
@@ -278,12 +415,21 @@ NO_ACCOUNT_WARNING = (
 )
 
 
-def account_mismatch(values: dict, options: dict | None) -> str | None:
-    """Câu báo khi giấy tờ là của người KHÁC chủ tài khoản VNeID đang đăng nhập, ngược lại None.
+ACCOUNT_MISMATCH_CODE = "account_mismatch"
+
+
+def _id_label(number: str | None) -> str:
+    return f"người có số định danh {number}" if number else "người khác"
+
+
+def account_block(values: dict, options: dict | None) -> dict | None:
+    """``{code, message, accountName, documentName}`` khi giấy tờ là của người KHÁC chủ tài khoản VNeID đang đăng nhập,
+    ngược lại None.
 
     Cổng khoá Họ và tên / Số CCCD / cha mẹ… theo CSDLQG của tài khoản đăng nhập (extension gửi hai ô readonly
     ``CongDan_tenCongDan`` / ``CongDan_soCmnd`` qua ``options.formContext``) → điền giấy của người khác chỉ ra form trộn
     hai người, không nộp được. So số định danh trước; số khác mà tên vẫn trùng thì coi là OCR đọc lệch số, không chặn.
+    ``message`` là câu hiện thẳng cho người dùng (Auto Fill hiện nguyên câu; trợ lý ghép tên vào mẫu câu riêng).
     """
     context = (options or {}).get("formContext") or {}
     account_id = _id_number(context.get("applicantIdentityNumber") or context.get("identityNumber"))
@@ -299,22 +445,31 @@ def account_mismatch(values: dict, options: dict | None) -> str | None:
         return None
     if not mismatch:
         return None
-    doc_label = doc_name or f"số định danh {doc_id}"
-    account_label = account_name or f"số định danh {account_id}"
-    return (
-        f"Giấy tờ tải lên là của {doc_label}, khác chủ tài khoản VNeID đang đăng nhập ({account_label}) — không điền "
-        "để tránh form lẫn thông tin hai người. Người có tên trên giấy tờ cần đăng nhập VNeID của chính mình rồi chạy "
-        "lại; Họ và tên, Số CCCD, cha mẹ… cổng khoá theo tài khoản nên không điền đè được."
-    )
+    account = account_name.upper() if account_name else _id_label(account_id)
+    document = doc_name.upper() if doc_name else _id_label(doc_id)
+    return {
+        "code": ACCOUNT_MISMATCH_CODE,
+        "accountName": account,
+        "documentName": document,
+        "message": (
+            f"Chưa điền: giấy tờ tải lên là của {document}, còn tài khoản VNeID đang đăng nhập là của {account}. "
+            f"Vui lòng tải giấy tờ đúng của {account} (chủ tài khoản VNeID), hoặc đăng nhập VNeID của {document} "
+            "rồi làm lại."
+        ),
+    }
+
+
+def has_account_anchor(options: dict | None) -> bool:
+    context = (options or {}).get("formContext") or {}
+    return any(context.get(key) for key in ("applicantIdentityNumber", "identityNumber", "applicantFullname"))
 
 
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
     values = _by_name(fields)
-    context = (options or {}).get("formContext") or {}
-    if any(context.get(key) for key in ("applicantIdentityNumber", "identityNumber", "applicantFullname")):
-        blocked = account_mismatch(values, options)
+    if has_account_anchor(options):
+        blocked = account_block(values, options)
         if blocked:
-            return [], [blocked]
+            return [], [blocked["message"]]
         account_warnings: list[str] = []
     else:
         account_warnings = [NO_ACCOUNT_WARNING]

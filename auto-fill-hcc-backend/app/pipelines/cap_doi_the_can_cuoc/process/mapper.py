@@ -7,14 +7,21 @@ from typing import Any
 from app.pipelines._shared.area_remap import province_label, remap_area
 from app.pipelines._shared.naming import fold
 from app.pipelines.cap_doi_the_can_cuoc.process.schema import (
+    ACCOUNT_ID_ID,
+    ACCOUNT_NAME_ID,
     AGENCY_CITY_ID,
     AGENCY_FIELD,
     AGENCY_READY_ID,
     AGENCY_WARD_ID,
+    DECLARANT_FIELD,
     DECLARANT_OTHER,
+    DECLARANT_OTHER_BLOCK,
+    DECLARANT_OTHER_ID,
     DECLARANT_SELF,
+    DECLARANT_SELF_ID,
     LEVEL_PROVINCE,
     LEVEL_WARD,
+    OTHER_ONLY,
     PORTAL_PROVINCES,
     REASONS,
     RELATION_FATHER,
@@ -199,7 +206,8 @@ def _relation(value: Any) -> str | None:
 
 
 def _by_representative(values: dict, subject_name: str | None, subject_id: str | None) -> bool:
-    """Mục II DC02 ghi một người KHÁC người cần cấp đổi → cha/mẹ/người đại diện kê khai thay."""
+    """Mục II DC02 ghi một người KHÁC người cần cấp đổi (người ký giấy kê khai thay). Chỉ dùng chọn SĐT/email Phần I —
+    radio người kê khai do extension chọn theo tài khoản đăng nhập (xem enrich)."""
     rep_name, rep_id = _name(values.get("NguoiDaiDien_HoTen")), _identity(values.get("NguoiDaiDien_SoDinhDanh"))
     if not (rep_name or rep_id):
         return False
@@ -226,25 +234,49 @@ def enrich(fields: list[dict], options: dict | None = None, *, reasons=REASONS, 
     values = _by_name(fields)
     picked: dict[str, Any] = {}
     defaults: set[str] = set()
+    self_only: set[str] = set()
+    other_only: set[str] = set(OTHER_ONLY)
 
     subject_name = _name(values.get("NguoiCanCap_HoTen"))
     subject_id = _identity(values.get("NguoiCanCap_SoDinhDanh"))
     subject_phone = _phone(values.get("NguoiCanCap_SoDienThoai")) or _phone(values.get("NhanKetQua_SoDienThoai"))
-    if _by_representative(values, subject_name, subject_id):
-        # Phần I là tài khoản của cha/mẹ/người đại diện (cổng khoá) → khai người cần cấp ở Phần II; SĐT/email Phần I
-        # là của người kê khai (mục II.5 DC02). Nút "Kiểm tra thông tin trong CSDL…" công dân tự bấm.
-        picked["radIsNCC"] = declarant_other
+    rep_name, rep_id = _name(values.get("NguoiDaiDien_HoTen")), _identity(values.get("NguoiDaiDien_SoDinhDanh"))
+    on_paper_rep = _by_representative(values, subject_name, subject_id)
+    if subject_name or subject_id:
+        # Người kê khai = TÀI KHOẢN VNeID đang đăng nhập (Phần I cổng khoá), không phải người ký trên giấy (user 19/11):
+        # extension so Phần I với người cần cấp đổi trên giấy. Trùng người → "Người kê khai là người cần cấp đổi"; khác
+        # người → "…cha/mẹ/người đại diện hợp pháp…" rồi mới điền khối người cần cấp (ô bcaOtherOnly). Nút "Kiểm tra
+        # thông tin trong CSDL…" công dân tự bấm.
+        picked[DECLARANT_FIELD] = {"selfId": DECLARANT_SELF_ID, "otherId": DECLARANT_OTHER_ID,
+                                   "otherBlock": DECLARANT_OTHER_BLOCK, "selfLabel": declarant_self,
+                                   "otherLabel": declarant_other, "accountNameId": ACCOUNT_NAME_ID,
+                                   "accountIdId": ACCOUNT_ID_ID,
+                                   "subject": {k: v for k, v in (("name", subject_name), ("id", subject_id)) if v}}
         picked["txtFULLNAME_NCC"] = subject_name
         picked["txtBIRTHDATE_NCC"] = _date(values.get("NguoiCanCap_NgaySinh"))
         picked["cboGENDER_ID_NCC"] = _gender(values.get("NguoiCanCap_GioiTinh"), subject_id)
         picked["txtIDENTIFY_NUMBER_NCC"] = subject_id
-        picked["cboRELATIONSHIP_WITH_NDN"] = _relation(values.get("NguoiDaiDien_QuanHe"))
+        # Quan hệ nói về NGƯỜI ĐANG ĐĂNG NHẬP: tài khoản trùng người ở mục II DC02 → quan hệ mục II ghi; không trùng ai
+        # (hoặc giấy không ghi mục II) → "Người đại diện hợp pháp".
+        relation = _relation(values.get("NguoiDaiDien_QuanHe")) if on_paper_rep else None
+        people = [{"relation": relation, "name": rep_name, "id": rep_id}] if relation else []
+        picked["cboRELATIONSHIP_WITH_NDN"] = {"target": "cboRELATIONSHIP_WITH_NDN", "accountNameId": ACCOUNT_NAME_ID,
+                                              "accountIdId": ACCOUNT_ID_ID, "people": people,
+                                              "fallback": RELATION_REPRESENTATIVE}
+    # SĐT / email Phần I (ô mở) là của NGƯỜI KÊ KHAI = chủ tài khoản: mục II DC02 ghi người kê khai thay → của người đó
+    # (mục II.5), chỉ điền khi tài khoản đúng là người khác; không thì của người cần cấp đổi, chỉ điền khi tài khoản chính
+    # là người đó (user 19/11: tài khoản khác người trên giấy thì không ghi SĐT / email người trên giấy vào Phần I).
+    contact = ("txtPHONE_NUMBER_NDN", "txtEMAIL_ADDRESS_NDN")
+    if on_paper_rep:
         picked["txtPHONE_NUMBER_NDN"] = _phone(values.get("NguoiDaiDien_SoDienThoai"))
         picked["txtEMAIL_ADDRESS_NDN"] = _email(values.get("NguoiDaiDien_Email"))
+        if DECLARANT_FIELD in picked:
+            other_only.update(contact)
     else:
-        picked["radIsNCC"] = declarant_self
         picked["txtPHONE_NUMBER_NDN"] = subject_phone
         picked["txtEMAIL_ADDRESS_NDN"] = _email(values.get("NguoiCanCap_Email"))
+        if DECLARANT_FIELD in picked:
+            self_only.update(contact)
     picked["cboLyDoCap"] = _reason(values, reasons)
 
     province, ward = _area(values.get("CoQuan_Tinh"), values.get("CoQuan_Xa"))
@@ -279,6 +311,10 @@ def enrich(fields: list[dict], options: dict | None = None, *, reasons=REASONS, 
         if picked.get(name) in (None, ""):
             continue
         field = {"name": name, "comp": comp, "value": picked[name]}
+        if name in other_only:
+            field["bcaOtherOnly"] = True
+        if name in self_only:
+            field["bcaSelfOnly"] = True
         if name == AGENCY_FIELD:
             field["onlyIfEmpty"] = True
         if name in defaults:

@@ -1460,6 +1460,14 @@ function attpRowAttachedFingerprints(row) {
   const cell = (input && input.closest('td, th, mat-cell, [role="cell"], [role="gridcell"]')) || row;
   if (!cell) return [];
   const fileRe = /\.(pdf|jpe?g|png|webp|docx?|xlsx?)\b/i;
+  // eForm Nth Bộ Công an: tệp đã đính = ul[id^="ul_file_info_"] > li. Bấm thùng rác thì cổng ẩn / gỡ dần li, chữ tên
+  // tệp có thể còn trong DOM → chỉ đếm li đang hiện, nếu không "Đính kèm lại" tưởng tệp vẫn còn và bỏ qua (19/11).
+  const nthItems = cell.querySelectorAll('ul[id^="ul_file_info_"] > li');
+  if (nthItems.length || cell.querySelector('ul[id^="ul_file_info_"]')) {
+    return Array.from(nthItems).filter((li) => li.isConnected && isVisible(li))
+      .map((li) => attpDocFingerprint(nodeText(li.querySelector("a.file-info") || li)))
+      .filter((fp) => fp.length >= 6);
+  }
   const leaves = Array.from(cell.querySelectorAll("*")).filter(
     (el) => !el.children.length && fileRe.test(el.textContent || "")
   );
@@ -2643,7 +2651,10 @@ async function clearLizAttachedFiles() {
 // từng tệp bằng thùng rác. DOM nút thùng rác SUY từ ảnh (chưa crawl): icon fa-trash / glyphicon-trash, ảnh delete/trash
 // hoặc title "Xóa" nằm trong ô chứa input[type=file]; khối tải ảnh chân dung đầu trang không đụng tới.
 const BCA_NTH_HOST = "dichvucong.bocongan.gov.vn";
-const BCA_NTH_TRASH = "i.fa-trash, i.fa-trash-o, i.fa-trash-alt, .glyphicon-trash, img[src*='delete'], img[src*='trash'], "
+// DOM thật (user gửi 19/11): ul[id^="ul_file_info_"] > li > span.trash-file[title="Remove this file"] > i.fa-trash-o —
+// đứng đầu; phần còn lại giữ làm dự phòng cho bản cổng khác.
+const BCA_NTH_TRASH = "span.trash-file, [title='Remove this file'], i.fa-trash, i.fa-trash-o, i.fa-trash-alt, "
+  + ".glyphicon-trash, img[src*='delete'], img[src*='trash'], "
   + "[title='Xóa'], [title='Xoá'], [title='Xóa tệp'], [title='Xóa file'], [title='Xoá tệp']";
 const BCA_NTH_DIALOGS = ".modal.in, .modal.show, .bootbox, .jconfirm-box, .swal2-popup, [role='dialog'], [role='alertdialog']";
 
@@ -2657,7 +2668,9 @@ function bcaNthTrashButtons() {
     .filter((row) => row.querySelector('input[type="file"]') && !isBcaPhotoUploadRow(row))
     .flatMap((row) => {
       const cell = row.querySelector('input[type="file"]').closest("td") || row;
-      return Array.from(cell.querySelectorAll(BCA_NTH_TRASH)).map((icon) => icon.closest("a, button, [onclick]") || icon);
+      // Icon <i> nằm trong span.trash-file (nơi cổng gắn sự kiện) → quy về span để không bấm hai lần cùng một tệp.
+      return Array.from(cell.querySelectorAll(BCA_NTH_TRASH))
+        .map((icon) => icon.closest("span.trash-file, a, button, [onclick]") || icon);
     })
     .filter((button) => {
       if (seen.has(button) || !isVisible(button) || button.disabled) return false;
@@ -2674,8 +2687,12 @@ async function clearBcaNthAttachedFiles() {
     const target = buttons.find((button) => !failed.has(button));
     if (!target) break;
     const dialogsBefore = new Set(Array.from(document.querySelectorAll(BCA_NTH_DIALOGS)).filter(isVisible));
+    // Dòng tệp (li) mới là thứ phải mất: cổng có thể ẩn icon trước rồi mới gỡ li sau khi máy chủ trả lời.
+    const item = target.closest("li");
     target.click();
-    const gone = () => !target.isConnected || !isVisible(target) || bcaNthTrashButtons().length < buttons.length;
+    const gone = () => (item
+      ? !item.isConnected || !isVisible(item)
+      : !target.isConnected || !isVisible(target) || bcaNthTrashButtons().length < buttons.length);
     // Cổng hỏi lại "Bạn có chắc chắn muốn xóa?" (hộp bootstrap / bootbox / jconfirm) → chỉ bấm hộp MỚI mọc sau cú bấm.
     const dialog = await waitFor(() => Array.from(document.querySelectorAll(BCA_NTH_DIALOGS))
       .find((d) => isVisible(d) && !dialogsBefore.has(d)) || (gone() ? "gone" : null), 2000, 100);

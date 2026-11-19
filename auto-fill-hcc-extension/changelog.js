@@ -3,6 +3,14 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.28.21",
+    date: "19/11/2026",
+    items: [
+      "Cấp hộ chiếu phổ thông ở trong nước và Cấp thẻ tạm trú cho người nước ngoài tại Việt Nam: tự gắn ảnh chân dung 4x6 vào ô \"Ảnh chân dung\" ở đầu tờ khai; ảnh .png, .heic, .webp được tự đổi sang .jpg dưới 2 MB theo yêu cầu của cổng.",
+      "Cấp hộ chiếu phổ thông ở trong nước: giấy tờ của người khác chủ tài khoản VNeID đang đăng nhập thì báo rõ lý do, không điền.",
+    ],
+  },
+  {
     version: "1.28.20",
     date: "19/11/2026",
     items: [

@@ -11302,7 +11302,7 @@ PROCEDURES: list[dict] = [
         "label": "Cấp hộ chiếu phổ thông ở trong nước (thực hiện tại cấp tỉnh)",
         "mode": "agent",
         # Auto Fill gửi options.formContext (ô khoá Họ và tên + Số CCCD của tài khoản VNeID) → mapper không điền khi
-        # giấy tờ là của người khác chủ tài khoản (mapper.account_mismatch).
+        # giấy tờ là của người khác chủ tài khoản (mapper.account_block).
         "collectFormContext": True,
         "roles": [],
         "useDangKyBy": False,
@@ -11314,7 +11314,9 @@ PROCEDURES: list[dict] = [
             "nghị, loại hộ chiếu (có / không gắn chip).\n"
             "2. Hộ chiếu phổ thông cấp lần gần nhất (trang nhân thân + trang cơ quan cấp), nếu đã từng được cấp.\n"
             "3. Thẻ căn cước (nếu có) — ngày cấp, nơi cấp.\n"
-            "Sau khi điền: tải Ảnh chân dung 4x6 nền trắng (.jpg dưới 2 MB), nhập Email và Đăng ký thông tin hoàn tiền "
+            "4. Ảnh chân dung 4x6 nền trắng — tệp ảnh riêng, định dạng .jpg (cổng chỉ nhận .jpg dưới 2 MB; ảnh .png / "
+            ".heic / .webp hệ thống tự đổi sang .jpg). Hệ thống tự gắn vào ô Ảnh chân dung đầu biểu mẫu.\n"
+            "Sau khi điền: nhập Email và Đăng ký thông tin hoàn tiền "
             "(số tài khoản, chủ tài khoản, ngân hàng). Bước đính kèm: hộ chiếu cũ và tờ khai đính chung dòng 'Hộ chiếu "
             "phổ thông cấp lần gần nhất'; dòng người đại diện hợp pháp chỉ dùng cho người chưa đủ 14 tuổi."
         ),
@@ -11387,8 +11389,9 @@ PROCEDURES: list[dict] = [
             "2. Tờ khai đề nghị cấp thẻ tạm trú (Mẫu NA8).\n"
             "3. Hộ chiếu của người nước ngoài — trang nhân thân, trang thị thực, dấu kiểm chứng nhập cảnh.\n"
             "4. Giấy tờ chứng minh thuộc diện cấp thẻ (giấy phép lao động …).\n"
-            "Sau khi điền: tải Ảnh chân dung 4x6 và ảnh Trang nhân thân hộ chiếu (.jpg dưới 2 MB) ở đầu biểu mẫu, chọn Nơi "
-            "nhận kết quả. Bước đính kèm: giấy chứng minh / tờ khai / văn bản đề nghị vào đúng dòng, hộ chiếu vào Giấy tờ "
+            "5. Ảnh chân dung 4x6 nền trắng — tệp ảnh riêng, định dạng .jpg (cổng chỉ nhận .jpg dưới 2 MB; ảnh .png / "
+            ".heic / .webp hệ thống tự đổi sang .jpg). Hệ thống tự gắn vào ô Ảnh chân dung đầu biểu mẫu.\n"
+            "Sau khi điền: tải ảnh Trang nhân thân hộ chiếu (.jpg dưới 2 MB) ở đầu biểu mẫu, chọn Nơi nhận kết quả. Bước đính kèm: giấy chứng minh / tờ khai / văn bản đề nghị vào đúng dòng, hộ chiếu vào Giấy tờ "
             "khác."
         ),
     },

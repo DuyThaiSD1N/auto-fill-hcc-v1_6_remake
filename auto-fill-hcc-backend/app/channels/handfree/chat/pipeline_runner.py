@@ -485,6 +485,24 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
         conv = await conv_store.get(conv_id)
         if not conv:
             return
+        blocked = result.get("blocked") if isinstance(result.get("blocked"), dict) else None
+        conv["pipeline_blocked"] = blocked or {}
+        if blocked and blocked.get("message"):
+            # Pipeline cố ý không điền (vd giấy tờ của người khác chủ tài khoản VNeID): báo như lượt lỗi để flow nói rõ
+            # lý do (vi.ACCOUNT_MISMATCH), không phát lệnh điền. Vẫn ghi trace để tra lại.
+            conv["fields"] = []
+            conv["pipeline_status"] = "error"
+            conv["pipeline_error"] = str(blocked["message"])[:300]
+            with mon.span("persist.db"):
+                conv["trace_request_id"] = await tracing.record_process(
+                    conv, procedure_key, proc, files, result, pipe_ms, rec=rec,
+                    form_context=options.get("formContext"),
+                )
+                await conv_store.save(conv)
+            logger.info("[pipeline] không điền (%s): %s", conv_id, blocked.get("code"))
+            await broadcast(sid, {"type": "pipeline_error", "message": conv["pipeline_error"][:200]})
+            _finish_recorder(rec, conv["trace_request_id"])
+            return
         conv["fields"] = unlock_locked_submitter(result.get("fields", []))
         conv["extracted"] = result.get("extracted", {})
         conv["pipeline_status"] = "fields_ready"
@@ -518,6 +536,7 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
         if conv:
             conv["pipeline_status"] = "error"
             conv["pipeline_error"] = str(e)[:300]
+            conv["pipeline_blocked"] = {}
             await conv_store.save(conv)
             error_request_id = await tracing.record_error(conv, procedure_key, "autofill", str(e), rec=rec)
         await broadcast(sid, {"type": "pipeline_error", "message": str(e)[:200]})

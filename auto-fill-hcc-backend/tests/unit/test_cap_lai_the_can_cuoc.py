@@ -33,8 +33,13 @@ def test_tu_ke_khai_nhan_radio_cap_lai_va_ly_do_mat_the():
     out = _enrich(SELF)
     names = [f["name"] for f in out]
     by = _by(out)
-    assert not {"txtFULLNAME_NCC", "txtIDENTIFY_NUMBER_NCC", "cboRELATIONSHIP_WITH_NDN", "txtFULLNAME_NDN"} & set(by)
-    assert by["radIsNCC"] == "Người kê khai là người cần cấp lại căn cước"
+    assert "txtFULLNAME_NDN" not in by
+    # Radio chọn theo tài khoản đăng nhập (extension), nhãn của trang cấp lại.
+    assert by["radIsNCC"]["selfLabel"] == "Người kê khai là người cần cấp lại căn cước"
+    assert by["radIsNCC"]["otherLabel"] == ("Người kê khai là cha/mẹ/người đại diện hợp pháp của người cần cấp lại "
+                                            "căn cước")
+    assert by["radIsNCC"]["subject"] == {"name": "TRAN THI MAU", "id": "012190000003"}
+    assert all(f.get("bcaOtherOnly") for f in out if f["name"].endswith("_NCC"))
     assert by["txtPHONE_NUMBER_NDN"] == "0912000333" and by["txtEMAIL_ADDRESS_NDN"] == "mau.tran@example.com"
     assert by["cboLyDoCap"] == "Cấp lại thẻ căn cước do mất thẻ căn cước"
     assert names.index("cboLyDoCap") < names.index("radCapThucHien") < names.index("cboORG") < names.index("radNhanKetQua")
@@ -48,9 +53,10 @@ def test_cha_me_ke_khai_thay_nhan_radio_cap_lai():
     values = {**SELF, "NguoiDaiDien_HoTen": "Tran Van Cha", "NguoiDaiDien_SoDinhDanh": "012065000004",
               "NguoiDaiDien_SoDienThoai": "0987 000 444", "NguoiDaiDien_QuanHe": "Cha"}
     by = _by(_enrich(values))
-    assert by["radIsNCC"] == "Người kê khai là cha/mẹ/người đại diện hợp pháp của người cần cấp lại căn cước"
     assert by["txtFULLNAME_NCC"] == "TRAN THI MAU" and by["txtIDENTIFY_NUMBER_NCC"] == "012190000003"
-    assert by["cboRELATIONSHIP_WITH_NDN"] == "Cha" and by["txtPHONE_NUMBER_NDN"] == "0987000444"
+    assert by["cboRELATIONSHIP_WITH_NDN"]["people"] == [{"relation": "Cha", "name": "TRAN VAN CHA",
+                                                         "id": "012065000004"}]
+    assert by["txtPHONE_NUMBER_NDN"] == "0987000444"
 
 
 def test_ly_do_chi_trong_3_option_cap_lai():
@@ -71,7 +77,7 @@ def test_cap_doi_van_giu_nhan_cu():
 
     by = _by(cap_doi.enrich([{"name": k, "value": v} for k, v in
                              {**SELF, "LyDoCap": "Đổi thẻ căn cước khi công dân đủ 25 tuổi"}.items()]))
-    assert by["radIsNCC"] == "Người kê khai là người cần cấp đổi căn cước"
+    assert by["radIsNCC"]["selfLabel"] == "Người kê khai là người cần cấp đổi căn cước"
     assert by["cboLyDoCap"] == "Đổi thẻ căn cước khi công dân đủ 25 tuổi"
 
 

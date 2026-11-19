@@ -1336,6 +1336,16 @@ FILL_REPORT_REVIEW = {
     "tts": "Dạ tôi điền xong rồi. Ô nào sai công dân sửa trực tiếp ạ.",
 }
 
+# Pipeline cố ý không điền vì giấy tờ là của người khác chủ tài khoản VNeID (result["blocked"], vd hộ chiếu 1.001456).
+ACCOUNT_MISMATCH = {
+    "md": "⚠️ **Giấy tờ chưa đúng người, tôi chưa điền ô nào.**\n\n"
+          "Giấy tờ công dân gửi là của **{document}**, còn tài khoản VNeID đang đăng nhập là của **{account}**.\n\n"
+          "Công dân vui lòng gửi giấy tờ đúng của **{account}** (chủ tài khoản VNeID), hoặc đăng nhập VNeID của "
+          "**{document}** rồi làm lại ạ.",
+    "tts": "Dạ, giấy tờ là của {document}, không phải của chủ tài khoản {account}. Công dân gửi giấy tờ đúng của "
+           "{account}, hoặc đăng nhập tài khoản của {document} rồi làm lại ạ.",
+}
+
 PIPELINE_ERROR = {
     "md": "⚠️ Tôi chưa đọc được giấy tờ (*{error}*).\n\nCông dân bấm **Thử lại**, hoặc chụp lại rõ hơn ạ.",
     "tts": "Dạ, tôi chưa đọc được. Công dân bấm Thử lại, hoặc chụp lại rõ hơn ạ.",

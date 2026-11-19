@@ -78,9 +78,13 @@ def _mrz_card(role: Role, person: dict, documents: list[dict]) -> dict | None:
     name = " ".join(fold(person["name"]).split())
     gender = _GENDER.get(role.key)
     cards = [card for document in documents for card in mrz_records(document.get("text"))]
+    # Cha và con trùng họ tên là chuyện thường: năm sinh của vai đã trích (ngày sinh / năm sinh) phải khớp năm mã hoá
+    # trong số, không thì thẻ MRZ duy nhất đọc được là của người kia.
+    year = chu_the.birth_year(person.get("birth"))
     cards = [card for card in cards if name and card.get("name") == name and card.get("birth")
              and (not gender or id_gender(card["id"]) == gender)
-             and (id_birth_year(card["id"]) or 0) % 100 == card["birth"][0]]
+             and (id_birth_year(card["id"]) or 0) % 100 == card["birth"][0]
+             and (not year or id_birth_year(card["id"]) == year)]
     return cards[0] if len({card["id"] for card in cards}) == 1 else None
 
 

@@ -21,6 +21,7 @@ giấy phép xây dựng + bìa hồ sơ thiết kế + bản vẽ 36 trang đí
 tải lại). KHÔNG set Bản chính/Bản sao ở dòng có sẵn: giữ loại bản mặc định của cổng.
 """
 
+import asyncio
 import re
 import time
 from typing import Any
@@ -179,7 +180,7 @@ def _place(doc_type: str) -> str:
     return f"{route['documentName']} (dòng {route['row']})"
 
 
-async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, list[str]]:
+async def _classify_once(documents: list[dict[str, Any]]) -> dict[int, list[str]]:
     if not documents:
         return {}
     messages = [
@@ -194,6 +195,19 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, list[
             result[int(item.get("index"))] = _doc_types(item)
         except (TypeError, ValueError, AttributeError):
             continue
+    return result
+
+
+async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, list[str]]:
+    result = await _classify_once(documents)
+    # Gọi chung nhiều tệp, model đôi khi trả thiếu tệp (chữ OCR một tệp lặp vô nghĩa làm model dồn mọi tệp vào
+    # tệp đầu) → hỏi lại RIÊNG từng tệp thiếu, không để tệp đó rơi về dòng mặc định.
+    missing = [item for item in documents if item.get("index") not in result]
+    if len(documents) > 1 and missing:
+        retried = await asyncio.gather(*(_classify_once([item]) for item in missing), return_exceptions=True)
+        for item, found in zip(missing, retried):
+            if isinstance(found, dict) and found.get(item["index"]):
+                result[item["index"]] = found[item["index"]]
     return result
 
 

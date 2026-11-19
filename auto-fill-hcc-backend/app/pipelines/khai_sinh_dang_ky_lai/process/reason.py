@@ -2061,18 +2061,81 @@ def _valid_birth_source_names(documents: list[dict]) -> list[str]:
     for document in documents:
         folded = _fold(document.get("text"))
         is_birth_record = (
-            "giay khai sinh" in folded
-            or "giay khai sanh" in folded
-            or "trich luc khai sinh" in folded
-            or (
-                "to khai" in folded
-                and "dang ky lai" in folded
-                and "khai sinh" in folded
-            )
-        )
+            "to khai" in folded and "dang ky lai" in folded and "khai sinh" in folded
+        ) or any(_birth_record_page(page) for page in _PAGE_BREAK_RE.split(str(document.get("text") or "")))
         if is_birth_record:
             names.append(str(document.get("name") or "(không tên)"))
     return names
+
+
+_BIRTH_RECORD_MARKERS = ("giay khai sinh", "giay khai sanh", "trich luc khai sinh")
+_BIRTH_HEADER_LINES = 15
+
+
+def _birth_record_page(page: str) -> bool:
+    """Trang có nói tới việc khai sinh (giấy khai sinh / trích lục, bản cam đoan "đã đăng ký khai sinh tại…", sổ hộ
+    tịch in từ hệ thống). Trừ GIẤY ỦY QUYỀN: chỉ nhắc "nhận / cấp trích lục khai sinh" trong nội dung ủy quyền, không
+    ghi nhận lần đăng ký nào — để nó lọt thì số, ngày của giấy kết hôn cùng tệp thành "đăng ký khai sinh trước đây"."""
+    lines = [_fold(line) for line in str(page or "").splitlines() if line.strip()]
+    folded = " ".join(lines)
+    return any(marker in folded for marker in _BIRTH_RECORD_MARKERS) and "giay uy quyen" not in " ".join(
+        lines[:_BIRTH_HEADER_LINES])
+
+
+# Khối chỉ bước lọc sau LLM đọc (runner nối vào sau lượt trích): đưa danh sách số cho model xem thì model lại bê
+# chính các số đó sang PreviousRegistration_*.
+_OTHER_REGISTRATION_TAG = "so_ngay_giay_ket_hon_khai_tu"
+_OTHER_REGISTRATION_TITLES = ("ket hon", "khai tu")
+_OTHER_NUMBER_RE = re.compile(r"S[ốo]\s*:\s*(\d+)", re.IGNORECASE)
+_OTHER_DATE_RE = re.compile(
+    r"(\d{1,2})\s*(?:[/.-]|\s+th[aá]ng\s+)\s*(\d{1,2})\s*(?:[/.-]|\s+n[aă]m\s+)\s*(\d{4})", re.IGNORECASE)
+
+
+def _other_registration_marks(documents: list[dict]) -> tuple[set[str], set[str]]:
+    """Số đăng ký và ngày đăng ký in trên trang GIẤY KẾT HÔN / TRÍCH LỤC KHAI TỬ — rất giống số, ngày đăng ký khai sinh
+    nhưng không phải: chỉ đọc dòng "Số:" và dòng có "đăng ký" / "Số:" (bỏ ngày sinh của vợ chồng, người chết)."""
+    numbers: set[str] = set()
+    dates: set[str] = set()
+    for document in documents:
+        for page in _PAGE_BREAK_RE.split(str(document.get("text") or "")):
+            lines = [line for line in str(page or "").splitlines() if line.strip()]
+            top = " ".join(_fold(line) for line in lines[:_BIRTH_HEADER_LINES])
+            # Bản cam đoan / đơn / ủy quyền liệt kê "Giấy chứng nhận kết hôn" trong danh mục giấy nộp kèm: không phải
+            # chính giấy kết hôn.
+            if not any(title in top for title in _OTHER_REGISTRATION_TITLES) or any(
+                    marker in top for marker in ("cam doan", "giay uy quyen", "don de nghi", "don xin", "to khai")):
+                continue
+            for line in lines:
+                folded = _fold(line)
+                if "so:" not in folded.replace(" :", ":") and "dang ky" not in folded:
+                    continue
+                numbers.update(match.group(1).lstrip("0") for match in _OTHER_NUMBER_RE.finditer(line))
+                dates.update(f"{int(d):02d}/{int(m):02d}/{y}" for d, m, y in _OTHER_DATE_RE.findall(line))
+    return numbers, dates
+
+
+def render_other_registration(documents: list[dict]) -> str:
+    numbers, dates = _other_registration_marks(documents)
+    if not numbers and not dates:
+        return ""
+    return (f"\n<{_OTHER_REGISTRATION_TAG}>\n"
+            + "; ".join([*(f"số {number}" for number in sorted(numbers)), *sorted(dates)])
+            + f"\n</{_OTHER_REGISTRATION_TAG}>")
+
+
+def _foreign_previous_registration(values: dict, context: str) -> set[str]:
+    """PreviousRegistration_* phải bỏ vì lấy từ giấy kết hôn / khai tử: NGÀY trùng ngày đăng ký của giấy đó → cả khối
+    (số, quyển, nơi đăng ký đi cùng ngày đó); chỉ SỐ trùng → riêng ô số."""
+    line = _section(context, _OTHER_REGISTRATION_TAG)
+    if not line:
+        return set()
+    numbers = set(re.findall(r"số (\d+)", line))
+    dates = set(re.findall(r"\d{2}/\d{2}/\d{4}", line))
+    raw_date = str(values.get("PreviousRegistration_Date") or "").strip()
+    if raw_date and normalize_date(raw_date) in dates:
+        return {"*"}
+    lead = re.match(r"0*(\d+)", str(values.get("PreviousRegistration_Number") or "").strip())
+    return {"PreviousRegistration_Number"} if lead and lead.group(1) in numbers else set()
 
 
 def _declaration_source_names(documents: list[dict]) -> list[str]:
@@ -4036,6 +4099,7 @@ def sanitize_extracted_fields(fields: list[dict], context: str) -> list[dict]:
     has_birth_source = bool(context) and _fold(
         _labeled_value(_section(context, "dang_ky_khai_sinh_truoc_day"), "Có tài liệu khai sinh hợp lệ")
     ) == "co"
+    foreign_registration = _foreign_previous_registration(values, context) if context else set()
     # Không có tờ khai thì Requester_* là do agent tự bịa (hay gặp: "Khác") — lọt xuống mapper là nó
     # coi như có tờ khai rồi ghi đè nơi cư trú người yêu cầu cổng đã điền sẵn từ VNeID thành rỗng.
     no_declaration = bool(context) and _fold(
@@ -4071,7 +4135,8 @@ def sanitize_extracted_fields(fields: list[dict], context: str) -> list[dict]:
                     continue
                 # Dân tộc hiếm khi có giấy ghi (CCCD không in): giữ giá trị agent, tô vàng cho cán bộ soát.
                 field = {**field, "default": True}
-        if context and name.startswith("PreviousRegistration_") and not has_birth_source:
+        if context and name.startswith("PreviousRegistration_") and (
+                not has_birth_source or "*" in foreign_registration or name in foreign_registration):
             continue
         if no_declaration and name.startswith("Requester_"):
             continue

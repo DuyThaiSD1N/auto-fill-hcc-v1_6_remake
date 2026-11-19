@@ -4106,6 +4106,20 @@ async def _start_documents_adjustment(conv: dict, target: str, *, finish_action:
     return r
 
 
+async def _reattach_now(conv: dict) -> Reply:
+    """"Đính kèm lại" sau khi đã đính (user 19/11/2026): CHỈ chạy lại bước đính kèm với đúng các tệp đang có trong phiên —
+    như mở "Điều chỉnh giấy tờ" rồi bấm ngay "Hoàn tất điều chỉnh, đính kèm lại" (lập lại kế hoạch theo cài đặt tách
+    giấy, gỡ tệp cũ không thuộc lượt mới, bỏ qua tệp đã có), không hỏi xác nhận, không điền lại tờ khai. Không gửi ngữ
+    cảnh trang: eForm Nth Bộ Công an có form kê khai + bảng đính kèm cùng trang, chốt chặn "sai trang" sẽ giữ lại.
+    Phiên giấy tờ đã hết hạn → giữ câu mời tải lại giấy như lượt điều chỉnh thường."""
+    reply = await _start_documents_adjustment(conv, "attachment")
+    sid = str(conv.get("upload_session_id") or "")
+    if not (sid and conv.get("supplement_reuse_session")):
+        return reply
+    await upload_service.complete_session(sid)
+    return await _docs_complete(conv)
+
+
 # Chip ĐỔI cách gửi giấy tờ (chỉ 2 cách vì profile đã ẩn) — send GIỐNG card doc_options nên đi qua
 # đường lệnh máy tất định có sẵn, KHÔNG cần sửa FE. Đổi qua lại GIỮ nguyên phiên upload (QR & scan
 # cùng đẩy vào /upload/{sid}) → file đã tải không mất.
@@ -5047,6 +5061,15 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
         # đang điền thì giữ đó, fill_report sẽ đính luôn hoặc lập lại kế hoạch.
         return Reply()
     if intent.kind == "event" and intent.value == "pipeline_error":
+        blocked = conv.get("pipeline_blocked") or {}
+        if blocked.get("message") and blocked["message"][:300] == conv.get("pipeline_error"):
+            # Pipeline cố ý không điền (giấy tờ của người khác chủ tài khoản VNeID): nói rõ lý do, không bảo "chụp rõ hơn".
+            r = Reply(*_fmt(vi.ACCOUNT_MISMATCH, account=blocked.get("accountName") or "chủ tài khoản",
+                            document=blocked.get("documentName") or "người khác"))
+            r.chips = [{"label": "📱 Gửi lại giấy tờ", "send": "__action:reshow_qr", "solid": True},
+                       {"label": "🔁 Thử lại", "send": "__event:docs_complete"}]
+            conv["state"] = "collecting_docs"
+            return r
         r = Reply(*_fmt(vi.PIPELINE_ERROR, error=conv.get("pipeline_error") or "không rõ"))
         r.chips = [{"label": "🔁 Thử lại", "send": "__event:docs_complete", "solid": True},
                    {"label": "📱 Chụp lại giấy tờ", "send": "__action:reshow_qr"}]
@@ -5842,6 +5865,11 @@ async def _handle_done(conv: dict, intent: Intent) -> Reply:
 
     if intent.kind == "action" and intent.value == "business_refill":
         return _business_refill(conv)
+
+    if intent.kind == "action" and intent.value == "reattach":
+        if conv.get("submitted_completed"):
+            return Reply(*_fmt(vi.ATTACH_SUPPLEMENT_AFTER_SUBMIT))
+        return await _reattach_now(conv)
 
     if intent.kind == "action" and intent.value == "refill" and not conv.get("submitted_completed"):
         # eForm Nth Bộ Công an: đính xong cùng trang, form kê khai vẫn hiện → "Điền lại tờ khai" chạy lại lượt điền (không

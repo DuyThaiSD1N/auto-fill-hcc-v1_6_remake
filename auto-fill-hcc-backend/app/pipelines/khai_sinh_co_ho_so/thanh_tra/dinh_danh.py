@@ -18,6 +18,7 @@ import re
 from dataclasses import dataclass
 
 from app.config import settings
+from app.pipelines._shared.cccd import id_birth_year
 from app.pipelines._shared.ethnic_normalize import ethnicity_for_form, normalize_ethnic
 from app.pipelines._shared.thanh_tra import engine
 from app.pipelines._shared.thanh_tra.ho_so import Case, Field, Finding, Inspector, Unit, fold
@@ -412,6 +413,17 @@ def _rank(support: dict, letters_differ: bool) -> tuple:
     return (support["giay"], support["ban_in"] + support["card"], support["cam_doan"], support["to_khai"])
 
 
+def _printed_mark_variant(current, proposed, documents: list[dict]) -> bool:
+    """Đề xuất ít dấu hơn lượt trích nhưng là cách viết CÓ DẤU khác hẳn (Tiên / Tiến, không phải chữ trơn "TIEN"), được
+    từ 2 trang giấy cơ quan cấp / thẻ ghi nguyên văn, còn cách viết lượt trích không có trên giấy cơ quan nào → không phải
+    OCR rơi dấu: hai giấy in cùng rơi đúng một dấu là hiếm, bản cam đoan / tờ khai tự viết mới hay ghi sai dấu."""
+    changed = [(a, b) for a, b in zip(str(current).split(), str(proposed).split()) if a != b]
+    if not changed or any(fold(b) == b.lower() for _, b in changed):
+        return False
+    mine, best = spelling_support(current, documents), spelling_support(proposed, documents)
+    return best["ban_in"] + best["card"] >= 2 and mine["ban_in"] + mine["card"] == 0
+
+
 def spelling_wins(current, proposed, documents: list[dict]) -> bool:
     """Cách viết đề xuất thắng cách viết lượt trích theo hạng nguồn. Chặn: đề xuất chỉ là bản rơi dấu của lượt trích (OCR
     hay rơi dấu chứ không tự thêm), chữ "Đ" thành "D"; đề xuất chỉ có trên tờ khai viết tay."""
@@ -419,7 +431,8 @@ def spelling_wins(current, proposed, documents: list[dict]) -> bool:
     if not ours or not theirs or ours == theirs:
         return False
     letters_differ = fold(ours).split() != fold(theirs).split()
-    if not letters_differ and (base._adds_marks(theirs, ours) or base._lost_stroke(theirs, ours)):
+    if not letters_differ and (base._adds_marks(theirs, ours) or base._lost_stroke(theirs, ours)) \
+            and not _printed_mark_variant(current, proposed, documents):
         return False
     # Đổi CHỮ CÁI chỉ khi chữ cái của lượt trích không có trên giấy nào ngoài tờ khai: có rồi thì tên đúng, chỉ được sửa
     # dấu — cách viết khác chữ được nhiều giấy ghi hơn thường là tên NGƯỜI KHÁC (anh chị em, vợ / chồng) trên các giấy đó.
@@ -488,6 +501,10 @@ def name_finding(role: Role, person: dict, links: list[_Link], documents: list[d
                            for line in [_quote(str(document.get("text") or ""), key)] if line), ("", 0))
     if not quote:
         return None
+    # Dòng chứng cứ ghi kèm số định danh KHÁC số của vai → dòng của người khác cùng họ tên (anh em trong danh sách).
+    numbers = set(re.findall(r"(?<!\d)\d{12}(?!\d)", quote))
+    if len(person.get("number") or "") == 12 and numbers and person["number"] not in numbers:
+        return None
     mine, best = spelling_support(person["name"], documents), spelling_support(link.record["name"], documents)
     return Finding(INSPECTOR, UNITS_BY_ROLE[role.key]["ho_ten"], {f"{role.prefix}_FullName": link.record["name"]}, quote,
                    doc, f"giấy ghi họ tên {role.label} ({link.why})", role.label, backed=True,
@@ -544,7 +561,13 @@ def _year(value) -> str:
     return found[-1] if found else ""
 
 
-def birth_finding(role: Role, person: dict, links: list[_Link]) -> Finding | None:
+def _impossible_birth(year: str, person: dict, child_year: int | None) -> bool:
+    """Năm đề xuất ngược số định danh của chính người đó (số mã hoá năm sinh) hoặc không hơn con đủ 15 tuổi."""
+    encoded = id_birth_year(person.get("number") or "") if len(person.get("number") or "") == 12 else None
+    return bool((encoded and encoded != int(year)) or (child_year and child_year - int(year) < 15))
+
+
+def birth_finding(role: Role, person: dict, links: list[_Link], child_year: int | None = None) -> Finding | None:
     """Năm sinh cha / mẹ: mỗi trang ghi năm sinh cho chính người đó là một nguồn (giấy in 1 điểm, tờ khai viết tay 0,5).
     Đề xuất khi năm khác lượt trích, nhiều điểm hơn, có giấy in, và năm của lượt trích không có trên giấy in nào."""
     if role.key not in _BIRTH_ROLES:
@@ -563,7 +586,7 @@ def birth_finding(role: Role, person: dict, links: list[_Link]) -> Finding | Non
     if current and (mine["printed"] or best["weight"] <= mine["weight"]):
         return None
     record = best["link"].record
-    if record["handwritten"]:
+    if record["handwritten"] or _impossible_birth(key, person, child_year):
         return None
     quote = next((line.strip() for line in record["text"].splitlines() if key in line
                   and (base._name_key(record["name"]) in base._name_key(line) or "sinh" in fold(line))), "")
@@ -589,7 +612,8 @@ def findings_from(records: list[dict], values: dict, documents: list[dict]) -> l
                   if key != role.key and other["name"] and not close_name(other["name"], person["name"])]
         links = [link for record in records if (link := _belongs(record, role, person, others))]
         name = account_finding(role, person, documents) or name_finding(role, person, links, documents)
-        for finding in (name, ethnic_finding(role, person, links, documents), birth_finding(role, person, links)):
+        child_year = chu_the.birth_year(people["con"]["birth"])
+        for finding in (name, ethnic_finding(role, person, links, documents), birth_finding(role, person, links, child_year)):
             if finding:
                 findings.append(finding)
     return findings

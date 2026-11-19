@@ -10,7 +10,8 @@ Cố ý KHÔNG phát:
 - Ô khoá cổng tự đổ từ CSDLQG về dân cư: Họ và tên (``CongDan_tenCongDan``, readonly — cổng ghép từ Họ + Chữ đệm và
   tên), Số CCCD (``CongDan_soCmnd``, readonly), Giới tính, Sinh ngày, Dân tộc, Tôn giáo, Họ tên Cha, Họ tên Mẹ
   (disabled). Ghi đè chỉ làm lệch dữ liệu dân cư; ô disabled cũng không được gửi lên.
-- Ảnh chân dung 4x6 (``filename46``) — ảnh dán trên tờ khai, không cắt tự động; người nộp tự tải ảnh .jpg.
+- Ảnh dán trên tờ khai (không cắt tự động). Ảnh chân dung 4x6 là TỆP ẢNH riêng trong bộ giấy → runner phát ô
+  ``filename46`` (comp ``bca-photo``, đổi sẵn sang JPEG dưới 2 MB), xem mapper.portrait_field.
 - 17. Cơ quan tiếp nhận — danh sách chỉ có cơ quan đã chọn ở bước "Chọn trường hợp hồ sơ" (chạy thật 18/11).
 - Email, Đăng ký thông tin hoàn tiền (Số tài khoản / Tên chủ tài khoản / Tên ngân hàng) — giấy tờ không có; cảnh báo
   nhập tay.
@@ -150,3 +151,7 @@ NOI_CAP_QLHC = "Cục CS QLHC về TTXH"
 NOI_CAP_DKQL = "Cục CS ĐKQL cư trú và DLQG về dân cư"
 
 NOI_CAP_HO_CHIEU = "Cục Quản lý xuất nhập cảnh"
+
+# Ô tải "Ảnh chân dung" 4x6 đầu trang kê khai (input file name="filename46", id custom-file-input-46). Runner phát comp
+# "bca-photo" value {name, type, dataUrl} JPEG; extension gắn tệp vào input rồi phát change (không bấm nút "Tải ảnh").
+PORTRAIT_FIELD = "filename46"

@@ -103,12 +103,17 @@ FIELDS: list[dict] = [
     {"name": "Father_FullName", "desc": "Họ tên cha của người được đăng ký khai sinh. Ưu tiên lấy từ CCCD của cha; nếu cha đã mất và không có CCCD thì lấy từ TỜ KHAI, GIẤY ĐỀ NGHỊ XÁC NHẬN hoặc TRÍCH LỤC KHAI TỬ (dòng 'Họ tên người chết')."},
     {"name": "Father_IdNumber",
      "desc": "Số định danh/CCCD/CMND của cha, ƯU TIÊN lấy từ CCCD/CMND CỦA CHÍNH CHA. "
-             "KHÔNG lấy số định danh của người được khai sinh (trên CCCD/BHYT/học bạ) làm số của cha."},
+             "KHÔNG lấy số định danh của người được khai sinh (trên CCCD/BHYT/học bạ) làm số của cha. "
+             "Hồ sơ không có thẻ của cha: lấy số ở dòng 'Giấy tờ tùy thân' ghi cho chính cha trên bản cam đoan / đơn "
+             "(người cam đoan là cha)."},
     {"name": "Father_Gender",
      "desc": 'Giới tính GHI TRÊN giấy tờ đã dùng để điền Father_* ("Nam" hoặc "Nữ"). BẮT BUỘC trả khi có '
              'trả bất kỳ field Father_* nào lấy từ CCCD/CMND. Thẻ ghi "Nữ" nghĩa là thẻ đó KHÔNG phải của cha.'},
-    {"name": "Father_IdIssueDate", "desc": "Ngày cấp giấy tờ định danh của cha, dd/mm/yyyy — LẤY TỪ CCCD của cha nếu có."},
-    {"name": "Father_IdIssuePlace", "desc": "Nơi cấp giấy tờ định danh của cha — lấy từ mặt sau CCCD; RIÊNG Giấy CMND (~9 số) lấy 'Công an tỉnh/thành phố ...' ghi cùng dòng số CMND (KHÔNG suy 'Cục Cảnh sát...'/'Bộ Công an')."},
+    {"name": "Father_IdIssueDate", "desc": "Ngày cấp giấy tờ định danh của cha, dd/mm/yyyy — LẤY TỪ CCCD của cha nếu có; "
+                                           "không có thẻ thì lấy ngày cấp ghi cùng dòng 'Giấy tờ tùy thân' của cha trên "
+                                           "bản cam đoan / đơn."},
+    {"name": "Father_IdIssuePlace", "desc": "Nơi cấp giấy tờ định danh của cha — lấy từ mặt sau CCCD; RIÊNG Giấy CMND (~9 số) lấy 'Công an tỉnh/thành phố ...' ghi cùng dòng số CMND (KHÔNG suy 'Cục Cảnh sát...'/'Bộ Công an'). "
+                                           "Không có thẻ thì lấy nơi cấp ghi cùng dòng 'Giấy tờ tùy thân' của cha trên bản cam đoan / đơn."},
     {"name": "Father_BirthDateOrYear",
      "desc": "Ngày sinh cha. Nếu cha có CCCD thì lấy NGÀY đầy đủ dd/mm/yyyy từ CCCD; "
              "chỉ trả năm (yyyy) khi cha KHÔNG có CCCD và tài liệu chỉ ghi năm. "
@@ -135,12 +140,17 @@ FIELDS: list[dict] = [
     {"name": "Mother_FullName", "desc": "Họ tên mẹ của người được đăng ký khai sinh. Ưu tiên lấy từ CCCD của mẹ; nếu mẹ đã mất và không có CCCD thì lấy từ TỜ KHAI, GIẤY CHỨNG NHẬN KẾT HÔN hoặc TRÍCH LỤC KHAI TỬ (dòng 'Họ tên người chết')."},
     {"name": "Mother_IdNumber",
      "desc": "Số định danh/CCCD/CMND của mẹ, ƯU TIÊN lấy từ CCCD/CMND CỦA CHÍNH MẸ. "
-             "KHÔNG lấy số định danh của người được khai sinh làm số của mẹ."},
+             "KHÔNG lấy số định danh của người được khai sinh làm số của mẹ. "
+             "Hồ sơ không có thẻ của mẹ: lấy số ở dòng 'Giấy tờ tùy thân' ghi cho chính mẹ trên bản cam đoan / đơn "
+             "(người cam đoan là mẹ)."},
     {"name": "Mother_Gender",
      "desc": 'Giới tính GHI TRÊN giấy tờ đã dùng để điền Mother_* ("Nam" hoặc "Nữ"). BẮT BUỘC trả khi có '
              'trả bất kỳ field Mother_* nào lấy từ CCCD/CMND. Thẻ ghi "Nam" nghĩa là thẻ đó KHÔNG phải của mẹ.'},
-    {"name": "Mother_IdIssueDate", "desc": "Ngày cấp giấy tờ định danh của mẹ, dd/mm/yyyy — LẤY TỪ CCCD của mẹ nếu có."},
-    {"name": "Mother_IdIssuePlace", "desc": "Nơi cấp giấy tờ định danh của mẹ — lấy từ mặt sau CCCD; RIÊNG Giấy CMND (~9 số) lấy 'Công an tỉnh/thành phố ...' ghi cùng dòng số CMND (KHÔNG suy 'Cục Cảnh sát...'/'Bộ Công an')."},
+    {"name": "Mother_IdIssueDate", "desc": "Ngày cấp giấy tờ định danh của mẹ, dd/mm/yyyy — LẤY TỪ CCCD của mẹ nếu có; "
+                                           "không có thẻ thì lấy ngày cấp ghi cùng dòng 'Giấy tờ tùy thân' của mẹ trên "
+                                           "bản cam đoan / đơn."},
+    {"name": "Mother_IdIssuePlace", "desc": "Nơi cấp giấy tờ định danh của mẹ — lấy từ mặt sau CCCD; RIÊNG Giấy CMND (~9 số) lấy 'Công an tỉnh/thành phố ...' ghi cùng dòng số CMND (KHÔNG suy 'Cục Cảnh sát...'/'Bộ Công an'). "
+                                           "Không có thẻ thì lấy nơi cấp ghi cùng dòng 'Giấy tờ tùy thân' của mẹ trên bản cam đoan / đơn."},
     {"name": "Mother_BirthDateOrYear",
      "desc": "Ngày sinh mẹ. Nếu mẹ có CCCD thì lấy NGÀY đầy đủ dd/mm/yyyy từ CCCD; "
              "chỉ trả năm (yyyy) khi mẹ KHÔNG có CCCD và tài liệu chỉ ghi năm. "

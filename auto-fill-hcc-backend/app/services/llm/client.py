@@ -313,6 +313,31 @@ async def _chat_text(
         return out
 
 
+async def chat_self_hosted(
+    messages: list[dict],
+    temperature: float | None = None,
+    max_tokens: int | None = None,
+    enable_thinking: bool = False,
+    *,
+    purpose: str | None = None,
+) -> str:
+    """Chỉ máy chủ AI riêng (vLLM primary → fallback vLLM), KHÔNG rơi sang OpenAI — cho nội dung người dùng
+    không được gửi ra dịch vụ ngoài. Hết máy chủ riêng thì ném lỗi để nơi gọi báo "thử lại sau"."""
+    return from_model_keys(await _monitored(_chat_self_hosted, "chat_self_hosted", _caller_module(), purpose,
+                                            to_model_keys(messages), temperature, max_tokens, enable_thinking))
+
+
+async def _chat_self_hosted(
+    messages: list[dict],
+    temperature: float | None = None,
+    max_tokens: int | None = None,
+    enable_thinking: bool = False,
+) -> str:
+    temperature = settings.llm_temperature if temperature is None else temperature
+    max_tokens = settings.llm_max_tokens if max_tokens is None else max_tokens
+    return await _chat_primary(messages, temperature, max_tokens, enable_thinking)
+
+
 def extract_json_block(text: str) -> dict:
     """Ưu tiên block ```json ... ```; fallback cặp {...} đầu tiên.
 

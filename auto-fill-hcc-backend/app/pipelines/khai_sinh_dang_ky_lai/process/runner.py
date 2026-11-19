@@ -36,7 +36,9 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
     # Reasoning đã chốt vai trò theo người. Lọc trước mapper để không biến field
     # bị gán nhầm người thành field UI hợp lệ.
     reasoning_context = res.get("reasoning_context") or ""
-    res["fields"] = reason.sanitize_extracted_fields(res["fields"], reasoning_context)
+    # Số / ngày đăng ký của giấy kết hôn, khai tử: chỉ bước lọc dùng (không đưa cho model ở lượt trích).
+    res["fields"] = reason.sanitize_extracted_fields(
+        res["fields"], reasoning_context + reason.render_other_registration(read.get("documents") or []))
     # Truyen reasoning_context de mapper biet cha/me nao da duoc xac dinh la da chet
     enrich_options = {**(options or {}), "_reasoning_context": reasoning_context}
     raw_fields = copy.deepcopy(res["fields"]) if second_pass else []

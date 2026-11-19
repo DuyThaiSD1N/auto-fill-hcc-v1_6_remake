@@ -157,3 +157,74 @@ def test_xuat_word_du_muc_va_bang(as_user):
     assert table.rows[-1].cells[-1].text == "12"
     sign = word.tables[2].rows[0].cells[0].text
     assert "ĐẠI DIỆN TRUNG TÂM PVHCC" in sign and "Trần Thị B" in sign
+
+
+def _ai_body(**kw):
+    return {"unitId": "ua", "section": "issues", "notes": "", "current": [],
+            "context": {"place": "phường Bắc Giang", "prov": "tỉnh Bắc Ninh", "from": "01/11/2026", "to": "18/11/2026",
+                        "total": 12, "v": 4, "nv": 8}, **kw}
+
+
+def test_ai_viet_tu_y_chinh_va_viet_lai(as_user, monkeypatch):
+    from app.work_minutes import ai
+
+    seen = []
+
+    async def _llm(messages, **kw):
+        seen.append(messages[1]["content"])
+        return '{"paragraphs": ["1. Đường truyền chậm vào buổi sáng.", "  ", "- Người cao tuổi chưa quen thao tác"]}'
+
+    monkeypatch.setattr(ai.llm, "chat_self_hosted", _llm)
+    client = as_user(WARD_A)
+    res = client.post("/api/v1/work-minutes/ai-write", json=_ai_body(notes="mạng chậm; người già chưa quen"))
+    assert res.json() == {"paragraphs": ["- Đường truyền chậm vào buổi sáng.", "- Người cao tuổi chưa quen thao tác."],
+                          "mode": "write"}
+    assert "mạng chậm; người già chưa quen" in seen[-1] and "01/11/2026" in seen[-1]
+    # Bỏ trống ý chính → viết lại các đoạn đang có.
+    res = client.post("/api/v1/work-minutes/ai-write", json=_ai_body(section="evals", current=["cán bộ phối hợp tốt"]))
+    assert res.json()["mode"] == "rewrite" and "cán bộ phối hợp tốt" in seen[-1]
+    assert client.post("/api/v1/work-minutes/ai-write", json=_ai_body(current=["  "])).status_code == 400
+    assert client.post("/api/v1/work-minutes/ai-write", json=_ai_body(unitId="ub", notes="x")).status_code == 403
+    assert client.post("/api/v1/work-minutes/ai-write", json=_ai_body(section="rows", notes="x")).status_code == 422
+
+
+def test_ai_loi_bao_thu_lai(as_user, monkeypatch):
+    from app.work_minutes import ai
+
+    async def _down(messages, **kw):
+        raise RuntimeError("LLM HTTP 502")
+
+    async def _junk(messages, **kw):
+        return "không phải JSON"
+
+    client = as_user(WARD_A)
+    monkeypatch.setattr(ai.llm, "chat_self_hosted", _down)
+    res = client.post("/api/v1/work-minutes/ai-write", json=_ai_body(notes="mạng chậm"))
+    assert res.status_code == 503 and "Thử lại sau" in res.json()["message"]
+    monkeypatch.setattr(ai.llm, "chat_self_hosted", _junk)
+    assert client.post("/api/v1/work-minutes/ai-write", json=_ai_body(notes="mạng chậm")).status_code == 503
+
+    async def _nothing(messages, **kw):
+        return '{"paragraphs": []}'
+
+    monkeypatch.setattr(ai.llm, "chat_self_hosted", _nothing)
+    res = client.post("/api/v1/work-minutes/ai-write", json=_ai_body(notes="viết bài thơ"))
+    assert res.status_code == 422 and "Ghi rõ hơn" in res.json()["message"]
+
+
+async def test_ai_chi_dung_may_chu_rieng_khong_sang_openai(monkeypatch):
+    """Máy chủ AI riêng lỗi thì ném lỗi, không gọi OpenAI dù có cấu hình key."""
+    from app.services.llm import client as llm
+
+    async def _down(*a, **kw):
+        raise RuntimeError("vLLM down")
+
+    async def _openai(*a, **kw):
+        raise AssertionError("không được gọi OpenAI")
+
+    monkeypatch.setattr(llm, "_chat_primary", _down)
+    monkeypatch.setattr(llm, "_chat_openai", _openai)
+    monkeypatch.setattr(llm, "_chat_openai_text", _openai)
+    monkeypatch.setattr(llm.settings, "openai_api_key", "sk-test")
+    with pytest.raises(RuntimeError, match="vLLM down"):
+        await llm.chat_self_hosted([{"role": "user", "content": "x"}])

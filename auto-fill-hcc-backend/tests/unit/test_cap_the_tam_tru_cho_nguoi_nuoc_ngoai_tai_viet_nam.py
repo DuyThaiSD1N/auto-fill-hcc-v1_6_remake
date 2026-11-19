@@ -362,3 +362,47 @@ def test_dinh_kem_tach_loi_quay_ve_khong_tach(monkeypatch):
     slots = _slots(result)
     assert (slots[0]["fileIndex"], slots[1]["fileIndex"], slots[2]["fileIndex"]) == (2, 0, 1)
     assert not any(a.get("sourceSegments") for a in result["attachments"])
+
+
+# ── Ảnh chân dung 4x6 (ô filename46 đầu trang, cùng khuôn hộ chiếu 1.001456), user 19/11/2026 ──
+import io  # noqa: E402
+
+from PIL import Image  # noqa: E402
+
+
+def _portrait(name: str = "IMG_2001.png") -> dict:
+    image = Image.new("RGB", (400, 600), (255, 255, 255))
+    image.paste((120, 90, 70), (100, 150, 300, 600))
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return {"name": name, "type": "image/png", "dataUrl": "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()}
+
+
+def test_runner_gan_anh_chan_dung_doi_jpg_va_chi_con_nhac_trang_ho_chieu(monkeypatch):
+    files = [{"name": "ho-so.pdf", "type": "application/pdf", "dataUrl": "data:application/pdf;base64,eA=="}, _portrait()]
+
+    async def fake_run(files_by_role, **kwargs):
+        return {"fields": [{"name": k, "value": v} for k, v in HO_SO.items()], "errors": [], "extracted": {},
+                "ocr_text": f"===== ho-so.pdf (tiengnoi) =====\n{TO_KHAI}"}
+
+    monkeypatch.setattr(runner.runner, "run", fake_run)
+    res = asyncio.run(runner.run({"": files}, {}))
+    photo = res["fields"][0]
+    assert photo["name"] == "filename46" and photo["comp"] == "bca-photo"
+    assert photo["value"]["type"] == "image/jpeg" and photo["value"]["dataUrl"].startswith("data:image/jpeg;base64,")
+    assert any("Đã gắn ảnh 'IMG_2001.png'" in e and "đổi sang định dạng .jpg" in e for e in res["errors"])
+    assert mapper.PHOTO_WARNING not in res["errors"] and mapper.PASSPORT_PAGE_WARNING in res["errors"]
+    # Không có ảnh chân dung → giữ câu nhắc 2 ô ảnh + nhắc tải ảnh .jpg.
+    res = asyncio.run(runner.run({"": files[:1]}, {}))
+    assert not any(f["name"] == "filename46" for f in res["fields"])
+    assert mapper.PHOTO_WARNING in res["errors"] and any(".jpg" in e and "Chưa thấy ảnh chân dung" in e for e in res["errors"])
+
+
+def test_dinh_kem_khong_dua_anh_chan_dung_vao_giay_to_khac(monkeypatch):
+    photo = _portrait("chan-dung.png")
+    files = [_file("hc.pdf"), FileItem(name=photo["name"], type=photo["type"], dataUrl=photo["dataUrl"], role="other")]
+    _mock_io(monkeypatch, {"hc.pdf": HO_CHIEU}, "không phải JSON")
+    for split in (False, True):
+        result = asyncio.run(attach_planner.plan(files, {"splitDocuments": split}, {}))
+        assert all(a["fileIndex"] != 1 for a in result["attachments"]), split
+        assert any("Ảnh chân dung 'chan-dung.png' không đính" in e for e in result["errors"]), split

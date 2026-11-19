@@ -17,7 +17,7 @@ from app.pipelines._shared.area_remap import city_province_area, remap_area
 from app.pipelines._shared.formatting import upper_person_name as _upper_person_name
 from app.pipelines._shared.ethnic_normalize import normalize_ethnic
 from app.pipelines._shared.hospital_lookup import hospital_area
-from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
+from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, issuer_by_issue_date, normalize_issuer
 from app.pipelines._shared.legacy_fields.dang_ky_lai import ALLOWED as UI_COMP_BY_NAME
 from app.pipelines._shared.tai_khoan import account_context, matches_account
 from app.monitor import recorder as mon
@@ -327,7 +327,15 @@ def _is_birth_declaration(title) -> bool:
 def _issuer_or_default(values: dict, prefix: str) -> str:
     issuer = normalize_issuer(values.get(f"{prefix}_IdIssuePlace"))
     if issuer:
-        return issuer
+        issued = values.get(f"{prefix}_IdIssueDate")
+        # Số 12 chữ số cấp từ 2021 là CCCD gắn chip / thẻ căn cước: Cục hoặc Bộ cấp, không phải "Công an tỉnh" (người dân
+        # chép nhầm cơ quan cấp CMND cũ vào bản cam đoan).
+        year = re.search(r"(\d{4})\s*$", str(issued or ""))
+        if len(_digits(values.get(f"{prefix}_IdNumber"))) == 12 and year and int(year.group(1)) >= 2021 \
+                and _fold(issuer).startswith("cong an"):
+            return default_issuer(issued)
+        # Thẻ cấp từ 01/7/2024 là thẻ căn cước Bộ Công an — bản cam đoan / tờ khai hay in sẵn tên Cục trước chỗ ghi ngày.
+        return issuer_by_issue_date(issuer, issued)
     number = values.get(f"{prefix}_IdNumber")
     # CMND (9 so): noi cap la "Cong an tinh ..." GHI TREN GIAY — KHONG mac dinh.
     if len(_digits(number)) == 9:
@@ -985,6 +993,10 @@ def _with_account(requester: dict, options: dict | None) -> dict:
         if key in ("ngay_cap", "noi_cap") and requester.get(key) and _digits(requester.get("so_dinh_danh")) == _digits(
                 account.get("SoDinhDanh")):
             continue
+        # Nơi cư trú giấy tờ trong hồ sơ đã ghi thì giữ: cán bộ giữ dòng địa chỉ theo giấy (tài khoản hay ghi khác
+        # chữ cùng một nơi, hoặc chưa cập nhật).
+        if key == "noi_cu_tru" and isinstance(requester.get(key), dict) and requester[key].get("diaChi"):
+            continue
         if key == "noi_cu_tru" and value:
             value = _normalize_domestic_area({"quocGia": "Việt Nam", **value})
         if not value:
@@ -1039,6 +1051,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     for key, value in list(values.items()):
         if key.endswith("_IdNumber") and re.fullmatch(r"[1-9]\d{10}", str(value).strip()):
             values[key] = "0" + str(value).strip()
+        # Ngày viết tay: nét "/" sau tháng OCR đọc thành số 1 → tháng 21…91.
+        if isinstance(value, str) and ("Date" in key or key.endswith("BirthDateOrYear")):
+            values[key] = _reason_mod.fix_slash_month(value)
     # Vai cha/mẹ mà reason.py dựng lại từ tờ khai được đánh dấu default — hồ sơ đang có hai tên
     # cho cùng một vai. Cờ phải chảy tiếp ra field UI để extension tô vàng cho cán bộ soát.
     default_names = {f.get("name") for f in fields if f.get("default")}

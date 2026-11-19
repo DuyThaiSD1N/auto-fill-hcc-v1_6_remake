@@ -45,6 +45,8 @@ BIA = "bia_ho_so"
 GOP = "ho_so_gop"
 OTHER = "other"
 BLANK = "blank_page"
+# Ảnh chân dung 4x6: đã gắn ở ô tải ảnh đầu trang (process runner) → không đính vào bảng Thành phần hồ sơ.
+PORTRAIT = "anh_chan_dung"
 ALLOWED = {TO_KHAI, VAN_BAN, HO_CHIEU, CHUNG_MINH, IDENTITY, BIA, GOP, OTHER, BLANK}
 # Loại giấy "thật" — tệp có từ hai loại trở lên là hồ sơ gộp (bìa / danh mục không tính).
 SUBSTANTIVE = (TO_KHAI, VAN_BAN, HO_CHIEU, CHUNG_MINH, IDENTITY)
@@ -201,7 +203,8 @@ def build_items(names: list[str], entries: list[dict]) -> tuple[list[dict], list
     ``sourceFileIndexes``, có đoạn cắt trang → ``sourceSegments``. Tệp gộp vào CẢ ba dòng; có trang hộ chiếu thì thêm
     dòng "Giấy tờ khác" hộ chiếu. Chỉ cảnh báo khi hồ sơ THIẾU giấy / có giấy lạ.
     """
-    entries = [e for e in entries if e.get("docType") != BLANK]
+    portraits = [e for e in entries if e.get("docType") == PORTRAIT]
+    entries = [e for e in entries if e.get("docType") not in (BLANK, PORTRAIT)]
     parts_of_file: dict[int, int] = {}
     for e in entries:
         parts_of_file[e["fileIndex"]] = parts_of_file.get(e["fileIndex"], 0) + 1
@@ -211,7 +214,10 @@ def build_items(names: list[str], entries: list[dict]) -> tuple[list[dict], list
 
     has_form = any(e["docType"] in (TO_KHAI, GOP) for e in entries)
     attachments: list[dict] = []
-    warnings: list[str] = []
+    warnings: list[str] = [
+        f"Ảnh chân dung '{names[e['fileIndex']]}' không đính vào Thành phần hồ sơ — ảnh này gắn ở ô Ảnh chân dung đầu "
+        "trang kê khai." for e in portraits
+    ]
     used: set[int] = set()
     for slot in SLOTS:
         order = ROW_ORDERS[slot["slotIndex"]]
@@ -318,6 +324,16 @@ def classify_files(files: list[dict], texts: dict[str, str], llm: dict[int, dict
     return entries
 
 
+def mark_portrait(entries: list[dict], raw_files: list[dict], texts: dict[int, str]) -> list[dict]:
+    """Tệp ảnh chân dung (luật chung với hộ chiếu 1.001456, ``find_portrait``) → loại PORTRAIT để không đính."""
+    from app.pipelines.cap_ho_chieu_pho_thong_o_trong_nuoc.process.mapper import find_portrait
+
+    index = find_portrait(raw_files, texts)
+    if index is None:
+        return entries
+    return [{**e, "docType": PORTRAIT} if e["fileIndex"] == index else e for e in entries]
+
+
 async def plan(files: list[FileItem], options: dict | None = None, session: dict | None = None) -> dict:
     del options
     raw_files = [{"name": item.name, "type": item.type, "dataUrl": item.dataUrl} for item in files]
@@ -355,7 +371,8 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
             errors.append(f"attachment_agent: {exc}")
     llm_ms = int((time.monotonic() - started) * 1000)
 
-    entries = [e for e in classify_files(raw_files, texts, llm) if e["fileIndex"] in keep]
+    entries = mark_portrait([e for e in classify_files(raw_files, texts, llm) if e["fileIndex"] in keep], raw_files,
+                            {i: texts.get(names[i], "") for i in range(len(names))})
     attachments, warnings = build_items(names, entries)
     errors.extend(warnings)
     return {

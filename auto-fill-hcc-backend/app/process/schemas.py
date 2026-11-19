@@ -43,3 +43,6 @@ class ProcessResp(BaseModel):
     businessFlow: dict[str, Any] | None = None
     # Lượt purpose="authorized_person" cổng Bắc Ninh: loại "Người ủy quyền là:" pipeline đọc được (vd "Doanh nghiệp").
     authorizedSubject: str | None = None
+    # Pipeline cố ý KHÔNG điền (vd giấy tờ của người khác chủ tài khoản VNeID): {code, message, ...}. Extension hiện
+    # nguyên `message` thay cho câu chung "không đọc được giấy tờ". Pipeline không chặn thì None.
+    blocked: dict[str, Any] | None = None

@@ -16,6 +16,7 @@ LLM liệt kê mọi loại giấy trong file, planner chọn chỗ theo _PRIORI
 KHÔNG set Bản chính/Bản sao: số bản mặc định của cổng đã đúng ánh xạ.
 """
 
+import asyncio
 import time
 from typing import Any
 
@@ -138,7 +139,7 @@ def _row_item(index: int, file_name: str, route: dict, doc_type: str) -> dict:
     }
 
 
-async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, list[str]]:
+async def _classify_once(documents: list[dict[str, Any]]) -> dict[int, list[str]]:
     if not documents:
         return {}
     messages = [
@@ -153,6 +154,19 @@ async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, list[
             result[int(item.get("index"))] = _doc_types(item)
         except (TypeError, ValueError, AttributeError):
             continue
+    return result
+
+
+async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, list[str]]:
+    result = await _classify_once(documents)
+    # Gọi chung nhiều tệp, model đôi khi trả thiếu tệp (chữ OCR một tệp lặp vô nghĩa làm model dồn mọi tệp vào
+    # tệp đầu) → hỏi lại RIÊNG từng tệp thiếu, không để tệp đó rơi về dòng mặc định.
+    missing = [item for item in documents if item.get("index") not in result]
+    if len(documents) > 1 and missing:
+        retried = await asyncio.gather(*(_classify_once([item]) for item in missing), return_exceptions=True)
+        for item, found in zip(missing, retried):
+            if isinstance(found, dict) and found.get(item["index"]):
+                result[item["index"]] = found[item["index"]]
     return result
 
 

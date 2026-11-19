@@ -241,6 +241,7 @@ async def process(body: ProcessReq, background: BackgroundTasks,
         "pages": result.get("pages"),
         "businessFlow": result.get("businessFlow"),
         "authorizedSubject": result.get("authorizedSubject"),
+        "blocked": result.get("blocked"),
     }
     if rec is not None:
         for err in result.get("errors") or []:

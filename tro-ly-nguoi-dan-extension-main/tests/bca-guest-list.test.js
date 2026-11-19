@@ -194,9 +194,50 @@ test("bca-declarant: tài khoản là người cần cấp → radio tự khai; 
   assert.strictEqual(r.result.notFound.length, 1);
 });
 
+// Cấp đổi / cấp lại căn cước (19/11): trang có thể đặt id radio khác trang từ đủ 14 tuổi → dò theo nhãn trong nhóm radIsNCC.
+function runDeclarantByLabel(account, subject, wrapBoth = false) {
+  const fn = RELATION_SRC.slice(RELATION_SRC.indexOf("async function fillBcaDeclarantField("),
+    RELATION_SRC.indexOf("// \"Mối quan hệ của người kê khai với người cần cấp căn cước\""));
+  const SELF = "Người kê khai là người cần cấp đổi căn cước";
+  const OTHER = "Người kê khai là cha/mẹ/người đại diện hợp pháp của người cần cấp đổi căn cước";
+  const radio = (text) => ({ text, checked: false, disabled: false, getAttribute: () => "radIsNCC",
+    click() { this.checked = true; } });
+  const radios = [radio(SELF), radio(OTHER), { text: OTHER, getAttribute: () => "radKhac" }];
+  const els = { txtFULLNAME_NDN: { value: account.name }, txtIDENTIFY_NUMBER_NDN: { value: account.id } };
+  const deps = {
+    document: { getElementById: (id) => els[id] || null, querySelectorAll: () => radios },
+    waitFor: async (cond) => cond(),
+    bcaVisible: (el) => !!el,
+    bcaGuestFold: (s) => String(s || "").replace(/Đ/g, "D").replace(/đ/g, "d").normalize("NFD")
+      .replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim().toLowerCase(),
+    radioLabelText: (r) => (wrapBoth ? `${SELF} ${OTHER}` : r.text),
+    console: { log() {} },
+  };
+  const run = new Function(...Object.keys(deps), `${fn}; return fillBcaDeclarantField;`)(...Object.values(deps));
+  const result = { filled: 0, notFound: [] };
+  const value = { selfId: "chkIS_NCC", otherId: "chkIS_NOT_NCC", otherBlock: "divCheck_NDN", selfLabel: SELF,
+    otherLabel: OTHER, subject };
+  return run({ name: "radIsNCC", comp: "bca-declarant", value }, result)
+    .then((decision) => ({ decision, self: radios[0].checked, other: radios[1].checked, result }));
+}
+
+test("bca-declarant: id radio lệch thì chọn theo nhãn (cấp đổi căn cước)", async () => {
+  const subject = { name: "ĐINH VĂN MẪU", id: "001204000009" };
+  let r = await runDeclarantByLabel({ name: "Nguyễn Văn Khác", id: "001204000001" }, subject);
+  assert.deepStrictEqual([r.decision, r.self, r.other], ["other", false, true]);
+  r = await runDeclarantByLabel({ name: "Đinh Văn Mẫu", id: "001204000009" }, subject);
+  assert.deepStrictEqual([r.decision, r.self, r.other], ["self", true, false]);
+  // Nhãn đọc ra chứa cả hai câu (thẻ cha bọc hai radio) → không chọn bừa.
+  r = await runDeclarantByLabel({ name: "Nguyễn Văn Khác", id: "001204000001" }, subject, true);
+  assert.deepStrictEqual([r.decision, r.self, r.other], [null, false, false]);
+  assert.strictEqual(r.result.notFound.length, 1);
+});
+
 test("vòng điền chuẩn: ô bcaOtherOnly bỏ qua trừ khi bca-declarant chọn khai thay", () => {
   assert.match(RELATION_SRC, /f\.comp === "bca-declarant"\)\s*\{\s*bcaDeclarant = await fillBcaDeclarantField\(f, result\);/);
   assert.match(RELATION_SRC, /if \(f\.bcaOtherOnly && bcaDeclarant !== "other"\) continue;/);
+  // SĐT / email Phần I của người cần cấp chỉ ghi khi tài khoản chính là người đó (cấp đổi căn cước, 19/11).
+  assert.match(RELATION_SRC, /if \(f\.bcaSelfOnly && bcaDeclarant !== "self"\) continue;/);
 });
 
 
@@ -383,4 +424,73 @@ test("bộ đọc ô Bộ Công an chạy thêm eForm Nth bocongan: bootstrap-se
   // Đính kèm lại: gỡ tệp lượt trước bằng thùng rác của bảng (cổng nhận thêm bản trùng chứ không thay).
   const core = read("content/attach-core.js");
   assert.match(core, /if \(isBcaNthAttachPage\(\)\) return await clearBcaNthAttachedFiles\(\);/);
+  // DOM thật 19/11: thùng rác = span.trash-file[title="Remove this file"]; tệp đã gỡ (li ẩn) không còn tính là đã có
+  // trên dòng — trước đây "Đính kèm lại" gỡ xong rồi báo "tệp đã có sẵn" và để trống dòng.
+  assert.match(core, /const BCA_NTH_TRASH = "span\.trash-file, \[title='Remove this file'\]/);
+  assert.match(core, /filter\(\(li\) => li\.isConnected && isVisible\(li\)\)/);
+  assert.match(core, /const item = target\.closest\("li"\);/);
+});
+
+// ── Ảnh chân dung 4x6 (comp bca-photo, hộ chiếu 1.001456): gắn tệp JPEG BE gửi vào ô filename46, không bấm "Tải ảnh" ──
+test("ảnh chân dung: gắn tệp JPEG vào input filename46, phát change, tính là đã điền", async () => {
+  const vm = require("node:vm");
+  const src = fs.readFileSync(path.join(__dirname, "..", FILE_STD), "utf8");
+  assert.match(src, /f\.comp === "bca-photo"\)\s*\{\s*await fillBcaPhotoField\(f, result\);\s*continue;/);
+  const fn = src.slice(src.indexOf("function findBcaPhotoInput("), src.indexOf("async function fillBcaAgencyField("));
+  assert.doesNotMatch(fn, /\.click\(\)/, "không bấm nút Tải ảnh (mở hộp chọn tệp của Windows)");
+  const events = [];
+  const marks = [];
+  const logs = [];
+  const hidden = { value: "" };
+  const input = {
+    name: "filename46", files: null, parentElement: { id: "box" },
+    getAttribute: (attr) => (attr === "typeimg" ? "46" : null),
+    closest: () => ({ id: "group" }),
+    dispatchEvent: (ev) => events.push(ev.type),
+  };
+  class FakeInput {}
+  Object.defineProperty(FakeInput.prototype, "files", { set(v) { this._files = v; }, get() { return this._files; } });
+  Object.setPrototypeOf(input, FakeInput.prototype);
+  delete input.files;
+  const ctx = {
+    document: {
+      querySelector: (sel) => (sel === 'input[type="file"][name="filename46"]' ? input : null),
+      querySelectorAll: () => [],
+      getElementById: (id) => (id === "custom-file-hidden46" ? hidden : null),
+      getElementsByName: () => [],
+    },
+    CSS: { escape: (s) => s },
+    HTMLInputElement: FakeInput,
+    DataTransfer: class { constructor() { const list = []; this.items = { add: (f) => list.push(f) }; this.files = list; } },
+    Event: class { constructor(type) { this.type = type; } },
+    File, atob,
+    console: { log: (m) => logs.push(["log", m]), warn: (m) => logs.push(["warn", m]) },
+    sleep: async () => {},
+    waitFor: async () => null,
+    foldChoiceText: (s) => String(s || "").toLowerCase(),
+    injectAutofillStyles: () => {},
+    markFilled: (el) => marks.push(["filled", el.id]),
+    markUnfilled: (el) => marks.push(["unfilled", el.id]),
+  };
+  vm.createContext(ctx);
+  vm.runInContext(`${fn}\nthis.fillBcaPhotoField = fillBcaPhotoField;`, ctx);
+  const result = { filled: 0, notFound: [] };
+  const value = { name: "anh_chan_dung_4x6.jpg", type: "image/jpeg", dataUrl: "data:image/jpeg;base64,/9j/4AAQ" };
+  assert.equal(await ctx.fillBcaPhotoField({ name: "filename46", comp: "bca-photo", value }, result), true);
+  assert.equal(input.files.length, 1);
+  assert.equal(input.files[0].name, "anh_chan_dung_4x6.jpg");
+  assert.equal(input.files[0].type, "image/jpeg");
+  assert.deepEqual(events, ["input", "change"]);
+  assert.deepEqual(marks, [["filled", "group"]]);
+  assert.equal(result.filled, 1);
+  // Cổng chưa ghi tên tệp vào ô ẩn hd_filename46 → vẫn tính đã gắn nhưng ghi log cảnh báo để soát.
+  assert.match(logs.at(-1)[1], /chưa thấy cổng nhận/);
+  hidden.value = "anh_chan_dung_0123456789.jpg";
+  await ctx.fillBcaPhotoField({ name: "filename46", comp: "bca-photo", value }, result);
+  assert.deepEqual(logs.at(-1), ["log", "[AutoFill-STD] filename46: cổng đã nhận ảnh anh_chan_dung_4x6.jpg."]);
+  // Trang không có ô ảnh → notFound, không lỗi.
+  ctx.document.querySelector = () => null;
+  const missing = { filled: 0, notFound: [] };
+  assert.equal(await ctx.fillBcaPhotoField({ name: "filename46", comp: "bca-photo", value }, missing), false);
+  assert.deepEqual(missing.notFound, ["filename46"]);
 });

@@ -436,6 +436,7 @@ CHIP_HMONG = {
     "📎 Đính kèm trong 1 hồ sơ": "Tso rau ib phau",
     "🗂️ Đính kèm nhiều hồ sơ": "Tso rau ntau phau",
     "📱 Chụp lại giấy tờ": "Thaij dua",
+    "📱 Gửi lại giấy tờ": "Xa ntaub ntawv dua",  # BẢN NHÁP chờ anh Dư soát ("xa" = gửi, như "xa ntxiv")
     "📱 Mở lại màn hình điện thoại": "Qhib dua xov tooj",
     "📱 Đổi sang chụp điện thoại": "Hloov mus thaij xov tooj",
     "🖨️ Đổi sang Scan tại quầy": "Hloov mus scan",
@@ -1158,6 +1159,14 @@ FILL_REPORT_REVIEW = {
     "tts": "Kuv sau tiav lawm. Pej xeem xyuas dua ces kho lub twg tsis yog.",
 }
 
+# BẢN NHÁP chờ anh Dư soát — giấy tờ của người khác chủ tài khoản VNeID (vi.ACCOUNT_MISMATCH).
+ACCOUNT_MISMATCH = {
+    "md": "⚠️ **Ntaub ntawv tsis yog ntawm tus tswv account, kuv tseem tsis tau sau.**\n\n"
+          "Ntaub ntawv yog ntawm **{document}**, account VNeID yog ntawm **{account}**.\n\n"
+          "Pej xeem xa ntaub ntawv ntawm **{account}**, los yog nkag VNeID ntawm **{document}** ces ua dua.",
+    "tts": "Ntaub ntawv yog ntawm {document}, tsis yog ntawm {account}. Pej xeem xa ntaub ntawv ntawm {account}, los yog "
+           "nkag VNeID ntawm {document} ces ua dua.",
+}
 PIPELINE_ERROR = {
     "md": "Kuv nyeem ntaub ntawv tsis tau. Pej xeem nias ua dua, los yog thaij duab kom pom meej dua.",
     "tts": "Kuv nyeem tsis tau. Pej xeem nias ua dua los yog thaij dua kom meej.",

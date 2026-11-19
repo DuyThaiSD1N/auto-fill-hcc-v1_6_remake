@@ -60,6 +60,10 @@ PHOTO_WARNING = (
     "Đầu biểu mẫu có 2 ô tải ảnh .jpg dưới 2 MB: Ảnh chân dung (cổng đòi ảnh 4x6 nền trắng — hồ sơ giấy thường chỉ có ảnh "
     "2x3) và ảnh Trang nhân thân hộ chiếu — tải tay, không thuộc bảng Thành phần hồ sơ."
 )
+# Runner gắn được ảnh chân dung (ô filename46, comp bca-photo) → chỉ còn nhắc ô Trang nhân thân hộ chiếu.
+PASSPORT_PAGE_WARNING = (
+    "Ô ảnh Trang nhân thân hộ chiếu ở đầu biểu mẫu (tệp .jpg dưới 2 MB) — tải tay, không thuộc bảng Thành phần hồ sơ."
+)
 AGENCY_WARNING = (
     "Mục Nơi tiếp nhận hồ sơ: ô Cơ quan tiếp nhận theo cơ quan đã chọn ở bước chọn trường hợp hồ sơ; tự chọn Nơi nhận "
     "kết quả (Nhận trực tiếp / Nhận qua bưu chính) — giấy tờ không ghi."

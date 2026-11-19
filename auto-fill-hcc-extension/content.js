@@ -4467,12 +4467,57 @@
   //  - Đã nhớ tệp nguồn: so với các tên nó từng lên cổng; cổng cắt ngắn tên hiển thị ("…khuyết ....pdf") → nhận tiền tố.
   //  - Chưa nhớ: chỉ trùng TRỌN tên — nhiều tệp khác nhau có thể cùng nhãn, bỏ nhầm là sót tệp.
   function shownIndexForFile(shown, file, memory) {
+    // Cổng Bộ Công an đổi tên tệp đã đính thành "<tên>_<mốc giờ 10/13 số>.pdf" → so cả bản bỏ mốc giờ (như trợ lý).
+    const stampless = (fp) => [fp, ...[10, 13].filter((n) => fp.length > n + 5 && new RegExp(`\\d{${n}}$`).test(fp))
+      .map((n) => fp.slice(0, -n))];
     const remembered = (memory[attachSourceKey(file)] || []).map(attpDocFingerprint);
     if (remembered.length) {
-      return shown.findIndex((fp) => remembered.some((name) => name === fp || (fp.length >= 12 && name.startsWith(fp))));
+      return shown.findIndex((fp) => remembered.some((name) => stampless(fp).includes(name)
+        || (fp.length >= 12 && name.startsWith(fp))));
     }
     const own = attpDocFingerprint(file.name);
-    return shown.findIndex((fp) => fp === own);
+    return shown.findIndex((fp) => stampless(fp).includes(own));
+  }
+
+  // eForm Nth cổng Bộ Công an (hộ chiếu, con dấu, thị thực, thẻ tạm trú): tệp đã đính của một dòng nằm ở
+  // ul[id^="ul_file_info_"] > li = [span.download-file][span.trash-file title="Remove this file" > i.fa-trash-o]
+  // [a.file-info] (DOM thật 19/11). Cổng nhận thêm bản trùng chứ không thay → "Đính kèm lại" ra hai tệp cùng dòng.
+  // Trước khi gắn tệp mới: bấm thùng rác các tệp cũ KHÔNG thuộc lượt này (tệp cùng tên, bỏ mốc giờ, thì giữ).
+  const BCA_NTH_HOST = "dichvucong.bocongan.gov.vn";
+  const BCA_NTH_FILE_ITEMS = 'ul[id^="ul_file_info_"] > li';
+  const BCA_NTH_TRASH = 'span.trash-file, [title="Remove this file"], i.fa-trash-o, i.fa-trash';
+  const BCA_NTH_DIALOGS = ".modal.in, .modal.show, .bootbox, .jconfirm-box, .swal2-popup, [role='dialog'], [role='alertdialog']";
+
+  async function clearBcaNthStaleFiles(row, files) {
+    if (location.hostname !== BCA_NTH_HOST || !row) return 0;
+    const memory = readUploadedNames();
+    const keep = (li) => {
+      const fp = attpDocFingerprint(nodeText(li.querySelector("a.file-info") || li));
+      return files.some((file) => shownIndexForFile([fp], file, memory) >= 0);
+    };
+    let removed = 0;
+    const failed = new Set();
+    for (let guard = 0; guard < 10; guard++) {
+      const li = Array.from(row.querySelectorAll(BCA_NTH_FILE_ITEMS))
+        .find((item) => !failed.has(item) && item.querySelector(BCA_NTH_TRASH) && !keep(item));
+      if (!li) break;
+      const icon = li.querySelector(BCA_NTH_TRASH);
+      const button = icon.closest("span.trash-file, a, button") || icon;
+      const dialogsBefore = new Set(Array.from(document.querySelectorAll(BCA_NTH_DIALOGS)).filter(isVisible));
+      button.click();
+      const gone = () => !li.isConnected || !isVisible(li);
+      // Cổng có thể hỏi lại "Bạn có chắc muốn xóa?" → chỉ bấm hộp MỚI mọc sau cú bấm.
+      const dialog = await waitFor(() => Array.from(document.querySelectorAll(BCA_NTH_DIALOGS))
+        .find((d) => isVisible(d) && !dialogsBefore.has(d)) || (gone() ? "gone" : null), 2000, 100);
+      if (dialog && dialog !== "gone") {
+        const yes = findButtonByText(dialog, ["Đồng ý", "Xác nhận", "Xóa", "Xoá", "Có", "OK"]);
+        if (yes) { yes.click(); await sleep(300); }
+      }
+      if (await waitFor(gone, 4000, 100)) removed++;
+      else failed.add(li); // không gỡ được → bỏ qua, tránh lặp vô hạn
+    }
+    if (removed || failed.size) console.log("[AutoFill-FixedSlot] gỡ tệp cũ (Bộ Công an)", { removed, failed: failed.size });
+    return removed;
   }
 
   // Đính kèm lại: tệp đã nằm trên dòng thì không gắn nữa (cổng nhận thêm bản trùng chứ không thay).
@@ -4546,6 +4591,7 @@
         // assumeConsumed: form mai táng reset input.files sau khi đọc → lấy kết quả gán trước dispatch.
         const slotRow = input.closest("tr");
         const markTarget = input.closest("tr") || input.closest("td") || input.parentElement || input;
+        await clearBcaNthStaleFiles(slotRow || markTarget, files);
         const pending = filesNotOnRow(markTarget, files);
         skippedNames.push(...fileNames.filter((name) => !pending.some((f) => f.name === name)));
         if (!pending.length) {
@@ -4579,6 +4625,7 @@
       if (trigger) {
         if (!item.repeatUpload) usedTriggers.add(trigger);
         const markTarget = trigger.closest("tr") || trigger.closest("td") || trigger.parentElement || trigger;
+        await clearBcaNthStaleFiles(markTarget, files);
         const pending = filesNotOnRow(markTarget, files);
         skippedNames.push(...fileNames.filter((name) => !pending.some((f) => f.name === name)));
         if (!pending.length) {
@@ -4789,6 +4836,14 @@
     const cell = (input && input.closest('td, th, mat-cell, [role="cell"], [role="gridcell"]')) || row;
     if (!cell) return [];
     const fileRe = /\.(pdf|jpe?g|png|webp|docx?|xlsx?)\b/i;
+    // eForm Nth Bộ Công an: tệp đã đính = ul[id^="ul_file_info_"] > li. Bấm thùng rác thì cổng ẩn / gỡ dần li, chữ tên
+    // tệp có thể còn trong DOM → chỉ đếm li đang hiện, nếu không "Đính kèm lại" tưởng tệp vẫn còn và bỏ qua (19/11).
+    const nthItems = cell.querySelectorAll('ul[id^="ul_file_info_"] > li');
+    if (nthItems.length || cell.querySelector('ul[id^="ul_file_info_"]')) {
+      return Array.from(nthItems).filter((li) => li.isConnected && isVisible(li))
+        .map((li) => attpDocFingerprint(nodeText(li.querySelector("a.file-info") || li)))
+        .filter((fp) => fp.length >= 6);
+    }
     // Mỗi file hiển thị 1 phần tử LÁ chứa đuôi file; loại nút "Chọn tệp tin" (không có đuôi file).
     const leaves = Array.from(cell.querySelectorAll("*")).filter(
       (el) => !el.children.length && fileRe.test(el.textContent || "")
@@ -8700,6 +8755,80 @@
     return { ok: false, reason: bcaToastError() || "cổng chưa nhận, kiểm tra các ô báo đỏ trong hộp" };
   }
 
+  // Ảnh chân dung 4x6 (comp "bca-photo", value {name, type, dataUrl} — BE đã đổi sang JPEG dưới 2 MB): ô tải ảnh ĐẦU trang
+  // kê khai cổng DVC Bộ Công an (hộ chiếu 1.001456, thẻ tạm trú 1.003460: input file name="filename46", id custom-file-input-46, có thuộc tính
+  // typeimg, trong #A08-checkimg). Gắn tệp vào input rồi phát input/change như người chọn tệp; KHÔNG bấm nút "Tải ảnh" (nút
+  // đó mở hộp chọn tệp của Windows). Cổng đọc tệp lúc change (kiểm .jpg + dung lượng, hiện tên / ảnh xem trước) — SUY theo
+  // DOM đã ghi ở attach-core.js, chưa chạy cổng thật.
+  // Bản copy ở tro-ly-nguoi-dan-extension-main/content/fill-core.js (fillBcaPhotoField) — sửa một bên thì port bên kia.
+  function findBcaPhotoInput(name) {
+    const key = String(name || "");
+    const byName = key ? document.querySelector(`input[type="file"][name="${CSS.escape(key)}"]`) : null;
+    if (byName) return byName;
+    const suffix = key.replace(/^filename/i, "");
+    const byId = suffix ? document.getElementById(`custom-file-input-${suffix}`) : null;
+    if (byId) return byId;
+    // Trang biến thể đổi name: ô ảnh có chữ "chân dung" quanh nó trong khối tải ảnh đầu trang.
+    const inputs = Array.from(document.querySelectorAll('#A08-checkimg input[type="file"], input[type="file"][typeimg]'));
+    return inputs.find((input) => {
+      const box = input.closest(".form-group, .input-group, td, .row") || input.parentElement;
+      return foldChoiceText(box?.textContent || "").includes("chan dung");
+    }) || null;
+  }
+
+  function bcaPhotoFile(payload) {
+    const dataUrl = String(payload?.dataUrl || "");
+    const comma = dataUrl.indexOf(",");
+    if (comma < 0) return null;
+    const binary = atob(dataUrl.slice(comma + 1));
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new File([bytes], String(payload?.name || "anh_chan_dung_4x6.jpg"), {
+      type: payload?.type || "image/jpeg",
+      lastModified: Date.now(),
+    });
+  }
+
+  async function fillBcaPhotoField(f, result) {
+    const input = findBcaPhotoInput(f.name) || await waitFor(() => findBcaPhotoInput(f.name), 2500, 100);
+    const file = input ? bcaPhotoFile(f.value) : null;
+    if (!input || !file) {
+      result.notFound.push(f.name);
+      console.warn(`[AutoFill-STD] Không thấy ô tải ảnh chân dung ${f.name}`);
+      return false;
+    }
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    const desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "files");
+    if (desc?.set) desc.set.call(input, dt.files);
+    else input.files = dt.files;
+    // Cổng có thể đọc xong rồi xoá input.files để chọn lại được cùng tệp → chốt kết quả gán TRƯỚC khi phát change.
+    const ok = !!(input.files && input.files.length === 1);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    await sleep(600);
+    // Cổng nhận ảnh thì ghi tên tệp vào ô ẩn hd_filename<typeimg> (id custom-file-hidden<typeimg>) hoặc dựng ảnh xem trước
+    // trong #wrap-imagePreview<typeimg> (DOM 1.003460, 19/11). Không thấy dấu nào → chỉ ghi log để soát (thứ tự cổng làm
+    // các bước này chưa chụp được, không coi là trượt).
+    const suffix = input.getAttribute("typeimg") || String(f.name || "").replace(/^filename/i, "");
+    const accepted = () => !!(document.getElementsByName(`hd_filename${suffix}`)[0]?.value
+      || document.getElementById(`custom-file-hidden${suffix}`)?.value
+      || document.getElementById(`wrap-imagePreview${suffix}`)?.querySelector?.("img[src]"));
+    if (ok && !accepted() && !await waitFor(accepted, 4000, 150)) {
+      console.warn(`[AutoFill-STD] ${f.name}: đã gắn ${file.name} nhưng chưa thấy cổng nhận (hd_filename${suffix} trống, `
+        + "chưa có ảnh xem trước).");
+    } else if (ok) {
+      console.log(`[AutoFill-STD] ${f.name}: cổng đã nhận ảnh ${file.name}.`);
+    }
+    const box = input.closest(".input-group, .custom-file, .form-group, td") || input.parentElement || input;
+    injectAutofillStyles();
+    if (ok) markFilled(box);
+    else markUnfilled(box);
+    if (ok) result.filled++;
+    else result.notFound.push(f.name);
+    return ok;
+  }
+
   // Cơ quan thực hiện (comp "bca-agency", value {province, ward}): chọn Tỉnh (accomStay_cboPROVINCE_ID) rồi CHỜ danh
   // sách Xã (accomStay_cboADDRESS_ID) nạp theo tỉnh mới chọn Xã — danh sách cũ còn nằm đó tới khi cổng nạp xong, khớp
   // sớm là chọn nhầm xã trùng tên của tỉnh cũ. Khớp trọn tên (bỏ dấu) → tên bỏ tiền tố nếu chỉ một dòng khớp.
@@ -8798,7 +8927,21 @@
     if (accountId && subjectId) decision = accountId === subjectId ? "self" : "other";
     else if (accountName && subjectName) decision = accountName === subjectName ? "self" : "other";
     console.log(`[AutoFill-STD] BCA đối tượng kê khai: tài khoản "${nameEl.value}" → ${decision || "(không chọn)"}`);
-    const radio = decision ? document.getElementById(decision === "self" ? v.selfId : v.otherId) : null;
+    // Trang khác cùng cổng (cấp đổi / cấp lại căn cước, 19/11) có thể đặt id radio khác → dò trong nhóm radio cùng name
+    // theo nhãn selfLabel / otherLabel. Hai nhãn chung đuôi "…người cần cấp đổi căn cước": nhãn trùng trọn trước, rồi
+    // nhãn chứa nhãn muốn chọn mà KHÔNG chứa nhãn còn lại (thẻ cha bọc cả hai radio thì không nhận).
+    const byLabel = (want, avoid) => {
+      const w = bcaGuestFold(want);
+      if (!w) return null;
+      const a = bcaGuestFold(avoid);
+      const group = Array.from(document.querySelectorAll('input[type="radio"]'))
+        .filter((r) => r.getAttribute("name") === f.name);
+      const text = (r) => bcaGuestFold(radioLabelText(r));
+      return group.find((r) => text(r) === w)
+        || group.find((r) => text(r).includes(w) && !(a && text(r).includes(a))) || null;
+    };
+    const radio = !decision ? null : document.getElementById(decision === "self" ? v.selfId : v.otherId)
+      || (decision === "self" ? byLabel(v.selfLabel, v.otherLabel) : byLabel(v.otherLabel, v.selfLabel));
     if (radio && !radio.checked && !radio.disabled) radio.click();
     if (!radio?.checked) {
       result.notFound.push(decision ? label : `${label} (chưa đọc được tài khoản đăng nhập ở Phần I)`);
@@ -8939,8 +9082,15 @@
       }
       // Khối người cần cấp chỉ mở khi tài khoản là cha/mẹ/người đại diện (xem fillBcaDeclarantField).
       if (f.bcaOtherOnly && bcaDeclarant !== "other") continue;
+      // SĐT / email Phần I lấy của người cần cấp trên giấy: tài khoản là người khác (cha/mẹ/người đại diện) thì
+      // không ghi số / email người khác vào ô của chủ tài khoản (19/11).
+      if (f.bcaSelfOnly && bcaDeclarant !== "self") continue;
       if (f.comp === "bca-guest-list") {
         await fillBcaGuestList(f, result);
+        continue;
+      }
+      if (f.comp === "bca-photo") {
+        await fillBcaPhotoField(f, result);
         continue;
       }
       if (f.comp === "bca-agency") {

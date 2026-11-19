@@ -1497,6 +1497,26 @@
       "autoConfirm": false
     },
     {
+      "key": "trinh-bao-mat-ho-chieu-pho-thong-cap-xa",
+      "code": "1.010386",
+      "label": "Trình báo mất hộ chiếu phổ thông (thực hiện tại cấp xã)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf7-868d-73ed-93ce-00643818b2e7",
+      "needsAgencySelect": false,
+      "directSubmit": true,
+      "bcaSubmit": true,
+      "autoConfirm": false
+    },
+    {
+      "key": "trinh-bao-mat-ho-chieu-pho-thong-cap-tinh",
+      "code": "1.001445",
+      "label": "Trình báo mất hộ chiếu phổ thông (thực hiện tại cấp tỉnh)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf7-5fc6-72ba-a7f1-3506927a9517",
+      "needsAgencySelect": false,
+      "directSubmit": true,
+      "bcaSubmit": true,
+      "autoConfirm": false
+    },
+    {
       "key": "cap-the-tam-tru-cho-nguoi-nuoc-ngoai-tai-viet-nam",
       "code": "1.003460",
       "label": "Cấp thẻ tạm trú cho người nước ngoài tại Việt Nam tại Công an cấp tỉnh",

@@ -82,12 +82,12 @@ COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
 #   (change_ly_do_cap() bật/tắt nhóm đó); radCapThucHien trước cơ quan (checkCapThucHien() nạp lại danh sách
 #   cơ quan và ẩn/hiện ô cấp xã); cơ quan Tỉnh → Xã → Địa chỉ trạm tiếp nhận nạp nối tiếp qua API.
 UI_COMP_BY_NAME = {
-    "radIsNCC": "dom-radio",
+    "radIsNCC": "bca-declarant",
     "txtFULLNAME_NCC": "dom-input",
     "txtBIRTHDATE_NCC": "dom-date",
     "cboGENDER_ID_NCC": "dom-select",
     "txtIDENTIFY_NUMBER_NCC": "dom-input",
-    "cboRELATIONSHIP_WITH_NDN": "dom-select",
+    "cboRELATIONSHIP_WITH_NDN": "bca-relation",
     "txtPHONE_NUMBER_NDN": "dom-input",
     "txtEMAIL_ADDRESS_NDN": "dom-input",
     "cboLyDoCap": "dom-select",
@@ -107,6 +107,20 @@ AGENCY_FIELD = "cboORG"
 AGENCY_CITY_ID = "cboORGTinh"
 AGENCY_WARD_ID = "cboORGXa"
 AGENCY_READY_ID = "cboDiaChiTram"
+
+# Radio "người kê khai" (name radIsNCC): chọn theo TÀI KHOẢN VNeID đang đăng nhập (Phần I cổng khoá), không theo người
+# ký trên giấy (user 19/11). Extension (comp "bca-declarant") so Phần I với người cần cấp đổi trên giấy: trùng (số định
+# danh, thiếu số thì họ tên) → tự kê khai; khác người → cha/mẹ/người đại diện kê khai thay, mở khối người cần cấp rồi mới
+# điền các ô OTHER_ONLY. Id radio theo trang cấp căn cước từ đủ 14 tuổi (cùng cổng); trang này lệch id thì extension dò
+# theo nhãn selfLabel / otherLabel.
+DECLARANT_FIELD = "radIsNCC"
+DECLARANT_SELF_ID = "chkIS_NCC"
+DECLARANT_OTHER_ID = "chkIS_NOT_NCC"
+DECLARANT_OTHER_BLOCK = "divCheck_NDN"
+ACCOUNT_NAME_ID = "txtFULLNAME_NDN"
+ACCOUNT_ID_ID = "txtIDENTIFY_NUMBER_NDN"
+OTHER_ONLY = frozenset({"txtFULLNAME_NCC", "txtBIRTHDATE_NCC", "cboGENDER_ID_NCC", "txtIDENTIFY_NUMBER_NCC",
+                        "cboRELATIONSHIP_WITH_NDN"})
 
 # Nhãn radio đúng như trên cổng (khớp theo nhãn).
 DECLARANT_SELF = "Người kê khai là người cần cấp đổi căn cước"

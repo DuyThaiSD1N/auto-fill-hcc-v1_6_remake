@@ -13,6 +13,8 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from app.core.deps import require_dashboard
@@ -23,7 +25,7 @@ from app.dashboard.scope import resolve_dashboard_scope
 from app.reports.integration import account_unit_key, fold, province_name
 from app.stats import cutover
 from app.traces.date_range import parse_stats_range
-from app.work_minutes import repo, rules
+from app.work_minutes import ai, repo, rules
 from app.work_minutes.export import build_docx
 
 router = APIRouter(prefix="/api/v1/work-minutes", tags=["work-minutes"])
@@ -227,6 +229,38 @@ async def save_minutes(body: _DraftBody, user: dict = Depends(require_dashboard)
         })
     await repo.delete_draft(target["unitId"])
     return rules.serialize_full(saved)
+
+
+class _AiContext(BaseModel):
+    place: str = Field("", max_length=rules.MAX_LINE)
+    prov: str = Field("", max_length=rules.MAX_LINE)
+    from_: str = Field("", alias="from", max_length=10)
+    to: str = Field("", max_length=10)
+    total: int = Field(0, ge=0, le=rules.MAX_COUNT)
+    v: int = Field(0, ge=0, le=rules.MAX_COUNT)
+    nv: int = Field(0, ge=0, le=rules.MAX_COUNT)
+
+
+class _AiBody(BaseModel):
+    unitId: str = Field(..., max_length=64)
+    section: Literal["issues", "evals", "next"]
+    notes: str = Field("", max_length=rules.MAX_PARA)
+    current: list[str] = Field(default_factory=list, max_length=rules.MAX_ITEMS)
+    context: _AiContext
+
+
+@router.post("/ai-write")
+async def ai_write(body: _AiBody, user: dict = Depends(require_dashboard)):
+    """Viết bằng AI cho mục III / IV / V: có ý chính → viết mới; bỏ trống → viết lại các đoạn đang có."""
+    ctx = await _context(user)
+    ctx.unit(body.unitId)
+    current = [t[:rules.MAX_PARA] for t in body.current]
+    if not body.notes.strip() and not any(t.strip() for t in current):
+        raise AppError("WORK_MINUTES_AI_EMPTY", "Nhập ý chính để AI viết.", 400)
+    context = body.context.model_dump()
+    context["from"] = context.pop("from_")
+    paragraphs, mode = await ai.write(body.section, body.notes, current, context)
+    return {"paragraphs": paragraphs, "mode": mode}
 
 
 async def _readable(ctx: _Context, minutes_id: str) -> dict:

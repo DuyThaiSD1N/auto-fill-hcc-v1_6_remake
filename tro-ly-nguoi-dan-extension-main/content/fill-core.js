@@ -1950,8 +1950,15 @@ async function fillFormStandard(fields, { keepMarks = false } = {}) {
     }
     // Khối người cần cấp chỉ mở khi tài khoản là cha/mẹ/người đại diện (xem fillBcaDeclarantField).
     if (f.bcaOtherOnly && bcaDeclarant !== "other") continue;
+    // SĐT / email Phần I lấy của người cần cấp trên giấy: tài khoản là người khác (cha/mẹ/người đại diện) thì
+    // không ghi số / email người khác vào ô của chủ tài khoản (19/11).
+    if (f.bcaSelfOnly && bcaDeclarant !== "self") continue;
     if (f.comp === "bca-guest-list") {
       await fillBcaGuestList(f, result);
+      continue;
+    }
+    if (f.comp === "bca-photo") {
+      await fillBcaPhotoField(f, result);
       continue;
     }
     if (f.comp === "bca-agency") {
@@ -2309,6 +2316,80 @@ async function fillBcaGuest(guest) {
   return { ok: false, reason: bcaToastError() || "cổng chưa nhận, kiểm tra các ô báo đỏ trong hộp" };
 }
 
+// Ảnh chân dung 4x6 (comp "bca-photo", value {name, type, dataUrl} — BE đã đổi sang JPEG dưới 2 MB): ô tải ảnh ĐẦU trang
+// kê khai cổng DVC Bộ Công an (hộ chiếu 1.001456, thẻ tạm trú 1.003460: input file name="filename46", id custom-file-input-46, có thuộc tính
+// typeimg, trong #A08-checkimg). Gắn tệp vào input rồi phát input/change như người chọn tệp; KHÔNG bấm nút "Tải ảnh" (nút
+// đó mở hộp chọn tệp của Windows). Cổng đọc tệp lúc change (kiểm .jpg + dung lượng, hiện tên / ảnh xem trước) — SUY theo
+// DOM đã ghi ở attach-core.js, chưa chạy cổng thật.
+// Bản copy của auto-fill-hcc-extension/content.js (fillBcaPhotoField) — sửa một bên thì port bên kia.
+function findBcaPhotoInput(name) {
+  const key = String(name || "");
+  const byName = key ? document.querySelector(`input[type="file"][name="${CSS.escape(key)}"]`) : null;
+  if (byName) return byName;
+  const suffix = key.replace(/^filename/i, "");
+  const byId = suffix ? document.getElementById(`custom-file-input-${suffix}`) : null;
+  if (byId) return byId;
+  // Trang biến thể đổi name: ô ảnh có chữ "chân dung" quanh nó trong khối tải ảnh đầu trang.
+  const inputs = Array.from(document.querySelectorAll('#A08-checkimg input[type="file"], input[type="file"][typeimg]'));
+  return inputs.find((input) => {
+    const box = input.closest(".form-group, .input-group, td, .row") || input.parentElement;
+    return foldChoiceText(box?.textContent || "").includes("chan dung");
+  }) || null;
+}
+
+function bcaPhotoFile(payload) {
+  const dataUrl = String(payload?.dataUrl || "");
+  const comma = dataUrl.indexOf(",");
+  if (comma < 0) return null;
+  const binary = atob(dataUrl.slice(comma + 1));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new File([bytes], String(payload?.name || "anh_chan_dung_4x6.jpg"), {
+    type: payload?.type || "image/jpeg",
+    lastModified: Date.now(),
+  });
+}
+
+async function fillBcaPhotoField(f, result) {
+  const input = findBcaPhotoInput(f.name) || await waitFor(() => findBcaPhotoInput(f.name), 2500, 100);
+  const file = input ? bcaPhotoFile(f.value) : null;
+  if (!input || !file) {
+    result.notFound.push(f.name);
+    console.warn(`[AutoFill-STD] Không thấy ô tải ảnh chân dung ${f.name}`);
+    return false;
+  }
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  const desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "files");
+  if (desc?.set) desc.set.call(input, dt.files);
+  else input.files = dt.files;
+  // Cổng có thể đọc xong rồi xoá input.files để chọn lại được cùng tệp → chốt kết quả gán TRƯỚC khi phát change.
+  const ok = !!(input.files && input.files.length === 1);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+  await sleep(600);
+  // Cổng nhận ảnh thì ghi tên tệp vào ô ẩn hd_filename<typeimg> (id custom-file-hidden<typeimg>) hoặc dựng ảnh xem trước
+  // trong #wrap-imagePreview<typeimg> (DOM 1.003460, 19/11). Không thấy dấu nào → chỉ ghi log để soát (thứ tự cổng làm
+  // các bước này chưa chụp được, không coi là trượt).
+  const suffix = input.getAttribute("typeimg") || String(f.name || "").replace(/^filename/i, "");
+  const accepted = () => !!(document.getElementsByName(`hd_filename${suffix}`)[0]?.value
+    || document.getElementById(`custom-file-hidden${suffix}`)?.value
+    || document.getElementById(`wrap-imagePreview${suffix}`)?.querySelector?.("img[src]"));
+  if (ok && !accepted() && !await waitFor(accepted, 4000, 150)) {
+    console.warn(`[AutoFill-STD] ${f.name}: đã gắn ${file.name} nhưng chưa thấy cổng nhận (hd_filename${suffix} trống, `
+      + "chưa có ảnh xem trước).");
+  } else if (ok) {
+    console.log(`[AutoFill-STD] ${f.name}: cổng đã nhận ảnh ${file.name}.`);
+  }
+  const box = input.closest(".input-group, .custom-file, .form-group, td") || input.parentElement || input;
+  injectAutofillStyles();
+  if (ok) markFilled(box);
+  else markUnfilled(box);
+  if (ok) result.filled++;
+  else result.notFound.push(f.name);
+  return ok;
+}
+
 // Cơ quan thực hiện (comp "bca-agency", value {province, ward}): chọn Tỉnh (accomStay_cboPROVINCE_ID) rồi CHỜ danh
 // sách Xã (accomStay_cboADDRESS_ID) nạp theo tỉnh mới chọn Xã — danh sách cũ còn nằm đó tới khi cổng nạp xong, khớp
 // sớm là chọn nhầm xã trùng tên của tỉnh cũ. Khớp trọn tên (bỏ dấu) → tên bỏ tiền tố nếu chỉ một dòng khớp.
@@ -2408,7 +2489,21 @@ async function fillBcaDeclarantField(f, result) {
   if (accountId && subjectId) decision = accountId === subjectId ? "self" : "other";
   else if (accountName && subjectName) decision = accountName === subjectName ? "self" : "other";
   console.log(`[AutoFill-STD] BCA đối tượng kê khai: tài khoản "${nameEl.value}" → ${decision || "(không chọn)"}`);
-  const radio = decision ? document.getElementById(decision === "self" ? v.selfId : v.otherId) : null;
+  // Trang khác cùng cổng (cấp đổi / cấp lại căn cước, 19/11) có thể đặt id radio khác → dò trong nhóm radio cùng name
+  // theo nhãn selfLabel / otherLabel. Hai nhãn chung đuôi "…người cần cấp đổi căn cước": nhãn trùng trọn trước, rồi
+  // nhãn chứa nhãn muốn chọn mà KHÔNG chứa nhãn còn lại (thẻ cha bọc cả hai radio thì không nhận).
+  const byLabel = (want, avoid) => {
+    const w = bcaGuestFold(want);
+    if (!w) return null;
+    const a = bcaGuestFold(avoid);
+    const group = Array.from(document.querySelectorAll('input[type="radio"]'))
+      .filter((r) => r.getAttribute("name") === f.name);
+    const text = (r) => bcaGuestFold(radioLabelText(r));
+    return group.find((r) => text(r) === w)
+      || group.find((r) => text(r).includes(w) && !(a && text(r).includes(a))) || null;
+  };
+  const radio = !decision ? null : document.getElementById(decision === "self" ? v.selfId : v.otherId)
+    || (decision === "self" ? byLabel(v.selfLabel, v.otherLabel) : byLabel(v.otherLabel, v.selfLabel));
   if (radio && !radio.checked && !radio.disabled) radio.click();
   if (!radio?.checked) {
     result.notFound.push(decision ? label : `${label} (chưa đọc được tài khoản đăng nhập ở Phần I)`);

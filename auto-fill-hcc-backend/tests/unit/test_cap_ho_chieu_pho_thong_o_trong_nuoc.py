@@ -155,13 +155,21 @@ def test_chan_khi_giay_to_cua_nguoi_khac_chu_tai_khoan():
     # Ô khoá Họ và tên / Số CCCD của tài khoản khác người trên tờ khai → không phát ô nào, chỉ một câu báo.
     out, warnings = run({"applicantFullname": "LÊ THỊ MAI", "applicantIdentityNumber": "001190000002"})
     assert out == [] and len(warnings) == 1
-    assert "TRẦN VĂN AN" in warnings[0] and "LÊ THỊ MAI" in warnings[0] and "không điền" in warnings[0]
-    # Chỉ có tên (cổng chưa đổ số) mà tên khác → vẫn chặn.
+    assert warnings[0].startswith("Chưa điền: giấy tờ tải lên là của TRẦN VĂN AN, còn tài khoản VNeID đang đăng nhập "
+                                  "là của LÊ THỊ MAI.")
+    assert "Vui lòng tải giấy tờ đúng của LÊ THỊ MAI (chủ tài khoản VNeID)" in warnings[0]
+    # Chỉ có tên (cổng chưa đổ số) mà tên khác → vẫn chặn; tên viết thường vẫn in hoa trong câu báo.
     assert run({"applicantFullname": "Lê Thị Mai"})[0] == []
+    blocked = mapper.account_block(mapper._by_name(fields), {"formContext": {"applicantFullname": "Lê Thị Mai"}})
+    assert blocked["code"] == "account_mismatch" and blocked["accountName"] == "LÊ THỊ MAI"
+    assert blocked["documentName"] == "TRẦN VĂN AN"
+    # Chỉ có số định danh tài khoản → câu báo gọi theo số.
+    blocked = mapper.account_block(mapper._by_name(fields), {"formContext": {"applicantIdentityNumber": "001190000002"}})
+    assert blocked["accountName"] == "người có số định danh 001190000002"
     # Đúng chủ tài khoản → điền như thường, không cảnh báo đối chiếu.
     out, warnings = run({"applicantFullname": "TRẦN VĂN AN", "applicantIdentityNumber": "034085000001"})
     assert _by(out)["CongDan__fsBCAHoCongDan"] == "TRẦN"
-    assert not any("không điền" in w or "Chưa đối chiếu" in w for w in warnings)
+    assert not any("Chưa điền" in w or "Chưa đối chiếu" in w for w in warnings)
     # Trùng số định danh, OCR đọc lệch tên → số thắng, vẫn điền.
     assert run({"applicantFullname": "TRẦN VĂN ÂN", "applicantIdentityNumber": "034085000001"})[0]
     # Lệch số nhưng tên trùng (OCR đọc nhầm chữ số) → không chặn.
@@ -169,6 +177,28 @@ def test_chan_khi_giay_to_cua_nguoi_khac_chu_tai_khoan():
     # Không có mốc tài khoản (extension cũ) → điền như cũ, kèm nhắc kiểm tra.
     out, warnings = _enrich(HO_SO)
     assert out and mapper.NO_ACCOUNT_WARNING in warnings
+
+
+def test_runner_tra_blocked_va_tro_ly_noi_ro_ly_do(monkeypatch):
+    """Auto Fill hiện nguyên blocked.message; trợ lý ghép tên vào vi.ACCOUNT_MISMATCH (không phải câu "chụp rõ hơn")."""
+    from app.channels.handfree.chat import flow
+    from app.channels.handfree.chat import script_vi as vi
+    from app.pipelines.cap_ho_chieu_pho_thong_o_trong_nuoc.process import runner as hc_runner
+
+    async def fake_run(files_by_role, **kwargs):
+        return {"fields": [{"name": k, "value": v} for k, v in HO_SO.items()], "errors": [], "extracted": {}}
+
+    monkeypatch.setattr(hc_runner.runner, "run", fake_run)
+    res = asyncio.run(hc_runner.run({}, {"formContext": {"applicantFullname": "LÊ THỊ MAI"}}))
+    assert res["fields"] == [] and res["blocked"]["code"] == "account_mismatch"
+    assert res["errors"] == [res["blocked"]["message"]]
+    md, tts = flow._fmt(vi.ACCOUNT_MISMATCH, account=res["blocked"]["accountName"],
+                        document=res["blocked"]["documentName"])
+    assert "Giấy tờ công dân gửi là của **TRẦN VĂN AN**" in md and "gửi giấy tờ đúng của **LÊ THỊ MAI**" in md
+    assert "LÊ THỊ MAI" in tts
+    # Đúng chủ tài khoản → không có blocked, điền như thường.
+    res = asyncio.run(hc_runner.run({}, {"formContext": {"applicantFullname": "Trần Văn An"}}))
+    assert "blocked" not in res and res["fields"]
 
 
 def test_noi_sinh_nuoc_ngoai_va_dia_chi_cccd_du_phong():
@@ -496,3 +526,154 @@ def test_tro_ly_bca_nth_dien_lai_to_khai_sau_khi_da_dinh_kem(monkeypatch):
         "filled": 22, "notFound": [], "review": {"filled": 22, "optional": 1, "required": 0}})))
     assert calls == [] and conv["state"] == "done"
     assert [c for c in r.chips if c.get("cta")][0]["send"] == "__action:lc_next"
+
+
+# ── Ảnh chân dung 4x6: ô tải ảnh đầu trang kê khai (filename46, .jpg dưới 2 MB), user 19/11/2026 ──
+import io  # noqa: E402
+
+from PIL import Image  # noqa: E402
+
+from app.pipelines.cap_ho_chieu_pho_thong_o_trong_nuoc.attach.dinh_kem_khong_tach.planner import (  # noqa: E402
+    PORTRAIT,
+    build_items,
+)
+
+
+def _image_file(name: str, size=(400, 600), fmt="PNG", mode="RGB", color=(255, 255, 255)) -> dict:
+    image = Image.new(mode, size, color)
+    if mode == "RGB":
+        image.paste((120, 90, 70), (size[0] // 4, size[1] // 4, size[0] * 3 // 4, size[1]))  # "người" giữa nền sáng
+    buffer = io.BytesIO()
+    image.save(buffer, format=fmt)
+    mime = "image/jpeg" if fmt == "JPEG" else f"image/{fmt.lower()}"
+    return {"name": name, "type": mime, "dataUrl": f"data:{mime};base64," + base64.b64encode(buffer.getvalue()).decode()}
+
+
+def _decoded(field: dict) -> Image.Image:
+    return Image.open(io.BytesIO(base64.b64decode(field["value"]["dataUrl"].split(",", 1)[1])))
+
+
+def test_anh_chan_dung_png_doi_sang_jpg_va_phat_o_filename46():
+    files = [{"name": "to-khai.pdf", "type": "application/pdf", "dataUrl": "data:application/pdf;base64,eA=="},
+             _image_file("IMG_0001.png"), _image_file("cccd.jpg", size=(600, 380), fmt="JPEG")]
+    texts = {0: TO_KHAI, 1: "", 2: "CĂN CƯỚC CÔNG DÂN Số định danh 034085000001 Họ và tên TRẦN VĂN AN"}
+    assert mapper.find_portrait(files, texts) == 1  # ảnh dọc, nền sáng, không chữ; CCCD có chữ + nằm ngang
+    field, notes = mapper.portrait_field(files, texts)
+    assert field["name"] == "filename46" and field["comp"] == "bca-photo"
+    assert field["value"]["name"].endswith(".jpg") and field["value"]["type"] == "image/jpeg"
+    assert field["value"]["dataUrl"].startswith("data:image/jpeg;base64,") and _decoded(field).format == "JPEG"
+    assert "IMG_0001.png" in notes[0] and "đã tự đổi sang định dạng .jpg" in notes[0]
+    # Ảnh .jpg sẵn thì không báo đổi định dạng.
+    _, notes = mapper.portrait_field([_image_file("chan-dung.jpg", fmt="JPEG")], {})
+    assert "đổi sang" not in notes[0]
+
+
+def test_anh_chan_dung_theo_ten_trong_suot_va_anh_lon():
+    # Tên tệp "ảnh thẻ 4x6" nhận cả khi ảnh không dọc; nền trong suốt (PNG RGBA) thành nền trắng.
+    files = [_image_file("Ảnh thẻ 4x6.png", size=(500, 500), mode="RGBA", color=(0, 0, 0, 0))]
+    field, _ = mapper.portrait_field(files, {})
+    image = _decoded(field)
+    assert image.mode == "RGB" and image.getpixel((5, 5)) == (255, 255, 255)
+    # Ảnh lớn → cạnh dài ≤ 1200 px, dưới 2 MB.
+    noisy = Image.effect_noise((2400, 3600), 120).convert("RGB")
+    buffer = io.BytesIO()
+    noisy.save(buffer, format="PNG")
+    big = {"name": "chan_dung.png", "type": "image/png",
+           "dataUrl": "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()}
+    field, _ = mapper.portrait_field([big], {})
+    assert max(_decoded(field).size) <= 1200
+    assert len(base64.b64decode(field["value"]["dataUrl"].split(",", 1)[1])) <= mapper.PORTRAIT_MAX_BYTES
+
+
+def test_khong_co_anh_chan_dung_thi_nhac_tai_anh_jpg():
+    landscape = _image_file("IMG_0002.jpg", size=(800, 500), fmt="JPEG")  # ảnh ngang, không tên chân dung
+    dark = _image_file("IMG_0003.jpg", fmt="JPEG", color=(20, 20, 20))  # ảnh dọc nhưng nền tối
+    assert mapper.find_portrait([landscape, dark], {}) is None
+    field, notes = mapper.portrait_field([landscape, dark], {})
+    assert field is None and notes == [mapper.PORTRAIT_WARNING]
+    assert ".jpg" in mapper.PORTRAIT_WARNING and "tự đổi sang .jpg" in mapper.PORTRAIT_WARNING
+
+
+def test_runner_phat_anh_chan_dung_dau_danh_sach(monkeypatch):
+    from app.pipelines.cap_ho_chieu_pho_thong_o_trong_nuoc.process import runner as hc_runner
+
+    files = [{"name": "to-khai.pdf", "type": "application/pdf", "dataUrl": "data:application/pdf;base64,eA=="},
+             _image_file("anh.png")]
+
+    async def fake_ocr(ocr_files):
+        return [{"name": f["name"], "text": TO_KHAI if f["name"] == "to-khai.pdf" else ""} for f in ocr_files]
+
+    async def fake_run(files_by_role, **kwargs):
+        await kwargs["ocr_fn"](hc_runner.runner.flatten(files_by_role))
+        return {"fields": [{"name": k, "value": v} for k, v in HO_SO.items()], "errors": [], "extracted": {}}
+
+    monkeypatch.setattr(ocr_service, "ocr_per_file", fake_ocr)
+    monkeypatch.setattr(hc_runner.runner, "run", fake_run)
+    res = asyncio.run(hc_runner.run({"": files}, {}))
+    assert res["fields"][0]["name"] == "filename46" and res["fields"][0]["comp"] == "bca-photo"
+    assert mapper.PORTRAIT_WARNING not in res["errors"]
+    assert any("Đã gắn ảnh 'anh.png'" in e for e in res["errors"])
+    # Giấy của người khác chủ tài khoản → chặn, không gắn ảnh.
+    res = asyncio.run(hc_runner.run({"": files}, {"formContext": {"applicantFullname": "LÊ THỊ MAI"}}))
+    assert res["fields"] == [] and res["blocked"]
+
+
+def test_dinh_kem_bo_qua_anh_chan_dung(monkeypatch):
+    names = ["hc.pdf", "chan-dung.png", "tk.pdf"]
+    entries = [{"fileIndex": 0, "pages": None, "docType": "ho_chieu", "documentName": "", "text": HO_CHIEU},
+               {"fileIndex": 1, "pages": None, "docType": PORTRAIT, "documentName": "", "text": ""},
+               {"fileIndex": 2, "pages": None, "docType": "to_khai", "documentName": "", "text": TO_KHAI}]
+    attachments, warnings = build_items(names, entries)
+    assert attachments[0]["sourceFileIndexes"] == [0, 2]
+    assert any("Ảnh chân dung 'chan-dung.png' không đính" in w for w in warnings)
+    # Qua planner thật: ảnh chân dung (OCR rỗng) không bị gộp vào dòng 2 như giấy "không xác định".
+    photo = _image_file("chan-dung.png")
+    files = [_file("hc.pdf"), FileItem(name=photo["name"], type=photo["type"], dataUrl=photo["dataUrl"], role="other"),
+             _file("tk.pdf")]
+    _mock_io(monkeypatch, {"hc.pdf": HO_CHIEU, "tk.pdf": TO_KHAI}, "không phải JSON")
+    result = asyncio.run(attach_planner.plan(files, {"splitDocuments": False}, {}))
+    assert _slots(result)[1]["sourceFileIndexes"] == [0, 2]
+    assert not any("Không xác định được loại giấy tờ" in e for e in result["errors"])
+
+
+def test_tro_ly_noi_dinh_kem_lai_thi_dinh_lai_luon_khong_hoi_khong_dien_lai(monkeypatch):
+    """User 19/11/2026: ở bước cuối nói "đính kèm lại" → chạy lại bước đính kèm với tệp đang có, không hỏi "Điều chỉnh
+    giấy tờ?", không điền lại tờ khai."""
+    from app.channels.handfree.chat import intents, pipeline_runner
+
+    for said in ("đính kèm lại", "Đính kèm lại giúp tôi", "dinh kem lai di", "tải lại file", "đính lại ảnh nhé"):
+        assert asyncio.run(intents.resolve(said, "done", {})) == Intent("action", "reattach"), said
+    for said in ("điền lại tờ khai", "không đính kèm lại", "thêm giấy tờ"):
+        assert not intents.asks_reattach(said), said
+
+    calls = []
+    monkeypatch.setattr(pipeline_runner, "run_process", lambda *a: calls.append("process"))
+    monkeypatch.setattr(pipeline_runner, "run_attach", lambda *a: calls.append("attach"))
+    monkeypatch.setattr(pipeline_runner, "spawn", lambda _job: None)
+
+    async def noop(*_a, **_k):
+        return None
+
+    async def reopen(sid):
+        return {"_id": sid, "files": [{"name": "ho-so.pdf"}]}
+
+    monkeypatch.setattr(flow.conv_store, "save", noop)
+    monkeypatch.setattr(flow.up_store, "reopen_for_supplement", reopen)
+    monkeypatch.setattr(flow.upload_service, "sync_for_conversation", noop)
+    monkeypatch.setattr(flow.upload_service, "complete_session", noop)
+
+    async def progress(_sid):
+        return {"received": 1, "total": 1, "files_count": 1}
+
+    monkeypatch.setattr(flow.upload_service, "progress_of", progress)
+    conv = _nth_conv(NTH_CAPS, state="done", docs_target="attachment", attach_done=True,
+                     attach_plan=[{"fileIndex": 0, "target": "fixed-slot", "slotIndex": 1}], fields=[{"name": "x"}])
+    r = asyncio.run(flow._handle_turn_inner(conv, Intent("action", "reattach", {})))
+    assert calls == ["attach"]
+    assert conv["docs_target"] == "attachment" and conv["fields"] == [{"name": "x"}]  # tờ khai giữ nguyên
+    assert not any(c.get("send") == "__action:docs_done" for c in r.chips or [])  # không hỏi chốt giấy tờ
+    # Đã nộp hồ sơ → không đính lại nữa.
+    conv = _nth_conv(NTH_CAPS, state="done", attach_done=True, submitted_completed=True)
+    calls.clear()
+    asyncio.run(flow._handle_turn_inner(conv, Intent("action", "reattach", {})))
+    assert calls == []

@@ -217,6 +217,32 @@ def test_plan_parses_llm_doc_type_lists(monkeypatch):
     assert result["extracted"]["classified"][0]["docTypes"] == ["don_dang_ky", "to_khai_thue"]
 
 
+def test_plan_hoi_lai_rieng_tep_llm_tra_thieu(monkeypatch):
+    """Lượt chung chỉ trả tệp đầu → hỏi lại riêng từng tệp thiếu, không đổ tệp đó về dòng Đơn."""
+    async def fake_ocr(files):
+        return [{"name": item["name"], "type": item["type"], "text": "ocr " + item["name"]} for item in files]
+
+    calls = []
+
+    async def fake_chat(messages, **kwargs):
+        user = messages[-1]["content"]
+        calls.append(user)
+        if '"index": 1' in user and '"index": 0' not in user:
+            return '{"documents":[{"index":1,"docTypes":["giay_to_chuyen_quyen"]}]}'
+        if '"index": 2' in user and '"index": 0' not in user:
+            return '{"documents":[{"index":2,"docTypes":["manh_trich_do"]}]}'
+        return '{"documents":[{"index":0,"docTypes":["don_dang_ky","giay_to_chuyen_quyen","manh_trich_do"]}]}'
+
+    monkeypatch.setattr(planner, "_ocr_for_classify", fake_ocr)
+    monkeypatch.setattr(planner.client, "chat", fake_chat)
+    files = [SimpleNamespace(name=name, type="application/pdf", dataUrl="x") for name in ("don.pdf", "gt.pdf", "td.pdf")]
+
+    result = asyncio.run(planner.plan(files))
+
+    assert len(calls) == 3
+    assert [item["componentIndex"] for item in result["attachments"]] == [_DON_INDEX, 0, 7]
+
+
 # --------------------------------------------------------------------------------------
 # ĐIỀN (Form.io ba khối)
 # --------------------------------------------------------------------------------------

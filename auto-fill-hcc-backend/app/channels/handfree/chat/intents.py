@@ -172,7 +172,10 @@ _STATE_INTENTS: dict[str, list[dict]] = {
         # KHÔNG có "đã nộp" bằng lời: event submitted chấm mốc NỘP HỒ SƠ cho thống kê, một câu "nộp
         # đi" bị hiểu nhầm là đếm sai. Mốc nộp chỉ lấy từ cú bấm nút nộp / trang thành công của cổng.
         {"kind": "action", "value": "add_documents",
-         "desc": "muốn bổ sung, thêm hoặc xóa bớt giấy tờ trước khi nộp hồ sơ"},
+         "desc": "muốn bổ sung, thêm hoặc xóa bớt giấy tờ trước khi nộp hồ sơ — KHÔNG phải câu \"đính kèm lại\" (đính lại "
+                 "các tệp đang có)"},
+        {"kind": "action", "value": "reattach",
+         "desc": "muốn ĐÍNH KÈM LẠI các tệp đang có lên bảng Thành phần hồ sơ (tệp chưa lên / lên sai), không thêm bớt giấy"},
     ],
 }
 
@@ -217,6 +220,18 @@ def asks_submit(text: str) -> bool:
     if not said or len(said.split()) > _STEP_MAX_WORDS:
         return False
     return bool(_SUBMIT_RE.search(said)) and not _STEP_NEGATION_RE.search(said)
+
+
+# "Đính kèm lại" sau khi đã đính (state done) = CHỈ chạy lại bước đính kèm với các tệp đang có, không điền lại tờ khai, không
+# hỏi "điều chỉnh giấy tờ?" (user 19/11/2026: LLM từng xếp câu này vào add_documents → trợ lý hỏi lại xác nhận).
+_REATTACH_RE = re.compile(r"(?:^|\s)(?:dinh kem|dinh|gan|tai|up|upload|attach)(?:\s+(?:tep|file|giay to|anh))?\s+lai(?:\s|$)")
+
+
+def asks_reattach(text: str) -> bool:
+    said = _step_words(text)
+    if not said or len(said.split()) > _STEP_MAX_WORDS:
+        return False
+    return bool(_REATTACH_RE.search(said)) and not _STEP_NEGATION_RE.search(said)
 
 
 def _resolve_machine(message: str) -> Intent | None:
@@ -384,6 +399,10 @@ async def resolve(message: str, state: str, conv: dict | None = None) -> Intent:
             return picked
         intent = await _classify(text, state, conv)
         return _free_text_unknown() if intent.kind == "procedure" else intent
+
+    # Đã đính kèm xong mà nói "đính kèm lại" → chạy lại bước đính kèm luôn (tất định, không qua LLM).
+    if state == "done" and asks_reattach(text):
+        return Intent("action", "reattach")
 
     # (3) Các bước khác: bộ phân loại trước; nhắc tới thủ tục mới hỏi agent chọn thủ tục, sửa nơi
     # làm / đối tượng mới hỏi agent nơi làm.

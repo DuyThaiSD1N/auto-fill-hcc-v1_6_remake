@@ -25,7 +25,7 @@ from app.pipelines.khai_sinh_dvc_moi.attach.dinh_kem_tach.planner import (
 from app.process.schemas import FileItem
 from app.services.llm import client
 
-from ..dinh_kem_khong_tach.planner import OTHER, build_items, canonical_type, rule_doc_type
+from ..dinh_kem_khong_tach.planner import OTHER, build_items, canonical_type, mark_portrait, rule_doc_type
 from ..dinh_kem_khong_tach.planner import plan as plan_without_split
 from .prompt import SYSTEM_PROMPT, build_user_prompt
 
@@ -104,7 +104,8 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     segments += [{"fileIndex": i, "pages": None, "doc": {}} for i in range(len(names)) if i not in covered]
     segments.sort(key=lambda s: (s["fileIndex"], (s["pages"] or [0])[0]))
 
-    entries = segment_entries(pages_by_file, segments)
+    texts = {i: "\n".join(pages) for i, pages in pages_by_file.items()}
+    entries = mark_portrait(segment_entries(pages_by_file, segments), raw_files, texts)
     attachments, warnings = build_items(names, entries)
     errors.extend(warnings)
     return {
