@@ -125,6 +125,10 @@ class AttachmentPlanResp(BaseModel):
     # True = kế hoạch rỗng CÓ CHỦ Ý theo cấu hình tài khoản (vd TTHN phường Đông Hà chỉ đính ủy quyền mà hồ sơ
     # không có ủy quyền): extension coi như đính xong, không báo "Chưa đính kèm được". None với mọi trường hợp khác.
     nothingToAttach: bool | None = None
+    # Ô trên trang kê khai mà bước đính kèm điền luôn (hộ chiếu 1.001456: ô Ảnh chân dung `filename46`, comp
+    # "bca-photo", value {name, type, dataUrl}). Extension gửi xuống trang bằng lệnh fillFields trước khi đính.
+    # Mang ảnh base64 → không ghi vào trace. None = không có.
+    pageFields: list[dict[str, Any]] | None = None
 
 
 class ClientAttachmentFileMeta(BaseModel):

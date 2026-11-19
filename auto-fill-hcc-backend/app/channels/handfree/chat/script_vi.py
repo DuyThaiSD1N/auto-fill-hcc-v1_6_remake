@@ -919,6 +919,18 @@ REVIEW_ATTACHMENT_SAME_PAGE = {
     "md": "\n\nKiểm tra xong → bấm **Đính kèm giấy tờ**, tôi đính kèm ngay ở mục **Hồ sơ đính kèm** trên trang này ạ.",
     "tts": " Kiểm tra xong, công dân bấm Đính kèm giấy tờ, tôi đính kèm ngay trên trang này ạ.",
 }
+# eForm Nth cổng DVC Bộ Công an (hộ chiếu 1.001456, thị thực 1.001194, thẻ tạm trú 1.003460 — askBeforeAttach): bảng Thành
+# phần hồ sơ ngay dưới form nhưng điền xong KHÔNG tự đính, hỏi trước; form chưa đúng thì công dân nói "điền lại tờ khai".
+REVIEW_ATTACHMENT_SAME_PAGE_BCA = {
+    "md": (
+        "\n\nCông dân rà lại tờ khai trên trang. Đúng rồi thì bấm **Đính kèm giấy tờ**, tôi đính vào mục "
+        "**Thành phần hồ sơ** ngay bên dưới; chưa đúng thì nói **«điền lại tờ khai»** ạ."
+    ),
+    "tts": (
+        " Công dân rà lại tờ khai. Đúng rồi thì bấm Đính kèm giấy tờ, tôi đính vào mục thành phần hồ sơ ngay bên dưới. "
+        "Chưa đúng thì nói điền lại tờ khai ạ."
+    ),
+}
 
 # Trang kê khai có mục Nhận kết quả để công dân tự chọn (registry resultMethodHint, vd đăng ký mẫu con dấu — cổng DVC
 # Bộ Công an): nhắc chọn trước khi bấm "Đồng ý và tiếp tục" sang trang đính kèm.

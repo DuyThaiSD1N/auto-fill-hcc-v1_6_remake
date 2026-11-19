@@ -7201,6 +7201,9 @@ PROCEDURES: list[dict] = [
             "caseHint": "**Trường hợp giải quyết** (cấp cho người từ đủ 14 tuổi hay trẻ em dưới 14 tuổi); ô Cơ quan "
                         "giải quyết hồ sơ tôi chọn theo tỉnh của công dân",
         },
+        # User 19/11: điền xong DỪNG hỏi đính kèm (không tự đính cùng trang) — còn ở bước rà soát thì "điền lại tờ khai"
+        # vẫn hiểu; bấm "Đính kèm giấy tờ" mới đính vào bảng Thành phần hồ sơ trên trang.
+        "askBeforeAttach": True,
         "hasAttachmentStep": True,
         "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach
         "hideRepeatableHint": True,
@@ -7263,6 +7266,9 @@ PROCEDURES: list[dict] = [
             "caseHint": "**Trường hợp giải quyết** của hồ sơ cấp thị thực; ô Cơ quan giải quyết hồ sơ tôi chọn theo tỉnh "
                         "của công dân",
         },
+        # User 19/11: điền xong DỪNG hỏi đính kèm (không tự đính cùng trang) — còn ở bước rà soát thì "điền lại tờ khai"
+        # vẫn hiểu; bấm "Đính kèm giấy tờ" mới đính vào bảng Thành phần hồ sơ trên trang.
+        "askBeforeAttach": True,
         "hasAttachmentStep": True,
         "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach
         "resultMethodHint": True,
@@ -7275,6 +7281,10 @@ PROCEDURES: list[dict] = [
             {"key": "chung_minh", "name": "Giấy tờ chứng minh lý do (giấy chứng nhận kết hôn, giấy phép lao động …)",
              "icon": "📜", "sides": 1, "repeatable": True},
             {"key": "cccd", "name": "Thẻ căn cước của người bảo lãnh", "icon": "🪪", "sides": 2, "optional": True},
+            # Ô Ảnh chân dung đầu trang (.jpg dưới 2 MB) — runner đổi JPEG, extension gắn (comp bca-photo), như thẻ tạm
+            # trú 1.003460 (user 19/11: trợ lý phải nhận ra ảnh người).
+            {"key": "anh_chan_dung", "name": "Ảnh chân dung 4x6 nền trắng của người nước ngoài (tệp .jpg)",
+             "icon": "🖼️", "sides": 1},
         ],
         "mode": "agent",
         "review": False,
@@ -7286,6 +7296,8 @@ PROCEDURES: list[dict] = [
             "2. Hộ chiếu của người nước ngoài — trang có ảnh và trang dấu nhập cảnh.\n"
             "3. Giấy tờ chứng minh lý do: giấy chứng nhận kết hôn, giấy phép lao động, giấy chứng nhận đầu tư ….\n"
             "4. Thẻ căn cước của người bảo lãnh (nếu có).\n"
+            "5. Ảnh chân dung 4x6 nền trắng của người nước ngoài, tệp ảnh riêng, định dạng .jpg (cổng chỉ nhận .jpg dưới "
+            "2 MB; ảnh .png / .heic hệ thống tự đổi sang .jpg). Tôi tự gắn ảnh vào ô Ảnh chân dung đầu tờ khai.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
     },
@@ -7321,6 +7333,9 @@ PROCEDURES: list[dict] = [
             "caseHint": "**Trường hợp giải quyết** của hồ sơ cấp thẻ tạm trú; ô Cơ quan giải quyết hồ sơ tôi chọn theo "
                         "tỉnh của công dân",
         },
+        # User 19/11: điền xong DỪNG hỏi đính kèm (không tự đính cùng trang) — còn ở bước rà soát thì "điền lại tờ khai"
+        # vẫn hiểu; bấm "Đính kèm giấy tờ" mới đính vào bảng Thành phần hồ sơ trên trang.
+        "askBeforeAttach": True,
         "hasAttachmentStep": True,
         "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach
         "resultMethodHint": True,
@@ -7353,6 +7368,63 @@ PROCEDURES: list[dict] = [
             "5. Thẻ căn cước của người đăng nhập (nếu có).\n"
             "6. Ảnh chân dung 4x6 nền trắng của người nước ngoài, tệp ảnh riêng, định dạng .jpg (cổng chỉ nhận .jpg dưới "
             "2 MB; ảnh .png / .heic hệ thống tự đổi sang .jpg). Tôi tự gắn ảnh vào ô Ảnh chân dung đầu tờ khai.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        # 1.010386, cùng cổng + cùng khuôn với thị thực / thẻ tạm trú ngay trên: trợ lý nộp thẳng như Auto Fill
+        # (agencyDirectSubmit — DVCQG "Nộp hồ sơ" → "Nộp trực tuyến", trang thủ tục cổng Bộ Công an ?MaTTHC=1.010386 bấm "Nộp
+        # hồ sơ"). Cùng bộ ô Tỉnh → Phường/xã nơi cư trú (_BCATinhTamTru → _BCAXaTamTru) với thị thực nên dùng chung cờ
+        # supportsBcaThiThuc. Thủ tục CẤP XÃ: Tỉnh/Phường-Xã nơi tiếp nhận chọn ở bước "Lựa chọn DVC" trước form (mapping:
+        # ô khoá trên form) → ô Tỉnh/Thành phố tự chọn theo tỉnh như hộ chiếu, ô cổng hiện sau đó công dân chọn trên
+        # thẻ. Form + bảng Thành phần hồ sơ
+        # (1 dòng đơn TK05) cùng trang. Toàn quốc (user không nói phạm vi). Detect y hệt lõi.
+        "key": "trinh-bao-mat-ho-chieu-pho-thong-cap-xa",
+        "detect": {
+            "urlScope": ["dichvucong.bocongan.gov.vn"],
+            "textIncludes": [
+                "số hộ chiếu bị mất",
+                "thời gian mất hộ chiếu",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+            "codeOnPage": True,  # cờ của Auto Fill (khớp mã TTHC in trên trang); giữ detect y hệt lõi
+        },
+        "label": "Trình báo mất hộ chiếu phổ thông (thực hiện tại cấp xã)",
+        "shortLabel": "Báo mất hộ chiếu",
+        "subtitle": "Trình báo với Công an xã, phường khi bị mất hộ chiếu phổ thông",
+        "icon": "🛂",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf7-868d-73ed-93ce-00643818b2e7",
+        "agencyDirectSubmit": True,
+        "bcaTthcCode": "1.010386",
+        "requiresCapability": "supportsBcaThiThuc",
+        # Trang chọn trường hợp (ảnh 19/11): ô "Tỉnh/Thành phố" option "Công an Tỉnh …" / "Công an Thành phố …". User
+        # 19/11: trợ lý TỰ chọn ô này theo tỉnh của công dân như hộ chiếu, không hỏi; ô cổng hiện thêm sau đó mới hỏi.
+        "laiChauFeeStep": {
+            "capability": "supportsBcaCaseStep", "caseOnly": True, "caseGroups": "auto",
+            "caseAgencyByProvince": {"label": "Tỉnh/Thành phố", "prefer": "cong an"},
+            "caseHint": "**Phường/Xã** nơi muốn nộp (Công an xã, phường thuận tiện) và **Trường hợp giải quyết** nếu cổng "
+                        "hiện; ô Tỉnh/Thành phố tôi chọn theo tỉnh của công dân",
+        },
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don_trinh_bao", "name": "Đơn trình báo mất hộ chiếu phổ thông (Mẫu TK05) đã ký", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "to_khai", "name": "Tờ khai đề nghị cấp hộ chiếu (nếu có)", "icon": "📄", "sides": 1,
+             "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Thẻ căn cước", "icon": "🪪", "sides": 2, "optional": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn trình báo mất hộ chiếu phổ thông (Mẫu TK05) đã ký.\n"
+            "2. Tờ khai đề nghị cấp hộ chiếu phổ thông (nếu có).\n"
+            "3. Thẻ căn cước hai mặt (nếu có).\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
     },
@@ -11147,6 +11219,7 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "cap-ho-chieu-pho-thong-o-trong-nuoc": _TAT_CA,  # 18/11/2026: ngoài bảng, user không nói phạm vi → toàn quốc
     "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam": _TAT_CA,  # 18/11/2026: ngoài bảng, không nói phạm vi → toàn quốc
     "cap-the-tam-tru-cho-nguoi-nuoc-ngoai-tai-viet-nam": _TAT_CA,  # 19/11/2026: ngoài bảng, không nói phạm vi → toàn quốc
+    "trinh-bao-mat-ho-chieu-pho-thong-cap-xa": _TAT_CA,  # 19/11/2026: ngoài bảng, user không nói phạm vi → toàn quốc
     "thong-bao-luu-tru": _TAT_CA,
     "dang-ky-noi-quy-lao-dong": _TAT_CA,
     "cap-gcn-diem-tro-choi-dien-tu-cong-cong": _TAT_CA,

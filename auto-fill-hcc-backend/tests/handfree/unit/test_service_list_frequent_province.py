@@ -94,8 +94,9 @@ def test_so_thu_tuc_moi_tinh_dung_bang_hoan_thien():
         # người dùng: toàn quốc).
         # 19/11: +1 mọi tỉnh Bộ Xây dựng cap-giay-phep-lien-van-viet-lao-campuchia (1.002877) (_TAT_CA, mặc định).
         # 19/11: +1 riêng Lâm Đồng tinh-tien-su-dung-dat-nd-50-2026-lam-dong (1.115148) (provinceOnly lamdong).
-        "laichau": 140, "bacninh": 146, "lamdong": 134, "danang": 137, "quangninh": 141, "ninhbinh": 130,
-        "quangngai": 131, "laocai": 129, "quangtri": 131, "khanhhoa": 136, "tuyenquang": 131,
+        # 19/11: +1 mọi tỉnh Bộ Công an trinh-bao-mat-ho-chieu-pho-thong-cap-xa (1.010386) (_TAT_CA, mặc định).
+        "laichau": 141, "bacninh": 147, "lamdong": 135, "danang": 138, "quangninh": 142, "ninhbinh": 131,
+        "quangngai": 132, "laocai": 130, "quangtri": 132, "khanhhoa": 137, "tuyenquang": 132,
     }
 
 

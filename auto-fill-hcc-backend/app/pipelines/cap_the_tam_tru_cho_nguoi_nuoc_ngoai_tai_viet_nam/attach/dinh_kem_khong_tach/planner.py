@@ -7,8 +7,10 @@ bộ mẫu 19/11/2026:
   - dòng 3 "Văn bản đề nghị cấp thẻ tạm trú (mẫu NA6 đối với cơ quan, tổ chức, NA7 đối với cá nhân)";
   - "Giấy tờ khác" (thêm dòng, target "new"): hộ chiếu — bảng không có dòng riêng; căn cước + giấy khác cũng vào đây.
 Hồ sơ dồn cả bộ trong MỘT tệp (ảnh ánh xạ: "01 file PDF, 6 trang") → đính NGUYÊN tệp vào cả 3 dòng lẫn dòng "Giấy tờ khác"
-hộ chiếu. Ảnh chân dung + ảnh trang nhân thân hộ chiếu đầu form là ô tải ảnh riêng; "Ghi chú" (trang nào là giấy gì)
-do pipeline điền ghi (process/runner.py) bằng ``page_types`` ở đây.
+hộ chiếu. Ảnh chân dung (``filename46``) + ảnh trang nhân thân hộ chiếu (``filenamehc``) đầu form là ô tải ảnh riêng:
+bước điền (process/runner.py) và bước đính kèm (``pageFields``) đều gắn bằng ``page_fields`` ở đây; ảnh chân dung không
+đính vào bảng, hộ chiếu vẫn đính "Giấy tờ khác". "Ghi chú" (trang nào là giấy gì) do pipeline điền ghi bằng
+``page_types`` ở đây.
 
 Phân loại: tệp có từ HAI loại giấy trở lên (theo tiêu đề TỪNG trang — LLM chỉ thấy 4000 ký tự đầu) là ``ho_so_gop``;
 còn lại LLM trước, LLM other / lỗi thì luật tiêu đề. Cổng chặn 6 MB/tệp. ``build_items`` dùng chung với chế độ tách.
@@ -215,8 +217,8 @@ def build_items(names: list[str], entries: list[dict]) -> tuple[list[dict], list
     has_form = any(e["docType"] in (TO_KHAI, GOP) for e in entries)
     attachments: list[dict] = []
     warnings: list[str] = [
-        f"Ảnh chân dung '{names[e['fileIndex']]}' không đính vào Thành phần hồ sơ — ảnh này gắn ở ô Ảnh chân dung đầu "
-        "trang kê khai." for e in portraits
+        f"Ảnh chân dung '{names[e['fileIndex']]}' không đính vào Thành phần hồ sơ — đã gắn vào ô Ảnh chân dung đầu "
+        "trang kê khai (đổi sang .jpg), kiểm tra đúng ảnh 4x6 nền trắng của người đề nghị." for e in portraits
     ]
     used: set[int] = set()
     for slot in SLOTS:
@@ -324,6 +326,105 @@ def classify_files(files: list[dict], texts: dict[str, str], llm: dict[int, dict
     return entries
 
 
+# ── Ảnh trang nhân thân hộ chiếu (ô tải ảnh ``filenamehc`` đầu trang kê khai, cạnh ô ảnh chân dung ``filename46``) ──
+# Cổng chỉ nhận .jpg dưới 2 MB (comp ``bca-photo`` — extension gắn tệp vào input như ảnh chân dung). Lấy trang có dòng MRZ
+# "P<…" (thiếu MRZ thì trang mang nhãn "Passport No."); tệp ảnh / PDF một ảnh thì lấy nguyên ảnh, PDF nhiều trang thì vẽ
+# lại đúng trang đó. Bản chụp hộ chiếu trên khổ A4 gắn cả trang (không tự cắt).
+PASSPORT_PAGE_FIELD = "filenamehc"
+PASSPORT_PAGE_FILE_NAME = "trang_nhan_than_ho_chieu.jpg"
+PASSPORT_PAGE_MAX_SIDE = 1600
+
+
+def find_passport_page(files: list[dict], pages_by_index: dict[int, list[str]]) -> tuple[int, int] | None:
+    """(chỉ số tệp, chỉ số trang 0-based) của trang nhân thân hộ chiếu, None khi không có. Trang phải là trang hộ chiếu
+    theo luật tiêu đề (tờ khai NA8 / giấy phép lao động có chữ "Passport No." không tính); có MRZ ưu tiên hơn nhãn."""
+    best: tuple[int, int, int] | None = None
+    for index in range(len(files or [])):
+        for number, page in enumerate(pages_by_index.get(index) or []):
+            if rule_doc_type(page) != HO_CHIEU:
+                continue
+            haystack = fold(page)
+            if _MRZ_RE.search(haystack.replace(" ", "")):
+                rank = 0
+            elif _PASSPORT_LABEL_RE.search(haystack[:_HEAD_CHARS]):
+                rank = 1
+            else:
+                continue  # trang thị thực / dấu nhập cảnh
+            if best is None or (rank, index, number) < best:
+                best = (rank, index, number)
+    return (best[1], best[2]) if best else None
+
+
+def _page_image(file: dict, page_index: int) -> tuple[bytes | None, bool]:
+    """(ảnh của trang, tệp có nhiều trang không). Ảnh / PDF một ảnh phủ kín trang (Auto Fill gói ảnh vào PDF lúc đính
+    kèm) → ảnh gốc; PDF khác → vẽ lại trang ``page_index``."""
+    import base64
+
+    from app.pipelines.cap_ho_chieu_pho_thong_o_trong_nuoc.process.mapper import _image_bytes
+
+    data = _image_bytes(file)
+    if data:
+        return data, False
+    data_url = str(file.get("dataUrl") or "")
+    try:
+        import fitz
+
+        raw = base64.b64decode(data_url.split(",", 1)[1] if "," in data_url else data_url)
+        with fitz.open(stream=raw, filetype="pdf") as doc:
+            if not 0 <= page_index < doc.page_count:
+                return None, False
+            return doc[page_index].get_pixmap(dpi=150).tobytes("png"), doc.page_count > 1
+    except Exception:  # noqa: BLE001 — tệp hỏng / không phải PDF
+        return None, False
+
+
+def passport_page_field(files: list[dict], pages_by_index: dict[int, list[str]]) -> tuple[dict | None, str | None]:
+    """(ô ``filenamehc`` comp ``bca-photo`` mang ảnh JPEG trang nhân thân hộ chiếu, câu báo). Không có → (None, None)."""
+    import base64
+
+    from app.pipelines.cap_ho_chieu_pho_thong_o_trong_nuoc.process.mapper import portrait_jpeg
+
+    found = find_passport_page(files, pages_by_index)
+    if found is None:
+        return None, None
+    index, page_index = found
+    source_name = str(files[index].get("name") or f"file-{index + 1}")
+    data, multi_page = _page_image(files[index], page_index)
+    try:
+        jpeg = portrait_jpeg(data or b"", max_side=PASSPORT_PAGE_MAX_SIDE)
+    except Exception:  # noqa: BLE001
+        return None, None
+    field = {
+        "name": PASSPORT_PAGE_FIELD,
+        "comp": "bca-photo",
+        "value": {"name": PASSPORT_PAGE_FILE_NAME, "type": "image/jpeg",
+                  "dataUrl": "data:image/jpeg;base64," + base64.b64encode(jpeg).decode("ascii")},
+        "sourceFileName": source_name,
+    }
+    where = f"trang {page_index + 1} của '{source_name}'" if multi_page else f"'{source_name}'"
+    note = (f"Đã gắn {where} vào ô Trang nhân thân hộ chiếu đầu biểu mẫu (dạng .jpg) — kiểm tra đúng trang có ảnh và "
+            "dòng mã MRZ của người đề nghị.")
+    return field, note
+
+
+def page_fields(raw_files: list[dict], pages_by_index: dict[int, list[str]]) -> list[dict]:
+    """Ô tải ảnh đầu trang kê khai cho bước đính kèm (cùng khuôn hộ chiếu 1.001456): Auto Fill bấm "Đính kèm" mà không
+    điền lại vẫn gắn được ảnh chân dung (``filename46``) + ảnh trang nhân thân hộ chiếu (``filenamehc``). Ảnh hỏng không
+    được làm hỏng kế hoạch đính kèm → bỏ ô đó."""
+    from app.pipelines.cap_ho_chieu_pho_thong_o_trong_nuoc.process.mapper import portrait_field
+
+    texts = {i: "\n".join(pages) for i, pages in pages_by_index.items()}
+    out: list[dict] = []
+    for build in (lambda: portrait_field(raw_files, texts)[0], lambda: passport_page_field(raw_files, pages_by_index)[0]):
+        try:
+            field = build()
+        except Exception:  # noqa: BLE001
+            field = None
+        if field:
+            out.append(field)
+    return out
+
+
 def mark_portrait(entries: list[dict], raw_files: list[dict], texts: dict[int, str]) -> list[dict]:
     """Tệp ảnh chân dung (luật chung với hộ chiếu 1.001456, ``find_portrait``) → loại PORTRAIT để không đính."""
     from app.pipelines.cap_ho_chieu_pho_thong_o_trong_nuoc.process.mapper import find_portrait
@@ -377,6 +478,7 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     errors.extend(warnings)
     return {
         "attachments": attachments,
+        "pageFields": page_fields(raw_files, {i: ocr_pages(texts.get(names[i], "")) for i in keep}),
         "extracted": {
             "documents": names,
             "classified": [{"fileName": names[e["fileIndex"]], "docType": e["docType"]} for e in entries],

@@ -154,8 +154,8 @@ def build_items(names: list[str], entries: list[dict]) -> tuple[list[dict], list
 
     attachments: list[dict] = []
     warnings: list[str] = [
-        f"Ảnh chân dung '{names[e['fileIndex']]}' không đính vào Thành phần hồ sơ — ảnh này gắn ở ô Ảnh chân dung đầu "
-        "trang kê khai." for e in portraits
+        f"Ảnh chân dung '{names[e['fileIndex']]}' không đính vào Thành phần hồ sơ — đã gắn vào ô Ảnh chân dung đầu "
+        "trang kê khai (đổi sang .jpg), kiểm tra đúng ảnh 4x6 nền trắng của người đề nghị." for e in portraits
     ]
     for slot, parts in ((SLOTS[0], representative), (SLOTS[1], rest if row2_applies else [])):
         if not parts:
@@ -240,6 +240,19 @@ def mark_portrait(entries: list[dict], raw_files: list[dict], texts: dict[int, s
     return [{**e, "docType": PORTRAIT} if e["fileIndex"] == index else e for e in entries]
 
 
+def portrait_page_fields(raw_files: list[dict], texts: dict[int, str]) -> list[dict]:
+    """Ô ``filename46`` (comp ``bca-photo``) cho bước đính kèm: Auto Fill bấm "Đính kèm" mà không điền lại vẫn gắn được ảnh
+    chân dung vào ô tải ảnh đầu trang kê khai. Extension gửi ảnh dưới dạng PDF một trang — mapper tự lấy lại ảnh gốc.
+    Không có ảnh chân dung → [] (câu nhắc tải ảnh đã nằm ở bước điền)."""
+    from app.pipelines.cap_ho_chieu_pho_thong_o_trong_nuoc.process.mapper import portrait_field
+
+    try:
+        field, _ = portrait_field(raw_files, texts)
+    except Exception:  # noqa: BLE001 — ảnh hỏng không được làm hỏng kế hoạch đính kèm
+        return []
+    return [field] if field else []
+
+
 async def plan(files: list[FileItem], options: dict | None = None, session: dict | None = None) -> dict:
     del options
     raw_files = [{"name": item.name, "type": item.type, "dataUrl": item.dataUrl} for item in files]
@@ -277,12 +290,14 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
             errors.append(f"attachment_agent: {exc}")
     llm_ms = int((time.monotonic() - started) * 1000)
 
+    index_texts = {i: texts.get(names[i], "") for i in range(len(names))}
     entries = mark_portrait([e for e in classify_files(raw_files, texts, llm) if e["fileIndex"] in keep], raw_files,
-                            {i: texts.get(names[i], "") for i in range(len(names))})
+                            index_texts)
     attachments, warnings = build_items(names, entries)
     errors.extend(warnings)
     return {
         "attachments": attachments,
+        "pageFields": portrait_page_fields(raw_files, index_texts),
         "extracted": {
             "documents": names,
             "classified": [{"fileName": names[e["fileIndex"]], "docType": e["docType"]} for e in entries],

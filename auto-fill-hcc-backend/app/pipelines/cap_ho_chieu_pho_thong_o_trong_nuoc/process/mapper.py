@@ -88,20 +88,51 @@ _PORTRAIT_NAME_RE = re.compile(r"(chan\s*dung|4\s*x\s*6|anh\s*the|portrait|avata
 _PORTRAIT_MAX_LETTERS = 40
 
 
+def _pdf_single_image(data: bytes) -> bytes | None:
+    """Ảnh gốc trong PDF MỘT trang chỉ chứa MỘT ảnh phủ kín trang, None với PDF khác.
+
+    Bước đính kèm của Auto Fill đổi mọi ảnh sang PDF trước khi gửi (popup.js toPdfForAttach → lib/imageToPdf.js: trang
+    đúng cỡ ảnh, ảnh vẽ kín trang) → ảnh chân dung tới planner dưới dạng PDF. Lấy lại đúng ảnh đã nhúng; PDF scan giấy
+    nhiều trang / có chữ không lọt điều kiện này."""
+    import fitz
+
+    try:
+        with fitz.open(stream=data, filetype="pdf") as doc:
+            if doc.page_count != 1:
+                return None
+            page = doc[0]
+            images = page.get_images(full=True)
+            if len(images) != 1 or page.get_text("text").strip():
+                return None
+            xref = images[0][0]
+            rects = page.get_image_rects(xref)
+            page_area = abs(page.rect)
+            if not rects or not page_area or abs(rects[0]) < 0.9 * page_area:
+                return None
+            try:
+                return doc.extract_image(xref)["image"]
+            except Exception:  # noqa: BLE001 — ảnh mã hoá lạ → vẽ lại trang
+                return page.get_pixmap(dpi=150).tobytes("png")
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _image_bytes(file: dict) -> bytes | None:
     data_url = str(file.get("dataUrl") or "")
     mime = str(file.get("type") or "").lower()
     if data_url.startswith("data:"):
         mime = data_url[5:].split(";", 1)[0].split(",", 1)[0].lower() or mime
     name = str(file.get("name") or "")
-    if not (mime.startswith("image/") or _IMAGE_EXT_RE.search(name)):
+    is_pdf = mime == "application/pdf" or name.lower().endswith(".pdf")
+    if not (is_pdf or mime.startswith("image/") or _IMAGE_EXT_RE.search(name)):
         return None
     try:
         import base64
 
-        return base64.b64decode(data_url.split(",", 1)[1] if "," in data_url else data_url)
+        data = base64.b64decode(data_url.split(",", 1)[1] if "," in data_url else data_url)
     except Exception:  # noqa: BLE001
         return None
+    return _pdf_single_image(data) if is_pdf else data
 
 
 def _portrait_shape(data: bytes) -> tuple[float, float] | None:
@@ -153,8 +184,9 @@ def find_portrait(files: list[dict], texts: dict[int, str] | None = None) -> int
     return best[2] if best else None
 
 
-def portrait_jpeg(data: bytes) -> bytes:
-    """Ảnh bất kỳ PIL mở được → JPEG RGB (nền trong suốt thành trắng), xoay theo EXIF, dưới PORTRAIT_MAX_BYTES."""
+def portrait_jpeg(data: bytes, max_side: int = PORTRAIT_MAX_SIDE) -> bytes:
+    """Ảnh bất kỳ PIL mở được → JPEG RGB (nền trong suốt thành trắng), xoay theo EXIF, dưới PORTRAIT_MAX_BYTES.
+    ``max_side``: cạnh dài tối đa (ảnh trang nhân thân hộ chiếu của thẻ tạm trú 1.003460 cần nét hơn ảnh 4x6)."""
     import io
 
     from PIL import Image, ImageOps
@@ -167,7 +199,7 @@ def portrait_jpeg(data: bytes) -> bytes:
             image.paste(rgba, mask=rgba.split()[-1])
         else:
             image = image.convert("RGB")
-        image.thumbnail((PORTRAIT_MAX_SIDE, PORTRAIT_MAX_SIDE))
+        image.thumbnail((max_side, max_side))
         out = b""
         while True:
             for quality in (92, 85, 75, 65):
@@ -204,7 +236,8 @@ def portrait_field(files: list[dict], texts: dict[int, str] | None = None) -> tu
                   "dataUrl": "data:image/jpeg;base64," + base64.b64encode(jpeg).decode("ascii")},
         "sourceFileName": source_name,
     }
-    converted = not re.search(r"\.jpe?g$", source_name, re.IGNORECASE)
+    # Ảnh .jpg mà Auto Fill đã gói vào PDF lúc đính kèm (tên "<ảnh>.pdf") không phải do người dùng lưu sai định dạng.
+    converted = not re.search(r"\.(jpe?g|pdf)$", source_name, re.IGNORECASE)
     note = (f"Đã gắn ảnh '{source_name}' vào ô Ảnh chân dung đầu biểu mẫu"
             + (" (đã tự đổi sang định dạng .jpg)" if converted else "")
             + " — kiểm tra đúng ảnh chân dung 4x6 nền trắng của người đề nghị. Lần sau nên chụp / lưu ảnh dạng .jpg.")

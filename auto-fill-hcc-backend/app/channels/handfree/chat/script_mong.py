@@ -120,6 +120,8 @@ PROCEDURE_HMONG = {
     "dang-ky-mau-con-dau": "Cuv npe qauv foob tshiab",
     # BẢN NHÁP chờ anh Dư soát — "ua" (làm) + "phau ntawv hla teb chaws" (hộ chiếu, nghĩa đen: sổ đi qua nước).
     "cap-ho-chieu-pho-thong-o-trong-nuoc": "Ua phau ntawv hla teb chaws",
+    # BẢN NHÁP chờ anh Dư soát — "qhia" (báo) + "poob" (mất) + "phau ntawv hla teb chaws" (hộ chiếu).
+    "trinh-bao-mat-ho-chieu-pho-thong-cap-xa": "Qhia poob phau ntawv hla teb chaws",
     # BẢN NHÁP chờ anh Dư soát — "ua" (làm) + "ntawv tso cai nkag teb chaws" (thị thực, nghĩa đen: giấy cho phép vào
     # nước) + "rau neeg txawv teb chaws" (cho người nước ngoài).
     "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam": "Ua ntawv tso cai nkag teb chaws rau neeg txawv teb chaws",
@@ -709,6 +711,13 @@ GUIDE_AGENCY_DIRECT = {
 WAIT_ATTACHMENT_SAME_PAGE_BCA = {
     "md": "Tam sim no kuv muab cov ntaub ntawv txuas rau Thành phần hồ sơ hauv qab no, pej xeem tos me ntsis.",
     "tts": "Tam sim no kuv muab cov ntaub ntawv txuas rau hauv qab no, pej xeem tos me ntsis.",
+}
+
+# BẢN NHÁP chờ anh Dư soát — điền xong hỏi trước khi đính cùng trang (askBeforeAttach), ghép từ REVIEW_ATTACHMENT_ACTION.
+REVIEW_ATTACHMENT_SAME_PAGE_BCA = {
+    "md": "Xyuas tiav lawm, ces nias Đính kèm giấy tờ kom kuv txuas rau Thành phần hồ sơ hauv qab no. Tsis yog ces hais "
+          "Điền lại tờ khai.",
+    "tts": " Xyuas tiav lawm ces nias lub pob muab ntaub ntawv tso kom kuv ua.",
 }
 
 # BẢN NHÁP chờ anh Dư soát.

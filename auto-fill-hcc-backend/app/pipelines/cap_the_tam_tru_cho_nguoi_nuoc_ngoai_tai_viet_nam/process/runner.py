@@ -88,15 +88,22 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
     values = {f["name"]: f.get("value") for f in res.get("fields") or [] if isinstance(f, dict) and f.get("name")}
     note = ghi_chu(str(res.get("ocr_text") or ""), [n for n in names if n], values)
     res["fields"], warnings = mapper.enrich(res["fields"], options, ghi_chu=note)
-    # Ảnh chân dung 4x6 (ô tải ảnh filename46 đầu trang, cùng khuôn hộ chiếu 1.001456): tệp ảnh gần như không chữ trong
-    # bộ giấy → JPEG dưới 2 MB, phát đầu danh sách; không có thì nhắc tải ảnh .jpg.
+    # Hai ô tải ảnh đầu trang (JPEG dưới 2 MB, phát đầu danh sách): ảnh chân dung 4x6 filename46 (cùng khuôn hộ chiếu
+    # 1.001456 — tệp ảnh gần như không chữ; không có thì nhắc tải ảnh .jpg) + ảnh trang nhân thân hộ chiếu filenamehc
+    # (trang có MRZ). Gắn được ô nào thì câu nhắc "2 ô ảnh tải tay" chỉ còn ô kia.
     files = runner.flatten(files_by_role or {})
     by_name = _ocr_by_file(str(res.get("ocr_text") or ""), [n for n in names if n])
     texts = {i: by_name.get(str(f.get("name") or ""), "") for i, f in enumerate(files)}
     photo, notes = ho_chieu_mapper.portrait_field(files, texts)
-    if photo:
-        res["fields"] = [photo, *res["fields"]]
-        warnings = [mapper.PASSPORT_PAGE_WARNING if w == mapper.PHOTO_WARNING else w for w in warnings]
+    passport_page, passport_note = attach.passport_page_field(files, {i: attach.ocr_pages(t) for i, t in texts.items()})
+    if passport_note:
+        notes = [*notes, passport_note]
+    res["fields"] = [*(f for f in (photo, passport_page) if f), *res["fields"]]
+    if photo or passport_page:
+        # Còn thiếu ảnh chân dung thì câu PORTRAIT_WARNING trong notes đã nhắc; chỉ thiếu trang hộ chiếu → nhắc ô đó.
+        keep = mapper.PASSPORT_PAGE_WARNING if not passport_page else None
+        warnings = [keep if w == mapper.PHOTO_WARNING else w for w in warnings]
+        warnings = [w for w in warnings if w]
     warnings = [*notes, *warnings]
     if warnings:
         res.setdefault("errors", []).extend(warnings)

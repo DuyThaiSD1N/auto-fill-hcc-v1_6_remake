@@ -2329,11 +2329,12 @@ function findBcaPhotoInput(name) {
   const suffix = key.replace(/^filename/i, "");
   const byId = suffix ? document.getElementById(`custom-file-input-${suffix}`) : null;
   if (byId) return byId;
-  // Trang biến thể đổi name: ô ảnh có chữ "chân dung" quanh nó trong khối tải ảnh đầu trang.
+  // Trang biến thể đổi name: ô ảnh có chữ "chân dung" (ô trang hộ chiếu filenamehc của thẻ tạm trú 1.003460: "nhân
+  // thân") quanh nó trong khối tải ảnh đầu trang.
   const inputs = Array.from(document.querySelectorAll('#A08-checkimg input[type="file"], input[type="file"][typeimg]'));
   return inputs.find((input) => {
     const box = input.closest(".form-group, .input-group, td, .row") || input.parentElement;
-    return foldChoiceText(box?.textContent || "").includes("chan dung");
+    return foldChoiceText(box?.textContent || "").includes(/hc$/i.test(key) ? "nhan than" : "chan dung");
   }) || null;
 }
 
@@ -2355,7 +2356,7 @@ async function fillBcaPhotoField(f, result) {
   const file = input ? bcaPhotoFile(f.value) : null;
   if (!input || !file) {
     result.notFound.push(f.name);
-    console.warn(`[AutoFill-STD] Không thấy ô tải ảnh chân dung ${f.name}`);
+    console.warn(`[AutoFill-STD] Không thấy ô tải ảnh ${f.name}`);
     return false;
   }
   const dt = new DataTransfer();

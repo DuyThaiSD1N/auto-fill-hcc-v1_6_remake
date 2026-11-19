@@ -498,6 +498,11 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
     "cap-ho-chieu-pho-thong-o-trong-nuoc": ["làm hộ chiếu", "xin cấp hộ chiếu đi nước ngoài", "làm passport",
                                             "hộ chiếu hết hạn cần làm lại", "mất hộ chiếu, xin cấp lại",
                                             "làm hộ chiếu gắn chip", "cấp hộ chiếu phổ thông"],
+    # Chỉ BÁO MẤT hộ chiếu với Công an xã, phường (nộp đơn trình báo mẫu TK05). Người dân nói muốn làm / xin cấp lại
+    # cuốn hộ chiếu mới thì chọn cấp hộ chiếu phổ thông ở trên, không phải thủ tục này.
+    "trinh-bao-mat-ho-chieu-pho-thong-cap-xa": ["báo mất hộ chiếu", "trình báo mất hộ chiếu ở công an xã",
+                                                "làm đơn trình báo mất hộ chiếu", "tôi đánh rơi hộ chiếu, muốn báo công an",
+                                                "nộp đơn báo mất passport", "hộ chiếu bị mất cắp, đi trình báo"],
     # Thị thực (visa) cho NGƯỜI NƯỚC NGOÀI đang ở Việt Nam, người thân / cơ quan ở Việt Nam đứng ra bảo lãnh — phân biệt
     # hộ chiếu (công dân Việt Nam đi nước ngoài) và thẻ căn cước. "Gia hạn visa" vẫn chọn ở đây khi người dân nói xin visa.
     "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam": ["xin visa cho chồng người nước ngoài", "làm visa cho vợ nước ngoài",

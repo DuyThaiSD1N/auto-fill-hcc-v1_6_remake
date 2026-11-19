@@ -24,7 +24,14 @@ from app.pipelines.khai_sinh_dvc_moi.attach.dinh_kem_tach.planner import (
 from app.process.schemas import FileItem
 from app.services.llm import client
 
-from ..dinh_kem_khong_tach.planner import OTHER, build_items, canonical_type, mark_portrait, rule_doc_type
+from ..dinh_kem_khong_tach.planner import (
+    OTHER,
+    build_items,
+    canonical_type,
+    mark_portrait,
+    page_fields,
+    rule_doc_type,
+)
 from ..dinh_kem_khong_tach.planner import plan as plan_without_split
 from .prompt import SYSTEM_PROMPT, build_user_prompt
 
@@ -109,6 +116,7 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     errors.extend(warnings)
     return {
         "attachments": attachments,
+        "pageFields": page_fields(raw_files, pages_by_file),
         "extracted": {
             "documents": names,
             "segments": [

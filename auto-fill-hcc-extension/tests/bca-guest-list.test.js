@@ -462,3 +462,76 @@ test("ảnh chân dung: gắn tệp JPEG vào input filename46, phát change, t�
   assert.equal(await ctx.fillBcaPhotoField({ name: "filename46", comp: "bca-photo", value }, missing), false);
   assert.deepEqual(missing.notFound, ["filename46"]);
 });
+
+// User 19/11/2026: Auto Fill bấm "Đính kèm" (ảnh đã đổi sang PDF) vẫn phải gắn ảnh chân dung — BE trả pageFields.
+test("đính kèm: gắn pageFields (ảnh chân dung) qua fillFields trước khi đính, kể cả khi bảng không có dòng nào", async () => {
+  const vm = require("node:vm");
+  const popup = fs.readFileSync(path.join(root, "popup.js"), "utf8");
+  const run = popup.slice(popup.indexOf("async function runAttachmentPlanForCurrentFiles("),
+    popup.indexOf("// Lấy plan item của BE cho file thứ `origIndex`"));
+  const fillAt = run.indexOf("await fillAttachPageFields(cfg.key, planRes.pageFields)");
+  assert.ok(fillAt > 0 && fillAt < run.indexOf("if (!rawAttachments.length)"), "gắn ảnh trước nhánh kế hoạch rỗng");
+  assert.ok(fillAt < run.indexOf("await sendAttachPlan("), "gắn ảnh trước khi đính tệp");
+  // Ô "bca-*" đi một mình vẫn vào engine standard.
+  assert.match(content, /const isStandardField = \(f\) => \/\^\(dom\|bca\)-\//);
+
+  const fn = popup.slice(popup.indexOf("async function fillAttachPageFields("),
+    popup.indexOf("// Thay tệp theo `replaceFiles`"));
+  const sent = [];
+  let reply = { filled: 1, notFound: [] };
+  const ctx = { setStatus: () => {}, console: { warn: () => {} },
+    sendToContent: async (msg) => { sent.push(msg); return reply; } };
+  vm.createContext(ctx);
+  vm.runInContext(`${fn}\nthis.fillAttachPageFields = fillAttachPageFields;`, ctx);
+  assert.equal(await ctx.fillAttachPageFields("cap-ho-chieu-pho-thong-o-trong-nuoc", []), null);
+  assert.equal(await ctx.fillAttachPageFields("x", undefined), null);
+  const photo = { name: "filename46", comp: "bca-photo", value: { name: "a.jpg", type: "image/jpeg", dataUrl: "data:," } };
+  const ok = await ctx.fillAttachPageFields("cap-ho-chieu-pho-thong-o-trong-nuoc", [photo]);
+  assert.equal(ok.ok, true);
+  assert.match(ok.note, /Đã gắn ảnh chân dung/);
+  assert.equal(sent[0].action, "fillFields");
+  assert.deepEqual(sent[0].fields.map((f) => f.name), ["filename46"]);
+  reply = { filled: 0, notFound: ["filename46"] };
+  const miss = await ctx.fillAttachPageFields("cap-ho-chieu-pho-thong-o-trong-nuoc", [photo]);
+  assert.equal(miss.ok, false);
+  assert.match(miss.note, /Chưa gắn được ảnh chân dung/);
+});
+
+// User 19/11/2026: thẻ tạm trú 1.003460 — bước đính kèm gắn cả ảnh chân dung (filename46) lẫn ảnh trang nhân thân hộ
+// chiếu (filenamehc); trượt ô nào thì câu kết quả nói đúng ô đó.
+test("đính kèm thẻ tạm trú: gắn 2 ô ảnh đầu trang, báo đúng ô trượt; ô hc tìm theo chữ \"nhân thân\"", async () => {
+  const vm = require("node:vm");
+  const popup = fs.readFileSync(path.join(root, "popup.js"), "utf8");
+  const fn = popup.slice(popup.indexOf("async function fillAttachPageFields("),
+    popup.indexOf("// Thay tệp theo `replaceFiles`"));
+  const sent = [];
+  let reply = { filled: 2, notFound: [] };
+  const ctx = { setStatus: () => {}, console: { warn: () => {} },
+    sendToContent: async (msg) => { sent.push(msg); return reply; } };
+  vm.createContext(ctx);
+  vm.runInContext(`${fn}\nthis.fillAttachPageFields = fillAttachPageFields;`, ctx);
+  const value = { name: "a.jpg", type: "image/jpeg", dataUrl: "data:," };
+  const fields = [{ name: "filename46", comp: "bca-photo", value }, { name: "filenamehc", comp: "bca-photo", value }];
+  const key = "cap-the-tam-tru-cho-nguoi-nuoc-ngoai-tai-viet-nam";
+  const ok = await ctx.fillAttachPageFields(key, fields);
+  assert.equal(ok.ok, true);
+  assert.match(ok.note, /Đã gắn ảnh chân dung \+ ảnh trang nhân thân hộ chiếu/);
+  assert.doesNotMatch(ok.note, /Chưa gắn/);
+  assert.deepEqual(sent[0].fields.map((f) => f.name), ["filename46", "filenamehc"]);
+  reply = { filled: 1, notFound: ["filenamehc"] };
+  const half = await ctx.fillAttachPageFields(key, fields);
+  assert.equal(half.ok, false);
+  assert.match(half.note, /Đã gắn ảnh chân dung vào/);
+  assert.match(half.note, /Chưa gắn được ảnh trang nhân thân hộ chiếu/);
+  reply = { error: "Không kết nối được trang" };
+  assert.match((await ctx.fillAttachPageFields(key, fields)).note,
+    /Chưa gắn được ảnh chân dung \+ ảnh trang nhân thân hộ chiếu/);
+
+  // Repo Auto Fill riêng (CI thai_dev) không có thư mục trợ lý cạnh extension → chỉ soát bản trợ lý khi có.
+  const troLyFillCore = path.join(root, "..", "tro-ly-nguoi-dan-extension-main", "content", "fill-core.js");
+  const sources = [content];
+  if (fs.existsSync(troLyFillCore)) sources.push(fs.readFileSync(troLyFillCore, "utf8"));
+  for (const src of sources) {
+    assert.ok(src.includes('includes(/hc$/i.test(key) ? "nhan than" : "chan dung")'));
+  }
+});

@@ -44,6 +44,8 @@ BIA = "bia_ho_so"
 GOP = "ho_so_gop"
 OTHER = "other"
 BLANK = "blank_page"
+# Tệp ảnh chân dung 4x6: gắn vào ô ảnh đầu trang (filename46), KHÔNG đính vào bảng (trước đây rơi "other" → dòng 3).
+PORTRAIT = "anh_chan_dung"
 ALLOWED = {TO_KHAI, HO_CHIEU, CHUNG_MINH, IDENTITY, BIA, GOP, OTHER, BLANK}
 FORM_TYPES = (TO_KHAI, GOP)
 PROOF_TYPES = (CHUNG_MINH, GOP)
@@ -144,7 +146,7 @@ def build_items(names: list[str], entries: list[dict]) -> tuple[list[dict], list
     Đoạn cùng dòng bảng gộp thành MỘT tệp (cổng mỗi dòng một ô chọn tệp): toàn tệp → ``sourceFileIndexes``, có đoạn
     cắt trang → ``sourceSegments``. Tệp ``ho_so_gop`` đính vào CẢ dòng 1 và dòng 3.
     """
-    entries = [e for e in entries if e.get("docType") != BLANK]
+    entries = [e for e in entries if e.get("docType") not in (BLANK, PORTRAIT)]
     parts_of_file: dict[int, int] = {}
     for e in entries:
         parts_of_file[e["fileIndex"]] = parts_of_file.get(e["fileIndex"], 0) + 1
@@ -230,6 +232,26 @@ def classify_files(files: list[dict], texts: dict[str, str], llm: dict[int, dict
     return entries
 
 
+def mark_portrait(entries: list[dict], raw_files: list[dict], texts: dict[int, str]) -> list[dict]:
+    """Tệp ảnh chân dung (luật chung hộ chiếu 1.001456, ``find_portrait``) → loại PORTRAIT để không đính."""
+    from app.pipelines.cap_ho_chieu_pho_thong_o_trong_nuoc.process.mapper import find_portrait
+
+    index = find_portrait(raw_files, texts)
+    if index is None:
+        return entries
+    return [{**e, "docType": PORTRAIT} if e["fileIndex"] == index else e for e in entries]
+
+
+def page_fields(raw_files: list[dict], pages_by_index: dict[int, list[str]]) -> list[dict]:
+    """Ô ảnh đầu trang (filename46 + filenamehc) cho bước đính kèm — Auto Fill chỉ bấm "Đính kèm" vẫn gắn được ảnh. Cùng
+    cổng, cùng hai ô với thẻ tạm trú 1.003460 → dùng lại hàm của thủ tục đó."""
+    from app.pipelines.cap_the_tam_tru_cho_nguoi_nuoc_ngoai_tai_viet_nam.attach.dinh_kem_khong_tach.planner import (
+        page_fields as tam_tru_page_fields,
+    )
+
+    return tam_tru_page_fields(raw_files, pages_by_index)
+
+
 async def plan(files: list[FileItem], options: dict | None = None, session: dict | None = None) -> dict:
     del options
     raw_files = [{"name": item.name, "type": item.type, "dataUrl": item.dataUrl} for item in files]
@@ -267,11 +289,15 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
             errors.append(f"attachment_agent: {exc}")
     llm_ms = int((time.monotonic() - started) * 1000)
 
-    entries = [e for e in classify_files(raw_files, texts, llm) if e["fileIndex"] in keep]
+    entries = mark_portrait([e for e in classify_files(raw_files, texts, llm) if e["fileIndex"] in keep], raw_files,
+                            {i: texts.get(names[i], "") for i in range(len(names))})
     attachments, warnings = build_items(names, entries)
     errors.extend(warnings)
+    from app.pipelines.dieu_chinh_thong_tin_ve_cu_tru.attach.dinh_kem_khong_tach.planner import ocr_pages
+
     return {
         "attachments": attachments,
+        "pageFields": page_fields(raw_files, {i: ocr_pages(texts.get(names[i], "")) for i in keep}),
         "extracted": {
             "documents": names,
             "classified": [{"fileName": names[e["fileIndex"]], "docType": e["docType"]} for e in entries],

@@ -635,6 +635,16 @@ def test_registered_procedures_use_their_declared_flow_family():
                   "agencyDirectSubmit"):
         assert bca_the_tam_tru.get(field) == bca_thi_thuc.get(field), field
     assert bca_the_tam_tru["bcaTthcCode"] == "1.003460" and bca_thi_thuc["bcaTthcCode"] == "1.001194"
+    # Trình báo mất hộ chiếu cấp xã (cùng cổng, cùng bộ ô Tỉnh → Phường/xã như thị thực, nộp thẳng như thị thực): tự chọn
+    # ô "Tỉnh/Thành phố" theo tỉnh như hộ chiếu (user 19/11); nơi nhận kết quả không có trên form → không nhắc.
+    bca_trinh_bao = procedures.pop("trinh-bao-mat-ho-chieu-pho-thong-cap-xa")
+    for field in ("flowProfile", "bcaPortal", "wizard", "maePortal", "needsAgencySelect", "provinceOnly",
+                  "hasAttachmentStep", "supportsSplitDocuments", "requiresCapability", "agencyDirectSubmit"):
+        assert bca_trinh_bao.get(field) == bca_thi_thuc.get(field), field
+    assert {k: v for k, v in bca_trinh_bao["laiChauFeeStep"].items()
+            if k not in ("caseHint", "caseAgencyByProvince")} == bca_xe["laiChauFeeStep"]
+    assert bca_trinh_bao["laiChauFeeStep"]["caseAgencyByProvince"] == {"label": "Tỉnh/Thành phố", "prefer": "cong an"}
+    assert bca_trinh_bao["bcaTthcCode"] == "1.010386" and "resultMethodHint" not in bca_trinh_bao
 
     # Đợt 26/10. Nội quy lao động (Bộ Nội vụ): cùng khuôn cấp Sở với sửa đổi thông tin hồ sơ người có công.
     moha_labor = procedures.pop("dang-ky-noi-quy-lao-dong")
@@ -957,10 +967,11 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 cổng Bộ Công an dichvucong.bocongan.gov.vn (18/11) "cap-ho-chieu-pho-thong-o-trong-nuoc" (1.001456).
     # +1 cổng Bộ Công an dichvucong.bocongan.gov.vn (18/11) "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam" (1.001194).
     # +1 cổng Bộ Công an dichvucong.bocongan.gov.vn (19/11) "cap-the-tam-tru-cho-nguoi-nuoc-ngoai-tai-viet-nam" (1.003460).
+    # +1 cổng Bộ Công an dichvucong.bocongan.gov.vn (19/11) "trinh-bao-mat-ho-chieu-pho-thong-cap-xa" (1.010386).
     # +1 cổng Bộ Nội vụ (19/11) "cong-nhan-che-do-khang-chien-nhiem-chat-doc-hoa-hoc" (1.010816): tỉnh → Sở, xã → xã.
     # +1 cổng Bộ Xây dựng (19/11) "cap-giay-phep-lien-van-viet-lao-campuchia" (1.002877): toàn quốc, chọn Sở Xây dựng.
     # +1 cổng iGate Lâm Đồng (19/11) "tinh-tien-su-dung-dat-nd-50-2026-lam-dong" (1.115148), luồng "xay-dung".
-    assert len(procedures) == 181
+    assert len(procedures) == 182
 
     for procedure in procedures:
         key = procedure["key"]

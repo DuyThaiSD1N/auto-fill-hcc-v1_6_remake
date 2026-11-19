@@ -1792,8 +1792,10 @@
       catch (e) { console.warn("[AutoFill] default theo địa bàn:", e); }
     }
     if (!fields.length) { sendResponse({ error: "Không có trường nào để điền." }); return; }
-    const isStandardField = (f) =>
-      String(f?.comp || "").startsWith("dom-") || String(f?.name || "").startsWith("data[");
+    // comp "bca-*" (cổng Bộ Công an) chỉ engine standard biết; bước đính kèm hộ chiếu gửi riêng ô ảnh chân dung
+    // "bca-photo" (không kèm ô dom-*) → vẫn phải vào fillFormStandard.
+    const isStandardField = (f) => /^(dom|bca)-/.test(String(f?.comp || ""))
+      || String(f?.name || "").startsWith("data[");
     const isLegacyField = (f) => String(f?.comp || "").startsWith("x-");
     // Một thủ tục có thể trả HAI bộ ô cho hai frame (vd Xác nhận thông tin hộ tịch: trang cổng Form.io
     // data[...] + eForm hộ tịch x-* trong iframe tokhaidientu). Không tách thì ô data[...] ép frame eForm
@@ -8768,11 +8770,12 @@
     const suffix = key.replace(/^filename/i, "");
     const byId = suffix ? document.getElementById(`custom-file-input-${suffix}`) : null;
     if (byId) return byId;
-    // Trang biến thể đổi name: ô ảnh có chữ "chân dung" quanh nó trong khối tải ảnh đầu trang.
+    // Trang biến thể đổi name: ô ảnh có chữ "chân dung" (ô trang hộ chiếu filenamehc của thẻ tạm trú 1.003460: "nhân
+    // thân") quanh nó trong khối tải ảnh đầu trang.
     const inputs = Array.from(document.querySelectorAll('#A08-checkimg input[type="file"], input[type="file"][typeimg]'));
     return inputs.find((input) => {
       const box = input.closest(".form-group, .input-group, td, .row") || input.parentElement;
-      return foldChoiceText(box?.textContent || "").includes("chan dung");
+      return foldChoiceText(box?.textContent || "").includes(/hc$/i.test(key) ? "nhan than" : "chan dung");
     }) || null;
   }
 
@@ -8794,7 +8797,7 @@
     const file = input ? bcaPhotoFile(f.value) : null;
     if (!input || !file) {
       result.notFound.push(f.name);
-      console.warn(`[AutoFill-STD] Không thấy ô tải ảnh chân dung ${f.name}`);
+      console.warn(`[AutoFill-STD] Không thấy ô tải ảnh ${f.name}`);
       return false;
     }
     const dt = new DataTransfer();

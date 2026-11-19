@@ -263,6 +263,10 @@ def test_tro_ly_nop_thang_nhu_auto_fill_khong_chon_tinh_xa():
     assert "Nộp trực tuyến" in r.display_md and "Nam Nha Trang" not in r.display_md
 
 
+async def _no_save(_conv):
+    return None
+
+
 def test_tro_ly_dien_truoc_roi_moi_dinh_kem_tren_eform_bo_cong_an(monkeypatch):
     # Chạy thật 18/11: bảng Thành phần hồ sơ 3 dòng nằm NGAY DƯỚI form kê khai trên cùng một trang (dưới "Nơi nhận thị
     # thực"). Lần 1 trợ lý đính kèm trước khi điền; lần 2 điền xong lại chờ sang trang khác nên không đính. Đúng: điền
@@ -311,21 +315,35 @@ def test_tro_ly_dien_truoc_roi_moi_dinh_kem_tren_eform_bo_cong_an(monkeypatch):
     assert conv["docs_target"] == "declaration" and conv["state"] == "filling"
     assert calls == ["process"] and conv["auto_attach_after_fill"] is True
     assert not conv.get("attachment_plan_started")
-    # 2) Điền xong (fill_report) trên trang đó → lập kế hoạch đính kèm NGAY, câu đuôi nói đính vào mục bên dưới.
+    # 2) Điền xong (fill_report) trên trang đó → user 19/11: KHÔNG tự đính, dừng ở rà soát và hỏi đính kèm (nút "Đính kèm
+    # giấy tờ"), nhắc nói "điền lại tờ khai" nếu chưa đúng.
     calls.clear()
+    conv["pipeline_status"] = "fields_ready"  # run_process chạy xong (spawn giả không chạy)
     r = asyncio.run(flow._handle_filling(conv, Intent("action", "fill_report", {"filled": 33, "notFound": []})))
+    assert conv["state"] == "reviewing" and not conv.get("attachment_plan_started") and calls == []
+    assert "Thành phần hồ sơ** ngay bên dưới" in r.display_md and "điền lại tờ khai" in r.display_md
+    assert "__action:confirm_review" in [c["send"] for c in r.chips]
+    # "Điền lại tờ khai" lúc này còn ở phiên điền → chạy lại lượt điền, không đính.
+    monkeypatch.setattr(flow.conv_store, "save", _no_save)
+    asyncio.run(flow._handle_turn_inner(conv, Intent("action", "refill", {})))
+    assert calls == ["process"] and conv["state"] == "filling" and conv["docs_target"] == "declaration"
+    calls.clear()
+    conv["pipeline_status"] = "fields_ready"
+    asyncio.run(flow._handle_filling(conv, Intent("action", "fill_report", {"filled": 34, "notFound": []})))
+    assert conv["state"] == "reviewing" and calls == []
+    # Bấm "Đính kèm giấy tờ" → lập kế hoạch đính NGAY trên trang này (bảng cùng trang, không chờ trang khác).
+    asyncio.run(flow._handle_turn_inner(conv, Intent("action", "confirm_review", {})))
     assert conv["state"] == "attaching" and conv["attachment_plan_started"] is True and calls == ["attach"]
-    assert "Thành phần hồ sơ** ngay bên dưới" in r.display_md
     # Watcher của chính trang này cũng tính là đã tới chỗ đính kèm (kế hoạch về thì phát lệnh đính).
     assert flow._attachment_page_reached(conv, proc, same_page) is True
 
-    # 3) eForm mà bảng nằm TRANG SAU (form không kèm bảng): điền xong chờ sang trang đính kèm như cũ.
+    # 3) eForm mà bảng nằm TRANG SAU (form không kèm bảng): điền xong cũng dừng hỏi, nhắc "Đồng ý và tiếp tục".
     conv = new_conv()
     calls.clear()
     asyncio.run(flow._docs_complete(conv, form_only))
     calls.clear()
     r = asyncio.run(flow._handle_filling(conv, Intent("action", "fill_report", {"filled": 33, "notFound": []})))
-    assert conv["state"] == "attaching" and conv["pipeline_status"] == "waiting_attachment_page" and calls == []
+    assert conv["state"] == "reviewing" and calls == []
     assert "Đồng ý và tiếp tục" in r.display_md
     conv["attachment_context"] = {"hasAttachmentTableHeader": True, "hasFileControl": True,
                                   "components": [{"index": i, "componentName": f"Dòng {i}"} for i in (1, 2, 3)]}
@@ -526,3 +544,65 @@ def test_dinh_kem_tach_loi_quay_ve_khong_tach(monkeypatch):
     slots = _slots(result)
     assert slots[0]["fileIndex"] == 0 and slots[2]["fileIndex"] == 1
     assert not any(a.get("sourceSegments") for a in result["attachments"])
+
+
+# ── Ảnh chân dung 4x6 (ô filename46 đầu trang kê khai), user 19/11/2026: tự gắn như hộ chiếu / thẻ tạm trú ──
+def _portrait(name: str = "IMG_0001.jpg") -> dict:
+    import io
+
+    from PIL import Image
+
+    image = Image.new("RGB", (400, 600), (255, 255, 255))
+    image.paste((120, 90, 70), (100, 150, 300, 600))  # "người" giữa nền sáng
+    buffer = io.BytesIO()
+    image.save(buffer, format="JPEG")
+    return {"name": name, "type": "image/jpeg",
+            "dataUrl": "data:image/jpeg;base64," + base64.b64encode(buffer.getvalue()).decode()}
+
+
+def test_dinh_kem_khong_dinh_anh_chan_dung_va_tra_o_anh(monkeypatch):
+    # Trước đây ảnh chân dung (OCR rỗng) rơi "other" → bị gộp vào dòng 3 giấy chứng minh. Nay: không đính, trả ô ảnh.
+    photo = _portrait()
+    files = [_file("tk.pdf"), _file("kh.pdf"),
+             FileItem(name=photo["name"], type=photo["type"], dataUrl=photo["dataUrl"], role="other")]
+    _mock_io(monkeypatch, {"tk.pdf": TO_KHAI, "kh.pdf": KET_HON, photo["name"]: "VÀNG"}, "không phải JSON")
+    for split in (False, True):
+        result = asyncio.run(attach_planner.plan(files, {"splitDocuments": split}, {}))
+        slots = _slots(result)
+        used = {i for a in result["attachments"] for i in [a["fileIndex"], *(a.get("sourceFileIndexes") or []),
+                                                          *(s["fileIndex"] for s in a.get("sourceSegments") or [])]}
+        assert 2 not in used, split
+        assert list(slots) == [0, 2], split
+        assert [f["name"] for f in result["pageFields"]] == ["filename46"], split
+        assert result["pageFields"][0]["comp"] == "bca-photo"
+
+
+def test_runner_gan_anh_chan_dung_dau_danh_sach(monkeypatch):
+    from app.pipelines.cap_thi_thuc_cho_nguoi_nuoc_ngoai_tai_viet_nam.process import runner as tt_runner
+
+    files = [{"name": "tk.pdf", "type": "application/pdf", "dataUrl": "data:application/pdf;base64,eA=="}, _portrait()]
+
+    async def fake_ocr(ocr_files):
+        return [{"name": f["name"], "text": TO_KHAI if f["name"] == "tk.pdf" else ""} for f in ocr_files]
+
+    async def fake_run(files_by_role, **kwargs):
+        await kwargs["ocr_fn"](tt_runner.runner.flatten(files_by_role))
+        return {"fields": [{"name": k, "value": v} for k, v in HO_SO.items()], "errors": [], "extracted": {}}
+
+    monkeypatch.setattr(ocr_service, "ocr_per_file", fake_ocr)
+    monkeypatch.setattr(tt_runner.runner, "run", fake_run)
+    res = asyncio.run(tt_runner.run({"": files}, {}))
+    assert res["fields"][0]["name"] == "filename46" and res["fields"][0]["comp"] == "bca-photo"
+    assert mapper.PHOTO_WARNING not in res["errors"] and mapper.PASSPORT_PAGE_WARNING in res["errors"]
+    assert any("Đã gắn ảnh 'IMG_0001.jpg'" in e for e in res["errors"])
+    # Không có ảnh → giữ câu nhắc 2 ô ảnh tải tay như cũ.
+    res = asyncio.run(tt_runner.run({"": files[:1]}, {}))
+    assert not any(f["name"] == "filename46" for f in res["fields"]) and mapper.PHOTO_WARNING in res["errors"]
+
+
+def test_tro_ly_co_o_anh_chan_dung():
+    from app.channels.handfree import procedure_registry as hf
+
+    docs = {d["key"]: d for d in hf.get_procedure(KEY)["requiredDocs"]}
+    assert docs["anh_chan_dung"]["sides"] == 1 and not docs["anh_chan_dung"].get("optional")
+    assert "Ảnh chân dung 4x6" in hf.get_procedure(KEY)["uploadHint"]

@@ -3,6 +3,16 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.28.22",
+    date: "19/11/2026",
+    items: [
+      "Thêm thủ tục Trình báo mất hộ chiếu phổ thông (thực hiện tại cấp xã) trên Cổng dịch vụ công Bộ Công an; có tách giấy tờ khi đính kèm. Cha mẹ khai thay cho con thì vẫn điền, chỉ bỏ ngày cấp, nơi cấp căn cước.",
+      "Cấp thẻ tạm trú cho người nước ngoài tại Việt Nam: tự gắn ảnh trang nhân thân hộ chiếu vào ô tải ảnh đầu tờ khai; Cấp thị thực cho người nước ngoài tại Việt Nam: tự gắn ảnh chân dung và ảnh trang hộ chiếu như hộ chiếu, thẻ tạm trú.",
+      "Cấp hộ chiếu phổ thông ở trong nước: bấm \"Đính kèm\" mà không điền lại vẫn gắn ảnh chân dung 4x6 vào ô đầu tờ khai.",
+      "Đính kèm không được tệp nào thì báo lý do cụ thể trong \"Xem chi tiết\" thay cho câu chung \"Không thực hiện được thao tác\".",
+    ],
+  },
+  {
     version: "1.28.21",
     date: "19/11/2026",
     items: [

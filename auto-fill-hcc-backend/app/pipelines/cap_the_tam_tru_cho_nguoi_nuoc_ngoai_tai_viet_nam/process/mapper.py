@@ -60,7 +60,8 @@ PHOTO_WARNING = (
     "Đầu biểu mẫu có 2 ô tải ảnh .jpg dưới 2 MB: Ảnh chân dung (cổng đòi ảnh 4x6 nền trắng — hồ sơ giấy thường chỉ có ảnh "
     "2x3) và ảnh Trang nhân thân hộ chiếu — tải tay, không thuộc bảng Thành phần hồ sơ."
 )
-# Runner gắn được ảnh chân dung (ô filename46, comp bca-photo) → chỉ còn nhắc ô Trang nhân thân hộ chiếu.
+# Runner gắn được ảnh chân dung (ô filename46, comp bca-photo) mà không thấy trang hộ chiếu có MRZ → chỉ còn nhắc ô
+# Trang nhân thân hộ chiếu (filenamehc). Gắn được cả hai thì bỏ hẳn câu nhắc.
 PASSPORT_PAGE_WARNING = (
     "Ô ảnh Trang nhân thân hộ chiếu ở đầu biểu mẫu (tệp .jpg dưới 2 MB) — tải tay, không thuộc bảng Thành phần hồ sơ."
 )

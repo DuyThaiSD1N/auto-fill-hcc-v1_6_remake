@@ -250,6 +250,38 @@ def test_tro_ly_cung_key_nop_thang_nhu_auto_fill():
         {"type": "bca_tthc_submit", "code": "1.003460"}]
 
 
+def test_tro_ly_dien_xong_hoi_dinh_kem_khong_tu_dinh(monkeypatch):
+    # User 19/11: ba thủ tục eForm Bộ Công an (hộ chiếu, thị thực, thẻ tạm trú) điền xong DỪNG hỏi đính kèm — nói "điền
+    # lại tờ khai" lúc đó vẫn hiểu (còn ở bước rà soát); bấm "Đính kèm giấy tờ" mới đính cùng trang.
+    from app.channels.handfree import procedure_registry as hf
+    from app.channels.handfree.chat import pipeline_runner
+
+    for key in (KEY, "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam", "cap-ho-chieu-pho-thong-o-trong-nuoc"):
+        assert hf.get_procedure(key)["askBeforeAttach"] is True, key
+    calls = []
+    monkeypatch.setattr(pipeline_runner, "run_process", lambda *a: calls.append("process"))
+    monkeypatch.setattr(pipeline_runner, "run_attach", lambda *a: calls.append("attach"))
+    monkeypatch.setattr(pipeline_runner, "spawn", lambda _job: None)
+
+    async def save(_conv):
+        return None
+
+    monkeypatch.setattr(flow.conv_store, "save", save)
+    same_page = {"pageContextCaptured": True, "formKind": "standard", "attachmentTarget": True,
+                 "attachmentComponentCount": 3, "bcaKeKhaiForm": True}
+    conv = {"_id": "t-tam-tru", "state": "filling", "history": [], "procedure_key": KEY, "upload_session_id": "s1",
+            "docs_target": "declaration", "docs_page_context": flow._docs_page_context(same_page),
+            "auto_attach_after_fill": True, "client_capabilities": dict(CAPS)}
+    r = asyncio.run(flow._handle_filling(conv, Intent("action", "fill_report", {"filled": 40, "notFound": []})))
+    assert conv["state"] == "reviewing" and calls == [] and "điền lại tờ khai" in r.display_md
+    asyncio.run(flow._handle_turn_inner(conv, Intent("action", "refill", {})))
+    assert calls == ["process"] and conv["state"] == "filling"
+    calls.clear()
+    asyncio.run(flow._handle_filling(conv, Intent("action", "fill_report", {"filled": 41, "notFound": []})))
+    asyncio.run(flow._handle_turn_inner(conv, Intent("action", "confirm_review", {})))
+    assert calls == ["attach"] and conv["state"] == "attaching"
+
+
 # ── Đính kèm: 3 dòng + "Giấy tờ khác" hộ chiếu ──
 ROW1 = ["chung minh thuoc dien xem xet cap the tam tru"]
 ROW2 = ["to khai de nghi cap the tam tru"]
@@ -406,3 +438,121 @@ def test_dinh_kem_khong_dua_anh_chan_dung_vao_giay_to_khac(monkeypatch):
         result = asyncio.run(attach_planner.plan(files, {"splitDocuments": split}, {}))
         assert all(a["fileIndex"] != 1 for a in result["attachments"]), split
         assert any("Ảnh chân dung 'chan-dung.png' không đính" in e for e in result["errors"]), split
+
+
+# ── Ảnh trang nhân thân hộ chiếu (ô filenamehc đầu trang) + hai ô ảnh ở bước đính kèm (pageFields), user 19/11/2026 ──
+def _real_pdf(name: str, sizes: list[tuple[int, int]]) -> FileItem:
+    """PDF thật (vẽ được trang) — mỗi trang một cỡ để biết trang nào được gắn."""
+    import fitz
+
+    doc = fitz.open()
+    for width, height in sizes:
+        page = doc.new_page(width=width, height=height)
+        page.draw_rect(fitz.Rect(10, 10, width - 10, height - 10), color=(0, 0, 0), fill=(0.8, 0.8, 0.9))
+    data = doc.tobytes()
+    doc.close()
+    return FileItem(name=name, type="application/pdf", role="other",
+                    dataUrl="data:application/pdf;base64," + base64.b64encode(data).decode())
+
+
+A4 = (595, 842)
+PASSPORT_SIZE = (500, 350)  # trang hộ chiếu nằm ngang → nhận ra trên ảnh JPEG trả về
+HO_SO_PAGES = (BIA, VAN_BAN, TO_KHAI, TO_KHAI_2, HO_CHIEU, GPLD)
+
+
+def _jpeg_size(field: dict) -> tuple[int, int]:
+    data = base64.b64decode(field["value"]["dataUrl"].split(",", 1)[1])
+    image = Image.open(io.BytesIO(data))
+    assert image.format == "JPEG" and len(data) < 2 * 1024 * 1024
+    return image.size
+
+
+def test_tim_trang_nhan_than_ho_chieu_theo_mrz():
+    files = [{"name": "tk.pdf"}, {"name": "ho-so.pdf"}]
+    pages = {0: [TO_KHAI, TO_KHAI_2], 1: list(HO_SO_PAGES)}
+    # Tờ khai NA8 + giấy phép lao động có chữ "Passport No." nhưng không phải trang hộ chiếu.
+    assert whole_planner.find_passport_page(files, pages) == (1, 4)
+    assert whole_planner.find_passport_page(files, {0: [TO_KHAI, GPLD]}) is None
+    # Trang thị thực / dấu nhập cảnh (không MRZ, không nhãn Passport No.) không phải trang nhân thân.
+    visa = "THỊ THỰC VIỆT NAM / VIET NAM VISA\nKý hiệu / Type LĐ2"
+    assert whole_planner.find_passport_page(files, {1: [visa]}) is None
+    # Có trang MRZ thì ưu tiên hơn trang chỉ có nhãn.
+    label_only = "REPUBLIC OF KOREA\nPASSPORT\nType P\nPassport No. M12345678"
+    assert whole_planner.find_passport_page(files, {0: [label_only], 1: [visa, HO_CHIEU]}) == (1, 1)
+
+
+def test_runner_gan_ca_hai_o_anh_dau_trang(monkeypatch):
+    ho_so = _real_pdf("ho-so.pdf", [A4, A4, A4, A4, PASSPORT_SIZE, A4])
+    files = [{"name": ho_so.name, "type": ho_so.type, "dataUrl": ho_so.dataUrl}, _portrait()]
+
+    async def fake_run(files_by_role, **kwargs):
+        return {"fields": [{"name": k, "value": v} for k, v in HO_SO.items()], "errors": [], "extracted": {},
+                "ocr_text": f"===== ho-so.pdf (tiengnoi) =====\n{_pdf_text(*HO_SO_PAGES)}"}
+
+    monkeypatch.setattr(runner.runner, "run", fake_run)
+    res = asyncio.run(runner.run({"": files}, {}))
+    assert [f["name"] for f in res["fields"][:2]] == ["filename46", "filenamehc"]
+    page = res["fields"][1]
+    assert page["comp"] == "bca-photo" and page["value"]["name"] == "trang_nhan_than_ho_chieu.jpg"
+    width, height = _jpeg_size(page)
+    assert width > height  # đúng trang 5 (hộ chiếu nằm ngang), không phải trang A4
+    assert any("trang 5 của 'ho-so.pdf'" in e and "Trang nhân thân hộ chiếu" in e for e in res["errors"])
+    assert mapper.PHOTO_WARNING not in res["errors"] and mapper.PASSPORT_PAGE_WARNING not in res["errors"]
+    # Có trang hộ chiếu, không có ảnh chân dung → nhắc riêng ảnh chân dung, bỏ câu nhắc "2 ô ảnh tải tay".
+    res = asyncio.run(runner.run({"": files[:1]}, {}))
+    assert [f["name"] for f in res["fields"][:1]] == ["filenamehc"]
+    assert mapper.PHOTO_WARNING not in res["errors"] and mapper.PASSPORT_PAGE_WARNING not in res["errors"]
+    assert any("Chưa thấy ảnh chân dung" in e for e in res["errors"])
+
+
+def test_trang_ho_chieu_la_anh_hoac_anh_goi_pdf_thi_lay_nguyen_anh():
+    image = Image.new("RGB", (900, 640), (230, 230, 240))
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    png = {"name": "passport.png", "type": "image/png",
+           "dataUrl": "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()}
+    field, note = whole_planner.passport_page_field([png], {0: [HO_CHIEU]})
+    assert field["name"] == "filenamehc" and _jpeg_size(field) == (900, 640)
+    assert "'passport.png'" in note and "trang 1" not in note
+    # Auto Fill gói ảnh vào PDF một trang lúc đính kèm → vẫn lấy ảnh gốc.
+    import fitz
+
+    doc = fitz.open()
+    doc.new_page(width=900, height=640).insert_image(fitz.Rect(0, 0, 900, 640), stream=buffer.getvalue())
+    wrapped = {"name": "passport.pdf", "type": "application/pdf",
+               "dataUrl": "data:application/pdf;base64," + base64.b64encode(doc.tobytes()).decode()}
+    field, _ = whole_planner.passport_page_field([wrapped], {0: [HO_CHIEU]})
+    assert _jpeg_size(field) == (900, 640)
+    # Tệp hỏng → không có ô, không vỡ.
+    broken = {"name": "hc.pdf", "type": "application/pdf", "dataUrl": "data:application/pdf;base64,eA=="}
+    assert whole_planner.passport_page_field([broken], {0: [HO_CHIEU]}) == (None, None)
+
+
+def test_dinh_kem_tra_hai_o_anh_dau_trang_ca_hai_che_do(monkeypatch):
+    """Auto Fill bấm "Đính kèm" mà không điền lại: bước đính kèm trả pageFields ảnh chân dung + trang nhân thân hộ chiếu;
+    hộ chiếu vẫn đính "Giấy tờ khác", ảnh chân dung không đính vào bảng."""
+    ho_so = _real_pdf("ho-so.pdf", [A4, A4, A4, A4, PASSPORT_SIZE, A4])
+    photo = _portrait("chan-dung.png")
+    files = [ho_so, FileItem(name=photo["name"], type=photo["type"], dataUrl=photo["dataUrl"], role="other")]
+    texts = {"ho-so.pdf": _pdf_text(*HO_SO_PAGES)}
+    llm = json.dumps({
+        "documents": [
+            {"fileIndex": 0, "pages": [1], "docType": "bia_ho_so", "documentName": "Hồ sơ thủ tục hành chính"},
+            {"fileIndex": 0, "pages": [2], "docType": "van_ban", "documentName": "Văn bản đề nghị"},
+            {"fileIndex": 0, "pages": [3, 4], "docType": "to_khai", "documentName": "Tờ khai"},
+            {"fileIndex": 0, "pages": [5], "docType": "ho_chieu", "documentName": "Hộ chiếu"},
+            {"fileIndex": 0, "pages": [6], "docType": "chung_minh", "documentName": "Giấy phép lao động"},
+        ],
+    })
+    _mock_io(monkeypatch, texts, llm)
+    for split in (False, True):
+        result = asyncio.run(attach_planner.plan(files, {"splitDocuments": split}, {}))
+        assert result["extracted"]["attachmentMode"] == ("split" if split else "whole"), split
+        assert [f["name"] for f in result["pageFields"]] == ["filename46", "filenamehc"], split
+        assert _jpeg_size(result["pageFields"][1])[0] > _jpeg_size(result["pageFields"][1])[1], split
+        assert all(a["fileIndex"] == 0 for a in result["attachments"]), split
+        assert [o["componentName"] for o in _others(result)] == [PASSPORT_ITEM], split
+    # Không có ảnh chân dung lẫn trang hộ chiếu → không có ô nào.
+    _mock_io(monkeypatch, {"tk.pdf": TO_KHAI}, "không phải JSON")
+    for split in (False, True):
+        assert asyncio.run(attach_planner.plan([_file("tk.pdf")], {"splitDocuments": split}, {}))["pageFields"] == []

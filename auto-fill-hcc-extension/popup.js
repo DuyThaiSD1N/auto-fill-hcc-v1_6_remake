@@ -3901,6 +3901,47 @@ async function toPdfForAttach(payloadFiles) {
   return out;
 }
 
+// `pageFields` của kế hoạch BE: ô trên trang kê khai mà bước đính kèm gắn luôn — ô tải ảnh comp "bca-photo" đầu trang
+// cổng Bộ Công an: ảnh chân dung filename46 (hộ chiếu 1.001456, thẻ tạm trú 1.003460) + ảnh trang nhân thân hộ chiếu
+// filenamehc (thẻ tạm trú). Bước đính kèm nhận ảnh đã đổi sang PDF, BE lấy lại ảnh gốc / vẽ lại trang hộ chiếu. Gửi
+// xuống trang bằng lệnh fillFields như bước điền. Không có ô nào → null; có → { ok, note } để ghép vào câu kết quả.
+async function fillAttachPageFields(procedure, fields) {
+  const list = (Array.isArray(fields) ? fields : []).filter((f) => f && f.name);
+  if (!list.length) return null;
+  const photos = list.filter((f) => f.comp === "bca-photo");
+  const labels = { filename46: "ảnh chân dung", filenamehc: "ảnh trang nhân thân hộ chiếu" };
+  const label = (f) => labels[f.name] || "ảnh";
+  setStatus(photos.length ? `Đang gắn ${photos.map(label).join(" + ")} vào biểu mẫu...`
+    : "Đang điền biểu mẫu từ giấy tờ đính kèm...", "info");
+  let res = null;
+  try {
+    res = await sendToContent({ action: "fillFields", fields: list, procedure });
+  } catch (e) {
+    res = { error: String(e?.message || e) };
+  }
+  const ok = !res?.error && Number(res?.filled || 0) >= list.length;
+  if (!ok) console.warn("[AutoFill-Attach] Chưa gắn được ô trang kê khai:", res);
+  if (!photos.length) {
+    return { ok, note: ok ? `Đã điền ${list.length} ô trên biểu mẫu từ giấy tờ đính kèm.`
+      : "⚠ Chưa điền được ô trên biểu mẫu từ giấy tờ đính kèm." };
+  }
+  // Ô nào trượt: notFound của content script; lỗi chung / thiếu mà không rõ ô nào → coi như trượt hết.
+  let missed = new Set(res?.error ? [] : (res?.notFound || []));
+  if (!ok && !photos.some((f) => missed.has(f.name))) missed = new Set(photos.map((f) => f.name));
+  const done = photos.filter((f) => !missed.has(f.name));
+  const failed = photos.filter((f) => missed.has(f.name));
+  const lines = [];
+  if (done.length) {
+    lines.push(`Đã gắn ${done.map(label).join(" + ")} vào ô tải ảnh đầu biểu mẫu — kiểm tra đúng ảnh`
+      + (done.some((f) => f.name === "filename46") ? " 4x6 nền trắng" : "") + ".");
+  }
+  if (failed.length) {
+    lines.push(`⚠ Chưa gắn được ${failed.map(label).join(" + ")} vào ô đầu biểu mẫu — bấm Tải ảnh trên cổng để chọn `
+      + "ảnh .jpg.");
+  }
+  return { ok, note: lines.join("\n") };
+}
+
 // Thay tệp theo `replaceFiles` của kế hoạch BE ({fileIndex: {name, type, dataUrl}}); giữ role của tệp gốc.
 function applyReplaceFiles(payloadFiles, replaceFiles) {
   if (!replaceFiles || typeof replaceFiles !== "object") return payloadFiles;
@@ -4078,10 +4119,11 @@ async function runBusinessAttach(cfg, options) {
     attachments: planRes.attachments, extracted: planRes.extracted, errors: planRes.errors,
   });
   if (!(planRes.attachments || []).length) {
-    const reason = Array.isArray(planRes.errors) && planRes.errors.length
-      ? planRes.errors.join("; ")
-      : "Backend chưa trả về kế hoạch đính kèm.";
-    return { error: reason };
+    // Lý do của BE vào "Xem chi tiết" (dạng error sẽ bị lọc thành câu chung khi dài / có ngoặc kép).
+    const reasons = (Array.isArray(planRes.errors) ? planRes.errors : []).filter(Boolean);
+    if (!reasons.length) return { error: "Backend chưa trả về kế hoạch đính kèm.", requestId: planRes.requestId };
+    return { ok: true, warn: true, requestId: planRes.requestId, details: reasons,
+      message: "Chưa đính kèm tệp nào vào hồ sơ — bấm Xem chi tiết để biết lý do." };
   }
   // Tệp nhiều giấy được BE chia theo trang (sourceSegments) → cắt PDF trước khi engine HkdOnline đính.
   const { files: attachFiles, attachments } = await applyMergeGroups(payloadFiles, planRes.attachments);
@@ -4205,14 +4247,24 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
     errors: planRes.errors,
   });
   const rawAttachments = planRes.attachments || [];
+  // Ô trên trang kê khai mà bước đính kèm gắn luôn (hộ chiếu 1.001456: ảnh chân dung 4x6 vào ô filename46) — cán bộ
+  // bấm "Đính kèm" mà không điền lại vẫn có ảnh. Gắn TRƯỚC khi đính tệp vào Thành phần hồ sơ.
+  const pageFill = await fillAttachPageFields(cfg.key, planRes.pageFields);
   // Kế hoạch rỗng CÓ CHỦ Ý theo cấu hình tài khoản (vd TTHN Đông Hà chỉ đính ủy quyền, hồ sơ không có) → xong.
-  if (!rawAttachments.length && planRes.nothingToAttach === true) return { ok: true, message: "" };
+  if (!rawAttachments.length && planRes.nothingToAttach === true) {
+    return pageFill ? { ok: true, warn: !pageFill.ok, message: pageFill.note } : { ok: true, message: "" };
+  }
   if (!rawAttachments.length) {
-    // Backend trả lý do cụ thể trong errors (vd không tìm thấy giấy chứng sinh) → hiện cho người dùng.
-    const reason = Array.isArray(planRes.errors) && planRes.errors.length
-      ? planRes.errors.join("; ")
-      : "Backend chưa trả về kế hoạch đính kèm file.";
-    return { error: reason };
+    // Backend trả lý do cụ thể trong errors (vd hồ sơ chưa có hộ chiếu cũ, không tìm thấy giấy chứng sinh) → đưa
+    // vào "Xem chi tiết". KHÔNG trả về dạng error: setStatus("err") lọc câu > 160 ký tự / có ngoặc kép thành câu
+    // chung "Không thực hiện được thao tác", người dùng mất hẳn lý do.
+    const reasons = (Array.isArray(planRes.errors) ? planRes.errors : []).filter(Boolean);
+    if (!reasons.length && !pageFill) {
+      return { error: "Backend chưa trả về kế hoạch đính kèm file.", requestId: planRes.requestId };
+    }
+    return { ok: true, warn: true, requestId: planRes.requestId, details: reasons,
+      message: (pageFill ? `${pageFill.note}\n` : "")
+        + "Chưa đính kèm tệp nào vào hồ sơ — bấm Xem chi tiết để biết lý do." };
   }
 
   // Cổng giới hạn dung lượng (DVC quốc gia mới < 2 MB): BE trả bản nén thay tệp gốc, OCR đã đọc bản gốc.
@@ -4322,8 +4374,9 @@ async function runAttachmentPlanForCurrentFiles(options = {}) {
   // vào dòng khác) — tệp đã lên nhưng cán bộ còn việc phải làm tay.
   const attachNotes = (attachRes?.notes || []).filter(Boolean);
   if (attachNotes.length) msg += `\n⚠ ${attachNotes.join("\n⚠ ")}`;
+  if (pageFill) msg += `\n${pageFill.note}`;
   const warn = attachedCount < sendFiles.length || droppedNames.length > 0 || attachNotes.length > 0
-    || !!attachFiles?.failed.length;
+    || !!attachFiles?.failed.length || (!!pageFill && !pageFill.ok);
   // errors[] của ENGINE đính kèm nói rõ dòng nào trượt ("Không khớp thành phần …", "Chỉ lên được 0/1
   // tệp …"). Trước đây bị nuốt hoàn toàn nên cán bộ thấy "đã đính kèm" mà hồ sơ vẫn thiếu.
   const attachErrors = (attachRes?.errors || []).filter(Boolean);
@@ -5572,7 +5625,10 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "dien-thong-tin-tai-khoan-bac-ninh" ||
       // [Bộ Công an] 1.001456 (cấp hộ chiếu phổ thông): Họ và tên / Số CCCD / cha mẹ cổng khoá theo VNeID → mốc tài khoản
       // (CongDan_tenCongDan / CongDan_soCmnd) để BE không điền khi giấy tờ là của người khác chủ tài khoản.
-      cfg.key === "cap-ho-chieu-pho-thong-o-trong-nuoc"
+      cfg.key === "cap-ho-chieu-pho-thong-o-trong-nuoc" ||
+      // [Bộ Công an] 1.010386 (trình báo mất hộ chiếu cấp xã): cùng ô khoá theo VNeID → mốc tài khoản để BE bỏ ngày cấp /
+      // nơi cấp CCCD khi giấy tờ là của người khác (cha mẹ khai thay cho con) — không chặn điền.
+      cfg.key === "trinh-bao-mat-ho-chieu-pho-thong-cap-xa"
     ) {
       const ctxRes = await sendToContent({ action: "collectFormContext" });
       if (ctxRes?.formContext) options.formContext = ctxRes.formContext;

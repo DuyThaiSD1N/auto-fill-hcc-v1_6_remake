@@ -849,6 +849,9 @@ async def run_attach(conv_id: str, sid: str, procedure_key: str,
         async with mon.span("post.plan", procedure=procedure_key):
             result = await attach_fn(files, attach_options, session=None)
         _note_result(rec, result)
+        # Ô trang kê khai của bước đính kèm (ảnh chân dung hộ chiếu, base64) chỉ dành cho Auto Fill — trợ lý gắn ảnh ở
+        # bước điền; bỏ đi để không ghi ảnh vào trace / phiên.
+        result.pop("pageFields", None)
         # Cổng giới hạn dung lượng (DVC quốc gia mới < 2 MB): lấy bản nén ra khỏi result trước khi ghi trace.
         async with mon.span("post.shrunk"):
             replace_files = await _fit_attach_message(raw_files, result.pop("replaceFiles", None),

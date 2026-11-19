@@ -9,8 +9,9 @@ diện xem xét cấp thẻ (giấy phép lao động …) · có khi kèm thẻ
 (mapping): người nước ngoài Hộ chiếu → Tờ khai NA8 → Văn bản NA6 → GPLĐ → Danh mục; bên bảo lãnh CCCD / NA6.
 
 Cố ý KHÔNG phát:
-- Ảnh trang nhân thân hộ chiếu (``filenamehc``) đầu form — ô tải ảnh .jpg riêng. Ảnh chân dung (``filename46``) thì
-  runner PHÁT khi bộ giấy có tệp ảnh chân dung (comp ``bca-photo``, JPEG dưới 2 MB — dùng chung hộ chiếu 1.001456).
+- Hai ô tải ảnh .jpg đầu form KHÔNG đi qua LLM: runner tự PHÁT (comp ``bca-photo``, JPEG dưới 2 MB) ảnh chân dung
+  (``filename46``, tệp ảnh gần như không chữ — dùng chung hộ chiếu 1.001456) và ảnh trang nhân thân hộ chiếu
+  (``filenamehc``, trang có MRZ — ``attach/dinh_kem_khong_tach/planner.passport_page_field``).
 - Ô readonly theo tài khoản đăng nhập: Thân nhân bảo lãnh (họ tên), Ngày sinh, ``CongDan_soCmnd``; khối Cơ quan/tổ chức
   bảo lãnh + tra cứu doanh nghiệp đang ẨN (form khoá "Thân nhân") — mapping ghi CẦN XÁC NHẬN.
 - Cơ quan tiếp nhận (theo cơ quan đã chọn ở bước chọn trường hợp), nơi nhận kết quả (công dân tự chọn), "Về việc" (ẩn),

@@ -173,6 +173,6 @@ async def process_v2(
         payload = AttachmentPlanResp.model_validate(result).model_dump(mode="json")
     if rec is not None:
         # replaceFiles mang cả tệp nén (base64, cỡ MB) → không ghi vào trace.
-        rec.output("response", {k: v for k, v in payload.items() if k != "replaceFiles"})
+        rec.output("response", {k: v for k, v in payload.items() if k not in ("replaceFiles", "pageFields")})
         rec.mark_wait_end()
     return {"action": action, "fileRefs": True, **payload}

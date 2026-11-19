@@ -72,6 +72,8 @@ from app.pipelines.dang_ky_mau_con_dau.process import run as dang_ky_mau_con_dau
 from app.pipelines.dang_ky_mau_con_dau.attach import plan as dang_ky_mau_con_dau_attach
 from app.pipelines.cap_ho_chieu_pho_thong_o_trong_nuoc.process import run as cap_ho_chieu_pho_thong_o_trong_nuoc_process
 from app.pipelines.cap_ho_chieu_pho_thong_o_trong_nuoc.attach import plan as cap_ho_chieu_pho_thong_o_trong_nuoc_attach
+from app.pipelines.trinh_bao_mat_ho_chieu_pho_thong_cap_xa.process import run as trinh_bao_mat_ho_chieu_cap_xa_process
+from app.pipelines.trinh_bao_mat_ho_chieu_pho_thong_cap_xa.attach import plan as trinh_bao_mat_ho_chieu_cap_xa_attach
 from app.pipelines.cap_thi_thuc_cho_nguoi_nuoc_ngoai_tai_viet_nam.process import run as cap_thi_thuc_nnn_process
 from app.pipelines.cap_thi_thuc_cho_nguoi_nuoc_ngoai_tai_viet_nam.attach import plan as cap_thi_thuc_nnn_attach
 from app.pipelines.cap_the_tam_tru_cho_nguoi_nuoc_ngoai_tai_viet_nam.process import run as cap_the_tam_tru_nnn_process
@@ -11322,6 +11324,45 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        # 1.010386, cùng cổng + cùng khuôn với hộ chiếu ngay trên (form-builder Nth, ô CongDan__fs*). Key TRÙNG
+        # ke_khai_links (directSubmit + bcaSubmit: DVCQG "Nộp hồ sơ" → "Nộp trực tuyến" → "Nộp hồ sơ" ở trang thủ tục cổng
+        # Bộ Công an ?MaTTHC=1.010386). Trang nhập thông tin + bảng Thành phần hồ sơ CÙNG trang, có cả dòng "đơn trình báo
+        # mất hộ chiếu phổ thông" → chữ "hộ chiếu phổ thông" của 1.001456 cũng khớp: textIncludes dùng hai nhãn ô riêng
+        # của form trình báo (tổng độ dài hơn). Bản cấp tỉnh 1.001445 cùng form chưa làm. Điền theo file mapping
+        # "Mapping_Trinh_bao_mat_ho_chieu_cap_xa_BCA" (đơn TK05 + tờ khai TK01 + CCCD); ô khoá theo VNeID và khối Nơi tiếp
+        # nhận (đã chọn ở bước Lựa chọn DVC) không phát. Đính kèm theo ảnh ánh xạ 19/11/2026: bảng 1 dòng (đơn TK05). Có
+        # tách giấy. Chưa chạy cổng thật.
+        "key": "trinh-bao-mat-ho-chieu-pho-thong-cap-xa",
+        "detect": {
+            "urlScope": ["dichvucong.bocongan.gov.vn"],
+            "textIncludes": [
+                "số hộ chiếu bị mất",
+                "thời gian mất hộ chiếu",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+            "codeOnPage": True,
+        },
+        "label": "Trình báo mất hộ chiếu phổ thông (thực hiện tại cấp xã)",
+        "mode": "agent",
+        # Auto Fill gửi options.formContext (ô khoá Họ và tên + Số CCCD của tài khoản VNeID) → giấy tờ của người khác
+        # (cha mẹ khai thay cho con) thì mapper bỏ ngày cấp / nơi cấp CCCD và cảnh báo, không chặn.
+        "collectFormContext": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn trình báo mất hộ chiếu phổ thông (Mẫu TK05) đã ký — nơi cư trú, số điện thoại, thông tin hộ chiếu "
+            "bị mất, thời gian và hoàn cảnh bị mất.\n"
+            "2. Tờ khai đề nghị cấp hộ chiếu phổ thông (nếu có) — ngày cấp số định danh.\n"
+            "3. Thẻ căn cước hai mặt (nếu có) — ngày cấp, nơi cấp.\n"
+            "Sau khi điền: nhập Email, kiểm tra ô Cơ quan thực hiện. Bước đính kèm: đơn trình báo vào dòng 'Đơn trình "
+            "báo mất hộ chiếu phổ thông'; tờ khai và thẻ căn cước chỉ dùng để điền, không đính."
+        ),
+    },
+    {
         # 1.001194, cùng cổng Bộ Công an + cùng khuôn hộ chiếu 1.001456: DVCQG "Nộp hồ sơ" → "Nộp trực tuyến" → "Nộp hồ
         # sơ" trên cổng Bộ Công an (ke_khai_links directSubmit + bcaSubmit). Trang nhập thông tin không mang mã → khớp chữ
         # "cấp thị thực" (ô "Cấp thị thực: một lần, nhiều lần" / dòng Tờ khai ở bảng đính kèm) + "nhập cảnh" ("Nhập cảnh
@@ -11574,6 +11615,7 @@ _PIPELINE = {
     "dang-ky-xe-lan-dau-san-xuat-lap-rap-trong-nuoc": dang_ky_xe_lan_dau_san_xuat_lap_rap_trong_nuoc_process,
     "dang-ky-mau-con-dau": dang_ky_mau_con_dau_process,
     "cap-ho-chieu-pho-thong-o-trong-nuoc": cap_ho_chieu_pho_thong_o_trong_nuoc_process,
+    "trinh-bao-mat-ho-chieu-pho-thong-cap-xa": trinh_bao_mat_ho_chieu_cap_xa_process,
     "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam": cap_thi_thuc_nnn_process,
     "cap-the-tam-tru-cho-nguoi-nuoc-ngoai-tai-viet-nam": cap_the_tam_tru_nnn_process,
     "dang-ky-thuong-tru": dang_ky_thuong_tru_process,
@@ -11942,6 +11984,7 @@ _ATTACH_PIPELINE = {
     "chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau": chuyen_muc_dich_su_dung_dat_mien_nui_lai_chau_attach,
     "dang-ky-mau-con-dau": dang_ky_mau_con_dau_attach,
     "cap-ho-chieu-pho-thong-o-trong-nuoc": cap_ho_chieu_pho_thong_o_trong_nuoc_attach,
+    "trinh-bao-mat-ho-chieu-pho-thong-cap-xa": trinh_bao_mat_ho_chieu_cap_xa_attach,
     "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam": cap_thi_thuc_nnn_attach,
     "cap-the-tam-tru-cho-nguoi-nuoc-ngoai-tai-viet-nam": cap_the_tam_tru_nnn_attach,
     "giao-dat-cho-thue-dat-lai-chau": giao_dat_cho_thue_dat_lai_chau_attach,

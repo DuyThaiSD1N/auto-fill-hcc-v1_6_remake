@@ -10,7 +10,8 @@ KH → Tờ khai.
 
 Cố ý KHÔNG phát:
 - Ảnh chân dung 4x6 (``filename46``) và ảnh trang nhân thân hộ chiếu (``filenamehc``) ở đầu form — ô tải ảnh .jpg
-  riêng, không thuộc bảng Thành phần hồ sơ; cảnh báo tải tay.
+  riêng, không thuộc bảng Thành phần hồ sơ; LLM không phát. Từ 19/11/2026 runner tự gắn (comp ``bca-photo``, khuôn thẻ
+  tạm trú 1.003460: ``runner.photo_fields``); thiếu ảnh thì cảnh báo tải tay.
 - Ô readonly cổng lấy từ tài khoản đăng nhập của người bảo lãnh: Thân nhân bảo lãnh (họ tên), Ngày sinh, Giấy CCCD
   (``CongDan_soCmnd``). Ô "Cơ quan/Tổ chức hoặc Thân nhân" khoá sẵn "Thân nhân" → khối cơ quan bảo lãnh (ẩn) bỏ qua.
 - Cơ quan tiếp nhận (``CongDan__fs_BCANoiNopHS``) — danh sách chỉ có cơ quan đã chọn ở bước "Chọn trường hợp hồ sơ"

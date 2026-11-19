@@ -507,13 +507,26 @@ def test_tro_ly_bca_nth_dien_lai_to_khai_sau_khi_da_dinh_kem(monkeypatch):
 
     monkeypatch.setattr(flow.conv_store, "save", save)
 
-    # Điền xong (form + bảng cùng trang): nút "Điền lại tờ khai" có ngay; đính cùng trang chạy luôn, chưa mời bổ sung.
+    # Điền xong (form + bảng cùng trang): user 19/11 — KHÔNG tự đính; dừng ở rà soát, hỏi đính kèm (nút "Đính kèm giấy
+    # tờ"), có "Điền lại tờ khai" và mời bổ sung ô trống ngay.
     conv = _nth_conv(NTH_CAPS, state="filling", auto_attach_after_fill=True)
     r = asyncio.run(flow._handle_filling(conv, Intent("action", "fill_report", {
         "filled": 20, "notFound": [], "review": {"filled": 20, "optional": 3, "required": 2}})))
+    assert calls == [] and conv["state"] == "reviewing"
+    sends = [c["send"] for c in r.chips]
+    assert "__action:confirm_review" in sends and "__action:refill" in sends
+    assert any(c["label"] == vi.BCA_NTH_REFILL_CHIP for c in r.chips)
+    assert "điền lại tờ khai" in r.display_md
+    # Nói "điền lại tờ khai" lúc này (state reviewing) → chạy lại lượt điền, không đính.
+    asyncio.run(flow._handle_turn_inner(conv, Intent("action", "refill", {})))
+    assert calls == ["process"] and conv["state"] == "filling"
+    calls.clear()
+    asyncio.run(flow._handle_filling(conv, Intent("action", "fill_report", {
+        "filled": 22, "notFound": [], "review": {"filled": 22, "optional": 1, "required": 0}})))
+    assert calls == [] and conv["state"] == "reviewing"
+    # Bấm "Đính kèm giấy tờ" → đính ngay trên trang này.
+    asyncio.run(flow._handle_turn_inner(conv, Intent("action", "confirm_review", {})))
     assert calls == ["attach"] and conv["state"] == "attaching"
-    assert [c["label"] for c in r.chips][0] == vi.BCA_NTH_REFILL_CHIP
-    assert "__action:field_review_start" not in [c["send"] for c in r.chips]
 
     # Đã đính xong (state done, docs_target đã sang attachment): "Điền lại tờ khai" chạy lại lượt điền, KHÔNG đính lại.
     conv = _nth_conv(NTH_CAPS, state="done", docs_target="attachment", attach_done=True, auto_attach_after_fill=True)
@@ -634,6 +647,104 @@ def test_dinh_kem_bo_qua_anh_chan_dung(monkeypatch):
     result = asyncio.run(attach_planner.plan(files, {"splitDocuments": False}, {}))
     assert _slots(result)[1]["sourceFileIndexes"] == [0, 2]
     assert not any("Không xác định được loại giấy tờ" in e for e in result["errors"])
+    # Bước đính kèm trả luôn ô ảnh chân dung để Auto Fill gắn khi chỉ bấm "Đính kèm".
+    assert [f["name"] for f in result["pageFields"]] == ["filename46"]
+    assert result["pageFields"][0]["comp"] == "bca-photo"
+
+
+def _pdf_of_image(photo: dict, *, name: str | None = None, pages: int = 1, text: str = "") -> dict:
+    """Như lib/imageToPdf.js của Auto Fill: trang đúng cỡ ảnh, ảnh vẽ kín trang."""
+    import fitz
+
+    data = base64.b64decode(photo["dataUrl"].split(",", 1)[1])
+    width, height = Image.open(io.BytesIO(data)).size
+    doc = fitz.open()
+    for _ in range(pages):
+        page = doc.new_page(width=width, height=height)
+        page.insert_image(page.rect, stream=data)
+        if text:
+            page.insert_text((10, 20), text)
+    out = doc.tobytes()
+    doc.close()
+    return {"name": name or photo["name"].rsplit(".", 1)[0] + ".pdf", "type": "application/pdf",
+            "dataUrl": "data:application/pdf;base64," + base64.b64encode(out).decode()}
+
+
+def test_anh_chan_dung_auto_fill_doi_sang_pdf_van_nhan_ra():
+    """User 19/11/2026: Auto Fill đổi ảnh sang PDF trước bước đính kèm (toPdfForAttach) → ảnh chân dung tới BE là PDF một
+    trang chỉ có ảnh; vẫn phải nhận ra và gắn được vào ô filename46."""
+    portrait = _pdf_of_image(_image_file("500135564_n.jpg", fmt="JPEG"))
+    tk = {"name": "to-khai.pdf", "type": "application/pdf", "dataUrl": "data:application/pdf;base64,eA=="}
+    assert mapper.find_portrait([tk, portrait], {0: TO_KHAI, 1: "Ảnh 4x6"}) == 1
+    field, notes = mapper.portrait_field([tk, portrait], {0: TO_KHAI, 1: ""})
+    assert field["name"] == "filename46" and _decoded(field).format == "JPEG"
+    assert "đổi sang" not in notes[0]
+    # Ảnh ngang (CCCD chụp) gói PDF, PDF hai trang, PDF có lớp chữ → không phải ảnh chân dung.
+    landscape = _pdf_of_image(_image_file("cccd.jpg", size=(600, 380), fmt="JPEG"))
+    two_pages = _pdf_of_image(_image_file("anh.jpg", fmt="JPEG"), pages=2)
+    with_text = _pdf_of_image(_image_file("anh.jpg", fmt="JPEG"), text="TO KHAI")
+    for other in (landscape, two_pages, with_text):
+        assert mapper.find_portrait([other], {}) is None, other["name"]
+
+
+def test_dinh_kem_auto_fill_tra_o_anh_chan_dung_du_khong_co_ho_chieu(monkeypatch):
+    """Ca req thử 19/11: tờ khai + ảnh chân dung (đã thành PDF), chưa có hộ chiếu cũ → không đính gì vào bảng nhưng vẫn
+    trả ô ảnh chân dung; ảnh không bị coi là giấy "không có dòng phù hợp"."""
+    photo = _pdf_of_image(_image_file("500135564_n.jpg", fmt="JPEG"))
+    files = [_file("tk.pdf"), FileItem(name=photo["name"], type=photo["type"], dataUrl=photo["dataUrl"], role="doc")]
+    _mock_io(monkeypatch, {"tk.pdf": TO_KHAI, photo["name"]: "Ảnh 4x6"}, "không phải JSON")
+    for split in (False, True):
+        result = asyncio.run(attach_planner.plan(files, {"splitDocuments": split}, {}))
+        assert result["attachments"] == []
+        assert [f["name"] for f in result["pageFields"]] == ["filename46"], split
+        assert not any(photo["name"] in e and "không có dòng phù hợp" in e for e in result["errors"]), split
+    # Không có ảnh chân dung → không có ô nào.
+    _mock_io(monkeypatch, {"tk.pdf": TO_KHAI}, "không phải JSON")
+    assert asyncio.run(attach_planner.plan([_file("tk.pdf")], {}, {}))["pageFields"] == []
+
+
+def test_tro_ly_tai_len_nhan_ra_anh_chan_dung(monkeypatch, tmp_path):
+    """Chạy thật 19/11: trợ lý báo ảnh chân dung .jpg (tên số dài, OCR chỉ ra "VÀNG") là "Tệp chưa nhận ra loại", ô Ảnh
+    chân dung 0/1. Bộ phân loại lúc tải lên phải xếp ảnh vào ô anh_chan_dung cho cả ba thủ tục eForm Bộ Công an."""
+    from app.channels.handfree import procedure_registry as hf
+    from app.upload_session import classify, llm_classifier
+
+    photo = _image_file("1795082514202_191706323110575141.jpg", fmt="JPEG")
+    path = tmp_path / "f1.jpg"
+    path.write_bytes(base64.b64decode(photo["dataUrl"].split(",", 1)[1]))
+    cccd = _image_file("cccd.jpg", size=(600, 380), fmt="JPEG")
+    cccd_path = tmp_path / "f2.jpg"
+    cccd_path.write_bytes(base64.b64decode(cccd["dataUrl"].split(",", 1)[1]))
+    payloads = [{"name": "to-khai.pdf", "type": "application/pdf", "path": str(tmp_path / "missing.pdf")},
+                {"name": photo["name"], "type": "image/jpeg", "path": str(path)},
+                {"name": "cccd.jpg", "type": "image/jpeg", "path": str(cccd_path)}]
+    texts = [TO_KHAI, "VÀNG", ""]
+
+    async def fake_ocr(files, **_):
+        return [{"name": f["name"], "text": texts[i]} for i, f in enumerate(files)]
+
+    asked = []
+
+    async def fake_llm(file, _result, _spec, _context=None):
+        asked.append(file["name"])
+        return "to_khai" if file["name"] == "to-khai.pdf" else "unknown"
+
+    monkeypatch.setattr(classify.ocr, "ocr_per_file", fake_ocr)
+    monkeypatch.setattr(llm_classifier, "_classify_one", fake_llm)
+    for key in (KEY, "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam", "cap-the-tam-tru-cho-nguoi-nuoc-ngoai-tai-viet-nam"):
+        docs = hf.get_procedure(key)["requiredDocs"]
+        asked.clear()
+        out = asyncio.run(classify.classify_files(payloads, docs, [], None, procedure_key=key))
+        assert out[1]["doc_key"] == "anh_chan_dung", key
+        assert out[2]["doc_key"] != "anh_chan_dung", key  # ảnh ngang (CCCD) không phải ảnh chân dung
+        assert photo["name"] not in asked  # không tốn lượt LLM cho ảnh chân dung
+    # Đã có ảnh chân dung trong phiên → ảnh thứ hai không chiếm lại ô; chụp theo dòng khác (hint) thì tin hint.
+    docs = hf.get_procedure(KEY)["requiredDocs"]
+    out = asyncio.run(classify.classify_files(payloads[1:2], docs, [{"doc_key": "anh_chan_dung"}], None,
+                                              procedure_key=KEY))
+    assert out[0]["doc_key"] != "anh_chan_dung"
+    out = asyncio.run(classify.classify_files(payloads[1:2], docs, [], "ho_chieu", procedure_key=KEY))
+    assert out[0]["doc_key"] == "ho_chieu"
 
 
 def test_tro_ly_noi_dinh_kem_lai_thi_dinh_lai_luon_khong_hoi_khong_dien_lai(monkeypatch):

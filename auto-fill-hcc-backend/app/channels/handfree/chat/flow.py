@@ -5133,6 +5133,9 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
              if same_page_attach
              else vi.WAIT_ATTACHMENT_RESULT_METHOD if result_hint else vi.WAIT_ATTACHMENT_PAGE)
             if auto_wait_attachment
+            # eForm Nth Bộ Công an hỏi trước khi đính (askBeforeAttach) mà bảng Thành phần hồ sơ cùng trang: hỏi đính kèm,
+            # nhắc nói "điền lại tờ khai" nếu form chưa đúng (user 19/11/2026).
+            else vi.REVIEW_ATTACHMENT_SAME_PAGE_BCA if _bca_same_page(proc, conv.get("docs_page_context"))
             else vi.REVIEW_RESULT_METHOD if result_hint
             else (vi.REVIEW_ATTACHMENT_SAME_PAGE if proc.get("samePageAttach") else vi.REVIEW_ATTACHMENT_ACTION)
         )

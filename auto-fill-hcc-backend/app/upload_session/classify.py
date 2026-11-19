@@ -156,6 +156,52 @@ def route_to_slot(info: dict, required_docs: list[dict], files: list[dict],
     return None, None, "chưa nhận ra loại giấy tờ"
 
 
+# Ảnh chân dung 4x6 (ô "anh_chan_dung" của checklist, vd hộ chiếu 1.001456 / thị thực 1.001194 / thẻ tạm trú 1.003460 —
+# cổng Bộ Công an bắt buộc ô tải ảnh đầu trang): ảnh gần như không có chữ nên cả bộ từ khoá lẫn LLM theo tên ô đều bỏ
+# qua → tệp rơi vào "chưa nhận ra loại" (user 19/11/2026). Nhận theo đúng luật runner dùng để gắn ảnh vào form
+# (``find_portrait``: ảnh ít chữ, dọc, nền sáng — hoặc tên tệp "chân dung / 4x6 / ảnh thẻ").
+_PORTRAIT_KEY = "anh_chan_dung"
+
+
+def _as_data_url_file(file: dict) -> dict | None:
+    """Tệp tải lên (``path`` nội bộ, hoặc ``dataUrl``) → {name, type, dataUrl} cho bộ nhận ảnh chân dung."""
+    if file.get("dataUrl"):
+        return file
+    path = file.get("path")
+    if not path:
+        return None
+    try:
+        import base64
+
+        with open(path, "rb") as handle:
+            data = handle.read()
+    except OSError:
+        return None
+    mime = str(file.get("type") or "application/octet-stream")
+    return {"name": file.get("name"), "type": mime,
+            "dataUrl": f"data:{mime};base64," + base64.b64encode(data).decode("ascii")}
+
+
+def _portrait_indexes(payload_files: list[dict], ocr_results: list[dict], required_docs: list[dict],
+                      hint_doc_key: str | None) -> set[int]:
+    """Chỉ số các tệp là ảnh chân dung, khi checklist có ô ảnh chân dung. Chụp theo một dòng khác (hint) thì tin hint."""
+    if (hint_doc_key and hint_doc_key != _PORTRAIT_KEY) or not any(
+            d.get("key") == _PORTRAIT_KEY for d in required_docs):
+        return set()
+    from app.pipelines.cap_ho_chieu_pho_thong_o_trong_nuoc.process.mapper import find_portrait
+
+    out = set()
+    for index, file in enumerate(payload_files):
+        source = _as_data_url_file(file)
+        text = str((ocr_results[index] if index < len(ocr_results) else {}).get("text") or "")
+        try:
+            if source and find_portrait([source], {0: text}) == 0:
+                out.add(index)
+        except Exception:  # noqa: BLE001 — ảnh hỏng thì phân loại như cũ
+            continue
+    return out
+
+
 def _slot_free(key: str, required_docs: list[dict], files: list[dict]) -> bool:
     doc = next((d for d in required_docs if d.get("key") == key), None)
     if not doc:
@@ -263,8 +309,11 @@ async def classify_files(payload_files: list[dict], required_docs: list[dict],
     # Phân loại realtime vẫn dùng provider duy nhất Tiếng Nói, với giới hạn token ngắn.
     ocr_results = await ocr.ocr_per_file(payload_files, classify=True)
     infos = [classify_text(r.get("text") or "") for r in ocr_results]
+    portraits = _portrait_indexes(payload_files, ocr_results, required_docs, hint_doc_key)
+    # Ảnh chân dung không cần hỏi LLM theo tên ô (chữ OCR vài ký tự lạc, LLM dễ xếp nhầm vào tờ khai).
     by_slot_name = await _classify_by_slot_names(
-        payload_files, ocr_results, infos, required_docs, hint_doc_key, procedure_key,
+        payload_files, [{} if i in portraits else r for i, r in enumerate(ocr_results)], infos, required_docs,
+        hint_doc_key, procedure_key,
     )
     out = []
     # files tích lũy dần trong lô: ảnh sau biết ảnh trước đã chiếm ô nào.
@@ -272,7 +321,9 @@ async def classify_files(payload_files: list[dict], required_docs: list[dict],
     for index, r in enumerate(ocr_results):
         info = infos[index]
         named = by_slot_name.get(index)
-        if named and _slot_free(named, required_docs, acc):
+        if index in portraits and _slot_free(_PORTRAIT_KEY, required_docs, acc):
+            doc_key, side, note = _PORTRAIT_KEY, None, "ảnh chân dung (ảnh ít chữ, khổ dọc, nền sáng)"
+        elif named and _slot_free(named, required_docs, acc):
             doc_key, side, note = named, None, "LLM theo tên ô checklist"
         else:
             doc_key, side, note = route_to_slot(info, required_docs, acc, hint_doc_key)
