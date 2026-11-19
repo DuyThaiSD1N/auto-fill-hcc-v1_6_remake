@@ -193,14 +193,6 @@ _HO_SO = {
     "Father_BirthDateOrYear": "29/11/1991", "Father_Ethnicity": "Kinh",
     "Mother_FullName": "HOÀNG THỊ MẸ", "Mother_BirthDateOrYear": "21/09/2000", "Mother_Ethnicity": "Kinh",
 }
-_THE_TAI_KHOAN = {
-    "AccountCard_IdNumber": "001204000003", "AccountCard_FullName": "LÊ VĂN NỘP",
-    "AccountCard_IdIssueDate": "10/04/2021",
-    "AccountCard_ResidenceDomestic": {"quocGia": "Việt Nam", "tinh": "Lào Cai", "xa": "Phường Yên Bái",
-                                      "diaChi": "Tổ 1"},
-}
-
-
 def _enrich(values, options=None):
     fields = [{"name": k, "comp": "x-input", "value": v} for k, v in values.items()]
     return {f["name"]: f for f in mapper.enrich(fields, options)}
@@ -214,28 +206,15 @@ def test_loai_khai_sinh_la_x_select_va_theo_cha_me():
     assert _enrich(khong_cha)["nksLoaiKhaiSinh"]["value"] == "Chưa xác định được cha"
 
 
-def test_cccd_tai_khoan_dien_noi_cu_tru_muc_i_giu_nhan_than_vneid():
-    out = _enrich({**_HO_SO, **_THE_TAI_KHOAN}, _ACCOUNT)
-    assert out["QuanHe"]["value"] == "Khac" and not out["QuanHe"].get("default")
-    assert out["nycLoaiCuTru"]["value"] == "Thường trú"
-    assert out["nycNoiCuTru"]["value"] == "1"
-    assert out["nycNoiCuTru_TrongNuoc"]["value"]["diaChi"] == "Tổ 1"
-    # Họ tên/số/ngày cấp/nơi cấp: cổng đã đổ từ VNeID của chính người này → không ghi đè bằng OCR.
-    assert not {"HoVaTenC", "SoDinhDanhC", "NgayCapDDC", "NoiCapDDC"} & set(out)
-
-
 def test_cccd_khong_trung_so_tai_khoan_khong_dien_muc_i():
-    lech = {**_THE_TAI_KHOAN, "AccountCard_IdNumber": "001204999999"}
-    out = _enrich({**_HO_SO, **lech}, _ACCOUNT)
+    out = _enrich(_HO_SO, _ACCOUNT)
     assert out["QuanHe"]["value"] == "Khac" and out["QuanHe"].get("default")
     assert "nycNoiCuTru_TrongNuoc" not in out
-    assert "nycNoiCuTru_TrongNuoc" not in _enrich({**_HO_SO, **_THE_TAI_KHOAN})
 
 
 def test_cccd_tai_khoan_trung_cha_tich_cha():
-    the_cha = {**_THE_TAI_KHOAN, "AccountCard_IdNumber": "024091000002"}
     account = {"formContext": {"applicantFullname": "TRẦN VĂN CHA", "applicantIdentityNumber": "024091000002"}}
-    assert _enrich({**_HO_SO, **the_cha}, account)["QuanHe"]["value"] == "ChaDe"
+    assert _enrich(_HO_SO, account)["QuanHe"]["value"] == "ChaDe"
 
 
 def test_cha_me_thieu_truong_thi_xoa_trang():
@@ -247,14 +226,6 @@ def test_cha_me_thieu_truong_thi_xoa_trang():
     assert out["SoDinhDanhCha"]["value"] == "024091000002"
     assert not out["NoiCapDDCha"].get("clear")
     assert not any(f.get("clear") for n, f in out.items() if n.endswith("Cha") or n.endswith("ChaKS"))
-
-
-def test_context_ghim_so_dinh_danh_tai_khoan():
-    raw = "<con>\nHọ tên: TRẦN VĂN CON\nNgày sinh: 15/10/2026\nGiới tính: Nam\n</con>"
-    docs = [{"name": "ks.pdf", "text": "GIẤY KHAI SINH\nHọ, chữ đệm, tên: TRẦN VĂN CON"}]
-    context = co_ho_so_reason._render_context(raw, _ACCOUNT, docs)
-    assert "<tai_khoan_dang_nhap>" in context and "001204000003" in context
-    assert "<tai_khoan_dang_nhap>" not in co_ho_so_reason._render_context(raw, {}, docs)
 
 
 # Hồ sơ CHỈ có tờ khai (không CCCD nào), cha ghi "Nơi cư trú: (chết)": agent trích xuất bỏ sót cả vai
@@ -285,7 +256,7 @@ def test_chi_co_to_khai_cha_da_chet_bi_bo_sot_van_dung_lai_cha():
     )
     context = co_ho_so_reason._render_context(raw, {}, [{"name": "tk.pdf", "text": _TO_KHAI_CHA_CHET}])
     cha = co_ho_so_reason._section(context, "cha")
-    assert "Trạng thái: đã chết" in cha and "Đối chiếu CCCD:" in cha
+    assert "Trạng thái: đã chết" in cha
 
     # Agent trích xuất trả mẹ nhưng bỏ sót toàn bộ Father_*.
     extracted = [
@@ -295,7 +266,7 @@ def test_chi_co_to_khai_cha_da_chet_bi_bo_sot_van_dung_lai_cha():
     ]
     fields = co_ho_so_reason.sanitize_extracted_fields(extracted, context)
     father = {f["name"]: f for f in fields if f["name"].startswith("Father_")}
-    assert father["Father_FullName"]["value"] == "TRẦN VĂN BA" and father["Father_FullName"].get("default")
+    assert father["Father_FullName"]["value"] == "TRẦN VĂN BA"
 
     ui = {f["name"]: f["value"] for f in mapper.enrich(fields, {"_reasoning_context": context})}
     assert ui["HoTenChaKS"] == "TRẦN VĂN BA"
@@ -362,7 +333,7 @@ def test_the_me_chung_trang_the_cha_va_to_khai_sai_nam_van_dien_me():
     cards = [
         person["id"]
         for unit in co_ho_so_reason._identity_units(docs)
-        if co_ho_so_reason._is_card_unit(unit) and (person := co_ho_so_reason._person_from_document(unit))
+        if (person := co_ho_so_reason._person_from_document(unit)) and person.get("is_identity")
     ]
     assert cards == ["001045000001", "001145000002"]
 
@@ -390,9 +361,9 @@ def test_the_me_chung_trang_the_cha_va_to_khai_sai_nam_van_dien_me():
     assert ui["nksLoaiKhaiSinh"] == "Đã xác định được cả cha lẫn mẹ"
 
 
-# Tờ khai để trống dân tộc cha/mẹ ("Dân tộc: (2) Quốc tịch: (2)"), LLM chép "Kinh" của con sang: không gửi gì
-# cho DanTocMeKS/DanTocChaKS — kể cả lệnh clear, vì mở dropdown dân tộc là cổng tự chọn "Kinh" đầu danh sách.
-def test_dan_toc_cha_me_de_trong_tren_to_khai_thi_khong_cham_o():
+# Tờ khai để trống dân tộc cha/mẹ ("Dân tộc: (2) Quốc tịch: (2)"), LLM chép "Kinh" của con sang: giấy không ghi dân tộc
+# của chính người đó nên giá trị chỉ là phỏng đoán — gửi kèm tô vàng cho cán bộ soát.
+def test_dan_toc_cha_me_de_trong_tren_to_khai_thi_to_vang():
     raw = (
         "<con>\nHọ tên: TRẦN VĂN NAM\nNgày sinh: 02/03/1970\nGiới tính: Nam\nDân tộc: Kinh\n</con>\n"
         "<me>\nHọ tên: LÊ THỊ HOA\nNgày sinh: 1940\nGiới tính: Nữ\nDân tộc: Kinh\nTrạng thái: đã chết\n</me>\n"
@@ -410,6 +381,6 @@ def test_dan_toc_cha_me_de_trong_tren_to_khai_thi_khong_cham_o():
         {"name": "Father_Ethnicity", "comp": "x-input", "value": "Kinh"},
     ]
     fields = co_ho_so_reason.sanitize_extracted_fields(extracted, context)
-    names = {f["name"] for f in mapper.enrich(fields, {"_reasoning_context": context})}
-    assert "HoTenMeKS" in names and "HoTenChaKS" in names
-    assert "DanTocMeKS" not in names and "DanTocChaKS" not in names
+    ui = {f["name"]: f for f in mapper.enrich(fields, {"_reasoning_context": context})}
+    assert "HoTenMeKS" in ui and "HoTenChaKS" in ui
+    assert ui["DanTocMeKS"].get("default") and ui["DanTocChaKS"].get("default")

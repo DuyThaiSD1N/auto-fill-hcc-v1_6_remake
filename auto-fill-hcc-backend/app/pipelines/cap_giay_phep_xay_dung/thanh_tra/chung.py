@@ -1,4 +1,4 @@
-"""Phần chung của các thanh tra cấp giấy phép xây dựng mới: loại giấy trong hồ sơ (lựa chọn "thuộc về") và khóa so sánh
+"""Phần chung của các thanh tra giấy phép xây dựng (cấp mới, sửa chữa cải tạo, điều chỉnh, gia hạn): loại giấy trong hồ sơ (lựa chọn "thuộc về") và khóa so sánh
 các giá trị mà mapper chuẩn hoá lại (số đo, chi tiết "Trong đó", cấp công trình)."""
 
 import re
@@ -7,15 +7,16 @@ from app.pipelines._shared.thanh_tra.ho_so import Case, fold
 
 from ..process import mapper
 
-# Lựa chọn "dòng chứng cứ thuộc giấy nào" — dùng chung cho cả bốn thanh tra.
-DON = "đơn đề nghị cấp giấy phép xây dựng"
+# Lựa chọn "dòng chứng cứ thuộc giấy nào" — dùng chung cho mọi thanh tra của nhóm thủ tục.
+DON = "đơn đề nghị cấp / điều chỉnh / gia hạn giấy phép xây dựng"
+GPXD = "giấy phép xây dựng đã được cấp"
 GCN = "giấy chứng nhận quyền sử dụng đất"
 BAN_VE = "bản vẽ / thuyết minh thiết kế"
 CCCD = "căn cước / CMND"
 CHUNG_CHI = "chứng chỉ năng lực / chứng chỉ hành nghề / giấy đăng ký doanh nghiệp"
 UY_QUYEN = "giấy ủy quyền"
 KHAC = "giấy khác"
-OWNERS = (DON, GCN, BAN_VE, CCCD, CHUNG_CHI, UY_QUYEN, KHAC)
+OWNERS = (DON, GPXD, GCN, BAN_VE, CCCD, CHUNG_CHI, UY_QUYEN, KHAC)
 
 
 def number_key(value) -> str:

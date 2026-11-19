@@ -1303,6 +1303,9 @@ PROCEDURES: list[dict] = [
         "hasAttachmentStep": True,
         # Tách tệp gộp nhiều giấy theo trang; chỉ khi client gửi boolean true, extension cũ giữ nguyên file.
         "supportsSplitDocuments": True,
+        # Điền đợt 2 (app/second_pass) trên FORM CŨ (eForm x-*): chỉ chạy khi extension khai fillSupports có
+        # "secondPassLegacy" (bản biết ghi lại ô trên form cũ). Bản khác bỏ qua khoá này.
+        "secondPass": "legacy",
         "review": False,
         "roles": [],
         "useDangKyBy": False,
@@ -5834,6 +5837,8 @@ PROCEDURES: list[dict] = [
             "và nhà ở riêng lẻ"
         ),
         "mode": "agent",
+        # Điền đợt 2 (thanh tra định danh, thửa đất, giấy phép đã cấp — app/second_pass): chỉ khi extension báo secondPassFormio.
+        "secondPass": "formio",
         "hasAttachmentStep": True,
         "roles": [],
         "useDangKyBy": False,
@@ -5878,6 +5883,8 @@ PROCEDURES: list[dict] = [
             "và nhà ở riêng lẻ"
         ),
         "mode": "agent",
+        # Điền đợt 2 (thanh tra định danh, thửa đất, giấy phép đã cấp — app/second_pass): chỉ khi extension báo secondPassFormio.
+        "secondPass": "formio",
         "hasAttachmentStep": True,
         "roles": [],
         "useDangKyBy": False,
@@ -5925,6 +5932,8 @@ PROCEDURES: list[dict] = [
             "(nhà ở riêng lẻ)"
         ),
         "mode": "agent",
+        # Điền đợt 2 dùng lại 4 thanh tra của cấp mới (cùng pipeline): chỉ khi extension báo secondPassFormio.
+        "secondPass": "formio",
         "hasAttachmentStep": True,
         "roles": [],
         "useDangKyBy": False,
@@ -5972,6 +5981,8 @@ PROCEDURES: list[dict] = [
             "đoạn cho công trình không theo tuyến/Theo giai đoạn cho công trình theo tuyến trong đô thị/Dự án)"
         ),
         "mode": "agent",
+        # Điền đợt 2 dùng lại 4 thanh tra của cấp mới (cùng pipeline): chỉ khi extension báo secondPassFormio.
+        "secondPass": "formio",
         "hasAttachmentStep": True,
         "roles": [],
         "useDangKyBy": False,
@@ -10059,6 +10070,9 @@ PROCEDURES: list[dict] = [
         "label": "Cấp bản sao văn bằng, chứng chỉ từ sổ gốc (tại cấp tỉnh)",
         "mode": "agent",
         "hasAttachmentStep": True,
+        # Điền đợt 2 (thanh tra định danh chủ văn bằng — app/second_pass) trên form Form.io cổng Bộ GD&ĐT:
+        # chỉ chạy khi extension báo secondPassFormio.
+        "secondPass": "formio",
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (

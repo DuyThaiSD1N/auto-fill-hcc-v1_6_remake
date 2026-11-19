@@ -717,6 +717,28 @@ def build_plan_items(files: list[dict], ocr_results: list[dict], llm_types: dict
     return items
 
 
+def _ocr_spelled_subject(subject: str, document_name: str, ocr_text: str) -> tuple[str, str]:
+    """LLM hay "sửa" dấu họ tên cho quen mắt (thẻ in "HUẾ" → trả "Huệ") rồi đưa tên sai vào documentName = tên tệp
+    trên cổng. Họ tên chủ thể trùng một dòng OCR khi bỏ dấu mà khác dấu → chép đúng dấu của dòng đó (chữ in trên
+    giấy), sửa cả các chữ tương ứng trong documentName. Dò theo chuỗi từ liên tiếp: chữ OCR của một phần có thể đã
+    gộp thành một dòng mỗi trang. Không chuỗi nào trùng → giữ nguyên."""
+    words = subject.split()
+    if not words:
+        return subject, document_name
+    want = [_fold(word) for word in words]
+    tokens = str(ocr_text or "").split()
+    for start in range(len(tokens) - len(words) + 1):
+        window = tokens[start:start + len(words)]
+        if [_fold(token) for token in window] != want or not any(ord(ch) > 127 for ch in "".join(window)):
+            continue
+        spelled = [token[:1] + token[1:].lower() if token.isupper() else token for token in window]
+        if spelled == words:
+            return subject, document_name
+        fixes = {word: right for word, right in zip(words, spelled) if word != right}
+        return " ".join(spelled), " ".join(fixes.get(token, token) for token in document_name.split(" "))
+    return subject, document_name
+
+
 def build_segment_plan_items(
     files: list[dict],
     segments: list[dict],
@@ -747,6 +769,7 @@ def build_segment_plan_items(
         raw_name = str(segment.get("documentName") or "").strip()
         if not raw_name:
             raw_name = detected if detected != _GENERIC_DOCUMENT_TYPE else str(file.get("name") or "")
+        subject_name, raw_name = _ocr_spelled_subject(subject_name, raw_name, ocr_text)
         records.append({
             "order": order,
             "fileIndex": file_index,

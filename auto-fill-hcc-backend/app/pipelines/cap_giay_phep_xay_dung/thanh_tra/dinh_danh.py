@@ -30,7 +30,7 @@ nhân thân của người này cho người kia; vợ / chồng cùng đứng t
 
 <nguon>
 - Họ tên, số định danh: theo CĂN CƯỚC (giấy in) của CHÍNH người đó; không có căn cước thì giấy chứng nhận quyền sử dụng
-  đất / giấy ủy quyền in; đơn viết tay kém tin nhất. Họ tên chép đúng dấu như giấy in.
+  đất / giấy phép xây dựng đã cấp ("Cấp cho") / giấy ủy quyền in; đơn viết tay kém tin nhất. Họ tên chép đúng dấu như giấy in.
 - Ngày cấp, nơi cấp của người nộp: theo căn cước của người đó hoặc dòng "căn cước số … cấp ngày … tại …" của giấy ủy quyền.
 </nguon>
 
@@ -84,13 +84,13 @@ def check(unit: Unit, values: dict, case: Case) -> str:
 
 # Trang đơn (mục chủ hộ / người đại diện), căn cước, giấy chứng nhận, giấy ủy quyền.
 _MARKERS = ("don de nghi", "chu ho", "chu dau tu", "can cuoc", "chung minh nhan dan", "quyen su dung dat", "uy quyen",
-            "identity card", "so dinh danh")
+            "identity card", "so dinh danh", "cap cho")
 
 
 async def find(inspector: Inspector, case: Case, title: str):
     return await engine.llm_findings(inspector, chung.narrowed(case, _MARKERS), title)
 
 
-_ACCEPTED = (chung.DON, chung.CCCD, chung.GCN, chung.UY_QUYEN)
+_ACCEPTED = (chung.DON, chung.CCCD, chung.GCN, chung.GPXD, chung.UY_QUYEN)
 INSPECTOR = Inspector("dinh_danh", "ĐỊNH DANH chủ hộ và người nộp (họ tên, số định danh, ngày / nơi cấp)", UNITS, RULES,
                       check, signals=signals, owners=chung.OWNERS, accepted=_ACCEPTED, find=find)

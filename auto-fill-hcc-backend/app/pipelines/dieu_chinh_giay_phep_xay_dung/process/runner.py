@@ -1,5 +1,7 @@
 """Compact agent process pipeline cho "Cấp điều chỉnh giấy phép xây dựng" (cổng Bộ Xây dựng dvc.moc)."""
 
+import copy
+
 from app.pipelines._shared.compact_agent import runner
 from app.pipelines.dieu_chinh_giay_phep_xay_dung.process import mapper
 from app.pipelines.dieu_chinh_giay_phep_xay_dung.process.prompt import EXTRA_RULES
@@ -12,6 +14,14 @@ from app.pipelines.dieu_chinh_giay_phep_xay_dung.process.schema import (
 
 
 async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
+    # Điền đợt 2 cần OCR từng tài liệu và field TRƯỚC mapper — runner chung chỉ trả chuỗi OCR đã nối.
+    second_pass = bool((options or {}).get("_secondPass"))
+    read: dict = {}
+
+    async def keep_documents(documents: list[dict], opts: dict) -> str:
+        read["documents"] = documents
+        return ""
+
     res = await runner.run(
         files_by_role,
         fields=FIELDS,
@@ -21,7 +31,9 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         extra_rules=EXTRA_RULES,
         options=options,
         max_tokens=1600,
+        context_builder=keep_documents if second_pass else None,
     )
+    raw_fields = copy.deepcopy(res["fields"]) if second_pass else []
     # Đính kèm ocr_text để mapper suy giới tính từ xưng hô Ông/Bà khi giấy tờ không ghi rõ.
     enrich_options = dict(options or {})
     enrich_options["_ocr_text"] = res.get("ocr_text", "")
@@ -29,4 +41,10 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
     res["fields"] = mapped_fields
     if warnings:
         res.setdefault("errors", []).extend(warnings)
+    if raw_fields and read.get("documents"):
+        from app.pipelines.dieu_chinh_giay_phep_xay_dung.thanh_tra import dot_hai
+
+        # Nơi gọi pipeline lấy khoá này ra khỏi kết quả rồi chạy ở nền sau khi đã trả lượt điền đầu.
+        res["_second_pass"] = lambda base_fields: dot_hai.patch(read["documents"], raw_fields, base_fields,
+                                                                enrich_options)
     return res

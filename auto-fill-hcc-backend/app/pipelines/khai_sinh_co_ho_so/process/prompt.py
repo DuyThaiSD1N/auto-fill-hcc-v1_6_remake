@@ -57,8 +57,15 @@ Nguồn duy nhất để chốt ô này là TỜ KHAI ĐĂNG KÝ KHAI SINH.
    Riêng tấm CCCD/CMND mang ĐÚNG số định danh ghi trong khối <tai_khoan_dang_nhap> (người nộp hộ kèm
    thẻ của chính mình) → trích vào AccountCard_* (số, họ tên, ngày cấp, nơi cấp, nơi thường trú) — kể cả
    khi người đó trùng con/cha/mẹ. Không có khối đó hoặc không thẻ nào trùng số → BỎ toàn bộ AccountCard_*.
-3. Vì vậy CCCD/CMND của CHÍNH người được khai sinh phải được trích đủ vào Subject_IdNumber,
-   Subject_IdIssueDate, Subject_IdIssuePlace, Subject_ResidenceDomestic (ngoài họ tên/ngày sinh/giới tính).
+2b. CÓ GIẤY ỦY QUYỀN (tiêu đề "GIẤY ỦY QUYỀN"/"VĂN BẢN ỦY QUYỀN"/"HỢP ĐỒNG ỦY QUYỀN", hoặc có khối
+   <nguoi_duoc_uy_quyen>): người đi nộp là BÊN ĐƯỢC ỦY QUYỀN. Trả Authorized_FullName/IdNumber/
+   IdIssueDate/IdIssuePlace/ResidenceDomestic theo mục "Bên được ủy quyền" (thiếu thì bù từ CCCD của
+   CHÍNH người đó nếu có trong hồ sơ) + Authorized_SourceDocumentTitle = tiêu đề nguyên văn giấy đó.
+   KHÔNG lấy bên ủy quyền. Áp dụng kể cả khi hồ sơ không có tờ khai — Requester_* vẫn theo mục 1/2.
+3. Vì vậy CCCD/CMND của CHÍNH người được đăng ký khai sinh phải được trích đủ vào Subject_IdNumber,
+   Subject_IdIssueDate, Subject_IdIssuePlace, Subject_BirthDateFromId, Subject_ResidenceDomestic (ngoài
+   họ tên/ngày sinh/giới tính). Subject_BirthDateFromId là ngày sinh IN TRÊN THẺ, đọc thẳng từ thẻ và
+   trả kể cả khi trùng Subject_BirthDate — ô ngày sinh mục II lấy nguồn này TRƯỚC tờ khai viết tay.
    Đây là nguồn duy nhất của khối "Người được đăng ký khai sinh" — thiếu là hỏng cả khối. KHÔNG lấy
    số định danh hay nơi thường trú của cha/mẹ gán cho Subject_*.
 </nguoi_yeu_cau>
@@ -81,8 +88,24 @@ Nguồn duy nhất để chốt ô này là TỜ KHAI ĐĂNG KÝ KHAI SINH.
    chỉ được nhắc tên trên tờ khai): VẪN PHẢI trả đủ field của vai đó theo tờ khai. Thiếu CCCD KHÔNG phải
    lý do bỏ trống vai.
 5. Chính tả họ tên: giữ đúng người theo tờ khai, nhưng nếu chính người đó có CCCD/trích lục trong hồ sơ
-   thì viết họ tên theo giấy tờ gốc (bản đánh máy chuẩn hơn chữ viết tay).
-6. Số định danh / ngày cấp / nơi cấp: lệch giữa tờ khai và CCCD của CÙNG một người thì lấy theo CCCD.
+   thì viết họ tên theo giấy tờ gốc (bản đánh máy chuẩn hơn chữ viết tay), vd tờ khai "Nguyễn Văn Câu"
+   + trích lục khai tử "NGUYỄN VĂN CẦU" → Father_FullName = "NGUYỄN VĂN CẦU".
+6. Số định danh / ngày cấp / nơi cấp là thuộc tính CỦA TẤM THẺ, không phải chữ chép tay trên tờ khai:
+   hồ sơ có CCCD/CMND mang đúng họ tên người đó thì BA ô này lấy theo CCCD, kể cả khi tờ khai có ghi
+   khác hoặc bỏ trống. Riêng CHA và MẸ, khối <cha>/<me> có dòng "Nguồn giấy tờ tùy thân" thì Số CCCD/CMND,
+   Ngày cấp, Nơi cấp ghi trong khối đó là giá trị BẮT BUỘC của Father_*/Mother_IdNumber, _IdIssueDate,
+   _IdIssuePlace. Họ tên thì KHÔNG theo quy tắc này (xem mục 5).
+   NGÀY SINH và GIỚI TÍNH cũng là thông tin IN trên thẻ: chính người đó (con, cha, mẹ) có CCCD/CMND
+   trong hồ sơ thì lấy NGÀY SINH + GIỚI TÍNH theo CCCD, kể cả khi tờ khai ghi khác (chữ viết tay hay bị
+   OCR đọc sai). Tờ khai/giấy khác chỉ bù khi thẻ không có hoặc không đọc được.
+   ⚠ DANH SÁCH NÀY ĐÓNG — ĐÚNG NĂM ô lấy theo CCCD: số định danh, ngày cấp, nơi cấp, ngày sinh,
+   giới tính. Mọi ô KHÁC vẫn theo mục 1 (TỜ KHAI TRƯỚC). ❌ CẤM suy rộng "thông tin in trên thẻ" sang
+   các ô khác — NƠI CƯ TRÚ, QUÊ QUÁN, NƠI SINH in trên CCCD KHÔNG được đè lên tờ khai. Tờ khai có
+   dòng "Nơi cư trú" của cha/mẹ/người yêu cầu thì Father_/Mother_/Requester_ResidenceDomestic lấy ĐÚNG dòng đó, kể cả khi CCCD
+   của chính người đó ghi địa chỉ khác (thẻ cũ, chưa đổi sau khi chuyển hộ khẩu hoặc sau sáp nhập).
+   VD: tờ khai ghi "Nơi cư trú: (2) Tân Hà - Lâm Hà, tỉnh Lâm Đồng" còn CCCD mẹ ghi "Thôn Đức Long,
+   Hoài Đức, Lâm Hà, Lâm Đồng" → Mother_ResidenceDomestic = {"quocGia":"Việt Nam","tinh":"Lâm Đồng",
+   "xa":"Tân Hà - Lâm Hà","chiTietDuoiXa":""} theo TỜ KHAI. SAI nếu ra xa="Thôn Đức Long" hay xa="Hoài Đức".
 7. HỒ SƠ KHÔNG CÓ TỜ KHAI thì mới dùng khối <phan_vai_khi_khong_co_to_khai> bên dưới.
 </uu_tien_nguon>
 
@@ -180,6 +203,13 @@ SỐ TÊN, KHÔNG được đảo:
   C = tinh. VD2: "Bản Chin Chu Chải, Nùng Nàng, Tam Đường, Lai Châu" → chiTietDuoiXa="Bản Chin Chu Chải",
   xa="Nùng Nàng", tinh="Lai Châu" (XÓA huyện Tam Đường).
 • 2 tên "A, C": A = xa; C = tinh; chiTietDuoiXa rỗng (không có huyện để xóa).
+• ⚠ Ô "Nơi thường trú" trên CCCD RẤT HAY BỊ XUỐNG DÒNG giữa chừng: số nhà/tên đường nằm ở dòng
+  TRÊN, còn xã/huyện/tỉnh ở dòng DƯỚI. PHẢI GHÉP CẢ HAI DÒNG thành MỘT chuỗi rồi mới tách theo
+  dấu phẩy — lấy mỗi dòng đầu là rơi mất tên đường.
+  VD3: dòng 1 "Số Nhà 15/3C" + dòng 2 "Hai Bà Trưng, P.6, Đà Lạt, Lâm Đồng"
+  → ghép: "Số Nhà 15/3C Hai Bà Trưng, P.6, Đà Lạt, Lâm Đồng"
+  → chiTietDuoiXa="Số Nhà 15/3C Hai Bà Trưng", xa="P.6", tinh="Lâm Đồng" (XÓA huyện Đà Lạt).
+  SAI nếu chiTietDuoiXa chỉ còn "Số Nhà 15/3C" (mất đường) hoặc chỉ còn "Hai Bà Trưng" (mất số nhà).
 </dia_chi_cccd>
 
 <chuan_hoa_dac_thu>

@@ -1,4 +1,5 @@
-"""Lớp soát thứ hai của thủ tục cấp giấy phép xây dựng mới (cổng Bộ Xây dựng, form Form.io): bốn thanh tra — thông số công
+"""Lớp soát thứ hai của thủ tục cấp giấy phép xây dựng mới và sửa chữa, cải tạo (cùng tờ khai, cùng pipeline; cổng Bộ Xây
+dựng, form Form.io): bốn thanh tra — thông số công
 trình, địa điểm xây dựng, định danh chủ hộ / người nộp, đơn vị thiết kế — và toà án (khung ở _shared/thanh_tra). Chạy ở
 nền sau lượt điền đầu, kết quả thành các ô điền đợt 2 (dot_hai.py, app/second_pass)."""
 
@@ -7,7 +8,7 @@ from app.pipelines._shared.thanh_tra.ho_so import Case, Result
 
 from . import dia_diem, dinh_danh, thiet_ke, thong_so
 
-TITLE = "cấp giấy phép xây dựng mới (nhà ở riêng lẻ, công trình cấp III, IV)"
+TITLE = "cấp giấy phép xây dựng mới / sửa chữa, cải tạo (nhà ở riêng lẻ, công trình cấp III, IV)"
 INSPECTORS = (thong_so.INSPECTOR, dia_diem.INSPECTOR, dinh_danh.INSPECTOR, thiet_ke.INSPECTOR)
 
 

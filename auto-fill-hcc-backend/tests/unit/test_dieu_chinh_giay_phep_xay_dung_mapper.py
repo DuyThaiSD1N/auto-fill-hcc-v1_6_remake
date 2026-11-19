@@ -52,7 +52,7 @@ def test_ca_nhan_tu_nop_dien_du_khoi_dieu_chinh():
     # Khối điều chỉnh.
     assert d["data[tenCongTrinh]"]["value"] == "Nhà ở riêng lẻ"
     assert d["data[noiDungDeNghiDieuChinh]"]["value"].startswith("Điều chỉnh tăng diện tích")
-    assert d["data[thoiGianDuKienHoanThanh]"]["value"] == "06 tháng"
+    assert d["data[thoiGianDuKienHoanThanh]"]["value"] == "6"
     assert d["data[tenHoSo]"]["value"] == "Điều chỉnh Giấy phép xây dựng số 43/GPXD"
     assert not w
 

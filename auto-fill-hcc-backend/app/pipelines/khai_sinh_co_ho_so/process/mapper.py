@@ -14,10 +14,13 @@ import re
 import unicodedata
 
 from app.pipelines._shared.area_remap import city_province_area, remap_area
-from app.pipelines._shared.formatting import upper_person_name
+from app.pipelines._shared.formatting import upper_person_name as _upper_person_name
 from app.pipelines._shared.ethnic_normalize import normalize_ethnic
+from app.pipelines._shared.hospital_lookup import hospital_area
 from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_type, normalize_issuer
 from app.pipelines._shared.legacy_fields.dang_ky_lai import ALLOWED as UI_COMP_BY_NAME
+from app.pipelines._shared.tai_khoan import account_context, matches_account
+from app.monitor import recorder as mon
 from app.pipelines.khai_sinh_co_ho_so.process import reason as _reason_mod
 
 _COMP_BY_NAME = {
@@ -45,6 +48,15 @@ _COMP_BY_NAME = {
 # còn gửi nhãn mà lệch chữ thì chỉ không tick được (cổng giữ nguyên lựa chọn sẵn có).
 _LOAI_DANG_KY = "Đăng ký cho người đã có hồ sơ, giấy tờ cá nhân"
 
+def upper_person_name(value) -> str:
+    """Như helper dùng chung, nhưng bỏ chú thích trạng thái tờ khai hay viết kèm họ tên.
+
+    Ô "Họ, chữ đệm, tên" trên eForm chỉ nhận họ tên; "HỒ BÁ THÍCH (MẤT)" là chữ người dân
+    ghi thêm trên tờ khai, không phải tên. Trạng thái đã mất đã có chỗ riêng — mục Nơi cư trú.
+    """
+    return _upper_person_name(_reason_mod.split_name_note(value)[0])
+
+
 _STRUCTURAL_DEFAULTS = [
     {"name": "LoaiDangKy", "comp": "x-radio", "value": _LOAI_DANG_KY},
     {"name": "nksLoaiKhaiSinh", "comp": "x-select", "value": "Đã xác định được cả cha lẫn mẹ"},
@@ -54,6 +66,20 @@ _STRUCTURAL_DEFAULTS = [
 _BIRTH_TYPE_NO_FATHER = "Chưa xác định được cha"
 _BIRTH_TYPE_NO_MOTHER = "Chưa xác định được mẹ"
 
+# Ô mục IV (cha) mà extension xoá được: ô chữ, ô ngày, dropdown.
+_FATHER_CLEARABLE_FIELDS = (
+    "HoTenChaKS",
+    "SoDinhDanhCha",
+    "SoGiayToDinhDanhCha",
+    "LoaiGiayToDinhDanhCha",
+    "NgayCapDDCha",
+    "NoiCapDDCha",
+    "NamSinhChaKS",
+    "DanTocChaKS",
+    "QuocTichChaKS",
+    "ChaLoaiCuTru",
+)
+
 
 def _fold(value: str) -> str:
     text = unicodedata.normalize("NFD", value or "")
@@ -62,8 +88,34 @@ def _fold(value: str) -> str:
     return re.sub(r"\s+", " ", text).strip().lower()
 
 
+# Cấu hình theo tài khoản: phường Hiệp Hòa (Bắc Ninh) hồ sơ có giấy ủy quyền thì người yêu cầu (mục I)
+# là BÊN ỦY QUYỀN; nơi khác vẫn là bên được ủy quyền đi nộp. Mapper không biết tài khoản nên router
+# (Auto Fill) và pipeline_runner (Handfree) gọi with_account_process_options để server tự đặt cờ; cờ
+# luôn bị ghi đè theo tài khoản, client không tự bật được cho xã khác.
+DECEASED_PARENT_NO_INFO_OPTION = "deceasedParentNoInfo"
 def _digits(value) -> str:
     return re.sub(r"\D+", "", str(value or ""))
+
+
+# Cách viết quốc tịch Việt Nam hay gặp trên tờ khai/trích lục: "VN", "VNM" (mã ISO), "V.N", "Việt",
+# "Vietnamese", "Người Việt Nam", "CHXHCN Việt Nam", "Việt Nam (VN)"... So sau khi bỏ dấu, dấu câu,
+# khoảng trắng và số chú thích "(2)" của mẫu in.
+_VN_NATIONALITY_RE = re.compile(
+    r"(?:quoctich)?(?:nguoi|nuoc|chxhcn|conghoaxahoichunghia|cnxhcn)?"
+    r"(?:vietnamese|vietnamien|vietnam|vietnan|viet|vnm|vn)+"
+)
+
+
+def _nationality(value) -> str:
+    """Chuẩn hoá quốc tịch: mọi cách viết tắt của Việt Nam → "Việt Nam" (khớp option dropdown).
+
+    Rỗng → "Việt Nam" như trước; quốc tịch khác giữ nguyên chữ trên giấy.
+    """
+    raw = str(value or "").strip()
+    compact = re.sub(r"[^a-z]+", "", _fold(raw))
+    if not compact or _VN_NATIONALITY_RE.fullmatch(compact):
+        return "Việt Nam"
+    return raw
 
 
 def _is_deceased_marker(area) -> bool:
@@ -180,21 +232,39 @@ def _resolve_residence(values: dict, prefix: str, context: str = ""):
     return None
 
 
-def _add_residence(add, prefix: str, residence) -> None:
+def _add_residence(add, prefix: str, residence, default: bool = False, no_info: bool = False) -> None:
     """Phát mục "Nơi cư trú" của cha/mẹ (prefix = "Cha" | "Me").
 
     Cha/mẹ ĐÃ CHẾT: giấy tờ ghi "Đã chết" thay cho địa chỉ. Nhánh "Trong nước" chỉ có dropdown
     tỉnh/xã nên KHÔNG gõ được chữ này — phải tick "Khác" để form hiện ô nhập tự do rồi mới ghi
-    chữ vào đó. Cũng không đặt *LoaiCuTru vì người đã mất không còn loại cư trú.
+    chữ vào đó. Mặc định không đặt *LoaiCuTru vì người đã mất không còn loại cư trú; tài khoản bật
+    cờ deceasedParentNoInfo (no_info) thì chọn "Không có thông tin" và Quốc gia "Việt Nam".
     """
     if residence and _is_deceased_marker(residence):
-        add(f"{prefix}NoiCuTru", "Khác")
-        add(f"{prefix}NoiCuTru_NuocNgoai", residence.get("diaChi"))
+        if no_info:
+            add(f"{prefix}LoaiCuTru", "Không có thông tin", default)
+        add(f"{prefix}NoiCuTru", "Khác", default)
+        if no_info:
+            # Dict không có tỉnh/xã → extension chọn ô Quốc gia rồi ghi chữ vào ô Địa chỉ.
+            add(f"{prefix}NoiCuTru_NuocNgoai", {"quocGia": "Việt Nam", "diaChi": residence.get("diaChi")}, default)
+        else:
+            add(f"{prefix}NoiCuTru_NuocNgoai", residence.get("diaChi"), default)
         return
-    add(f"{prefix}LoaiCuTru", "Thường trú")
+    add(f"{prefix}LoaiCuTru", "Thường trú", default)
     if residence:
-        add(f"{prefix}NoiCuTru", "1")
-        add(f"{prefix}NoiCuTru_TrongNuoc", residence)
+        add(f"{prefix}NoiCuTru", "1", default)
+        add(f"{prefix}NoiCuTru_TrongNuoc", residence, default)
+
+
+# Phường Xuân Hương (cờ deceasedParentNoInfo): cha/mẹ đã chết thì KHÔNG điền cụm giấy tờ tùy thân
+# (số định danh, loại giấy tờ, số giấy tờ, ngày cấp, cơ quan cấp) — xoá trắng cả ô cổng điền sẵn.
+_DECEASED_ID_DOC_FIELDS = ("SoDinhDanh", "LoaiGiayToDinhDanh", "SoGiayToDinhDanh", "NgayCapDD", "NoiCapDD")
+
+
+def _clear_deceased_id_doc(clear, prefix: str) -> None:
+    """Xoá cụm giấy tờ tùy thân của cha/mẹ đã chết (prefix = "Cha" | "Me"); clear() chặn add() sau đó."""
+    for name in _DECEASED_ID_DOC_FIELDS:
+        clear(f"{name}{prefix}")
 
 
 def _by_name(fields: list[dict]) -> dict:
@@ -215,11 +285,19 @@ def _ethnicity(value) -> str:
 
 
 def _id_doc_type(number, issuer: str = "") -> str:
-    """CMND cu ~9 so -> 'Chung minh nhan dan'; 12 so -> noi cap quyet dinh
-    (Bo Cong an -> 'The can cuoc', Cuc Canh sat -> 'Can cuoc cong dan')."""
+    """CMND 9 số -> "Chứng minh nhân dân"; số 12 chữ số thì NƠI CẤP quyết định loại thẻ.
+
+    Cùng là 12 chữ số nhưng thẻ Căn cước mới (Bộ Công an, từ 01/7/2024) và CCCD gắn chip cũ
+    (Cục Cảnh sát QLHC về TTXH) là hai option khác nhau trên cổng ("Thẻ căn cước" / "Căn cước công dân").
+    """
     if len(_digits(number)) == 9:
         return "Chứng minh nhân dân"
-    return id_doc_type("Căn cước công dân", issuer)
+    return id_doc_type("Căn cước", issuer)
+
+
+# Biểu mẫu không cho để trống ô "Giấy tờ tùy thân" của người yêu cầu/mẹ/cha. Hồ sơ không có số
+# (cha mẹ đã chết, người thứ ba không kèm thẻ…) vẫn phải chọn một loại → để mặc định CCCD, tô vàng.
+_NO_ID_DOC_TYPE = "Căn cước công dân"
 
 
 def _copy_value(value) -> str:
@@ -262,23 +340,26 @@ def _issuer_or_default(values: dict, prefix: str) -> str:
 # Ô tích "(5) Quan hệ với người được khai sinh" của biểu mẫu legacy.
 _ROLE_BY_RELATION_TICK = {"BanThan": "Subject", "ChaDe": "Father", "MeDe": "Mother"}
 
-# Nguồn đủ chắc để GHI ĐÈ khối người yêu cầu do cổng điền sẵn từ VNeID: đọc từ tờ khai, hoặc
-# đối chiếu được người đăng nhập chính là người được đăng ký khai sinh.
-_REQUESTER_OVERWRITE_SOURCES = frozenset({"to_khai", "cccd_con", "cccd_tai_khoan"})
-# Nguồn được ghi đè cả NHÂN THÂN mục I. CCCD của tài khoản thì không: cổng đã đổ đúng họ tên/số/ngày
-# cấp/nơi cấp từ VNeID của chính người đó, sạch hơn OCR — thẻ chỉ bù nơi cư trú mà VNeID không đổ.
-_REQUESTER_IDENTITY_SOURCES = frozenset({"to_khai", "cccd_con"})
+# Nguồn đủ chắc để GHI ĐÈ khối người yêu cầu do cổng điền sẵn từ VNeID: đọc từ giấy ủy quyền, từ
+# tờ khai, hoặc đối chiếu được người đăng nhập chính là người được đăng ký khai sinh.
+# Không có mốc tài khoản thì cổng chưa đổ gì vào mục I: vai đã chốt theo giấy (kể cả mặc định "Bản thân") là nguồn
+# duy nhất, ghi luôn nhân thân của vai đó (ô quan hệ vẫn tô vàng).
+_REQUESTER_OVERWRITE_SOURCES = frozenset({"uy_quyen", "nguoi_uy_quyen", "to_khai", "cccd_con", "to_khai_khac", "the_nguoi_dang_nhap",
+                                          "giay_to_khong_tai_khoan"})
 
-# Ô nhân thân cha/mẹ ({0} = "Cha"/"Me") có thể còn dữ liệu cổng điền sẵn: hồ sơ thiếu thì xoá trắng.
-_PARENT_CLEARABLE_FIELDS = {
-    "FullName": ("HoTen{0}KS",),
-    "IdNumber": ("SoDinhDanh{0}", "SoGiayToDinhDanh{0}"),
-    "IdIssueDate": ("NgayCapDD{0}",),
-    "IdIssuePlace": ("NoiCapDD{0}",),
-    "BirthDateOrYear": ("NamSinh{0}KS",),
-    # Không có "Ethnicity": dropdown dân tộc không có dòng "-- Chọn --", extension mở ra để xoá là cổng
-    # tự chọn "Kinh" ở đầu danh sách. Hồ sơ không ghi dân tộc thì không gửi gì, để ô trống cho người dùng.
-}
+# Mục I được cổng điền sẵn từ tài khoản VNeID đang đăng nhập. Khi tờ khai chốt người yêu cầu là
+# NGƯỜI KHÁC (người nộp hộ đăng nhập bằng tài khoản của chính họ), mọi ô ta không đọc được vẫn
+# đang mang dữ liệu của tài khoản đó: giữ lại là ghép HỌ TÊN người này với GIẤY TỜ TÙY THÂN người
+# kia — sai người ngay ở mục đầu tiên mà nhìn vào vẫn thấy "đủ dữ liệu" nên không ai soát ra.
+# Xóa trắng thì ô hiện đỏ và người dùng gõ lại.
+_REQUESTER_IDENTITY_FIELDS = (
+    "HoVaTenC",
+    "SoDinhDanhC",
+    "SoGiayToDinhDanhC",
+    "LoaiGiayToDinhDanhC",
+    "NgayCapDDC",
+    "NoiCapDDC",
+)
 
 # Thứ tự đọc dân tộc người yêu cầu theo ô tích đã chốt (không có "Khac": người thứ ba
 # không có nguồn dân tộc trong hồ sơ nên để cổng giữ dữ liệu VNeID).
@@ -340,6 +421,32 @@ def _same_person(name_a, id_a, name_b, id_b) -> bool:
 # khác tên đang dùng, mà mục I phải mang tên hiện tại người yêu cầu tự ghi.
 _ID_DOC_KEYS = frozenset({"so_dinh_danh", "ngay_cap", "noi_cap"})
 
+_FULL_DATE_RE = re.compile(r"^\s*\d{1,2}[/-]\d{1,2}[/-]\d{4}\s*$")
+
+
+def _full_date(value) -> str:
+    """Chỉ nhận chuỗi ĐỦ ngày/tháng/năm; năm trơ trọi ("1971") thì trả rỗng."""
+    if not isinstance(value, str) or not _FULL_DATE_RE.match(value):
+        return ""
+    return value.strip()
+
+
+def _subject_birth_date(values: dict):
+    """Ngày sinh mục II — ƯU TIÊN ngày in trên CCCD/CMND CỦA CHÍNH người được khai sinh.
+
+    Tờ khai đăng ký lại là chữ VIẾT TAY nên cả dòng số lẫn dòng "ghi bằng chữ" đều hay bị OCR đọc
+    lệch (req_6c001ed89615: phần chữ ra "một ngàn chín trăm bảy mươi" trong khi số ghi 25/5/1971),
+    còn ngày trên thẻ thì in sẵn. Chỉ nhận thẻ khi đọc được ĐỦ ngày/tháng/năm — thẻ chỉ ra năm thì
+    không hơn gì tờ khai. Hết đường mới trả nguyên giá trị thô (có thể chỉ là năm) để không mất dữ
+    liệu với hồ sơ cũ thật sự chỉ xác định được năm sinh.
+    """
+    return (
+        _full_date(values.get("Subject_BirthDateFromId"))
+        or _full_date(values.get("Subject_BirthDate"))
+        or values.get("Subject_BirthDate")
+    )
+
+
 # Số định danh Việt Nam chỉ có ĐÚNG 9 chữ số (CMND cũ) hoặc 12 chữ số (CCCD/căn cước).
 _VALID_ID_DIGIT_LENGTHS = (9, 12)
 
@@ -360,7 +467,20 @@ def _is_valid_id_number(value) -> bool:
     return len(text) in _VALID_ID_DIGIT_LENGTHS
 
 
-def _requester_is_subject(values: dict, relation: str) -> bool:
+def _self_full_name(context: str) -> str:
+    """Họ tên đã được reason.py chốt cho ca người yêu cầu tự đi làm cho chính mình.
+
+    Tờ khai viết tay ghi hai lần cùng một người (dòng người yêu cầu + mục người được khai sinh)
+    nên OCR đọc lệch một dòng là chuyện thường; reason.py phân xử bằng số tài liệu ghi đúng tên.
+    """
+    if not context:
+        return ""
+    return _reason_mod._labeled_value(
+        _reason_mod._section(context, "quan_he_nguoi_yeu_cau"), "Họ tên thống nhất"
+    )
+
+
+def _requester_is_subject(values: dict, relation: str, context: str = "") -> bool:
     """Người yêu cầu và người được đăng ký khai sinh có phải MỘT người không.
 
     Tờ khai đã tự ghi "Bản thân" thì đó là lời khai chính chủ. KHÔNG dùng số định danh để bác lại:
@@ -370,6 +490,9 @@ def _requester_is_subject(values: dict, relation: str) -> bool:
     """
     if relation != "BanThan":
         return False
+    # reason.py đã chốt hai dòng đó là một người (chỉ lệch một tiếng do OCR) → không bác nữa.
+    if _self_full_name(context):
+        return True
     req_name = _fold(values.get("Requester_FullName"))
     subject_name = _fold(values.get("Subject_FullName"))
     return not (req_name and subject_name and req_name != subject_name)
@@ -430,10 +553,244 @@ def _person_from_role(values: dict, prefix: str, context: str) -> dict:
     }
 
 
+def _authorized_context(context: str) -> dict:
+    """Khối <nguoi_duoc_uy_quyen> reason.py đọc tất định từ mục "Bên được ủy quyền"."""
+    section = _reason_mod._section(context, _reason_mod._AUTHORIZED_TAG) if context else ""
+
+    def read(label: str) -> str:
+        value = _reason_mod._labeled_value(section, label)
+        return "" if "khong xac dinh" in _fold(value) else value
+
+    return {
+        "ho_ten": read("Họ tên"),
+        "so_dinh_danh": _digits(read("Số CCCD/CMND")),
+        "ngay_cap": read("Ngày cấp"),
+        "noi_cap": read("Nơi cấp"),
+        "noi_cu_tru": read("Nơi cư trú"),
+    }
+
+
+def _authorized_requester(values: dict, context: str) -> dict | None:
+    """Hồ sơ có GIẤY ỦY QUYỀN → người yêu cầu là BÊN ĐƯỢC ỦY QUYỀN, thắng cả tờ khai lẫn CCCD con.
+
+    Người đi nộp hồ sơ theo ủy quyền chính là bên được ủy quyền, nên mục I phải mang nhân thân người
+    đó. Họ tên/số định danh lấy theo khối Python đọc thẳng từ giấy (agent hay nhầm sang BÊN ủy quyền);
+    field Authorized_* của agent chỉ được bù khi chỉ về CÙNG người đó.
+    """
+    parsed = _authorized_context(context)
+    agent = {
+        "ho_ten": values.get("Authorized_FullName"),
+        "so_dinh_danh": values.get("Authorized_IdNumber"),
+    }
+    has_agent = bool(agent["ho_ten"] or agent["so_dinh_danh"])
+    if parsed["ho_ten"] or parsed["so_dinh_danh"]:
+        agent_ids = (_digits(agent["so_dinh_danh"]), parsed["so_dinh_danh"])
+        use_agent = has_agent and (
+            (all(agent_ids) and agent_ids[0] == agent_ids[1])
+            or _reason_mod._names_align(parsed["ho_ten"], agent["ho_ten"])
+        )
+    elif has_agent and "uy quyen" in _fold(values.get("Authorized_SourceDocumentTitle")):
+        use_agent = True
+    else:
+        return None
+
+    residence = values.get("Authorized_ResidenceDomestic") if use_agent else None
+    # Ngày / nơi cấp cũng theo khối Python đọc thẳng từ mục "Bên được ủy quyền" như họ tên, số: agent hay lấy nhầm
+    # ngày của thẻ bên ủy quyền hoặc ngày lập giấy.
+    ngay_cap = parsed["ngay_cap"] or (use_agent and values.get("Authorized_IdIssueDate"))
+    person = {
+        "ho_ten": parsed["ho_ten"] or (agent["ho_ten"] if use_agent else ""),
+        "so_dinh_danh": next(
+            (
+                value
+                for value in (parsed["so_dinh_danh"], agent["so_dinh_danh"] if use_agent else "")
+                if _is_valid_id_number(value)
+            ),
+            None,
+        ),
+        "ngay_cap": ngay_cap,
+        "noi_cap": normalize_issuer(parsed["noi_cap"] or (use_agent and values.get("Authorized_IdIssuePlace"))),
+        "noi_cu_tru": (
+            _normalize_domestic_area(residence)
+            if isinstance(residence, dict)
+            else _reason_mod.authorized_residence_area(parsed["noi_cu_tru"])
+        ),
+    }
+
+    # Người được ủy quyền trùng đúng một vai trong hồ sơ (vd con đã thành niên ủy quyền cho cha) thì
+    # tick theo vai đó và bù giấy tờ tùy thân từ CCCD của chính vai đó; không trùng ai → "Khác".
+    relation = "Khac"
+    for prefix, tick in (("Subject", "BanThan"), ("Father", "ChaDe"), ("Mother", "MeDe")):
+        if _same_person(
+            person["ho_ten"], person["so_dinh_danh"],
+            values.get(f"{prefix}_FullName"), values.get(f"{prefix}_IdNumber"),
+        ):
+            relation = tick
+            base = _person_from_role(values, prefix, context)
+            person = {key: person.get(key) or base.get(key) for key in person}
+            break
+
+    if not person["noi_cap"] and person["ngay_cap"] and len(_digits(person["so_dinh_danh"])) != 9:
+        person["noi_cap"] = default_issuer(person["ngay_cap"])
+    return {
+        **person,
+        "quan_he": relation,
+        "quan_he_default": False,
+        # Giấy ủy quyền thường chỉ ghi số thẻ, không ghi nơi cấp → loại thẻ (CCCD cũ hay Căn cước
+        # mới) chỉ là đoán; đánh dấu để extension tô vàng cho cán bộ soát.
+        "loai_giay_to_default": not person["noi_cap"],
+        "source": "uy_quyen",
+    }
+
+
+def _grantor_requester(values: dict, context: str) -> dict | None:
+    """Tài khoản bật cờ grantorAsRequester (phường Hiệp Hòa): người yêu cầu là BÊN ỦY QUYỀN.
+
+    Nhân thân đọc từ khối <nguoi_uy_quyen> reason.py dựng tất định từ mục "Bên ủy quyền". Bên ủy quyền
+    trùng một vai trong hồ sơ (thường là cha/mẹ, hoặc chính người được khai sinh) thì tick theo vai đó
+    và giấy tờ tùy thân lấy theo CCCD của vai đó — thẻ sạch hơn dòng viết trên giấy ủy quyền; không trùng
+    ai → "Khác". None khi không đọc được bên ủy quyền.
+    """
+    section = _reason_mod._section(context, _reason_mod.GRANTOR_TAG) if context else ""
+    if not section:
+        return None
+
+    def read(label: str) -> str:
+        value = _reason_mod._labeled_value(section, label)
+        return "" if "khong xac dinh" in _fold(value) else value
+
+    identity = _digits(read("Số CCCD/CMND"))
+    person = {
+        "ho_ten": read("Họ tên"),
+        "so_dinh_danh": identity if _is_valid_id_number(identity) else None,
+        "ngay_cap": read("Ngày cấp"),
+        "noi_cap": normalize_issuer(read("Nơi cấp")),
+        "noi_cu_tru": _reason_mod.authorized_residence_area(read("Nơi cư trú")),
+    }
+    if not person["ho_ten"] and not person["so_dinh_danh"]:
+        return None
+
+    relation = "Khac"
+    for prefix, tick in (("Subject", "BanThan"), ("Father", "ChaDe"), ("Mother", "MeDe")):
+        if _same_person(
+            person["ho_ten"], person["so_dinh_danh"],
+            values.get(f"{prefix}_FullName"), values.get(f"{prefix}_IdNumber"),
+        ):
+            relation = tick
+            base = _person_from_role(values, prefix, context)
+            for key in _ID_DOC_KEYS:
+                person[key] = base.get(key) or person[key]
+            person = {key: person.get(key) or base.get(key) for key in person}
+            break
+
+    if not person["noi_cap"] and person["ngay_cap"] and len(_digits(person["so_dinh_danh"])) != 9:
+        person["noi_cap"] = default_issuer(person["ngay_cap"])
+    return {
+        **person,
+        "quan_he": relation,
+        "quan_he_default": False,
+        "loai_giay_to_default": not person["noi_cap"],
+        "source": "nguoi_uy_quyen",
+    }
+
+
+def _other_declaration_requester(values: dict, context: str) -> dict | None:
+    """Hồ sơ nộp NHẦM tờ khai của thủ tục khác (vd cấp bản sao trích lục) → vẫn điền mục I theo
+    dòng người yêu cầu trên tờ đó, nhưng ô quan hệ LUÔN tích "Khác".
+
+    Dòng quan hệ của biểu mẫu khác hỏi chuyện khác và hay bị OCR đọc thành chữ vô nghĩa ("Bản
+    chính"), nên không suy vai từ đó; đánh dấu default để extension tô vàng cho cán bộ tự tích lại.
+    Người yêu cầu trùng số định danh với một vai trong hồ sơ thì giấy tờ tùy thân lấy theo CCCD
+    của chính vai đó — thẻ in sẵn sạch hơn chữ viết tay (ngày cấp hay bị đọc lệch tháng).
+    """
+    section = _reason_mod._section(context, _reason_mod.OTHER_DECLARATION_TAG) if context else ""
+    if not section:
+        return None
+
+    def read(label: str) -> str:
+        value = _reason_mod._labeled_value(section, label)
+        return "" if "khong xac dinh" in _fold(value) else value
+
+    identity = _digits(read("Số CCCD/CMND"))
+    person = {
+        "ho_ten": read("Họ tên"),
+        "so_dinh_danh": identity if _is_valid_id_number(identity) else None,
+        "ngay_cap": read("Ngày cấp"),
+        "noi_cap": normalize_issuer(read("Nơi cấp")),
+        "noi_cu_tru": _reason_mod.authorized_residence_area(read("Nơi cư trú")),
+    }
+    if not person["ho_ten"] and not person["so_dinh_danh"]:
+        return None
+
+    ethnicity = ""
+    for prefix in ("Subject", "Father", "Mother"):
+        if _same_person(
+            person["ho_ten"], person["so_dinh_danh"],
+            values.get(f"{prefix}_FullName"), values.get(f"{prefix}_IdNumber"),
+        ):
+            base = _person_from_role(values, prefix, context)
+            for key in _ID_DOC_KEYS:
+                person[key] = base.get(key) or person[key]
+            person["noi_cu_tru"] = person["noi_cu_tru"] or base.get("noi_cu_tru")
+            ethnicity = values.get(f"{prefix}_Ethnicity") or ""
+            break
+
+    if not person["noi_cap"] and person["ngay_cap"] and len(_digits(person["so_dinh_danh"])) != 9:
+        person["noi_cap"] = default_issuer(person["ngay_cap"])
+    return {
+        **person,
+        "dan_toc": ethnicity,
+        "quan_he": "Khac",
+        "quan_he_default": True,
+        "source": "to_khai_khac",
+    }
+
+
+def _applicant_card_requester(context: str) -> dict | None:
+    """Hồ sơ không tờ khai kèm CCCD của CHÍNH người đăng nhập cổng (cán bộ/người nộp hộ).
+
+    reason.py đã đối chiếu số định danh của tài khoản VNeID với từng thẻ và dựng khối
+    <nguoi_yeu_cau> từ đúng tấm thẻ đó (chỉ khi người đó không phải con/cha/mẹ). Mục I trên cổng
+    luôn là người đăng nhập nên điền theo thẻ; người này ngoài gia đình nên tích "Khác".
+    """
+    section = _reason_mod._section(context, "nguoi_yeu_cau") if context else ""
+    if _reason_mod._labeled_value(section, "Căn cứ phân vai") != _reason_mod.APPLICANT_CARD_BASIS:
+        return None
+
+    def read(label: str) -> str:
+        value = _reason_mod._labeled_value(section, label)
+        return "" if "khong xac dinh" in _fold(value) else value
+
+    identity = _digits(read("Số CCCD/CMND"))
+    person = {
+        "ho_ten": read("Họ tên"),
+        "so_dinh_danh": identity if _is_valid_id_number(identity) else None,
+        "ngay_cap": read("Ngày cấp"),
+        "noi_cap": normalize_issuer(read("Nơi cấp")),
+        "noi_cu_tru": _reason_mod.authorized_residence_area(read("Nơi cư trú")),
+    }
+    if not person["ho_ten"] and not person["so_dinh_danh"]:
+        return None
+    if not person["noi_cap"] and person["ngay_cap"] and len(_digits(person["so_dinh_danh"])) != 9:
+        person["noi_cap"] = default_issuer(person["ngay_cap"])
+    return {
+        **person,
+        "dan_toc": read("Dân tộc"),
+        "quan_he": "Khac",
+        "quan_he_default": False,
+        "source": "the_nguoi_dang_nhap",
+    }
+
+
 def _resolve_requester(values: dict, context: str, options: dict | None = None) -> dict:
     """Chốt ô tích quan hệ (5) rồi mới chốt nhân thân khối "Thông tin người yêu cầu".
 
-    HAI NHÁNH TÁCH BẠCH — quyết định bằng việc hồ sơ CÓ hay KHÔNG có tờ khai/đơn:
+    Hồ sơ có TỜ KHAI thì người yêu cầu theo tờ khai, kể cả khi kèm giấy ủy quyền (cán bộ thủ tục này điền
+    mục I theo người ghi trên tờ khai). Không có tờ khai mà có GIẤY ỦY QUYỀN thì người yêu cầu là BÊN
+    ĐƯỢC ỦY QUYỀN (người đi nộp) — xem _authorized_requester. Riêng tài khoản bật cờ grantorAsRequester (phường Hiệp Hòa):
+    người yêu cầu là BÊN ỦY QUYỀN (_grantor_requester); không đọc được bên ủy quyền thì đi tiếp theo
+    tờ khai/CCCD như hồ sơ không có giấy ủy quyền. Không có giấy ủy quyền thì quyết định bằng việc hồ
+    sơ CÓ hay KHÔNG có tờ khai/đơn:
 
     A. CÓ TỜ KHAI: tờ khai là nguồn duy nhất của cả ô tích lẫn nhân thân người yêu cầu. Ghi đè
        thẳng lên dữ liệu cổng điền sẵn từ tài khoản VNeID đang đăng nhập (người nộp hộ thường
@@ -444,7 +801,7 @@ def _resolve_requester(values: dict, context: str, options: dict | None = None) 
        Nhân thân điền theo đúng vai đã tick, thiếu thì lấy bù từ CCCD của chính vai đó (Bản thân ←
        con, Cha ← cha, Mẹ ← mẹ) vì CCCD sạch hơn chữ viết tay trên tờ khai.
 
-    B. KHÔNG CÓ TỜ KHAI: không giấy tờ nào nói ai là người yêu cầu, nên đối chiếu NGƯỜI ĐANG
+    B. KHÔNG CÓ TỜ KHAI lẫn giấy ủy quyền: không giấy tờ nào nói ai là người yêu cầu, nên đối chiếu NGƯỜI ĐANG
        ĐĂNG NHẬP CỔNG (nhân thân VNeID cổng tự điền sẵn vào khối này) với <con>:
          - TRÙNG người (số định danh, hoặc họ tên khi một bên không có số) → chính chủ tự đi làm
            cho mình: tick "Bản thân" và điền khối người yêu cầu từ CCCD của chính họ trong hồ sơ
@@ -460,7 +817,19 @@ def _resolve_requester(values: dict, context: str, options: dict | None = None) 
             "Requester_Relationship", "Requester_ResidenceDomestic",
         )
     )
-    if has_requester_facts or _has_declaration(values, context):
+    declared_requester = has_requester_facts or _has_declaration(values, context)
+    # Phường Hiệp Hòa: người yêu cầu là bên ủy quyền. Không có tờ khai mà có giấy ủy quyền: người đi nộp là bên
+    # được ủy quyền.
+    if _reason_mod.grantor_as_requester(options):
+        grantor = _grantor_requester(values, context)
+        if grantor:
+            return grantor
+    elif not declared_requester:
+        authorized = _authorized_requester(values, context)
+        if authorized:
+            return authorized
+
+    if declared_requester:
         residence = values.get("Requester_ResidenceDomestic")
         declared = {
             "ho_ten": values.get("Requester_FullName"),
@@ -476,6 +845,13 @@ def _resolve_requester(values: dict, context: str, options: dict | None = None) 
             or _relation_by_identity(values)
             or _relation_from_context(context)
         )
+        # Agent trích xuất cũng đọc lại dòng quan hệ viết tay và hay tích Cha/Mẹ theo chữ OCR nhiễu,
+        # đè lên kết luận đã phân xử ở reason.py → đối chiếu tên lần nữa ngay tại đây.
+        parent = {"ChaDe": "Father_FullName", "MeDe": "Mother_FullName"}.get(relation)
+        if parent and _reason_mod.names_say_self_not_parent(
+            values.get("Requester_FullName"), values.get("Subject_FullName"), values.get(parent)
+        ):
+            relation = "BanThan"
         role = _ROLE_BY_RELATION_TICK.get(relation)
         base = _person_from_role(values, role, context) if role else {}
         # Người yêu cầu CHÍNH LÀ người được đăng ký khai sinh ("Bản thân") → hồ sơ có CCCD của đúng người
@@ -484,7 +860,7 @@ def _resolve_requester(values: dict, context: str, options: dict | None = None) 
         # mục I là sai người ngay từ ô đầu tiên.
         # NƠI CƯ TRÚ và HỌ TÊN vẫn ưu tiên tờ khai: tờ khai viết hôm nay, còn thẻ có thể cấp từ
         # nhiều năm trước và địa giới hành chính đã đổi.
-        card_first = _requester_is_subject(values, relation)
+        card_first = _requester_is_subject(values, relation, context)
         # `base` chỉ là NGƯỜI YÊU CẦU khi ô tích đáng tin: vai cha/mẹ thì chính ô tích khẳng định
         # điều đó, riêng "Bản thân" phải qua thêm phép so tên (ô tích rất hay bị tick nhầm).
         trust_base = bool(role) and (relation != "BanThan" or card_first)
@@ -504,6 +880,10 @@ def _resolve_requester(values: dict, context: str, options: dict | None = None) 
             person["so_dinh_danh"] = next(
                 (v for v in sources["so_dinh_danh"] if _is_valid_id_number(v)), None
             )
+        # Hai dòng tờ khai cùng chỉ một người thì phải mang CÙNG một họ tên đã được phân xử.
+        self_name = _self_full_name(context) if relation == "BanThan" else ""
+        if self_name:
+            person["ho_ten"] = self_name
         # Tờ khai đọc được nhưng không ra chữ quan hệ nào → tick "Khác" (an toàn nhất, không ép
         # người yêu cầu thành con/cha/mẹ) và đánh dấu default để người dùng soát lại.
         return {
@@ -522,38 +902,148 @@ def _resolve_requester(values: dict, context: str, options: dict | None = None) 
         if person.get("ho_ten") or person.get("so_dinh_danh"):
             return {**person, "quan_he": "BanThan", "quan_he_default": False, "source": "cccd_con"}
 
-    # Người nộp hộ kèm CCCD của CHÍNH tài khoản đang đăng nhập → thẻ đó là của người yêu cầu. Chỉ tin
-    # khi số trên thẻ TRÙNG số định danh tài khoản: agent đoán nhầm thẻ thì cũng không lọt qua đây.
-    card_id = _digits(values.get("AccountCard_IdNumber"))
-    if applicant[1] and card_id == applicant[1]:
-        area = values.get("AccountCard_ResidenceDomestic")
-        relation = "Khac"
-        for prefix, tick in (("Father", "ChaDe"), ("Mother", "MeDe")):
-            if card_id == _digits(values.get(f"{prefix}_IdNumber")):
-                relation = tick
-                break
-        return {
-            "ho_ten": values.get("AccountCard_FullName"),
-            "so_dinh_danh": card_id,
-            "ngay_cap": values.get("AccountCard_IdIssueDate"),
-            "noi_cap": _issuer_or_default(values, "AccountCard"),
-            "noi_cu_tru": _normalize_domestic_area(area) if isinstance(area, dict) else None,
-            # Thẻ không phải của cha/mẹ thì "Khác" là kết luận chắc, không còn là đoán.
-            "quan_he": relation,
-            "quan_he_default": False,
-            "source": "cccd_tai_khoan",
-        }
+    # Người đăng nhập chính là cha / mẹ trên giấy tờ (cha mẹ làm cho con bằng tài khoản của mình) → Cha đẻ / Mẹ đẻ.
+    for role, tick in (("Mother", "MeDe"), ("Father", "ChaDe")):
+        if (applicant[0] or applicant[1]) and _same_person(
+                *applicant, values.get(f"{role}_FullName"), values.get(f"{role}_IdNumber")):
+            person = _person_from_role(values, role, context)
+            if person.get("ho_ten") or person.get("so_dinh_danh"):
+                return {**person, "quan_he": tick, "quan_he_default": False, "source": f"tai_khoan_{tick}"}
+
+    # Hồ sơ kèm CCCD của chính người đăng nhập (cán bộ) → mục I theo thẻ đó.
+    card = _applicant_card_requester(context)
+    if card:
+        return card
+
+    other = _other_declaration_requester(values, context)
+    if other:
+        return other
+
+    if not (applicant[0] or applicant[1]):
+        # Không có mốc tài khoản: không biết ai đang đăng nhập → theo kết luận agent đọc từ giấy (viền vàng để soát);
+        # agent không kết luận được thì để trống ô quan hệ, không tự tích "Khác".
+        relation = _relation_from_reason(context)
+        role = _ROLE_BY_RELATION_TICK.get(relation)
+        if role:
+            return {**_person_from_role(values, role, context), "quan_he": relation, "quan_he_default": True,
+                    "source": "giay_to_khong_tai_khoan"}
+        return {"quan_he": "", "quan_he_default": False, "source": "khong_tai_khoan"}
 
     return {"quan_he": "Khac", "quan_he_default": True, "source": "khong_to_khai"}
+
+
+def _requester_is_portal_account(requester: dict, options: dict | None) -> bool:
+    """Người yêu cầu ta vừa chốt có đúng là tài khoản VNeID đang đăng nhập cổng không.
+
+    Trùng thì dữ liệu cổng điền sẵn ở mục I là của CHÍNH người đó — ô nào ta không đọc được cứ
+    để cổng giữ, xóa đi là mất dữ liệu đúng. Không trùng (hoặc cổng không truyền mỏ neo) thì
+    những ô đó là của người khác.
+    """
+    name, identity = _reason_mod._requester_context(options)
+    if not name and not identity:
+        return False
+    return _same_person(name, identity, requester.get("ho_ten"), requester.get("so_dinh_danh"))
+
+
+def _requester_is_account_despite_ocr(requester: dict, values: dict, context: str, options: dict | None) -> bool:
+    """Người yêu cầu ĐỌC TỪ TỜ KHAI là chủ tài khoản dù OCR lệch — phép so tuyệt đối ở trên coi đó
+    là người khác. So bằng số thô trên tờ khai (kể cả số thiếu chữ số) để nhận ra số bị rơi."""
+    if requester.get("source") != "to_khai":
+        return False
+    account = account_context(options)
+    if not (account.get("HoTen") or account.get("SoDinhDanh")):
+        return False
+    birthday = next(
+        (
+            value
+            for tag in ("nguoi_yeu_cau", "to_khai_goc_nguoi_yeu_cau")
+            if (value := _reason_mod._labeled_value(_reason_mod._section(context, tag), "Ngày sinh"))
+        ),
+        "",
+    )
+    id_number = requester.get("so_dinh_danh") or values.get("Requester_IdNumber")
+    return matches_account(account, requester.get("ho_ten"), id_number, birthday)
+
+
+# Khoá người yêu cầu → khoá tài khoản (`tai_khoan.account_context`).
+_ACCOUNT_KEY_BY_REQUESTER = {
+    "ho_ten": "HoTen", "so_dinh_danh": "SoDinhDanh", "ngay_cap": "NgayCap", "noi_cap": "NoiCap",
+    "dan_toc": "DanToc", "noi_cu_tru": "NoiCuTru",
+}
+
+
+def _with_account(requester: dict, options: dict | None) -> dict:
+    """Người yêu cầu là CHÍNH chủ tài khoản → ô nào tài khoản có giá trị thì lấy theo tài khoản: dữ liệu
+    VNeID là bản chuẩn CSDLQG, tờ khai viết tay hay bị OCR đọc sai. Ô bị đổi ghi vào trace."""
+    account = account_context(options)
+    person = dict(requester)
+    changes = []
+    for key, account_key in _ACCOUNT_KEY_BY_REQUESTER.items():
+        value = account.get(account_key)
+        # Ngày cấp / nơi cấp thuộc TẤM THẺ: hồ sơ đã có giấy tờ của người đó mang cùng số thì theo giấy nộp trong hồ sơ —
+        # tài khoản giữ ngày của lần cấp mới nhất, khác ngày trên thẻ cũ người dân đang nộp (cán bộ ghi theo thẻ nộp).
+        if key in ("ngay_cap", "noi_cap") and requester.get(key) and _digits(requester.get("so_dinh_danh")) == _digits(
+                account.get("SoDinhDanh")):
+            continue
+        if key == "noi_cu_tru" and value:
+            value = _normalize_domestic_area({"quocGia": "Việt Nam", **value})
+        if not value:
+            continue
+        if value != person.get(key):
+            changes.append({"muc": "I", "field": key, "cu": person.get(key), "moi": value})
+        person[key] = value
+    if changes:
+        mon.output("account_override", changes)
+    return person
+
+
+def _ids_near(a, b) -> bool:
+    a, b = _digits(a), _digits(b)
+    return bool(a and b) and len(a) == len(b) and sum(x != y for x, y in zip(a, b)) <= 2
+
+
+def _unify_parent_requester(requester: dict, values: dict, quan_he, account_person: bool, options: dict | None) -> None:
+    """Người yêu cầu chính là mẹ / cha đã tích: mục I và mục III/IV là MỘT người nên chỉ được một họ tên, một số.
+
+    Tờ khai viết tay ghi người đó hai lần (dòng người yêu cầu + mục mẹ / cha), OCR đọc lệch một dòng là chuyện
+    thường. Khớp tài khoản đăng nhập → cả hai theo tài khoản (bản chuẩn CSDLQG); không có tài khoản → mục I theo
+    khối mẹ / cha (đã được phân vai đối chiếu với thẻ). Hai dòng lệch hẳn (khác người) thì không đụng.
+    """
+    role = {"MeDe": "Mother", "ChaDe": "Father"}.get(quan_he)
+    if not role:
+        return
+    role_name, role_id = values.get(f"{role}_FullName"), values.get(f"{role}_IdNumber")
+    # Số chỉ đủ làm căn cứ khi một bên không có họ tên: số của hai người cùng tỉnh, cùng lứa có thể chỉ lệch vài chữ số.
+    names = requester.get("ho_ten") and role_name
+    same = (_reason_mod._names_align(requester.get("ho_ten"), role_name) if names
+            else _ids_near(requester.get("so_dinh_danh"), role_id))
+    if not same:
+        return
+    if account_person:
+        account = account_context(options)
+        for key, account_key in (("FullName", "HoTen"), ("IdNumber", "SoDinhDanh"), ("Ethnicity", "DanToc")):
+            if account.get(account_key):
+                values[f"{role}_{key}"] = account[account_key]
+        return
+    if role_name:
+        requester["ho_ten"] = role_name
+    if _is_valid_id_number(role_id):
+        requester["so_dinh_danh"] = role_id
 
 
 def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     """Derive deterministic UI fields while preserving the extension response shape."""
     values = _by_name(fields)
-    # Vai cha/mẹ reason.py dựng lại theo tờ khai vì CCCD là của người khác được đánh dấu default —
-    # cờ phải chảy tiếp ra field UI để extension tô vàng cho cán bộ soát.
+    # Số CCCD 12 chữ số luôn bắt đầu bằng 0 (mã tỉnh 001–096): model trả số dạng NUMBER thì rơi số 0 đầu, còn 11 chữ số
+    # bắt đầu bằng chữ số khác 0. OCR rụng một chữ số ở GIỮA thì số vẫn bắt đầu bằng 0 — không đụng (để trống còn hơn bịa).
+    for key, value in list(values.items()):
+        if key.endswith("_IdNumber") and re.fullmatch(r"[1-9]\d{10}", str(value).strip()):
+            values[key] = "0" + str(value).strip()
+    # Vai cha/mẹ mà reason.py dựng lại từ tờ khai được đánh dấu default — hồ sơ đang có hai tên
+    # cho cùng một vai. Cờ phải chảy tiếp ra field UI để extension tô vàng cho cán bộ soát.
     default_names = {f.get("name") for f in fields if f.get("default")}
     context: str = (options or {}).get("_reasoning_context") or ""
+    deceased_no_info = (options or {}).get(DECEASED_PARENT_NO_INFO_OPTION) is True
     out: list[dict] = []
     seen: set[str] = set()
 
@@ -579,13 +1069,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         out.append({"name": name, "comp": comp, "value": "", "clear": True})
         seen.add(name)
 
-    def clear_missing_parent_fields(prefix: str, suffix: str) -> None:
-        """Ô nhân thân cha/mẹ mà hồ sơ không có → xoá trắng, không để sót dữ liệu cổng điền sẵn."""
-        for key, names in _PARENT_CLEARABLE_FIELDS.items():
-            if not values.get(f"{prefix}_{key}"):
-                for name in names:
-                    clear(name.format(suffix))
-
     for default in _STRUCTURAL_DEFAULTS:
         add(default["name"], default["value"])
 
@@ -594,23 +1077,44 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     # bieu mau legacy dung lai ca khoi nguoi yeu cau moi lan doi o tich, dien ho ten/CCCD truoc se bi xoa.
     requester = _resolve_requester(values, context, options)
     quan_he = requester.get("quan_he")
+    account_person = False
     add("QuanHe", quan_he, default=bool(requester.get("quan_he_default")))
 
     # Buoc 2: chi ghi de khoi nhan than khi da BIET CHAC nguoi yeu cau la ai — tu to khai, hoac tu
     # doi chieu nguoi dang nhap cong voi <con>. Khong xac dinh duoc thi giu nguyen du lieu cong da
     # dien san tu tai khoan VNeID, chi tick "Khac" o buoc 1.
     if requester.get("source") in _REQUESTER_OVERWRITE_SOURCES:
-        if requester.get("source") in _REQUESTER_IDENTITY_SOURCES and (
-            requester.get("ho_ten") or requester.get("so_dinh_danh")
-        ):
+        if requester.get("ho_ten") or requester.get("so_dinh_danh"):
+            account_person = _requester_is_portal_account(requester, options) or _requester_is_account_despite_ocr(
+                requester, values, context, options
+            )
+            if account_person:
+                requester = _with_account(requester, options)
+            _unify_parent_requester(requester, values, quan_he, account_person, options)
             req_id = requester.get("so_dinh_danh")
             add("HoVaTenC", upper_person_name(requester.get("ho_ten")))
             add("SoDinhDanhC", req_id)
             add("SoGiayToDinhDanhC", req_id)
             if req_id:
-                add("LoaiGiayToDinhDanhC", _id_doc_type(req_id, requester.get("noi_cap")))
-            add("NgayCapDDC", requester.get("ngay_cap"))
-            add("NoiCapDDC", requester.get("noi_cap"))
+                add(
+                    "LoaiGiayToDinhDanhC",
+                    _id_doc_type(req_id, requester.get("noi_cap")),
+                    default=bool(requester.get("loai_giay_to_default")),
+                )
+            elif not account_person:
+                add("LoaiGiayToDinhDanhC", _NO_ID_DOC_TYPE, default=True)
+            # Người khác mà không có số dùng được thì ngày cấp, nơi cấp cũng bỏ (bị xóa bên dưới):
+            # cụm giấy tờ không số chỉ là nửa tấm thẻ.
+            if req_id or account_person:
+                add("NgayCapDDC", requester.get("ngay_cap"))
+                add("NoiCapDDC", requester.get("noi_cap"))
+
+            # Đã ghi đè khối này bằng nhân thân người khác thì mọi ô còn lại của mục I vẫn đang
+            # mang dữ liệu tài khoản đang đăng nhập → xóa, không để nửa người này nửa người kia.
+            # (Không đọc được gì thì KHÔNG vào nhánh này: khối cổng điền vẫn là một người trọn vẹn.)
+            if not account_person:
+                for _name in _REQUESTER_IDENTITY_FIELDS:
+                    clear(_name)
 
         req_area = requester.get("noi_cu_tru")
         if req_area:
@@ -623,7 +1127,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             add("nycNoiCuTru_TrongNuoc", {"quocGia": "Việt Nam"}, default=True)
 
         # Dan toc nguoi yeu cau doc theo dung vai da tick. "Khac" la nguoi thu ba (anh/chi/em/uy quyen)
-        # nen khong co nguon dan toc trong ho so -> de trong cho cong giu du lieu VNeID.
+        # nen khong co nguon dan toc trong ho so -> de trong cho cong giu du lieu VNeID. Rieng nguoi
+        # yeu cau doc tu to khai thu tuc khac ma trung the cua mot vai thi da co san dan toc vai do.
+        if requester.get("dan_toc"):
+            add("DanTocC", normalize_ethnic(requester.get("dan_toc")))
         for _name in _ETHNICITY_BY_TICK.get(quan_he, ()):
             _ethnic = _ethnicity(values.get(_name))
             if _ethnic:
@@ -633,60 +1140,125 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     # II. Nguoi duoc dang ky khai sinh.
     has_subject = any(name.startswith("Subject_") for name in values)
     if has_subject:
+        # Người yêu cầu tự đi làm cho chính mình: mục I và mục II là MỘT người nên phải cùng một
+        # họ tên đã được reason.py phân xử, không để mỗi mục mang một dòng OCR khác nhau.
+        self_name = _self_full_name(context) if quan_he == "BanThan" else ""
         # Con chốt CCCD theo thế hệ (tờ khai lệch mọi CCCD) → tô vàng nhân thân cho cán bộ soát.
         ks_default = "Subject_FullName" in default_names
-        add("HoTenKS", upper_person_name(values.get("Subject_FullName")), ks_default)
-        add("NgaySinhChon", values.get("Subject_BirthDate"), ks_default)
+        subject = {
+            "HoTen": self_name or values.get("Subject_FullName"),
+            "NgaySinh": _subject_birth_date(values),
+            "GioiTinh": values.get("Subject_Gender"),
+            "DanToc": values.get("Subject_Ethnicity"),
+        }
+        # Tự đi làm cho chính mình và người yêu cầu đã khớp tài khoản → mục II cũng là chủ tài khoản,
+        # lấy theo VNeID. Bản thân người con cũng phải khớp tài khoản: ô "Bản thân" OCR tích nhầm thì
+        # không kéo người con thành chủ tài khoản.
+        account = account_context(options) if account_person and quan_he == "BanThan" else {}
+        if account and matches_account(account, subject["HoTen"], values.get("Subject_IdNumber"), subject["NgaySinh"]):
+            changes = [
+                {"muc": "II", "field": key, "cu": subject[key], "moi": account[key]}
+                for key in subject if account.get(key) and account[key] != subject[key]
+            ]
+            subject.update({key: account[key] for key in subject if account.get(key)})
+            if changes:
+                mon.output("account_override", changes)
+        add("HoTenKS", upper_person_name(subject["HoTen"]), ks_default)
+        add("NgaySinhChon", subject["NgaySinh"], ks_default)
         add("NgaySinhChonBangChu", values.get("Subject_BirthDateInWords"))
-        add("GioiTinhKS", values.get("Subject_Gender"), ks_default)
-        add("DanTocKS", _ethnicity(values.get("Subject_Ethnicity")))
-        add("QuocTichKS", values.get("Subject_Nationality") or "Việt Nam")
+        add("GioiTinhKS", subject["GioiTinh"], ks_default)
+        add("DanTocKS", _ethnicity(subject["DanToc"]),
+            "Subject_Ethnicity" in default_names and subject["DanToc"] == values.get("Subject_Ethnicity"))
+        add("QuocTichKS", _nationality(values.get("Subject_Nationality")))
         if values.get("Subject_BirthPlaceDomestic"):
             add("nksNoiSinh", "1")
-            add("nksNoiSinh_TrongNuoc", _normalize_domestic_area(values.get("Subject_BirthPlaceDomestic")))
+            # Sinh ở bệnh viện có trong bảng → phường/xã theo địa chỉ bệnh viện, không theo xã người dân
+            # ghi kèm ("Bệnh viện Hoàn Mỹ phường Xuân Trường" — Hoàn Mỹ Đà Lạt ở Xuân Hương).
+            add("nksNoiSinh_TrongNuoc", _normalize_domestic_area(hospital_area(values.get("Subject_BirthPlaceDomestic"))))
         if values.get("Subject_HometownDomestic"):
             add("nksQueQuan", "1")
             add("nksQueQuan_TrongNuoc", _normalize_domestic_area(values.get("Subject_HometownDomestic")))
 
-    # III. Me. Chỉ dựng khối khi có NHÂN THÂN thật (họ tên hoặc số định danh) — hồ sơ chỉ có con +
-    # CCCD của một bên thì bên kia phải để TRỐNG, không điền quốc tịch/loại cư trú mặc định.
-    has_mother = bool(values.get("Mother_FullName") or values.get("Mother_IdNumber"))
-    if has_mother:
+    # III. Me. LUÔN ghi đè thông tin mẹ lên form ngay cả khi không có số CCCD, để xóa dữ liệu cũ
+    # mà cổng có thể đã điền sẵn. Chỉ bỏ qua hoàn toàn khi KHÔNG có bất kỳ thông tin Mother_* nào.
+    has_mother_info = any(key.startswith("Mother_") and values.get(key) for key in values)
+    if has_mother_info:
         me_default = "Mother_FullName" in default_names
-        me_id_default = me_default or "Mother_IdNumber" in default_names
-        add("HoTenMeKS", upper_person_name(values.get("Mother_FullName")), me_default)
-        add("SoDinhDanhMe", values.get("Mother_IdNumber"), me_id_default)
-        add("SoGiayToDinhDanhMe", values.get("Mother_IdNumber"), me_id_default)
-        if values.get("Mother_IdNumber"):
-            add("LoaiGiayToDinhDanhMe", _id_doc_type(values.get("Mother_IdNumber"), _issuer_or_default(values, "Mother")), me_id_default)
-        add("NgayCapDDMe", values.get("Mother_IdIssueDate"))
-        add("NoiCapDDMe", _issuer_or_default(values, "Mother"), me_id_default)
-        add("NamSinhMeKS", values.get("Mother_BirthDateOrYear"), me_default)
-        add("DanTocMeKS", _ethnicity(values.get("Mother_Ethnicity")), me_default)
-        clear_missing_parent_fields("Mother", "Me")
-        add("QuocTichMeKS", values.get("Mother_Nationality") or "Việt Nam", me_default)
-        _add_residence(add, "Me", _resolve_residence(values, "Mother", context))
+        me_residence = _resolve_residence(values, "Mother", context)
+        if deceased_no_info and me_residence and _is_deceased_marker(me_residence):
+            _clear_deceased_id_doc(clear, "Me")
+        # Ghi đè họ tên mẹ, nếu có
+        if values.get("Mother_FullName"):
+            add("HoTenMeKS", upper_person_name(values.get("Mother_FullName")), me_default)
+        # Ghi đè số định danh mẹ (nếu không có thì clear để xóa dữ liệu cũ)
+        mother_id = values.get("Mother_IdNumber")
+        if mother_id:
+            # Số bù riêng từ tờ khai (hồ sơ không có CCCD của người này) cũng tô vàng.
+            id_default = me_default or "Mother_IdNumber" in default_names
+            add("SoDinhDanhMe", mother_id, id_default)
+            add("SoGiayToDinhDanhMe", mother_id, id_default)
+            add("LoaiGiayToDinhDanhMe", _id_doc_type(mother_id, _issuer_or_default(values, "Mother")), id_default)
+        else:
+            # Không có số CCCD mẹ -> clear ô số để xóa dữ liệu cổng điền sẵn; loại giấy tờ bắt buộc chọn.
+            clear("SoDinhDanhMe")
+            clear("SoGiayToDinhDanhMe")
+            # Cụm giấy tờ không số chỉ là nửa tấm thẻ: ngày cấp / nơi cấp cũng xoá, không để sót dữ liệu cũ.
+            clear("NgayCapDDMe")
+            clear("NoiCapDDMe")
+            add("LoaiGiayToDinhDanhMe", _NO_ID_DOC_TYPE, default=True)
+        # Các thông tin khác của mẹ
+        add("NgayCapDDMe", values.get("Mother_IdIssueDate"), me_default)
+        add("NoiCapDDMe", _issuer_or_default(values, "Mother"), me_default)
+        # Năm sinh tờ khai lệch thế hệ với con nhưng vẫn giữ vai theo tờ khai → tô vàng riêng ô này.
+        add("NamSinhMeKS", values.get("Mother_BirthDateOrYear"), me_default or "Mother_BirthDateOrYear" in default_names)
+        add("DanTocMeKS", _ethnicity(values.get("Mother_Ethnicity")), me_default or "Mother_Ethnicity" in default_names)
+        add("QuocTichMeKS", _nationality(values.get("Mother_Nationality")), me_default)
+        _add_residence(add, "Me", me_residence, me_default, deceased_no_info)
 
-    # IV. Cha. Cùng nguyên tắc với khối mẹ: không có nhân thân thì bỏ trống cả khối.
-    has_father = bool(values.get("Father_FullName") or values.get("Father_IdNumber"))
-    if has_father:
+    # IV. Cha. LUÔN ghi đè thông tin cha lên form ngay cả khi không có số CCCD, để xóa dữ liệu cũ
+    # mà cổng có thể đã điền sẵn. Chỉ bỏ qua hoàn toàn khi KHÔNG có bất kỳ thông tin Father_* nào.
+    has_father_info = any(key.startswith("Father_") and values.get(key) for key in values)
+    if has_father_info:
         cha_default = "Father_FullName" in default_names
-        cha_id_default = cha_default or "Father_IdNumber" in default_names
-        add("HoTenChaKS", upper_person_name(values.get("Father_FullName")), cha_default)
-        add("SoDinhDanhCha", values.get("Father_IdNumber"), cha_id_default)
-        add("SoGiayToDinhDanhCha", values.get("Father_IdNumber"), cha_id_default)
-        if values.get("Father_IdNumber"):
-            add("LoaiGiayToDinhDanhCha", _id_doc_type(values.get("Father_IdNumber"), _issuer_or_default(values, "Father")), cha_id_default)
-        add("NgayCapDDCha", values.get("Father_IdIssueDate"))
-        add("NoiCapDDCha", _issuer_or_default(values, "Father"), cha_id_default)
-        add("NamSinhChaKS", values.get("Father_BirthDateOrYear"), cha_default)
-        add("DanTocChaKS", _ethnicity(values.get("Father_Ethnicity")), cha_default)
-        clear_missing_parent_fields("Father", "Cha")
-        add("QuocTichChaKS", values.get("Father_Nationality") or "Việt Nam", cha_default)
-        _add_residence(add, "Cha", _resolve_residence(values, "Father", context))
+        cha_residence = _resolve_residence(values, "Father", context)
+        if deceased_no_info and cha_residence and _is_deceased_marker(cha_residence):
+            _clear_deceased_id_doc(clear, "Cha")
+        # Ghi đè họ tên cha, nếu có
+        if values.get("Father_FullName"):
+            add("HoTenChaKS", upper_person_name(values.get("Father_FullName")), cha_default)
+        # Ghi đè số định danh cha (nếu không có thì clear để xóa dữ liệu cũ)
+        father_id = values.get("Father_IdNumber")
+        if father_id:
+            # Số bù riêng từ tờ khai (hồ sơ không có CCCD của người này) cũng tô vàng.
+            id_default = cha_default or "Father_IdNumber" in default_names
+            add("SoDinhDanhCha", father_id, id_default)
+            add("SoGiayToDinhDanhCha", father_id, id_default)
+            add("LoaiGiayToDinhDanhCha", _id_doc_type(father_id, _issuer_or_default(values, "Father")), id_default)
+        else:
+            # Không có số CCCD cha -> clear ô số để xóa dữ liệu cổng điền sẵn; loại giấy tờ bắt buộc chọn.
+            clear("SoDinhDanhCha")
+            clear("SoGiayToDinhDanhCha")
+            # Cụm giấy tờ không số chỉ là nửa tấm thẻ: ngày cấp / nơi cấp cũng xoá, không để sót dữ liệu cũ.
+            clear("NgayCapDDCha")
+            clear("NoiCapDDCha")
+            add("LoaiGiayToDinhDanhCha", _NO_ID_DOC_TYPE, default=True)
+        # Các thông tin khác của cha
+        add("NgayCapDDCha", values.get("Father_IdIssueDate"), cha_default)
+        add("NoiCapDDCha", _issuer_or_default(values, "Father"), cha_default)
+        add("NamSinhChaKS", values.get("Father_BirthDateOrYear"), cha_default or "Father_BirthDateOrYear" in default_names)
+        add("DanTocChaKS", _ethnicity(values.get("Father_Ethnicity")), cha_default or "Father_Ethnicity" in default_names)
+        add("QuocTichChaKS", _nationality(values.get("Father_Nationality")), cha_default)
+        _add_residence(add, "Cha", cha_residence, cha_default, deceased_no_info)
+    elif has_subject:
+        # Hồ sơ đọc được nhưng KHÔNG có thông tin cha: xoá trắng khối cha để không sót dữ liệu cổng
+        # đã điền sẵn. Radio/ô địa chỉ extension không xoá được nên không gửi.
+        for _name in _FATHER_CLEARABLE_FIELDS:
+            clear(_name)
 
-    # Loại khai sinh theo cha/mẹ đã xác định (chỉ dựa vào họ tên/số định danh như khối III, IV).
-    # Thiếu cả hai thì nhiều khả năng là OCR hỏng → giữ mặc định.
+    # Loại khai sinh theo cha/mẹ đã xác định. Chỉ dựa vào tên/số định danh: field lẻ như quốc tịch
+    # không đủ để coi là có người đó. Thiếu cả hai thì nhiều khả năng là OCR hỏng → giữ mặc định.
+    has_father = bool(values.get("Father_FullName") or values.get("Father_IdNumber"))
+    has_mother = bool(values.get("Mother_FullName") or values.get("Mother_IdNumber"))
     birth_type = None
     if has_mother and not has_father:
         birth_type = _BIRTH_TYPE_NO_FATHER
@@ -696,6 +1268,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         for field in out:
             if field["name"] == "nksLoaiKhaiSinh":
                 field["value"] = birth_type
+
     # Chi dien yeu cau ban sao khi to khai co khai bao that.
     if _is_birth_declaration(values.get("CopyRequest_SourceDocumentTitle")):
         copy = _copy_value(values.get("CopyRequest_WantsCopy"))

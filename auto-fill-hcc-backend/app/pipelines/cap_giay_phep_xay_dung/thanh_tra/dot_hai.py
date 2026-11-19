@@ -28,28 +28,35 @@ _BLOCKS = (
 _LAYOUT = ("data[loaiCongTrinh]", "data[chonDoiTuong]", "data[loaiHinhChuDauTu]", "data[toChucCaNhanLapThietKe]")
 
 
-def _ui(values: dict, options: dict) -> list[dict]:
-    fields, _ = mapper.enrich([{"name": name, "value": value} for name, value in values.items()], options)
+def _ui(enrich, values: dict, options: dict) -> list[dict]:
+    fields, _ = enrich([{"name": name, "value": value} for name, value in values.items()], options)
     normalize_ui_dates(fields)
     return [field for field in fields if field.get("occurrence") in (None, 0)]
 
 
-async def patch(documents: list[dict], raw_fields: list[dict], base_fields: list[dict], options: dict) -> dict:
-    """``raw_fields``: field lượt trích trước mapper; ``base_fields``: ô UI lượt đầu đã trả cho extension; ``options``:
-    options đã dùng cho mapper.enrich ở lượt đầu (kèm ``_ocr_text``)."""
+async def patch_with(review, enrich, blocks: tuple, layout: tuple, documents: list[dict], raw_fields: list[dict],
+                     base_fields: list[dict], options: dict) -> dict:
+    """Phần chung của điền đợt 2 các thủ tục giấy phép xây dựng (form Form.io cổng Bộ Xây dựng): ``review`` = thanh tra của
+    thủ tục, ``enrich`` = mapper của thủ tục, ``blocks`` = (thanh tra, ô UI được vá), ``layout`` = ô quyết định bố cục."""
     values = {f["name"]: f.get("value") for f in raw_fields if isinstance(f, dict) and f.get("name")}
     verdict = await review(documents, values, options)
     out = {"fields": [], "rulings": verdict.rulings, "timing": verdict.timing}
-    after = _ui(verdict.values, options)
+    after = _ui(enrich, verdict.values, options)
     then = {f.get("name"): f.get("value") for f in after}
-    unchanged = {f.get("name"): f.get("value") for f in _ui(values, options)}
-    if any(then.get(name) != unchanged.get(name) for name in _LAYOUT):
+    unchanged = {f.get("name"): f.get("value") for f in _ui(enrich, values, options)}
+    if any(then.get(name) != unchanged.get(name) for name in layout):
         return out
     # Chỉ vá ô mà phán quyết thực sự làm đổi: so với chính mapper chạy lại trên lượt trích cũ.
     by: dict[str, str] = {}
-    for inspector, cluster in _BLOCKS:
+    for inspector, cluster in blocks:
         by.update({name: inspector for name in cluster if then.get(name) != unchanged.get(name)})
     base = [field for field in base_fields or [] if isinstance(field, dict) and field.get("occurrence") in (None, 0)]
     # "by" = thanh tra soát cụm chứa ô, để trang xem lại nối ô đã sửa với biên bản của thanh tra đó.
     out["fields"] = [{**field, "by": by[field["name"]]} for field in ban_va.diff(base, after, by)]
     return out
+
+
+async def patch(documents: list[dict], raw_fields: list[dict], base_fields: list[dict], options: dict) -> dict:
+    """``raw_fields``: field lượt trích trước mapper; ``base_fields``: ô UI lượt đầu đã trả cho extension; ``options``:
+    options đã dùng cho mapper.enrich ở lượt đầu (kèm ``_ocr_text``)."""
+    return await patch_with(review, mapper.enrich, _BLOCKS, _LAYOUT, documents, raw_fields, base_fields, options)

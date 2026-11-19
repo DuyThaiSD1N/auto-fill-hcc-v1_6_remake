@@ -277,13 +277,14 @@ def _ten_van_bang(loai: Any) -> str | None:
 
 def _co_quan_cap(values: dict) -> str | None:
     """Ô 'Do … cấp' khi Phiếu không có dòng này (đơn tự viết) — văn bằng THPT do Sở GD&ĐT cấp, cũng là nơi
-    giữ sổ gốc = cơ quan ở dòng 'Kính gửi'. Kính gửi không phải Sở GD → 'Sở Giáo dục và Đào tạo <tỉnh trường>'."""
+    giữ sổ gốc = cơ quan ở dòng 'Kính gửi'. Kính gửi không phải Sở GD → 'Sở Giáo dục và Đào tạo <tỉnh trường>'.
+    Không rõ tỉnh → bỏ trống: cơ quan cấp có thể là Sở của tỉnh nào hoặc Phòng GD&ĐT (THCS), cán bộ tự nhập."""
     kinh_gui = _text(values.get("Phieu_KinhGui"))
     if kinh_gui and "giao duc" in _fold(kinh_gui):
         return kinh_gui
     truong_dc = values.get("VanBang_TruongDiaChi")
     tinh = _strip_admin_prefix(truong_dc.get("tinh") or "") if isinstance(truong_dc, dict) else ""
-    return f"Sở Giáo dục và Đào tạo {tinh}".strip()
+    return f"Sở Giáo dục và Đào tạo {tinh}" if tinh else None
 
 
 _NAM_TOT_NGHIEP = re.compile(r"tốt\s+nghiệp\D{0,20}?\b((?:19|20)\d{2})\b", re.IGNORECASE)
@@ -625,6 +626,13 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
     theo_to_khai = (str((options or {}).get("submitterMode") or "") == "owner_as_submitter"
                     and not is_org and bool(chu_name or chu_id))
     if account_is_owner and not theo_to_khai:
+        # Tích thì cổng chép Phần I xuống khối chủ hồ sơ mà VNeID chỉ đổ sẵn họ tên / số / ngày sinh → ghi nốt địa
+        # chỉ, điện thoại vào Phần I trước khi tích, không thì khối chủ hồ sơ trống các ô đó.
+        add("data[province]", chu_tinh)
+        add("data[district]", chu_xa, default=chu_xa_guess)
+        add("data[address]", chu_diachi)
+        add("data[phoneNumber]", chu_phone)
+        add("data[email]", chu["email"] if chu_cccd_valid else None)
         check("data[isOwnerDossier]", True)
     elif proxy:
         add("data[fullname]", proxy["name"].upper())
@@ -719,7 +727,8 @@ def enrich(fields: list[dict], options: dict | None = None, ocr_text: str = "") 
     add("data[Duoccap]", _text(values.get("Phieu_TenVanBang")) or _ten_van_bang(values.get("VanBang_LoaiTotNghiep")))
     add("data[do]", _text(values.get("Phieu_CoQuanCapVanBang")) or _co_quan_cap(values))
     add("data[Sohieu]", _text(values.get("Phieu_SoHieu")))
-    add("data[requestQty]", _identity(values.get("Phieu_SoLuongBanSao")) or "1")
+    qty = _identity(values.get("Phieu_SoLuongBanSao"))
+    add("data[requestQty]", qty or "1", default=not qty)
     check("data[sogoc]", True)                             # thủ tục = cấp BẢN SAO TỪ SỔ GỐC
     add("data[lydo]", _text(values.get("Phieu_LyDo")))
     add("data[thongtinkhac]", _text(values.get("Phieu_ThongTinKhac")) or _thong_tin_khac(values, ocr_text))

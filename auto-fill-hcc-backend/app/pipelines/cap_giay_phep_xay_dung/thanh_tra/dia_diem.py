@@ -28,8 +28,9 @@ UNITS = (_LO_DAT,)
 RULES = """
 <nguon>
 - Thửa đất số, tờ bản đồ số, diện tích lô đất: đơn (mục "Địa điểm xây dựng") và GIẤY CHỨNG NHẬN QUYỀN SỬ DỤNG ĐẤT
-  (giấy in do cơ quan cấp) của CÙNG thửa. Đơn viết tay hay đọc lệch một chữ số: số trên giấy chứng nhận là căn cứ khi hai
-  bên chỉ lệch vài chữ số. Giấy chứng nhận ghi thửa KHÁC hẳn (đã tách / hợp thửa) thì theo đơn.
+  (giấy in do cơ quan cấp) của CÙNG thửa; hồ sơ điều chỉnh / gia hạn còn có giấy phép xây dựng đã cấp (mục vị trí xây
+  dựng). Đơn viết tay hay đọc lệch một chữ số: số trên giấy in là căn cứ khi hai bên chỉ lệch vài chữ số. Giấy in ghi
+  thửa KHÁC hẳn (đã tách / hợp thửa) thì theo đơn.
 - Số nhà, đường / phố: theo đơn (nơi xây dựng hiện nay). Ô đường / phố chỉ có tên đường / phố (không có thì tổ / thôn /
   khu phố); không kèm số nhà, số thửa / tờ bản đồ, chấm điền của mẫu đơn. Tên đường đơn viết tay đọc lệch vài chữ mà giấy
   chứng nhận in đúng tên đó → theo giấy chứng nhận.
@@ -109,6 +110,6 @@ async def find(inspector: Inspector, case: Case, title: str):
     return [finding for finding in findings if finding.unit is not _DUONG or _site_line(finding.quote, case)]
 
 
-_ACCEPTED = (chung.DON, chung.GCN)
+_ACCEPTED = (chung.DON, chung.GCN, chung.GPXD)
 INSPECTOR = Inspector("dia_diem", "ĐỊA ĐIỂM XÂY DỰNG (thửa đất, tờ bản đồ, diện tích lô, số nhà, đường / phố)", UNITS,
                       RULES, check, signals=signals, owners=chung.OWNERS, accepted=_ACCEPTED, find=find)

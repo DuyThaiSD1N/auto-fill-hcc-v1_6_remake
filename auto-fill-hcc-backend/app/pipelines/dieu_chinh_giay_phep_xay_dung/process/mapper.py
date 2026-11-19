@@ -13,6 +13,7 @@ from typing import Any
 from app.pipelines._shared.area_remap import remap_area
 from app.pipelines._shared.compact_agent.issuer import normalize_issuer
 from app.pipelines._shared.formatting import normalize_date
+from app.pipelines.cap_giay_phep_xay_dung.process.mapper import _months
 from app.pipelines.dieu_chinh_giay_phep_xay_dung.process.schema import UI_COMP_BY_NAME
 
 # Ô nhân thân người nộp mà extension chịu trách nhiệm điền; thiếu dữ liệu → phát "dom-expect" (FE tô đỏ).
@@ -239,6 +240,19 @@ def _identity(value: Any) -> str | None:
     return digits or None
 
 
+def _first_identity(value: Any) -> str | None:
+    """Ô số định danh chủ hộ chỉ nhận MỘT số: đơn hai vợ chồng ghi hai số ('0xx - 0yy', '0xx và 0yy') → số đứng đầu, không
+    nối liền hai số thành một dãy."""
+    text = _text(value)
+    if not text:
+        return None
+    for part in re.split(r"\s+-\s+|[;,/]|\s+và\s+", text):
+        digits = re.sub(r"\D+", "", part)
+        if len(digits) >= 9:
+            return digits[:12] if len(digits) > 12 and len(digits) % 12 == 0 else digits
+    return _identity(text)
+
+
 def _ma_so_doanh_nghiep(value: Any) -> str | None:
     """Chỉ nhận mã số DN hợp lệ: 10 chữ số hoặc 10 số-3 số; loại mã chứng chỉ năng lực (form validate)."""
     text = _text(value)
@@ -330,12 +344,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
 
     # NGƯỜI NỘP (khối thông tin chung) vs CHỦ HỘ/CHỦ ĐẦU TƯ (đứng tên công trình).
     submitter_name = _text(_pick(values.get("Applicant_HoTen"), values.get("ChuHo_HoTen")))
-    submitter_identity = _identity(_pick(values.get("Applicant_SoDinhDanh"), values.get("ChuHo_SoDinhDanh")))
+    submitter_identity = _first_identity(_pick(values.get("Applicant_SoDinhDanh"), values.get("ChuHo_SoDinhDanh")))
     submitter_phone = _phone(_pick(values.get("Applicant_DienThoai"), values.get("ChuHo_DienThoai")))
     submitter_residence = _area(_pick(values.get("Applicant_NoiCuTru"), values.get("Dat_DiaDiemXayDung")))
 
     owner_name = _text(_pick(values.get("ChuHo_HoTen"), values.get("Applicant_HoTen")))
-    owner_identity = _identity(_pick(values.get("ChuHo_SoDinhDanh"), values.get("Applicant_SoDinhDanh")))
+    owner_identity = _first_identity(_pick(values.get("ChuHo_SoDinhDanh"), values.get("Applicant_SoDinhDanh")))
     owner_phone = _phone(_pick(values.get("ChuHo_DienThoai"), values.get("Applicant_DienThoai")))
 
     # Người nộp là tổ chức CHỈ khi chủ đầu tư cũng là tổ chức (không phải chủ hộ cá nhân). Chặn bẫy: đơn
@@ -425,7 +439,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     add("data[tenCongTrinh]", _text(values.get("CongTrinh_Ten")))
     add("data[maSoThongTinCongTrinh]", _text(values.get("CongTrinh_MaSoThongTin")))
     add("data[noiDungDeNghiDieuChinh]", _multiline_text(values.get("DieuChinh_NoiDung")))
-    add("data[thoiGianDuKienHoanThanh]", _text(values.get("CongTrinh_ThoiGianDuKienHoanThanh")))
+    # Ô chỉ nhận số (tháng): đẩy nguyên chữ "03 tháng" thì cổng chỉ giữ lại "0".
+    add("data[thoiGianDuKienHoanThanh]", _months(values.get("CongTrinh_ThoiGianDuKienHoanThanh")))
     gpxd_so = _text(values.get("GPXD_So"))
     if gpxd_so:
         # Ghi chú hồ sơ (tự nhập) tham chiếu GPXD đang xin điều chỉnh — mặc định vàng để cán bộ soát.

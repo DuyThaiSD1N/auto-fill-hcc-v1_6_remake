@@ -54,6 +54,8 @@ Một file có thể chứa nhiều giấy tờ; một giấy tờ cũng có th�
    "CỤC TRƯỞNG CỤC CẢNH SÁT", MRZ "IDVNM..." mà không có tiêu đề Căn cước công dân.
 5. Với giấy tờ cá nhân, điền subjectName là họ tên chủ thể và identityNumber là số định danh nếu đọc được.
    Không lấy tên cán bộ ký, cha/mẹ/vợ/chồng làm subjectName của giấy tờ.
+   Họ tên (trong subjectName và documentName) chép NGUYÊN VĂN từng chữ và dấu như OCR_TEXT, chỉ đổi chữ IN HOA
+   thành viết hoa chữ đầu. KHÔNG đổi dấu hay chữ sang tên "quen" hơn — tên riêng không có đúng sai chính tả.
 6. logicalKey mô tả một giấy tờ logic. Các phần của CÙNG giấy tờ phải có cùng logicalKey; hai giấy tờ
    độc lập dù cùng loại phải có logicalKey khác nhau. Khóa nên gồm loại + chủ thể + số hiệu/năm nếu có.
 7. Học bạ nhiều phần/trang của cùng học sinh dùng cùng logicalKey. CCCD khác số định danh hoặc khác chủ thể

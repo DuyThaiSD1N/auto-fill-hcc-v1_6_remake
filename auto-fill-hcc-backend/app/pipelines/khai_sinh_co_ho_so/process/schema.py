@@ -1,6 +1,6 @@
 """Compact role-fact schema cho "Đăng ký khai sinh cho người đã có hồ sơ, giấy tờ cá nhân" (1.004772).
 
-Cùng họ biểu mẫu với đăng ký lại khai sinh (eForm "Tờ khai đăng ký khai sinh" của Bộ Tư pháp), nhưng
+Cùng họ biểu mẫu với đăng ký khai sinh (eForm "Tờ khai đăng ký khai sinh" của Bộ Tư pháp), nhưng
 người được khai sinh CHƯA TỪNG được đăng ký khai sinh → KHÔNG có khối "đăng ký khai sinh trước đây".
 Nguồn dữ liệu thay thế là HỒ SƠ, GIẤY TỜ CÁ NHÂN đã có: CCCD/CMND, thẻ BHYT, giấy tờ cư trú, học bạ,
 bằng tốt nghiệp, chứng chỉ, giấy chứng nhận kết hôn, trích lục khai tử của cha/mẹ, giấy đề nghị xác
@@ -44,6 +44,20 @@ FIELDS: list[dict] = [
     {"name": "AccountCard_ResidenceDomestic",
      "desc": '"Nơi thường trú" in trên chính tấm thẻ AccountCard_IdNumber, object {quocGia,tinh,xa,chiTietDuoiXa}.'},
 
+    # Người được ủy quyền — CHỈ khi hồ sơ có GIẤY ỦY QUYỀN / văn bản ủy quyền. Người đi nộp là bên
+    # được ủy quyền nên mapper ƯU TIÊN người này cho khối "Thông tin người yêu cầu" (tick "Khác").
+    {"name": "Authorized_SourceDocumentTitle",
+     "desc": 'Tiêu đề NGUYÊN VĂN của giấy ủy quyền đã dùng để điền Authorized_* (vd "GIẤY ỦY QUYỀN"). '
+             "Không có giấy ủy quyền thì bỏ toàn bộ Authorized_*."},
+    {"name": "Authorized_FullName",
+     "desc": 'Họ tên BÊN ĐƯỢC ỦY QUYỀN trên giấy ủy quyền (mục "Bên được ủy quyền"/"Người được ủy quyền"). '
+             "KHÔNG lấy bên ủy quyền, KHÔNG lấy tên ở chữ ký nếu mục đó đã ghi họ tên."},
+    {"name": "Authorized_IdNumber", "desc": "Số CCCD/CMND/định danh của bên được ủy quyền ghi trên giấy ủy quyền (hoặc CCCD của chính người đó)."},
+    {"name": "Authorized_IdIssueDate", "desc": "Ngày cấp giấy tờ tùy thân của bên được ủy quyền, dd/mm/yyyy — chỉ trả khi giấy ủy quyền hoặc CCCD của chính người đó ghi rõ."},
+    {"name": "Authorized_IdIssuePlace", "desc": "Nơi cấp giấy tờ tùy thân của bên được ủy quyền — chỉ trả khi giấy ủy quyền hoặc CCCD của chính người đó ghi rõ."},
+    {"name": "Authorized_ResidenceDomestic",
+     "desc": "Nơi thường trú/cư trú của bên được ủy quyền ghi trên giấy ủy quyền, object {quocGia,tinh,xa,chiTietDuoiXa}."},
+
     # Người được đăng ký khai sinh — thường là NGƯỜI LỚN đã có CCCD/học bạ/bằng cấp.
     {"name": "Subject_FullName", "desc": "Họ tên đầy đủ của người được đăng ký khai sinh."},
     {"name": "Subject_BirthDate",
@@ -61,7 +75,8 @@ FIELDS: list[dict] = [
     {"name": "Subject_BirthPlaceDomestic",
      "desc": "Nơi sinh trong nước của người được đăng ký khai sinh, object {quocGia,tinh,xa,chiTietDuoiXa}. "
              "Ưu tiên NƠI SINH ghi trên TỜ KHAI; nếu tờ khai không ghi thì lấy nơi sinh trên hồ sơ, giấy tờ "
-             "cá nhân (học bạ, hồ sơ học tập, giấy đề nghị xác nhận); vẫn không có thì lấy theo NƠI THƯỜNG TRÚ "
+             "cá nhân (học bạ, hồ sơ học tập, giấy đề nghị xác nhận); không có thì lấy dòng \"Nơi đăng ký khai sinh / "
+             "Place of birth\" in trên thẻ căn cước của chính người đó; vẫn không có thì lấy theo NƠI THƯỜNG TRÚ "
              "trên CCCD của chính người đó. KHÔNG dùng quê quán làm nơi sinh."},
     {"name": "Subject_HometownDomestic",
      "desc": "Quê quán trong nước của người được đăng ký khai sinh, object {quocGia,tinh,xa,chiTietDuoiXa}. "
@@ -71,6 +86,11 @@ FIELDS: list[dict] = [
     {"name": "Subject_IdNumber",
      "desc": "Số định danh/CCCD/CMND CỦA CHÍNH người được đăng ký khai sinh. CHỈ trả khi hồ sơ có "
              "CCCD/CMND của chính người đó; KHÔNG lấy số của cha/mẹ, KHÔNG lấy số trên thẻ BHYT của người khác."},
+    {"name": "Subject_BirthDateFromId",
+     "desc": "Ngày sinh IN TRÊN CCCD/CMND CỦA CHÍNH người được đăng ký khai sinh, dd/mm/yyyy. CHỈ trả khi "
+             "hồ sơ có CCCD/CMND của chính người đó, và đọc thẳng từ THẺ — KHÔNG chép lại từ tờ khai. Trả kể "
+             "cả khi trùng Subject_BirthDate: đây là nguồn ưu tiên của ô ngày sinh mục II vì thẻ in sẵn, còn "
+             "tờ khai là chữ viết tay. KHÔNG lấy ngày sinh trên thẻ của cha/mẹ/người nộp hộ."},
     {"name": "Subject_IdIssueDate", "desc": "Ngày cấp CCCD/CMND của chính người được đăng ký khai sinh, dd/mm/yyyy."},
     {"name": "Subject_IdIssuePlace",
      "desc": "Nơi cấp CCCD/CMND của chính người được đăng ký khai sinh — lấy từ mặt sau CCCD; RIÊNG "
@@ -91,9 +111,9 @@ FIELDS: list[dict] = [
     {"name": "Father_IdIssuePlace", "desc": "Nơi cấp giấy tờ định danh của cha — lấy từ mặt sau CCCD; RIÊNG Giấy CMND (~9 số) lấy 'Công an tỉnh/thành phố ...' ghi cùng dòng số CMND (KHÔNG suy 'Cục Cảnh sát...'/'Bộ Công an')."},
     {"name": "Father_BirthDateOrYear",
      "desc": "Ngày sinh cha. Nếu cha có CCCD thì lấy NGÀY đầy đủ dd/mm/yyyy từ CCCD; "
-             "chỉ trả năm (yyyy) khi cha KHÔNG có CCCD và tài liệu chỉ ghi năm (tờ khai thủ tục này "
-             "thường chỉ ghi NĂM SINH của cha/mẹ). Nếu cha đã mất, lấy năm sinh từ TRÍCH LỤC KHAI TỬ "
-             "của cha (dòng 'Ngày, tháng, năm sinh')."},
+             "chỉ trả năm (yyyy) khi cha KHÔNG có CCCD và tài liệu chỉ ghi năm. "
+             "Nếu cha đã mất, lấy từ TRÍCH LỤC KHAI TỬ của cha (dòng 'Ngày, tháng, năm sinh'): trích lục ghi đủ "
+             "ngày thì trả NGÀY đầy đủ dd/mm/yyyy, kể cả khi tờ khai chỉ ghi năm."},
     {"name": "Father_Ethnicity",
      "desc": "Dân tộc cha nếu tài liệu ghi rõ (tờ khai, giấy đề nghị xác nhận); nếu cha đã mất thì lấy từ "
              "dòng 'Dân tộc' trên TRÍCH LỤC KHAI TỬ của cha."},
@@ -124,7 +144,8 @@ FIELDS: list[dict] = [
     {"name": "Mother_BirthDateOrYear",
      "desc": "Ngày sinh mẹ. Nếu mẹ có CCCD thì lấy NGÀY đầy đủ dd/mm/yyyy từ CCCD; "
              "chỉ trả năm (yyyy) khi mẹ KHÔNG có CCCD và tài liệu chỉ ghi năm. "
-             "Nếu mẹ đã mất, lấy năm sinh từ TRÍCH LỤC KHAI TỬ của mẹ (dòng 'Ngày, tháng, năm sinh')."},
+             "Nếu mẹ đã mất, lấy từ TRÍCH LỤC KHAI TỬ của mẹ (dòng 'Ngày, tháng, năm sinh'): trích lục ghi đủ "
+             "ngày thì trả NGÀY đầy đủ dd/mm/yyyy, kể cả khi tờ khai chỉ ghi năm."},
     {"name": "Mother_Ethnicity",
      "desc": "Dân tộc mẹ nếu tài liệu ghi rõ (tờ khai, giấy đề nghị xác nhận); nếu mẹ đã mất thì lấy từ "
              "dòng 'Dân tộc' trên TRÍCH LỤC KHAI TỬ của mẹ."},
@@ -163,7 +184,9 @@ COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
 for _name in (
     "Requester_IdIssueDate",
     "AccountCard_IdIssueDate",
+    "Authorized_IdIssueDate",
     "Subject_BirthDate",
+    "Subject_BirthDateFromId",
     "Subject_IdIssueDate",
     "Father_IdIssueDate",
     "Mother_IdIssueDate",
@@ -172,6 +195,7 @@ for _name in (
 for _name in (
     "Requester_ResidenceDomestic",
     "AccountCard_ResidenceDomestic",
+    "Authorized_ResidenceDomestic",
     "Subject_BirthPlaceDomestic",
     "Subject_ResidenceDomestic",
     "Subject_HometownDomestic",
