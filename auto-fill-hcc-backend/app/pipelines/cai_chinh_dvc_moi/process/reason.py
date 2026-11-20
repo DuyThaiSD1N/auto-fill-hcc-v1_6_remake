@@ -86,6 +86,9 @@ THÔNG TIN CẦN SỬA — CHỈ khi KHÔNG có tờ khai mà có BẢN CAM ĐOA
 cần sửa> của tôi thì <thông tin> là A, nhưng trong <giấy tờ khác: căn cước, giấy khai sinh / chứng tử của người
 đó...> là B". Mỗi thông tin một dòng: ĐANG GHI = A (giá trị trên giấy cần sửa), ĐÚNG THEO = B. Giấy cần sửa có
 trong hồ sơ thì soát: A phải đúng là giá trị in trên giấy đó. Thông tin hai bên ghi GIỐNG nhau thì không liệt kê.
+Họ tên ở A / B chép đúng chữ IN trên giấy tương ứng (A theo giấy cần sửa, B theo giấy nêu ở "đúng theo") khi giấy đó
+có trong hồ sơ — chữ viết tay / bản cam đoan hay bị OCR đọc lệch dấu hoặc vài chữ cái. So cả dấu thanh: hai cách viết
+chỉ khác dấu là hai tên khác nhau, chọn đúng cách IN.
 
 QUY TẮC GIỮ ĐÚNG NGƯỜI:
 - Dòng "Giấy tờ tùy thân" trên GIẤY KHAI SINH là của người đi khai sinh, không phải của con.

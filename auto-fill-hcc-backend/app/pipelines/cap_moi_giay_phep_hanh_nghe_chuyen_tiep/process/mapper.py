@@ -266,8 +266,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("data[fullname]", name, unlock)
         if birthday or not unlock:
             add("data[birthday]", birthday)
+            # Tích "Người nộp là chủ hồ sơ" cổng chép họ tên/CCCD sang Phần II nhưng KHÔNG chép ngày sinh (Phần II
+            # giữ ngày sinh tài khoản VNeID) → điền tường minh.
+            add("data[ownerBirthday]", birthday)
         else:
             clear("data[birthday]")
+            clear("data[ownerBirthday]")
         add("data[gender]", gender)
         add("data[identityNumber]", identity, unlock)
         add("data[identityDate]", id_date)

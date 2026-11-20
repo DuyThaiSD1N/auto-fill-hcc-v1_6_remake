@@ -6,7 +6,7 @@ Bảng chỉ có HAI dòng (cùng ô "Chọn/Bỏ chọn tất cả" — không 
   2. Tờ khai nhận chăm sóc, nuôi dưỡng, đề nghị hỗ trợ kinh phí nhận chăm sóc, nuôi dưỡng (Mẫu số 02)
 Mỗi dòng: mat-checkbox + rdo_File + ô upload multiple. Thủ tục không có ô riêng cho CCCD, Giấy xác nhận khuyết
 tật... → các giấy tờ này đính CHUNG vào dòng tờ khai chính (Mẫu 01; hồ sơ chỉ có Mẫu 02 thì dòng Mẫu 02), xếp
-sau tờ khai: Tờ khai → căn cước → cư trú → khai sinh → khuyết tật → giấy tờ khác. Dòng Mẫu 02 chỉ tick khi hồ
+sau tờ khai: Tờ khai → căn cước → cư trú → khai sinh → khuyết tật → ủy quyền chi trả → giấy tờ khác. Dòng Mẫu 02 chỉ tick khi hồ
 sơ có Tờ khai Mẫu 02.
 
 Phân loại **LLM-primary**: LLM đọc OCR mọi file; rule keyword chỉ DỰ PHÒNG khi LLM trả other/không hợp lệ.
@@ -31,6 +31,7 @@ _CAN_CUOC = "can_cuoc"
 _CU_TRU = "cu_tru"
 _KHAI_SINH = "khai_sinh"
 _KHUYET_TAT = "khuyet_tat"
+_UY_QUYEN_CHI_TRA = "uy_quyen_chi_tra"
 _OTHER = "other"
 
 # componentName = đoạn text đặc trưng của dòng (FE khớp substring đã fold dấu vào tên dòng lấy từ DOM).
@@ -45,8 +46,9 @@ _DOC_NAMES: dict[str, str] = {
     _CU_TRU: "Giấy xác nhận thông tin về cư trú",
     _KHAI_SINH: "Giấy khai sinh",
     _KHUYET_TAT: "Giấy xác nhận khuyết tật",
+    _UY_QUYEN_CHI_TRA: "Giấy đề nghị ủy quyền chi trả an sinh xã hội",
 }
-_ORDER = [_TK_01, _TK_02, _CAN_CUOC, _CU_TRU, _KHAI_SINH, _KHUYET_TAT, _OTHER]
+_ORDER = [_TK_01, _TK_02, _CAN_CUOC, _CU_TRU, _KHAI_SINH, _KHUYET_TAT, _UY_QUYEN_CHI_TRA, _OTHER]
 _ALLOWED_DOC_TYPES = set(_ORDER)
 
 
@@ -81,6 +83,8 @@ def _normalize_doc_type(value: str) -> str:
     text = _fold(value or "").replace("_", " ")
     if not text or text == "other":
         return _OTHER
+    if "uy quyen" in text:
+        return _UY_QUYEN_CHI_TRA
     if "02" in text or "nhan cham soc" in text:
         return _TK_02
     if "01" in text or "to khai" in text:

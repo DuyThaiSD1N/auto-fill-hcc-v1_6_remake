@@ -245,3 +245,38 @@ def test_gcn_duoc_tach_loi_quay_ve_dinh_nguyen_tep(monkeypatch):
     assert "sourceSegments" not in res["attachments"][0]
     assert any("(tách)" in e for e in res["errors"])
     assert calls == ["tach", "khong_tach"]
+
+
+def test_gphn_dieu_chinh_che_do_tach_moi_giay_mot_tep():
+    from app.pipelines.dieu_chinh_giay_phep_hanh_nghe_chuyen_tiep.attach import planner as dc
+
+    files = [{"name": "ho_so_gop.pdf", "type": "application/pdf"}]
+    rows = [("don_de_nghi", True, "Đơn đề nghị"), ("don_de_nghi", False, None), ("gphn", True, "Chứng chỉ hành nghề"),
+            ("chung_chi_dao_tao", True, "Chứng chỉ đào tạo liên tục"), ("chung_chi_dao_tao", True, None),
+            ("other", False, None), ("cccd", True, None)]
+    pages = ["a", "b", "c", "d", "e", "", "f"]
+    docs = dc._parse_docs([{"trang": n + 1, "docType": t, "giayMoi": new, "tenGiay": name}
+                           for n, (t, new, name) in enumerate(rows)], len(pages))
+    items, warnings, classified = dc.build_plan_items(files, {}, {0: docs}, pages and {0: pages})
+
+    got = [(i["componentIndex"], i["documentName"], i["sourceSegments"][0]["pageIndexes"]) for i in items]
+    assert got == [
+        (1, "Đơn đề nghị", [0, 1]),
+        (1, "Bản sao Căn cước công dân", [6]),
+        (3, "Chứng chỉ hành nghề", [2]),
+        (4, "Chứng chỉ đào tạo liên tục", [3]),
+        (4, "Bản sao chứng chỉ đào tạo", [4, 5]),
+    ], "hai chứng chỉ đào tạo là hai tệp; trang trắng other nối vào giấy liền trước; CCCD về dòng Đơn"
+    assert classified[0]["source"] == "llm-pages"
+    assert len(warnings) == 1
+
+
+def test_khuyet_tat_bien_ban_gdyk_moi_vao_dong_giay_to_lien_quan():
+    """Dòng 2 "kết luận Hội đồng GĐYK" chỉ dành cho kết luận trước 01/6/2012: prompt phân theo ngày, luật dự phòng
+    (không đọc được ngày) xếp về dòng 1."""
+    from app.pipelines.khuyet_tat.attach import planner as kt
+
+    text = "HỘI ĐỒNG GIÁM ĐỊNH Y KHOA BIÊN BẢN GIÁM ĐỊNH Y KHOA khả năng tự phục vụ"
+    items, _, _ = kt.build_plan_items([{"name": "gdyk.pdf"}], [{"name": "gdyk.pdf", "text": text}], {})
+    assert items[0]["slotIndex"] == 0
+    assert "01/6/2012" in kt.prompt.SYSTEM_PROMPT

@@ -52,3 +52,15 @@ def test_moi_dong_con_deu_co_la_doc_lech_con_nhieu_nhom_co_that_thi_giu():
     nang = {**{r: "co" for r in children if r[0] in "456"}, "1.5": "khong"}
     assert not D.is_degenerate(nang)
     assert "kt4" in D.to_fields(nang)["KhuyetTat_DanhMuc"]
+
+
+def test_stt_dinh_dau_nhay_ocr_van_doc_duoc_dong_nhom():
+    """OCR đọc STT dòng nhóm thành "6’" — trước đây cả dòng bị bỏ, nhóm duy nhất "Có" mất nên không tích ô nào."""
+    from app.pipelines.khuyet_tat.process import dang_khuyet_tat as dkt
+
+    ocr = ("| 5’ | Khuyết tật trí tuệ | | X |\n| 6’ | Khuyết tật khác | X | |\n"
+           "| 6.1 | Có kết luận của cơ sở y tế | | |")
+    rows = dkt.rows_from({"dong": [{"so": "5’", "dong_ocr": ""}, {"so": "6", "dong_ocr": ""},
+                                   {"so": "6.1", "dong_ocr": ""}]}, ocr)
+    assert rows == {"5": "khong", "6": "co", "6.1": "trong"}
+    assert dkt.to_fields(rows)["KhuyetTat_DanhMuc"] == ["kt6"]

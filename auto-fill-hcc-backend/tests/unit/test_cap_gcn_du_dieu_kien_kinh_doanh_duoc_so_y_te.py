@@ -240,7 +240,13 @@ def test_tat_tach_thi_dinh_nguyen_tep(monkeypatch):
 
     async def fake_chat(messages, **_):
         calls.append(messages)
-        return '{"documents":[{"fileIndex":4,"docTypes":["cchn_duoc"],"documentName":"Chứng chỉ"}]}'
+        return json.dumps({"documents": [
+            {"fileIndex": 0, "docTypes": ["don_de_nghi"]},
+            {"fileIndex": 1, "docTypes": ["danh_muc_ho_so", "tai_lieu_ky_thuat"]},
+            {"fileIndex": 2, "docTypes": ["giay_to_phap_ly"]},
+            {"fileIndex": 3, "docTypes": ["thuyet_minh_an_ninh"]},
+            {"fileIndex": 4, "docTypes": ["cchn_duoc"], "documentName": "Chứng chỉ"},
+        ]}, ensure_ascii=False)
 
     texts = [_PAGES[2], _PAGES[0] + "\n" + _PAGES[6], _PAGES[4], _PAGES[8], "Văn bản scan mờ không có tiêu đề"]
     _patch(monkeypatch, texts, fake_chat)
@@ -252,13 +258,27 @@ def test_tat_tach_thi_dinh_nguyen_tep(monkeypatch):
                        (3, "dkkd.pdf", "Đăng ký KD"), (4, "mau11.pdf", "Tài liệu thuyết minh"),
                        (5, "cchn.pdf", "Chứng chỉ dược")]
         assert all("sourceSegments" not in i and "sourceFileIndexes" not in i for i in res["attachments"])
-    # Chỉ tệp không có tiêu đề mới hỏi LLM.
-    assert all('"fileIndex": 4' in c[1]["content"] and '"fileIndex": 0' not in c[1]["content"] for c in calls)
+    # Mọi tệp có chữ đều qua LLM.
+    assert all(f'"fileIndex": {i}' in c[1]["content"] for c in calls for i in range(5))
+
+
+def test_tat_tach_llm_quyet_loai_khong_de_boi_cum_tieu_de_trong_bang(monkeypatch):
+    # Tài liệu kỹ thuật có bản kê nhân sự với cột "Chứng chỉ hành nghề dược đã cấp" ở đầu trang.
+    ky_thuat = ("DANH MỤC Các quy định, hồ sơ, tài liệu Quy chế chuyên môn\n───── Trang 2/2 ─────\n"
+                "BẢN KÊ KHAI Danh sách nhân sự | STT | Họ tên | Chứng chỉ hành nghề dược đã cấp |")
+
+    async def fake_chat(messages, **_):
+        return '{"documents":[{"fileIndex":0,"docTypes":["tai_lieu_ky_thuat"]},{"fileIndex":1,"docTypes":["cchn_duoc"]}]}'
+
+    _patch(monkeypatch, ["───── Trang 1/2 ─────\n" + ky_thuat, _PAGES[9]], fake_chat)
+    res = asyncio.run(attach.plan(_files("danhmuc.pdf", "cchn.pdf"), {}))
+    assert [(i["componentIndex"], i["fileName"]) for i in res["attachments"]] == [(2, "danhmuc.pdf"), (5, "cchn.pdf")]
+    assert not any("(dòng 2)" in e for e in res["errors"])
 
 
 def test_tat_tach_tep_gop_dinh_vao_moi_dong_no_chua(monkeypatch):
     async def fake_chat(*_a, **_k):
-        raise AssertionError("tiêu đề đã nhận đủ, không hỏi LLM")
+        raise RuntimeError("llm hỏng")  # LLM lỗi → tiêu đề trang dự phòng
 
     _patch(monkeypatch, [_OCR], fake_chat)
     res = asyncio.run(attach.plan(_files("hoso.pdf"), {}))

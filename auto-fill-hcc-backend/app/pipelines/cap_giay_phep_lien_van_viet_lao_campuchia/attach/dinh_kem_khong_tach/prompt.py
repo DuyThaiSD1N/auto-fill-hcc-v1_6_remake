@@ -13,6 +13,6 @@ __all__ = ["SYSTEM_PROMPT", "build_user_prompt"]
 SYSTEM_PROMPT = build_system_prompt(
     "Cấp, cấp lại Giấy phép liên vận giữa Việt Nam, Lào và Campuchia",
     split_prompt.SYSTEM_PROMPT,
-    '{"documents":[{"index":0,"docTypes":["giay_de_nghi","dang_ky_xe"]},'
+    '{"documents":[{"index":0,"docTypes":["giay_de_nghi_phi_thuong_mai","dang_ky_xe"]},'
     '{"index":1,"docTypes":["hop_dong_du_an"]},{"index":2,"docTypes":["cccd"]}]}',
 )

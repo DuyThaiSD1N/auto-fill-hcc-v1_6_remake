@@ -27,15 +27,15 @@ Nhiệm vụ là đọc OCR_TEXT của từng file và xếp vào đúng một l
 </allowed_types>
 
 <type_definitions>
-- disability_related_docs: bản sao giấy tờ liên quan đến khuyết tật như bệnh án, tóm tắt bệnh án, giấy ra viện, phiếu khám, giấy tờ khám/điều trị/phẫu thuật hoặc giấy tờ y tế liên quan khác.
-- medical_assessment_conclusion: bản sao kết luận của Hội đồng Giám định y khoa hoặc kết luận của cơ sở y tế về khả năng tự phục vụ, tình trạng bệnh, mức độ suy giảm khả năng lao động, mức độ khuyết tật.
+- disability_related_docs: bản sao giấy tờ liên quan đến khuyết tật như bệnh án, tóm tắt bệnh án, giấy ra viện, phiếu khám, giấy tờ khám/điều trị/phẫu thuật, Giấy xác nhận khuyết tật cũ hoặc giấy tờ y tế liên quan khác — KỂ CẢ biên bản / kết luận giám định y khoa, kết luận của cơ sở y tế ghi ngày TỪ 01/6/2012 trở về sau hoặc không đọc được ngày.
+- medical_assessment_conclusion: CHỈ bản sao kết luận / biên bản của Hội đồng Giám định y khoa về khả năng tự phục vụ, mức độ suy giảm khả năng lao động mà ngày kết luận (ngày họp / ngày ký) TRƯỚC 01/6/2012 — dòng này trên cổng dành riêng cho người đã có kết luận giám định trước ngày đó.
 - disability_application_form: Đơn đề nghị theo Mẫu số 01 ban hành kèm Thông tư số 01/2019/TT-BLĐTBXH, được sửa đổi/bổ sung tại Thông tư số 08/2023/TT-BLĐTBXH; tiêu đề thường là "ĐƠN ĐỀ NGHỊ XÁC ĐỊNH, XÁC ĐỊNH LẠI MỨC ĐỘ KHUYẾT TẬT..." hoặc "...CẤP GIẤY XÁC NHẬN KHUYẾT TẬT".
 - other: tài liệu không thuộc 3 nhóm trên, ví dụ CCCD/CMND/hộ chiếu, giấy tờ tùy thân, ảnh không rõ nội dung.
 </type_definitions>
 
 <classification_hints>
 - Nếu OCR có "ĐƠN ĐỀ NGHỊ" cùng các cụm "xác định mức độ khuyết tật", "cấp giấy xác nhận khuyết tật", "Mẫu số 01", "Thông tư số 01/2019" hoặc "Thông tư số 08/2023" thì chọn disability_application_form.
-- Nếu OCR có "Hội đồng Giám định y khoa", "kết luận giám định y khoa", "khả năng tự phục vụ", "suy giảm khả năng lao động" thì chọn medical_assessment_conclusion.
+- Nếu OCR có "Hội đồng Giám định y khoa", "kết luận giám định y khoa", "khả năng tự phục vụ", "suy giảm khả năng lao động": đọc ngày kết luận (ngày họp hội đồng / ngày ký / "…, ngày … tháng … năm …" đầu văn bản). Ngày TRƯỚC 01/6/2012 → medical_assessment_conclusion; từ 01/6/2012 trở về sau hoặc không thấy ngày → disability_related_docs.
 - Nếu OCR là bệnh án/giấy khám/giấy điều trị/phẫu thuật/giấy ra viện/tóm tắt bệnh án mà không phải kết luận giám định y khoa thì chọn disability_related_docs.
 - Không nhầm bệnh án hoặc giấy khám thông thường sang medical_assessment_conclusion nếu không có tín hiệu "kết luận"/"giám định"/"khả năng tự phục vụ"/"suy giảm khả năng lao động".
 </classification_hints>

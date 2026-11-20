@@ -179,8 +179,8 @@ def test_nhom_co_thi_dong_con_trong_tich_khong_nhom_khong_thi_chi_tich_dong_nhom
     assert d["data[khuyetTat5Obj][khuyetTatRadio1]"] == "khong"
     assert d["data[khuyetTat1Obj][khuyetTatRadio4]"] == "co"
     assert d["data[khuyetTat1Obj][khuyetTatRadio1]"] == "khong"
-    # Nhóm "Có" mà không dòng con nào "Có" → mọi dòng con "Không".
-    assert [d[f"data[khuyetTat6Obj][khuyetTatRadio{i}]"] for i in (1, 2, 3)] == ["khong"] * 3
+    # Nhóm "Có" mà không dòng con nào "Có" → mọi dòng con "Có".
+    assert [d[f"data[khuyetTat6Obj][khuyetTatRadio{i}]"] for i in (1, 2, 3)] == ["co"] * 3
     # Nhóm không "Có": dòng nhóm "Không", dòng con không tích.
     assert d["data[khuyetTat2Obj][khuyetTatRadio]"] == "khong"
     assert "data[khuyetTat2Obj][khuyetTatRadio1]" not in d

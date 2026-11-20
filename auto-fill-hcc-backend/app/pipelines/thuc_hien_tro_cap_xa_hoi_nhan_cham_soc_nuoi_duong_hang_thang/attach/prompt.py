@@ -26,6 +26,7 @@ file và xếp vào đúng MỘT loại giấy tờ.
 - cu_tru
 - khai_sinh
 - khuyet_tat
+- uy_quyen_chi_tra
 - other
 </allowed_types>
 
@@ -39,8 +40,11 @@ file và xếp vào đúng MỘT loại giấy tờ.
 - cu_tru: Giấy xác nhận thông tin về cư trú / Thông báo số định danh cá nhân.
 - khai_sinh: Giấy khai sinh / trích lục khai sinh.
 - khuyet_tat: Giấy xác nhận khuyết tật (ghi dạng tật, mức độ khuyết tật) hoặc Biên bản giám định y khoa.
-- other: tài liệu khác (giấy xác nhận hộ nghèo, nhiễm HIV, mang thai, giấy ủy quyền...) hoặc không đủ bằng
-  chứng.
+- uy_quyen_chi_tra: "GIẤY ĐỀ NGHỊ ỦY QUYỀN CHI TRẢ AN SINH XÃ HỘI" / giấy ủy quyền nhận trợ cấp — người hưởng
+  (mục "Người ủy quyền") ủy quyền cho người khác (mục "Người được ủy quyền") nhận thay tiền trợ cấp, thường chuyển
+  qua tài khoản ngân hàng của người được ủy quyền.
+- other: tài liệu khác (giấy xác nhận hộ nghèo, nhiễm HIV, mang thai, giấy ủy quyền việc khác...) hoặc không đủ
+  bằng chứng.
 </type_definitions>
 
 <output_contract>

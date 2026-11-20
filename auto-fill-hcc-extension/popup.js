@@ -5630,7 +5630,10 @@ ocrBtn.addEventListener("click", async () => {
       // nơi cấp CCCD khi giấy tờ là của người khác (cha mẹ khai thay cho con) — không chặn điền.
       cfg.key === "trinh-bao-mat-ho-chieu-pho-thong-cap-xa" ||
       // [Bộ Công an] 1.001445 (trình báo mất hộ chiếu cấp tỉnh): cùng ô khoá theo VNeID như bản cấp xã.
-      cfg.key === "trinh-bao-mat-ho-chieu-pho-thong-cap-tinh"
+      cfg.key === "trinh-bao-mat-ho-chieu-pho-thong-cap-tinh" ||
+      // Cờ do registry BE gửi: bật mốc tài khoản cho thủ tục mới mà không phải phát hành lại extension. Danh sách
+      // cứng phía trên giữ cho BE bản cũ chưa trả cờ.
+      cfg.collectFormContext === true
     ) {
       const ctxRes = await sendToContent({ action: "collectFormContext" });
       if (ctxRes?.formContext) options.formContext = ctxRes.formContext;

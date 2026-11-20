@@ -43,7 +43,15 @@ người nộp.
    → "Thay đổi"; ghi thêm thông tin còn trống → "Bổ sung"; "Xác định lại dân tộc" CHỈ khi nội dung là dân tộc
    — quốc tịch/họ tên/ngày sinh không bao giờ là "Xác định lại dân tộc"). Không đủ căn cứ → bỏ field.
 8. NoiDung lấy dòng "Nội dung" của tờ khai (cả thông tin cũ và mới, vd "Cải chính tên từ X thành Y"); LyDo lấy
-   dòng "Lý do". Không có tờ khai mà <viec_dang_ky> có các dòng "Thông tin cần sửa" (đã xác định chiều) → NoiDung
+   dòng "Lý do".
+   SOÁT HỌ TÊN (bắt buộc khi mục sửa là họ tên): tờ khai / bản cam đoan CHỈ cho biết sửa thông tin nào; chữ viết tay
+   hay bị OCR đọc lệch DẤU hoặc vài chữ cái. (1) Giá trị CŨ: tìm trên giấy hộ tịch cần sửa đúng dòng của thông tin đó
+   (vd dòng họ tên người mẹ trên giấy khai sinh của người có nội dung thay đổi) → chép NGUYÊN chữ in ở dòng đó, kể cả
+   khi tờ khai viết khác dấu. (2) Giá trị MỚI: giấy do cơ quan cấp ghi tên của chính người đó (trích lục khai tử của
+   người đó, giấy khai sinh của anh chị em ghi cùng người cha / mẹ, CCCD...) mà tên chỉ lệch dấu / vài chữ cái với tên
+   trên tờ khai / cam đoan → chép NGUYÊN chữ in đó. So cả dấu thanh: hai cách viết chỉ khác dấu là hai tên khác nhau.
+   Không giấy in nào ghi tên đó → giữ như OCR đọc.
+   Không có tờ khai mà <viec_dang_ky> có các dòng "Thông tin cần sửa" (đã xác định chiều) → NoiDung
    ghép đúng các dòng đó: "Cải chính <thông tin> từ <đang ghi> thành <đúng theo>", nối bằng dấu chấm phẩy, KHÔNG
    đảo chiều. Không có các dòng đó mà có BẢN CAM ĐOAN → lấy từ bản cam đoan, ĐÚNG CHIỀU: câu dạng "Trong <giấy hộ
    tịch cần sửa> ghi A, nhưng trong <giấy tờ khác: CCCD, giấy khai sinh / chứng tử của người đó...> ghi B" →
@@ -61,8 +69,9 @@ người nộp.
    vào cuối nội dung ("... lý do - do sai sót ..."). NoiDung CHỈ gồm các thay đổi (thông tin nào, từ giá trị cũ
    thành giá trị mới) — BỎ mọi cụm lý do và nhãn "Lý do:" lạc chỗ; phần lý do đưa vào LyDo.
    Viết lại thành câu có nghĩa: sửa lỗi OCR ở TỪ THÔNG THƯỜNG (vd "Phàn"→"Phần", "tự"→"từ", "Thành"→"thành",
-   "tiền thân"→"tùy thân"), nối các thay đổi bằng dấu chấm phẩy; GIỮ NGUYÊN họ tên, số giấy tờ, ngày tháng như
-   OCR đọc, không tự sửa tên. LyDo cũng viết thành câu ngắn có nghĩa (bỏ "lý do", gạch đầu dòng).
+   "tiền thân"→"tùy thân"), nối các thay đổi bằng dấu chấm phẩy; GIỮ NGUYÊN số giấy tờ, ngày tháng như OCR
+   đọc; họ tên theo quy tắc chữ IN ở đầu mục 8, không có giấy in thì giữ như OCR đọc, không tự sửa tên.
+   LyDo cũng viết thành câu ngắn có nghĩa (bỏ "lý do", gạch đầu dòng).
 9. HoSo_*: ưu tiên dòng "Đã đăng ký ... tại <cơ quan> ngày ... số ... quyển số ..." của tờ khai; thiếu thì lấy
    trên CHÍNH giấy hộ tịch cùng loại của người có nội dung thay đổi. Giấy của người khác không phải nguồn.
    Nhận giấy khai sinh của người có nội dung thay đổi theo NGÀY / NĂM SINH và họ tên CHA, MẸ của người được khai sinh

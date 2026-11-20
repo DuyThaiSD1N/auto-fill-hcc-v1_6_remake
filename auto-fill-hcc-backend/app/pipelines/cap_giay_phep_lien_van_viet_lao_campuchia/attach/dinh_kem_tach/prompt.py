@@ -24,8 +24,11 @@ vụ: chia mỗi file thành các ĐOẠN theo KHOẢNG TRANG, mỗi đoạn là
 </critical_rules>
 
 <allowed_types>
-- giay_de_nghi: GIẤY ĐỀ NGHỊ CẤP, CẤP LẠI GIẤY PHÉP LIÊN VẬN GIỮA VIỆT NAM, LÀO VÀ CAMPUCHIA (cho phương tiện thương mại
-  hoặc phi thương mại) — "Kính gửi: Sở Xây dựng…", "1. Tên tổ chức/cá nhân", bảng phương tiện, "Mục đích chuyến đi".
+- giay_de_nghi_phi_thuong_mai: GIẤY ĐỀ NGHỊ CẤP, CẤP LẠI GIẤY PHÉP LIÊN VẬN GIỮA VIỆT NAM, LÀO VÀ CAMPUCHIA mà tiêu đề
+  ghi "CHO PHƯƠNG TIỆN PHI THƯƠNG MẠI" — "Kính gửi: Sở Xây dựng…", "1. Tên tổ chức/cá nhân", bảng phương tiện, "Mục đích
+  chuyến đi".
+- giay_de_nghi_thuong_mai: cùng Giấy đề nghị đó nhưng tiêu đề ghi "CHO PHƯƠNG TIỆN THƯƠNG MẠI" (không có chữ "PHI"), của
+  đơn vị kinh doanh vận tải. Tiêu đề không đọc được chữ nào trong hai cụm trên → giay_de_nghi_phi_thuong_mai.
 - dang_ky_xe: GIẤY CHỨNG NHẬN ĐĂNG KÝ XE Ô TÔ (cà vẹt, "Certificate of vehicle registration") hoặc giấy hẹn nhận giấy chứng
   nhận đăng ký xe — biển số, số khung, số máy, nhãn hiệu, chủ xe.
 - quyen_su_dung_xe: tài liệu chứng minh QUYỀN SỬ DỤNG HỢP PHÁP phương tiện khi xe không đứng tên người đề nghị — hợp đồng
@@ -41,12 +44,13 @@ vụ: chia mỗi file thành các ĐOẠN theo KHOẢNG TRANG, mỗi đoạn là
 <disambiguation>
 - Hợp đồng THUÊ XE / cho mượn xe → quyen_su_dung_xe; hợp đồng thi công, cung cấp dịch vụ, dự án tại Lào/Campuchia →
   hop_dong_du_an.
-- Giấy đề nghị có bảng biển số / số khung / số máy → vẫn là giay_de_nghi, không phải dang_ky_xe.
+- Giấy đề nghị có bảng biển số / số khung / số máy → vẫn là giấy đề nghị (một trong hai loại trên), không phải
+  dang_ky_xe.
 </disambiguation>
 
 <output_contract>
 {"documents":[
-  {"fileIndex":0,"pageFrom":1,"pageTo":2,"type":"giay_de_nghi","documentName":"Giấy đề nghị cấp giấy phép liên vận"},
+  {"fileIndex":0,"pageFrom":1,"pageTo":2,"type":"giay_de_nghi_phi_thuong_mai","documentName":"Giấy đề nghị cấp giấy phép liên vận"},
   {"fileIndex":0,"pageFrom":3,"pageTo":3,"type":"dang_ky_xe","documentName":"Giấy chứng nhận đăng ký xe ô tô"},
   {"fileIndex":0,"pageFrom":4,"pageTo":6,"type":"hop_dong_du_an","documentName":"Hợp đồng thi công công trình tại Lào"}
 ]}

@@ -215,11 +215,16 @@ def _facility_name_case(value) -> str:
     text = " ".join(str(value or "").split())
     if not text:
         return text
-    if not any(c.islower() for c in text):
-        text = " ".join(_facility_word(w) for w in text.split(" "))
+    # Chi tiết = "<tên cơ sở>, <số nhà, đường>": tên in hoa, địa chỉ viết thường → đổi riêng từng cụm.
+    parts = text.split(", ")
+    for i, part in enumerate(parts):
+        if any(c.islower() for c in part):
+            continue
+        part = " ".join(_facility_word(w) for w in part.split(" "))
         for old, new in _FACILITY_PHRASES:
-            text = re.sub(rf"\b{old}\b", new, text)
-        text = _FACILITY_ADMIN_WORDS.sub(lambda m: m.group(1).lower(), text)
+            part = re.sub(rf"\b{old}\b", new, part)
+        parts[i] = _FACILITY_ADMIN_WORDS.sub(lambda m: m.group(1).lower(), part)
+    text = ", ".join(parts)
     match = re.match(r"^(.+?)[\s,\-]+(tỉnh|thành phố|tp\.?)\s+(.+)$", text, flags=re.IGNORECASE)
     if match and _fold(match.group(3)) in _fold(match.group(1)):
         text = match.group(1).strip()

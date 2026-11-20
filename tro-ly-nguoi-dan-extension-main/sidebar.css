@@ -711,42 +711,48 @@ body.settings-mode .bot-f { display: none; }
 }
 .tl-hm { font-style: italic; color: var(--muted); font-size: 10.5px; line-height: 1.2; }
 
+/* Lối vào danh sách đầy đủ: nút đặc màu chủ đạo — phần lớn thủ tục nằm ngoài 8 ô nên đây là
+   đường chọn chính, phải nổi hơn mục giấy tờ tại quầy bên dưới. */
 .allbar {
-  display: flex; align-items: center; gap: 11px;
-  background: var(--teal-soft); border: 1.5px solid #bfe3d0; border-radius: 13px;
-  padding: 10px 13px; cursor: pointer; text-align: left; width: 100%; font-family: inherit;
-  color: var(--navy); transition: border-color .15s, background .15s;
+  display: flex; align-items: center; gap: 12px;
+  background: var(--teal); border: 1.5px solid var(--teal-d); border-radius: 14px;
+  padding: 13px 14px; cursor: pointer; text-align: left; width: 100%; font-family: inherit;
+  color: #fff; box-shadow: 0 4px 14px rgba(18, 160, 106, .32);
+  transition: background .15s, box-shadow .15s, transform .12s;
 }
-.allbar:hover { border-color: var(--teal); background: #ddf3e8; }
-.allbar:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
-.allbar-ic { font-size: 20px; flex-shrink: 0; }
+.allbar:hover { background: var(--teal-d); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(13, 125, 82, .36); }
+.allbar:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+.allbar-ic {
+  width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0;
+  display: grid; place-items: center; background: #fff; font-size: 20px;
+}
 .allbar-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.allbar-tn { font-weight: 800; font-size: 13.5px; color: var(--teal-d); }
-.allbar-ss { font-size: 11px; color: var(--muted); margin-top: 1px; }
-.allbar-ch { color: var(--teal); font-size: 20px; flex-shrink: 0; }
+.allbar-tn { font-weight: 800; font-size: 15px; color: #fff; }
+.allbar-ss { font-size: 11.5px; color: rgba(255, 255, 255, .88); margin-top: 2px; }
+.allbar-ch { color: #fff; font-size: 24px; font-weight: 700; flex-shrink: 0; }
 
-/* Giấy tờ soạn tại quầy (không phải thủ tục DVC) — tông vàng để tách khỏi lưới thủ tục */
+/* Giấy tờ soạn tại quầy (không phải thủ tục DVC) — tông trung tính, nhỏ hơn: công cụ phụ của cán bộ */
 .ctools { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
 .ctools-hd { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 0 2px; }
-.ctools-tt { font-size: 12px; font-weight: 800; color: var(--navy); text-transform: uppercase; letter-spacing: .03em; }
+.ctools-tt { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
 .ctools-note { font-size: 10.5px; color: var(--muted); }
 .ctool {
-  display: flex; align-items: center; gap: 11px; width: 100%;
-  background: #fff8e1; border: 1.5px solid #f2d27a; border-radius: 13px;
-  padding: 10px 13px; cursor: pointer; text-align: left; font-family: inherit;
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  background: #fff; border: 1px solid var(--line); border-radius: 11px;
+  padding: 8px 12px; cursor: pointer; text-align: left; font-family: inherit;
   color: var(--navy); transition: border-color .15s, background .15s;
 }
-.ctool:hover { border-color: #d9a520; background: #fff2c4; }
-.ctool:focus-visible { outline: 2px solid #d9a520; outline-offset: 2px; }
-.ctool-ic { font-size: 20px; flex-shrink: 0; }
+.ctool:hover { border-color: #b9c8d6; background: #f7f9fb; }
+.ctool:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+.ctool-ic { font-size: 17px; flex-shrink: 0; }
 .ctool-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.ctool-tn { font-weight: 800; font-size: 13.5px; color: #7a5200; display: flex; align-items: center; gap: 6px; }
+.ctool-tn { font-weight: 700; font-size: 12.5px; color: var(--ink); display: flex; align-items: center; gap: 6px; }
 .ctool-badge {
-  font-size: 9.5px; font-weight: 800; color: #fff; background: #d9892b;
+  font-size: 9.5px; font-weight: 700; color: var(--muted); background: #eef2f5;
   border-radius: 999px; padding: 1px 7px; letter-spacing: .02em;
 }
-.ctool-ss { font-size: 11px; color: var(--muted); margin-top: 1px; }
-.ctool-ch { color: #d9a520; font-size: 20px; flex-shrink: 0; }
+.ctool-ss { font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+.ctool-ch { color: #9fb2c4; font-size: 17px; flex-shrink: 0; }
 
 /* Nút NÓI to ở bước chọn thủ tục — mời người dân nói tên thay vì tìm trong danh sách */
 .svc-voice {

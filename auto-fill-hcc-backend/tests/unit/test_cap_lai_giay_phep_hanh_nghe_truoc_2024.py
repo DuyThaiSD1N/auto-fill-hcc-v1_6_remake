@@ -201,7 +201,11 @@ def test_theo_to_khai_can_bo_dang_nhap_phan_mot_theo_nguoi_hanh_nghe(case):
     assert by["data[identityNumber]"]["value"] == "001000000001"
     assert by["data[identityNumber]"].get("enableInput") is True
     assert by["data[birthday]"]["value"] == "01/02/1990" and by["data[gender]"]["value"] == "Nam"
-    assert not any(k.startswith("data[owner") for k in by), "không mở Phần II"
+    # Giữ tích: chỉ điền ngày sinh Phần II (cổng không chép ô này), không phát ô owner* khác / không bỏ tích.
+    assert not any(k.startswith("data[owner") and k != "data[ownerBirthday]" for k in by), "không mở Phần II"
+    if "gphn" in case:
+        assert by["data[ownerBirthday]"]["value"] == "01/02/1990"
+    assert by.get("data[isOwnerDossierCheck]", {}).get("value") is not False
     if tick:
         assert by["data[isOwnerDossierCheck]"]["value"] is True
     else:

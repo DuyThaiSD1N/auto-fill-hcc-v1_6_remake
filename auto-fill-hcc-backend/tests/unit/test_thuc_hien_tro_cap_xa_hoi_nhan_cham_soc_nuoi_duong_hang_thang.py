@@ -337,3 +337,20 @@ def test_registry_va_nhan_dien_khong_trung_thu_tuc_cu():
     old = registry._BY_KEY["tro-cap-xa-hoi-hang-thang"]
     assert phrase not in old["label"].lower()
     assert not all(p.lower() in registry._BY_KEY[_KEY]["label"].lower() for p in old["detect"]["textIncludes"])
+
+
+def test_giay_uy_quyen_chi_tra_co_ten_chuan_khong_canh_bao():
+    files = _files("to_khai.pdf", "uy_quyen.pdf", "cccd.pdf")
+    ocr = [{"name": n, "text": ""} for n in ("to_khai.pdf", "uy_quyen.pdf", "cccd.pdf")]
+    llm = {0: ap._normalize_doc_type("to_khai_mau_01"), 1: ap._normalize_doc_type("uy_quyen_chi_tra"),
+           2: ap._normalize_doc_type("can_cuoc")}
+    items, warnings, _ = ap.build_plan_items(files, ocr, llm)
+
+    assert not warnings
+    assert [(i["fileName"], i["documentName"]) for i in items] == [
+        ("to_khai.pdf", "Tờ khai đề nghị trợ cấp xã hội (Mẫu số 01)"),
+        ("cccd.pdf", "Căn cước"),
+        ("uy_quyen.pdf", "Giấy đề nghị ủy quyền chi trả an sinh xã hội"),
+    ]
+    assert {i["componentName"] for i in items} == {"Tờ khai đề nghị trợ cấp xã hội"}
+    assert "uy_quyen_chi_tra" in ap.prompt.SYSTEM_PROMPT

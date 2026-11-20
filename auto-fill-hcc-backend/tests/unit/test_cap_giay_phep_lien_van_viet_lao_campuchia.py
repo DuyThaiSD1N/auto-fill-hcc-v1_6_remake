@@ -168,13 +168,14 @@ def _gop(de_nghi):
 
 
 _SEGMENTS = [
-    {"fileIndex": 0, "pageFrom": 1, "pageTo": 1, "type": "giay_de_nghi"},
-    {"fileIndex": 0, "pageFrom": 2, "pageTo": 2, "type": "other"},  # trang "Chú ý" nối tiếp Giấy đề nghị
+    {"fileIndex": 0, "pageFrom": 1, "pageTo": 1, "type": "giay_de_nghi_phi_thuong_mai"},
+    # trang 2 ("Chú ý" nối tiếp Giấy đề nghị) LLM bỏ sót → dự phòng gộp vào giấy liền trước.
     {"fileIndex": 0, "pageFrom": 3, "pageTo": 3, "type": "dang_ky_xe"},
     {"fileIndex": 0, "pageFrom": 4, "pageTo": 4, "type": "cccd"},
     {"fileIndex": 1, "pageFrom": 1, "pageTo": 1, "type": "hop_dong_du_an"},
 ]
-_TYPES = [{"index": 0, "docTypes": ["giay_de_nghi", "dang_ky_xe", "cccd"]}, {"index": 1, "docTypes": ["hop_dong_du_an"]}]
+_TYPES = [{"index": 0, "docTypes": ["giay_de_nghi_phi_thuong_mai", "dang_ky_xe", "cccd"]},
+          {"index": 1, "docTypes": ["hop_dong_du_an"]}]
 
 
 def _pdf(name, pages):
@@ -208,21 +209,21 @@ def _plan(monkeypatch, options, *, split_fails=False, texts=None, segments=None,
     return out
 
 
-# Tên 7 dòng bảng "Thành phần hồ sơ" theo mapping (rút gọn đuôi dài).
+# Tên 7 dòng bảng "Thành phần hồ sơ" theo thứ tự STT trên cổng (rút gọn đuôi dài).
 _ROW_TEXTS = [
-    "- Thành phần hồ sơ đối với phương tiện phi thương mại:",
-    "[Phương tiện thương mại]Giấy đề nghị cấp, cấp lại Giấy phép liên vận giữa Việt Nam, Lào và Campuchia cho phương tiện "
-    "thương mại theo mẫu (Click chuột vào đây để mở Biểu mẫu giấy tờ)",
     "[Phương tiện phi thương mại]Giấy đề nghị cấp, cấp lại Giấy phép liên vận giữa Việt Nam, Lào và Campuchia cho phương "
     "tiện phi thương mại theo mẫu (Click chuột vào đây để mở Biểu mẫu giấy tờ)",
-    "[Phương tiện phi thương mại]Đối với doanh nghiệp thực hiện công trình, dự án hoặc hoạt động kinh doanh trên lãnh thổ "
-    "Lào hoặc Campuchia thì kèm theo hợp đồng hoặc tài liệu chứng minh doanh nghiệp đang thực hiện công trình",
     "- Thành phần hồ sơ đối với phương tiện thương mại:",
+    "[Phương tiện phi thương mại]Giấy chứng nhận đăng ký xe ô tô cho phương tiện phi thương mại (Bản sao hoặc bản sao có "
+    "chứng thực). Trường hợp phương tiện không thuộc sở hữu của tổ chức, cá nhân thì phải kèm theo tài liệu chứng minh",
+    "- Thành phần hồ sơ đối với phương tiện phi thương mại:",
     "[Phương tiện thương mại]Giấy chứng nhận đăng ký xe ô tô hoặc giấy hẹn nhận giấy chứng nhận đăng ký xe ô tô của cơ quan "
     "có thẩm quyền cấp giấy chứng nhận đăng ký xe ô tô(Bản sao hoặc bản sao có chứng thực). Trường hợp phương tiện không "
     "thuộc quyền sở hữu của đơn vị kinh doanh vận tải phải xuất trình thêm: Hợp đồng thuê phương tiện",
-    "[Phương tiện phi thương mại]Giấy chứng nhận đăng ký xe ô tô cho phương tiện phi thương mại (Bản sao hoặc bản sao có "
-    "chứng thực). Trường hợp phương tiện không thuộc sở hữu của tổ chức, cá nhân thì phải kèm theo tài liệu chứng minh",
+    "[Phương tiện thương mại]Giấy đề nghị cấp, cấp lại Giấy phép liên vận giữa Việt Nam, Lào và Campuchia cho phương tiện "
+    "thương mại theo mẫu (Click chuột vào đây để mở Biểu mẫu giấy tờ)",
+    "[Phương tiện phi thương mại]Đối với doanh nghiệp thực hiện công trình, dự án hoặc hoạt động kinh doanh trên lãnh thổ "
+    "Lào hoặc Campuchia thì kèm theo hợp đồng hoặc tài liệu chứng minh doanh nghiệp đang thực hiện công trình",
 ]
 
 
@@ -250,36 +251,51 @@ def test_bat_tach_phi_thuong_mai_cat_dung_dong_khong_sot_trang(monkeypatch):
     attachments = out["attachments"]
     gop = [(a["componentIndex"], a["detectedType"], a["sourceSegments"][0]["pageIndexes"], a["loaiBan"])
            for a in attachments if a["fileIndex"] == 0]
-    assert gop == [(3, "giay_de_nghi", [0, 1], "Bản chính"), (3, "cccd", [3], "Bản chính"),
-                   (7, "dang_ky_xe", [2], "Bản sao")]
+    assert gop == [(1, "giay_de_nghi", [0, 1], "Bản chính"), (1, "cccd", [3], "Bản chính"),
+                   (3, "dang_ky_xe", [2], "Bản sao")]
     assert sorted(p for a in attachments if a["fileIndex"] == 0 for s in a["sourceSegments"] for p in s["pageIndexes"]) \
         == [0, 1, 2, 3]
     hop_dong = next(a for a in attachments if a["fileIndex"] == 1)
-    assert hop_dong["componentIndex"] == 4 and hop_dong["loaiBan"] == "Bản sao" and not hop_dong.get("sourceSegments")
+    assert hop_dong["componentIndex"] == 7 and hop_dong["loaiBan"] == "Bản sao" and not hop_dong.get("sourceSegments")
     assert all(a["target"] == "attp-row" for a in attachments)
-    # Bỏ tick dòng nhóm thương mại (dòng 2 cổng tích sẵn); dòng 1 tiêu đề phi thương mại giữ tick.
+    # Bỏ tick dòng nhóm thương mại; dòng 4 tiêu đề phi thương mại giữ tick.
     assert attachments[0]["untickRows"] == [tach.ROWS[r]["componentName"] for r in (2, 5, 6)]
     assert out["extracted"]["thuongMai"] is False
     assert not any("Chưa có" in e or "Không có hợp đồng" in e for e in out["errors"])
 
 
-def test_bat_tach_thuong_mai_vao_dong_2_va_6(monkeypatch):
+def test_bat_tach_thuong_mai_vao_dong_6_va_5(monkeypatch):
     texts = {"ho-so.pdf": _gop(_DE_NGHI_TM), "hop-dong.png": "HỢP ĐỒNG thi công công trình tại Lào"}
-    out = _plan(monkeypatch, {"splitDocuments": True}, texts=texts)
+    segments = [{**s, "type": "giay_de_nghi_thuong_mai"} if s["type"].startswith("giay_de_nghi") else s for s in _SEGMENTS]
+    out = _plan(monkeypatch, {"splitDocuments": True}, texts=texts, segments=segments)
     rows = {(a["componentIndex"], a["detectedType"]) for a in out["attachments"]}
-    assert rows == {(2, "giay_de_nghi"), (2, "cccd"), (6, "dang_ky_xe"), (2, "hop_dong_du_an")}
+    assert rows == {(6, "giay_de_nghi"), (6, "cccd"), (5, "dang_ky_xe"), (6, "hop_dong_du_an")}
     assert out["attachments"][0]["untickRows"] == [tach.ROWS[r]["componentName"] for r in (1, 3, 4, 7)]
     assert out["extracted"]["thuongMai"] is True
 
 
-def test_thieu_dang_ky_xe_va_hop_dong_thi_canh_bao_va_bo_tick_dong_4(monkeypatch):
+def test_thieu_dang_ky_xe_va_hop_dong_thi_canh_bao_va_bo_tick_dong_7(monkeypatch):
     texts = {"de-nghi.pdf": "Trang 1/1\n" + _DE_NGHI_PTM}
     out = _plan(monkeypatch, {"splitDocuments": True}, texts=texts, files=[_pdf("de-nghi.pdf", 1)],
-                segments=[{"fileIndex": 0, "pageFrom": 1, "pageTo": 1, "type": "giay_de_nghi"}])
-    assert [a["componentIndex"] for a in out["attachments"]] == [3]
-    assert out["attachments"][0]["untickRows"] == [tach.ROWS[r]["componentName"] for r in (2, 4, 5, 6)]
-    assert any("Giấy chứng nhận đăng ký xe ô tô (dòng 7, bắt buộc)" in e for e in out["errors"])
-    assert any("đã bỏ tick dòng 4" in e for e in out["errors"])
+                segments=[{"fileIndex": 0, "pageFrom": 1, "pageTo": 1, "type": "giay_de_nghi_phi_thuong_mai"}])
+    # Số dòng trong câu báo = STT trên cổng.
+    assert [a["componentIndex"] for a in out["attachments"]] == [1]
+    assert out["attachments"][0]["untickRows"] == [tach.ROWS[r]["componentName"] for r in (2, 5, 6, 7)]
+    assert any("Giấy chứng nhận đăng ký xe ô tô (dòng 3, bắt buộc)" in e for e in out["errors"])
+    assert any("đã bỏ tick dòng 7" in e for e in out["errors"])
+
+
+def test_bat_tach_llm_tra_other_thi_giu_khong_do_tieu_de(monkeypatch):
+    texts = {"x.pdf": "Trang 1/1\n" + _CA_VET}
+    out = _plan(monkeypatch, {"splitDocuments": True}, texts=texts, files=[_pdf("x.pdf", 1)],
+                segments=[{"fileIndex": 0, "pageFrom": 1, "pageTo": 1, "type": "other"}])
+    assert [(a["componentIndex"], a["detectedType"]) for a in out["attachments"]] == [(1, "other")]
+
+
+def test_tat_tach_llm_tra_other_thi_giu_khong_do_tieu_de(monkeypatch):
+    texts = {"x.pdf": _CA_VET}
+    out = _plan(monkeypatch, {}, texts=texts, files=[_pdf("x.pdf", 1)], types=[{"index": 0, "docTypes": ["other"]}])
+    assert [(a["componentIndex"], a["detectedType"]) for a in out["attachments"]] == [(1, "other")]
 
 
 @pytest.mark.parametrize("options", [{}, None, {"splitDocuments": False}])
@@ -289,11 +305,11 @@ def test_tat_tach_moi_tep_nguyen_mot_lan(monkeypatch, options):
     assert sorted(a["fileIndex"] for a in attachments) == [0, 1]
     assert not any(a.get("sourceSegments") for a in attachments)
     by_file = {a["fileIndex"]: a for a in attachments}
-    # Tệp gộp: dòng Giấy đề nghị phi thương mại nhận nguyên tệp, giữ tên gốc; hợp đồng vào dòng 4.
-    assert by_file[0]["componentIndex"] == 3 and by_file[0]["documentName"] == "ho-so"
-    assert by_file[1]["componentIndex"] == 4 and by_file[1]["loaiBan"] == "Bản sao"
+    # Tệp gộp: dòng Giấy đề nghị phi thương mại nhận nguyên tệp, giữ tên gốc; hợp đồng vào dòng 7.
+    assert by_file[0]["componentIndex"] == 1 and by_file[0]["documentName"] == "ho-so"
+    assert by_file[1]["componentIndex"] == 7 and by_file[1]["loaiBan"] == "Bản sao"
     assert any("ho-so.pdf" in e and "gộp nhiều giấy" in e for e in out["errors"])
-    # Đăng ký xe nằm trong tệp gộp → không báo thiếu; dòng 7 không có tệp → vẫn không bỏ tick (dòng của nhóm mình).
+    # Đăng ký xe nằm trong tệp gộp → không báo thiếu; dòng 3 không có tệp → vẫn không bỏ tick (dòng của nhóm mình).
     assert not any("Chưa có Giấy chứng nhận đăng ký xe" in e for e in out["errors"])
     assert attachments[0]["untickRows"] == [tach.ROWS[r]["componentName"] for r in (2, 5, 6)]
 
@@ -307,11 +323,14 @@ def test_bat_tach_ma_chia_giay_loi_thi_dinh_nguyen_tep(monkeypatch):
 
 def test_rule_type_nhan_theo_tieu_de():
     assert tach._rule_type(_DE_NGHI_PTM) == "giay_de_nghi"
+    assert tach._rule_type(_DE_NGHI_TM) == "giay_de_nghi_thuong_mai"
+    assert tach._normalize_type("giay_de_nghi_phi_thuong_mai") == "giay_de_nghi"
+    assert tach._normalize_type("giay_de_nghi_thuong_mai") == "giay_de_nghi_thuong_mai"
     assert tach._rule_type(_CA_VET) == "dang_ky_xe"
     assert tach._rule_type("HỢP ĐỒNG THUÊ XE Ô TÔ\nBên cho thuê …") == "quyen_su_dung_xe"
     assert tach._rule_type("HỢP ĐỒNG thi công công trình tại Campuchia") == "hop_dong_du_an"
     assert tach._normalize_type("hợp đồng thuê phương tiện") == "quyen_su_dung_xe"
-    assert tach.route("quyen_su_dung_xe", False) == 7 and tach.route("quyen_su_dung_xe", True) == 6
+    assert tach.route("quyen_su_dung_xe", False) == 3 and tach.route("quyen_su_dung_xe", True) == 5
 
 
 # ---------------- Trợ lý người dân ----------------

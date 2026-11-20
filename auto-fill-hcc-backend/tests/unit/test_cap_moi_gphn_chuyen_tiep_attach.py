@@ -108,3 +108,74 @@ def test_prompt_chua_dau_hieu_anh_chan_dung_thay_cho_rule_code():
     # Không còn rule nội dung trong code.
     assert not hasattr(planner, "_rule_doc_type")
     assert not hasattr(planner, "_is_image_only")
+
+
+def _pages(*rows):
+    """(docType, giayMoi, tenGiay) từng trang → kết quả LLM theo trang."""
+    return [{"trang": n + 1, "docType": t, "giayMoi": new, "tenGiay": name} for n, (t, new, name) in enumerate(rows)]
+
+
+def test_che_do_tach_moi_giay_mot_tep_ke_ca_cung_loai():
+    pages = ["don 1", "don 2", "bang trung cap", "bia", "giay xac nhan", "quyet dinh", "", "kham suc khoe"]
+    docs = planner._parse_docs(_pages(
+        ("don_de_nghi", True, "Đơn đề nghị"), ("don_de_nghi", False, None),
+        ("van_bang", True, "Bằng tốt nghiệp trung cấp"), ("van_bang", False, None),
+        ("thuc_hanh", True, "Giấy xác nhận hoàn thành thực hành"), ("thuc_hanh", True, "Quyết định tiếp nhận thực hành"),
+        ("other", False, None), ("suc_khoe", True, "Giấy khám sức khỏe"),
+    ), len(pages))
+    items, warnings, classified = planner.build_plan_items(
+        _files(["ho_so_gop.pdf", "Ảnh thẻ.pdf"]), {1: "anh_chan_dung"}, {0: docs}, {0: pages},
+    )
+
+    got = [(i["componentName"], i["documentName"], i.get("sourceSegments")) for i in items if i["fileIndex"] == 0]
+    assert got == [
+        ("Đơn theo Mẫu 08 Phụ lục I", "Đơn đề nghị", [{"fileIndex": 0, "pageIndexes": [0, 1]}]),
+        ("Văn bằng chuyên môn", "Bằng tốt nghiệp trung cấp", [{"fileIndex": 0, "pageIndexes": [2, 3]}]),
+        ("giấy khám sức khỏe do cơ sở khám bệnh", "Giấy khám sức khỏe", [{"fileIndex": 0, "pageIndexes": [7]}]),
+        ("giấy xác nhận hoàn thành quá trình thực hành theo Mẫu 07", "Giấy xác nhận hoàn thành thực hành",
+         [{"fileIndex": 0, "pageIndexes": [4]}]),
+        ("giấy xác nhận hoàn thành quá trình thực hành theo Mẫu 07", "Quyết định tiếp nhận thực hành",
+         [{"fileIndex": 0, "pageIndexes": [5, 6]}]),
+    ], "giấy cùng loại tách riêng; trang trắng other nối vào giấy liền trước, không bị bỏ"
+    assert items[-1]["componentName"] == "02 ảnh chân dung cỡ 04 cm" and "sourceSegments" not in items[-1]
+    assert classified[0]["source"] == "llm-pages"
+    assert not warnings
+
+
+def test_che_do_tach_llm_tra_lech_so_trang_thi_bo_qua():
+    assert planner._parse_docs(_pages(("don_de_nghi", True, None)), 2) is None
+    assert planner._parse_docs([{"trang": 2, "docType": "don_de_nghi"}, {"trang": 1, "docType": "don_de_nghi"}], 2) is None
+
+
+def test_che_do_tach_ten_tep_ngan_hon_50_ky_tu_khong_ngoac():
+    name = planner._doc_title("", "Đơn đề nghị cấp giấy phép hành nghề (Mẫu 08 PL I NĐ 96/2023)")
+    assert name == "Đơn đề nghị cấp giấy phép hành nghề Mẫu 08", "cổng BYT cắt / từ chối tên từ 50 ký tự kể cả .pdf"
+    assert len(planner._doc_title("x" * 10 + " " + "y" * 60, "z")) <= 45
+
+
+def test_che_do_tach_tep_mot_giay_dinh_nguyen_tep():
+    docs = planner._parse_docs(_pages(("suc_khoe", True, "Giấy khám sức khỏe"), ("suc_khoe", False, None)), 2)
+    items, _, _ = planner.build_plan_items(_files(["gksk.pdf"]), {}, {0: docs}, {0: ["a", "b"]})
+    assert len(items) == 1 and "sourceSegments" not in items[0]
+
+
+def test_tat_tach_khong_goi_xep_loai_theo_trang(monkeypatch):
+    async def fake_ocr(files):
+        return [{"name": f["name"], "text": "───── Trang 1/2 ─────\nA\n───── Trang 2/2 ─────\nB"} for f in files]
+
+    async def fake_pages(_):
+        raise AssertionError("tắt tách thì không xếp loại theo trang")
+
+    async def fake_one(index, name, text):
+        return index, "don_de_nghi"
+
+    from app.services import ocr
+    monkeypatch.setattr(ocr, "ocr_per_file", fake_ocr)
+    monkeypatch.setattr(planner, "_classify_pages", fake_pages)
+    monkeypatch.setattr(planner, "_classify_one", fake_one)
+
+    class F:
+        name, type, dataUrl = "don.pdf", "application/pdf", "data:application/pdf;base64,"
+
+    out = asyncio.run(planner.plan([F()], {}))
+    assert len(out["attachments"]) == 1 and out["extracted"]["splitDocuments"] is False

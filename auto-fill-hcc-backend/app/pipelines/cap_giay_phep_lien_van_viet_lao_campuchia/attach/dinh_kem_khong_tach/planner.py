@@ -4,7 +4,8 @@ tách giấy tờ.
 Cài đặt "Tách giấy tờ" tắt (hoặc client cũ): OCR từng tệp, MỘT lượt LLM liệt kê mọi loại giấy có trong từng tệp
 (docTypes), rồi MỖI TỆP đính NGUYÊN, MỘT lần (không `sourceSegments`), vào dòng của giấy chính theo _PRIORITY: Giấy đề nghị
 trước, rồi đăng ký xe, tài liệu quyền sử dụng xe, hợp đồng dự án; CCCD, giấy chưa rõ cuối (về dòng Giấy đề nghị). Bảng
-dòng, nhóm thương mại / phi thương mại, dòng bỏ tick lấy từ chế độ tách nên hai chế độ đặt cùng dòng. Tệp gộp nhiều giấy
+dòng, nhóm thương mại / phi thương mại (theo loại Giấy đề nghị LLM gán), dòng bỏ tick lấy từ chế độ tách nên hai chế độ
+đặt cùng dòng. LLM trả other thì giữ other (không dò tiêu đề đè lên). Tệp gộp nhiều giấy
 có dòng riêng → cảnh báo. OCR rỗng / LLM lỗi → tệp về dòng Giấy đề nghị, giữ tên gốc + cảnh báo. Không bỏ tệp nào.
 """
 
@@ -26,12 +27,12 @@ from ..dinh_kem_tach.planner import (
     _OTHER,
     _QUYEN_SU_DUNG,
     ROWS,
+    THUONG_MAI_ROWS,
     _normalize_type,
-    _rule_type,
     has_own_row,
-    is_thuong_mai,
     missing_warnings,
     route,
+    split_group,
     untick_rows,
 )
 from .prompt import SYSTEM_PROMPT, build_user_prompt
@@ -50,9 +51,10 @@ def build_plan_items(
     texts: dict[int, str] | None = None,
 ) -> tuple[list[dict], list[dict], list[str]]:
     """{fileIndex: docTypes} → (attachments, classified, warnings). Thuần tất định, không gọi OCR/LLM."""
-    texts = texts or {}
-    # Nhóm theo tiêu đề Giấy đề nghị: chỉ đọc tệp có Giấy đề nghị (giấy xe / hợp đồng không quyết định nhóm).
-    thuong_mai = is_thuong_mai(texts.get(i, "") for i, types in types_by_file.items() if _DE_NGHI in types)
+    del texts
+    # Nhóm theo loại Giấy đề nghị LLM gán (thương mại / phi thương mại).
+    thuong_mai, _ = split_group(t for types in types_by_file.values() for t in types)
+    types_by_file = {i: split_group(types)[1] for i, types in types_by_file.items()}
     attachments: list[dict] = []
     classified: list[dict] = []
     warnings: list[str] = []
@@ -95,7 +97,7 @@ def build_plan_items(
 
     order = {t: i for i, t in enumerate(_PRIORITY)}
     attachments.sort(key=lambda a: (a["componentIndex"], order.get(a["detectedType"], 99), a["fileIndex"]))
-    # Tệp gộp có hợp đồng dự án nhưng đính nguyên ở dòng Giấy đề nghị: dòng 4 không có tệp → vẫn bỏ tick theo dòng thực đính.
+    # Tệp gộp có hợp đồng dự án nhưng đính nguyên ở dòng Giấy đề nghị: dòng hợp đồng không có tệp → vẫn bỏ tick theo dòng thực đính.
     planned_rows = {a["componentIndex"] for a in attachments}
     if attachments and (untick := untick_rows(planned_rows, thuong_mai)):
         attachments[0]["untickRows"] = untick
@@ -115,9 +117,9 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
         system_prompt=SYSTEM_PROMPT,
         user_prompt=build_user_prompt,
         normalize=_normalize_type,
-        rule_type=_rule_type,
+        rule_type=lambda _text: _OTHER,  # LLM-first: không dò tiêu đề đè loại other LLM đã gán
         build_items=build_plan_items,
         rows=[{"componentIndex": k, **row} for k, row in ROWS.items()],
     )
-    result["extracted"]["thuongMai"] = any(a["componentIndex"] in (2, 6) for a in result["attachments"])
+    result["extracted"]["thuongMai"] = any(a["componentIndex"] in THUONG_MAI_ROWS for a in result["attachments"])
     return result

@@ -5,17 +5,18 @@ OCR per-file có header "Trang n/m" → MỘT lượt LLM gán KHOẢNG TRANG + 
 / sót trang, trang nối tiếp mang loại giấy trước) → MỖI giấy một file riêng vào đúng dòng; chỉ cắt trang
 (`sourceSegments`) khi giấy chiếm một phần file. LLM lỗi → chế độ không tách (đính nguyên tệp).
 
-Bảng 7 dòng theo ảnh ánh xạ (cổng tích sẵn dòng 1–3), chia nhóm phương tiện:
-  1. "- Thành phần hồ sơ đối với phương tiện phi thương mại:"  (tiêu đề nhóm, không tệp; phi thương mại giữ tick)
-  2. "[Phương tiện thương mại] Giấy đề nghị … theo mẫu"          (1 Bản chính)  ← Giấy đề nghị (thương mại)
-  3. "[Phương tiện phi thương mại] Giấy đề nghị … theo mẫu"      (1 Bản chính)  ← Giấy đề nghị (phi thương mại)
-  4. "[Phi thương mại] Đối với doanh nghiệp thực hiện công trình, dự án …"     (1 Bản sao) ← hợp đồng / tài liệu dự án
-  5. "- Thành phần hồ sơ đối với phương tiện thương mại:"        (tiêu đề nhóm, không tệp)
-  6. "[Thương mại] Giấy chứng nhận đăng ký xe ô tô hoặc giấy hẹn …"            (1 Bản sao) ← đăng ký xe (thương mại)
-  7. "[Phi thương mại] Giấy chứng nhận đăng ký xe ô tô cho phương tiện phi thương mại" (1 Bản sao) ← đăng ký xe
-Nhóm lấy theo tiêu đề Giấy đề nghị ("… PHI THƯƠNG MẠI" / "… THƯƠNG MẠI"), không rõ → phi thương mại. Tài liệu quyền sử
+Bảng 7 dòng theo thứ tự STT trên cổng (Sở Xây dựng Đà Nẵng), chia nhóm phương tiện:
+  1. "[Phương tiện phi thương mại] Giấy đề nghị … theo mẫu"      (1 Bản chính)  ← Giấy đề nghị (phi thương mại)
+  2. "- Thành phần hồ sơ đối với phương tiện thương mại:"        (tiêu đề nhóm, không tệp)
+  3. "[Phi thương mại] Giấy chứng nhận đăng ký xe ô tô cho phương tiện phi thương mại" (1 Bản sao) ← đăng ký xe
+  4. "- Thành phần hồ sơ đối với phương tiện phi thương mại:"  (tiêu đề nhóm, không tệp; phi thương mại giữ tick)
+  5. "[Thương mại] Giấy chứng nhận đăng ký xe ô tô hoặc giấy hẹn …"            (1 Bản sao) ← đăng ký xe (thương mại)
+  6. "[Phương tiện thương mại] Giấy đề nghị … theo mẫu"          (1 Bản chính)  ← Giấy đề nghị (thương mại)
+  7. "[Phi thương mại] Đối với doanh nghiệp thực hiện công trình, dự án …"     (1 Bản sao) ← hợp đồng / tài liệu dự án
+Nhóm theo loại Giấy đề nghị LLM gán (giay_de_nghi_thuong_mai / giay_de_nghi_phi_thuong_mai), không có → phi thương mại;
+tiêu đề trang chỉ dự phòng cho trang LLM bỏ sót. Tài liệu quyền sử
 dụng xe (hợp đồng thuê…) đi chung dòng đăng ký xe của nhóm; CCCD / giấy chưa rõ đính chung dòng Giấy đề nghị của nhóm.
-Dòng của nhóm kia + dòng 4 khi không có hợp đồng → `untickRows`. componentName là cụm chỉ có ở đúng dòng (hai dòng Giấy
+Dòng của nhóm kia + dòng 7 khi không có hợp đồng → `untickRows`. componentName là cụm chỉ có ở đúng dòng (hai dòng Giấy
 đề nghị / hai dòng đăng ký xe chỉ khác chữ "phi"), componentIndex = STT dòng.
 """
 
@@ -49,6 +50,8 @@ from . import prompt
 _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
 
 _DE_NGHI = "giay_de_nghi"
+# Giấy đề nghị của phương tiện thương mại: chỉ dùng để chọn nhóm, rồi quy về _DE_NGHI.
+_DE_NGHI_TM = "giay_de_nghi_thuong_mai"
 _DANG_KY_XE = "dang_ky_xe"
 _QUYEN_SU_DUNG = "quyen_su_dung_xe"
 _HOP_DONG = "hop_dong_du_an"
@@ -56,36 +59,38 @@ _CCCD = "cccd"
 _OTHER = "other"
 # Thứ tự file trong cùng một dòng: giấy chính trước, giấy kèm (hợp đồng thuê xe, CCCD, chưa rõ) sau.
 _ORDER = [_DE_NGHI, _DANG_KY_XE, _QUYEN_SU_DUNG, _HOP_DONG, _CCCD, _OTHER]
-_ALLOWED = set(_ORDER)
+_ALLOWED = set(_ORDER) | {_DE_NGHI_TM}
 _EXTRA_NAMES = {_CCCD: "Căn cước công dân", _QUYEN_SU_DUNG: "Tài liệu chứng minh quyền sử dụng phương tiện"}
 
+# STT = số dòng hiện trên cổng (cán bộ đối chiếu theo số này); extension thử dòng theo STT rồi khớp componentName.
 ROWS: dict[int, dict[str, str]] = {
-    1: {"componentName": "Thành phần hồ sơ đối với phương tiện phi thương mại",
-        "documentName": "Thành phần hồ sơ đối với phương tiện phi thương mại", "loaiBan": ""},
-    2: {"componentName": "Campuchia cho phương tiện thương mại theo mẫu",
-        "documentName": "Giấy đề nghị cấp giấy phép liên vận (thương mại)", "loaiBan": "Bản chính"},
-    3: {"componentName": "Campuchia cho phương tiện phi thương mại theo mẫu",
+    1: {"componentName": "Campuchia cho phương tiện phi thương mại theo mẫu",
         "documentName": "Giấy đề nghị cấp giấy phép liên vận (phi thương mại)", "loaiBan": "Bản chính"},
-    4: {"componentName": "Đối với doanh nghiệp thực hiện công trình, dự án",
-        "documentName": "Hợp đồng, tài liệu công trình dự án tại Lào, Campuchia", "loaiBan": "Bản sao"},
-    5: {"componentName": "Thành phần hồ sơ đối với phương tiện thương mại",
+    2: {"componentName": "Thành phần hồ sơ đối với phương tiện thương mại",
         "documentName": "Thành phần hồ sơ đối với phương tiện thương mại", "loaiBan": ""},
-    6: {"componentName": "giấy hẹn nhận giấy chứng nhận đăng ký xe ô tô",
+    3: {"componentName": "Giấy chứng nhận đăng ký xe ô tô cho phương tiện phi thương mại",
         "documentName": "Giấy chứng nhận đăng ký xe ô tô", "loaiBan": "Bản sao"},
-    7: {"componentName": "Giấy chứng nhận đăng ký xe ô tô cho phương tiện phi thương mại",
+    4: {"componentName": "Thành phần hồ sơ đối với phương tiện phi thương mại",
+        "documentName": "Thành phần hồ sơ đối với phương tiện phi thương mại", "loaiBan": ""},
+    5: {"componentName": "giấy hẹn nhận giấy chứng nhận đăng ký xe ô tô",
         "documentName": "Giấy chứng nhận đăng ký xe ô tô", "loaiBan": "Bản sao"},
+    6: {"componentName": "Campuchia cho phương tiện thương mại theo mẫu",
+        "documentName": "Giấy đề nghị cấp giấy phép liên vận (thương mại)", "loaiBan": "Bản chính"},
+    7: {"componentName": "Đối với doanh nghiệp thực hiện công trình, dự án",
+        "documentName": "Hợp đồng, tài liệu công trình dự án tại Lào, Campuchia", "loaiBan": "Bản sao"},
 }
 # Nhóm → (dòng Giấy đề nghị, dòng đăng ký xe, dòng hợp đồng dự án | None, các dòng của nhóm kia / tiêu đề cần bỏ tick).
 _GROUP = {
-    False: {"de_nghi": 3, "dang_ky_xe": 7, "hop_dong": 4, "untick": (2, 5, 6)},
-    True: {"de_nghi": 2, "dang_ky_xe": 6, "hop_dong": None, "untick": (1, 3, 4, 7)},
+    False: {"de_nghi": 1, "dang_ky_xe": 3, "hop_dong": 7, "untick": (2, 5, 6)},
+    True: {"de_nghi": 6, "dang_ky_xe": 5, "hop_dong": None, "untick": (1, 3, 4, 7)},
 }
+THUONG_MAI_ROWS = (5, 6)
 _ID_CARD_MARKERS = ("can cuoc cong dan", "chung minh nhan dan", "the can cuoc", "citizen identity", "ho chieu",
                     "passport")
 
 
 def is_thuong_mai(texts) -> bool:
-    """Nhóm phương tiện theo tiêu đề Giấy đề nghị; không thấy chữ nào → phi thương mại (mapping chọn nhóm này)."""
+    """Dự phòng (trang LLM bỏ sót): nhóm theo tiêu đề Giấy đề nghị; không thấy chữ nào → phi thương mại."""
     joined = _fold(" ".join(str(t or "") for t in texts))
     if "phi thuong mai" in joined:
         return False
@@ -102,6 +107,13 @@ def route(doc_type: str, thuong_mai: bool) -> int:
     return group["de_nghi"]
 
 
+def split_group(types) -> tuple[bool, list[str]]:
+    """Nhóm thương mại theo loại Giấy đề nghị LLM gán; trả kèm danh sách loại đã quy _DE_NGHI_TM về _DE_NGHI."""
+    types = list(types)
+    thuong_mai = _DE_NGHI_TM in types and _DE_NGHI not in types
+    return thuong_mai, [_DE_NGHI if t == _DE_NGHI_TM else t for t in types]
+
+
 def has_own_row(doc_type: str, thuong_mai: bool) -> bool:
     return doc_type in (_DE_NGHI, _DANG_KY_XE, _QUYEN_SU_DUNG) or (doc_type == _HOP_DONG and not thuong_mai)
 
@@ -111,7 +123,7 @@ def _normalize_type(value: str) -> str:
     if t in _ALLOWED:
         return t
     if "de_nghi" in t:
-        return _DE_NGHI
+        return _DE_NGHI_TM if "thuong_mai" in t and "phi_thuong_mai" not in t else _DE_NGHI
     if "thue" in t or "quyen_su_dung" in t or "cho_muon" in t:
         return _QUYEN_SU_DUNG
     if "dang_ky_xe" in t or "ca_vet" in t or "giay_hen" in t:
@@ -124,13 +136,13 @@ def _normalize_type(value: str) -> str:
 
 
 def _rule_type(text: str) -> str:
-    """Fallback khi LLM trả other — nhận theo TIÊU ĐỀ đầu đoạn."""
+    """Dự phòng cho trang LLM bỏ sót (không cho đoạn LLM đã gán other) — nhận theo TIÊU ĐỀ đầu đoạn."""
     h = _fold(text)
     if not h:
         return _OTHER
     head = h[:700]
     if "giay de nghi" in head and "lien van" in head:
-        return _DE_NGHI
+        return _DE_NGHI_TM if is_thuong_mai([text]) else _DE_NGHI
     if ("dang ky xe" in head or "vehicle registration" in head) and any(k in h for k in ("bien so", "so khung", "so may")):
         return _DANG_KY_XE
     if "hop dong" in head and ("thue" in head or "cho thue tai chinh" in head) and ("xe" in head or "phuong tien" in head):
@@ -170,7 +182,7 @@ def _validated_segments(raw_segments: list[dict], raw_files: list[dict], file_me
         page_count = meta["pageCount"]
         items = sorted(by_file[file_index], key=lambda x: (x["pageFrom"], x["pageTo"]))
         if not meta["pageBoundariesAvailable"]:
-            first = items[0] if items else _fallback_segment(file_index, 1, page_count)
+            first = items[0] if items else {**_fallback_segment(file_index, 1, page_count), "missed": True}
             valid.append({**first, "pageFrom": 1, "pageTo": page_count})
             continue
         occupied: set[int] = set()
@@ -191,17 +203,18 @@ def _validated_segments(raw_segments: list[dict], raw_files: list[dict], file_me
                 prev = page
             else:
                 if start is not None:
-                    accepted.append(_fallback_segment(file_index, start, prev))
+                    accepted.append({**_fallback_segment(file_index, start, prev), "missed": True})
                 start = prev = page
         valid.extend(sorted(accepted, key=lambda x: x["pageFrom"]))
     return sorted(valid, key=lambda x: (x["fileIndex"], x["pageFrom"]))
 
 
 def untick_rows(planned_rows: set[int], thuong_mai: bool) -> list[str]:
-    """Dòng của nhóm kia + tiêu đề nhóm kia; phi thương mại không có hợp đồng dự án thì bỏ tick cả dòng 4."""
-    rows = [r for r in _GROUP[thuong_mai]["untick"] if r not in planned_rows]
-    if not thuong_mai and 4 not in planned_rows:
-        rows.append(4)
+    """Dòng của nhóm kia + tiêu đề nhóm kia; phi thương mại không có hợp đồng dự án thì bỏ tick cả dòng hợp đồng."""
+    group = _GROUP[thuong_mai]
+    rows = [r for r in group["untick"] if r not in planned_rows]
+    if group["hop_dong"] and group["hop_dong"] not in planned_rows:
+        rows.append(group["hop_dong"])
     return [ROWS[r]["componentName"] for r in sorted(rows)]
 
 
@@ -215,7 +228,8 @@ def missing_warnings(found_types: set[str], thuong_mai: bool) -> list[str]:
                         "sao giấy đăng ký xe; xe không thuộc sở hữu người đề nghị thì kèm tài liệu chứng minh quyền sử "
                         "dụng hợp pháp.")
     if not thuong_mai and _HOP_DONG not in found_types:
-        warnings.append("Không có hợp đồng/tài liệu công trình, dự án tại Lào, Campuchia — đã bỏ tick dòng 4 (chỉ bắt buộc "
+        warnings.append("Không có hợp đồng/tài liệu công trình, dự án tại Lào, Campuchia — đã bỏ tick dòng "
+                        f"{group['hop_dong']} (chỉ bắt buộc "
                         "với doanh nghiệp thực hiện công trình, dự án, hoạt động kinh doanh tại Lào/Campuchia).")
     return warnings
 
@@ -227,14 +241,17 @@ def build_plan_items(
     pages_by_file: dict[int, dict[int, str]],
 ) -> tuple[list[dict], list[dict], list[str]]:
     """Đoạn đã hợp lệ → (attachments, classified, warnings). Thuần tất định, không gọi OCR/LLM."""
+    # LLM quyết loại (kể cả other); tiêu đề trang / trang nối tiếp chỉ đoán cho trang LLM bỏ sót.
     typed: list[tuple[dict, str]] = []
     for segment in segments:
         doc_type = segment["type"]
-        if doc_type == _OTHER:  # LLM là chính; rule OCR chỉ vá khi LLM trả other.
+        if segment.get("missed"):
             doc_type = _rule_type(_segment_text(segment, pages_by_file))
         typed.append((segment, doc_type))
-    typed = _merge_adjacent(_inherit_continuations(typed, pages_by_file))
-    thuong_mai = is_thuong_mai(_segment_text(s, pages_by_file) for s, t in typed if t == _DE_NGHI)
+    inherited = _inherit_continuations(typed, pages_by_file)
+    typed = [(s, new if s.get("missed") else old) for (s, new), (_, old) in zip(inherited, typed)]
+    thuong_mai, types = split_group(t for _, t in typed)
+    typed = _merge_adjacent([(s, t) for (s, _), t in zip(typed, types)])
 
     classified: list[dict] = []
     extra_pages: list[str] = []
@@ -355,7 +372,7 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
             "llmDocuments": [raw_files[d["fileIndex"]]["name"] for d in llm_docs],
             "sessionId": (session or {}).get("request_id"),
             "classified": classified,
-            "thuongMai": any(a["componentIndex"] in (2, 6) for a in attachments),
+            "thuongMai": any(a["componentIndex"] in THUONG_MAI_ROWS for a in attachments),
             "rows": [{"componentIndex": k, **row} for k, row in ROWS.items()],
         },
         "ocr_text": join_ocr_documents(indexed_ocr),

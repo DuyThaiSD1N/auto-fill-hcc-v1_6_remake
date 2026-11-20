@@ -43,6 +43,14 @@ def parse_day(value: str | None, field: str) -> str | None:
     return raw
 
 
+def report_day(value: str | None, today: str) -> str:
+    """Ngày báo cáo đơn vị chọn: bỏ trống = hôm nay (web bản cũ không gửi); không nhận ngày tương lai."""
+    day = parse_day(value, "Ngày báo cáo") or today
+    if day > today:
+        raise AppError("DAILY_REPORT_FUTURE_DAY", "Không gửi được báo cáo cho ngày chưa tới.", 400)
+    return day
+
+
 def clean_count(value, label: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < 0 or value > MAX_COUNT:
         raise AppError("DAILY_REPORT_BAD_COUNT", f"{label} phải là số nguyên từ 0 đến {MAX_COUNT:,}.".replace(",", "."), 400)
@@ -77,6 +85,6 @@ def serialize(doc: dict, access: str, today: str) -> dict:
         "difficulties": doc.get("difficulties") or "",
         "createdAt": iso(doc.get("created_at")),
         "updatedAt": iso(doc.get("updated_at")) if doc.get("updated_at") != doc.get("created_at") else None,
-        # Chỉ được sửa trong ngày báo cáo, bởi chính đơn vị gửi; qua ngày thì khoá.
-        "editable": access == REPORTER and doc.get("date") == today,
+        # Đơn vị gửi được gửi bù / sửa báo cáo ngày đã qua (quên gửi), không có ngày tương lai.
+        "editable": access == REPORTER and (doc.get("date") or "") <= today,
     }

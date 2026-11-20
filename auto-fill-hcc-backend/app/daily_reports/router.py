@@ -144,15 +144,19 @@ async def summary(user: dict = Depends(require_dashboard)):
 
 
 @router.get("/today")
-async def get_today(user: dict = Depends(require_dashboard)):
+async def get_today(user: dict = Depends(require_dashboard), date: str | None = Query(None)):
+    """Báo cáo của đơn vị cho một ngày (mặc định hôm nay) — chọn ngày đã qua để gửi bù hoặc sửa."""
     ctx = await _context(user)
     ctx.require(rules.REPORTER)
     today = rules.today_vn()
-    doc = await repo.find_day(ctx.user_id, today)
-    return {"date": today, "report": rules.serialize(doc, ctx.access, today) if doc else None}
+    day = rules.report_day(date, today)
+    doc = await repo.find_day(ctx.user_id, day)
+    return {"date": day, "today": today, "report": rules.serialize(doc, ctx.access, today) if doc else None}
 
 
 class _TodayBody(BaseModel):
+    # Bỏ trống = hôm nay (web bản cũ không gửi trường này).
+    date: str | None = None
     assistantCount: int
     actualCount: int
     advantages: str = ""
@@ -161,7 +165,8 @@ class _TodayBody(BaseModel):
 
 @router.put("/today")
 async def save_today(body: _TodayBody, user: dict = Depends(require_dashboard)):
-    """Gửi hoặc sửa báo cáo HÔM NAY. Ngày lấy ở backend nên không sửa được báo cáo ngày đã qua."""
+    """Gửi hoặc sửa báo cáo của một ngày (mặc định hôm nay; được chọn ngày đã qua để gửi bù, không có ngày
+    tương lai). Giờ gửi luôn là giờ thật lúc bấm gửi nên vẫn biết báo cáo nào gửi bù."""
     ctx = await _context(user)
     ctx.require(rules.REPORTER)
     values = {
@@ -171,13 +176,14 @@ async def save_today(body: _TodayBody, user: dict = Depends(require_dashboard)):
         "difficulties": rules.clean_text(body.difficulties),
     }
     today = rules.today_vn()
+    day = rules.report_day(body.date, today)
     at = repo.now()
-    existed = await repo.find_day(ctx.user_id, today) is not None
+    existed = await repo.find_day(ctx.user_id, day) is not None
     self_unit = ctx.scope.get("self") or {}
     # Tổ dân phố báo cáo thay cho xã cha: tỉnh lọc theo đơn vị nên gắn vào xã cha (cùng cách báo lỗi).
     unit_id = tdp_rollup.TdpRollup(await tdp_rollup.load_tdp_parents(), None).unit(ctx.user_id)
     doc = await repo.upsert_day(
-        ctx.user_id, today,
+        ctx.user_id, day,
         {**values, "updated_at": at},
         {
             "unit_id": unit_id,
@@ -186,7 +192,7 @@ async def save_today(body: _TodayBody, user: dict = Depends(require_dashboard)):
             "reporter_name": user.get("name") or user.get("username"),
             "created_at": at,
         },
-        {"at": at, **ctx.actor(), "action": "update" if existed else "create"},
+        {"at": at, **ctx.actor(), "action": "update" if existed else "create", **({"late": True} if day < today else {})},
     )
     return rules.serialize(doc, ctx.access, today)
 

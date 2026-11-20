@@ -37,11 +37,18 @@ EXTRA_RULES = """
 
 ## B4. Nơi sinh (Gcs_NoiSinh)
 - Gcs_NoiSinh BẮT BUỘC khi có GIẤY CHỨNG SINH — TUYỆT ĐỐI KHÔNG bỏ trống. Lấy từ dòng "Tại:" trên giấy chứng sinh:
-  + chiTietDuoiXa = TÊN ĐẦY ĐỦ cơ sở y tế/bệnh viện (bệnh viện tuyến tỉnh thì KÈM tên tỉnh, vd "Bệnh viện đa khoa tỉnh Lai Châu"). KHÔNG kèm xã/huyện.
+  + chiTietDuoiXa = TÊN ĐẦY ĐỦ cơ sở y tế/bệnh viện (bệnh viện tuyến tỉnh thì KÈM tên tỉnh, vd "Bệnh viện đa khoa tỉnh Lai Châu"),
+    rồi ", " + địa chỉ dưới cấp xã của cơ sở (số nhà, đường) nếu giấy có. Giấy có CẢ tên cơ sở LẪN số nhà/đường → BẮT BUỘC
+    ghi cả hai, tên trước, địa chỉ sau. KHÔNG kèm xã/huyện/tỉnh.
+  + Tên cơ sở: ở dòng "Tại:". Dòng "Tại:" chỉ ghi địa chỉ (số nhà, đường, xã, tỉnh), KHÔNG có tên bệnh viện / trung tâm y tế
+    / trạm y tế / phòng khám → tên cơ sở là tên CƠ SỞ Y TẾ CẤP GIẤY in ở góc trên bên trái (dưới dòng Sở Y tế / cơ quan chủ
+    quản; tên in thành nhiều dòng thì ghép đủ các dòng, không lấy dòng Sở Y tế / cơ quan chủ quản), và BẮT BUỘC đặt tên đó
+    TRƯỚC số nhà/đường: chiTietDuoiXa chỉ có số nhà/đường là SAI khi giấy in tên cơ sở cấp giấy. Ngoại lệ duy nhất: dòng
+    "Tại:" ghi rõ sinh NGOÀI cơ sở y tế (tại nhà, trên đường đi...) → chỉ chép địa chỉ đó, KHÔNG thêm tên cơ sở cấp giấy.
   + tinh = tỉnh của cơ sở: suy từ tên bệnh viện tuyến tỉnh, HOẶC lấy theo tỉnh ở "Nơi cư trú" của mẹ ghi TRÊN CHÍNH giấy chứng sinh.
   + xa = phường/xã nơi cơ sở đặt trụ sở nếu xác định được.
   + Dù chỉ đọc được TÊN cơ sở (thiếu tỉnh/xã), VẪN phải trả Gcs_NoiSinh với ít nhất chiTietDuoiXa + tinh — không được để trống cả object.
-  + Gcs_NoiSinh KHÔNG áp dụng quy tắc tách địa chỉ ở mục F — chiTietDuoiXa là tên cơ sở y tế.
+  + Gcs_NoiSinh KHÔNG áp dụng quy tắc tách địa chỉ ở mục F — chiTietDuoiXa là tên cơ sở y tế (kèm số nhà/đường nếu có).
   + Nếu hồ sơ CÓ TỜ KHAI ĐĂNG KÝ KHAI SINH: trích THÊM field RIÊNG Tk_NoiSinh = dòng "Nơi sinh" trên tờ khai (object {tinh,xa,chiTietDuoiXa}), lấy NGUYÊN VĂN (kể cả số nhà/đường/phố). Nơi sinh điền vào form ƯU TIÊN Tk_NoiSinh (tờ khai); chỉ khi KHÔNG có tờ khai mới dùng Gcs_NoiSinh (giấy chứng sinh). Trích cả hai khi có, hệ thống tự chọn ưu tiên.
   + Dòng "Nơi sinh" trên tờ khai là chữ VIẾT TAY, OCR hay đọc lệch: chữ gần giống "Bệnh viện" ("Biên Viên", "Bệnh viên", "Bênh viện", "Bện viện"...) → viết đúng "Bệnh viện"; tương tự "Trung tâm y tế", "Trạm y tế". Tên cơ sở trùng cơ sở in trên giấy chứng sinh nhưng lệch vài chữ ("Hoàn mỉ" ↔ "Hoàn Mỹ") → chép đúng tên in trên giấy chứng sinh.
 - Xã/phường nơi sinh chỉ trả khi OCR/tờ khai xác định đúng địa bàn của cơ sở. Không dùng xã/phường

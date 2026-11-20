@@ -92,7 +92,9 @@ def _rule_doc_type(text: str) -> str:
         or ("ket luan" in haystack and "tinh trang benh" in haystack)
         or ("ket luan" in haystack and "muc do khuyet tat" in haystack)
     ):
-        return _DOC_MEDICAL_CONCLUSION
+        # Dòng kết luận GĐYK chỉ nhận kết luận trước 01/6/2012 — luật dự phòng không đọc được ngày nên xếp về dòng
+        # giấy tờ liên quan (nhận mọi giấy tờ y tế); phân biệt theo ngày là việc của LLM.
+        return _DOC_RELATED
 
     if any(
         marker in haystack

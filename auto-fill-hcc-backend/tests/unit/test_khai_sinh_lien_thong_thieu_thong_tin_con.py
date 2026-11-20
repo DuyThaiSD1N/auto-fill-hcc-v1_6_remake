@@ -357,3 +357,9 @@ def test_quan_he_voi_chu_ho_theo_nhan_cua_form():
     assert relation("cháu cố") == "Chắt"
     assert relation("Cháu") == "Cháu"  # không đoán nội / ngoại
     assert relation("Chủ hộ") is None
+
+
+def test_ten_co_so_in_hoa_kem_dia_chi_chi_doi_kieu_chu_cum_in_hoa():
+    from app.pipelines.khai_sinh_lien_thong.process.mapper import _facility_name_case
+    assert _facility_name_case("BỆNH VIỆN ĐA KHOA AN BÌNH, 12 Đường Số 3") == "Bệnh viện đa khoa An Bình, 12 Đường Số 3"
+    assert _facility_name_case("BỆNH VIỆN ĐA KHOA AN BÌNH, 12 ĐƯỜNG SỐ 3") == "Bệnh viện đa khoa An Bình, 12 Đường số 3"

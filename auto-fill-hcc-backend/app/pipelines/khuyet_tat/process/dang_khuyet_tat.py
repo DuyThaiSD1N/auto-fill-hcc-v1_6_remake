@@ -20,6 +20,8 @@ _MARKS = ("x", "✓", "✔", "√", "v", "☑", "☒")
 # Mọi dòng con đọc được đều "Có" (từ 20 dòng trở lên) là đọc lệch cột, không phải tờ khai thật. Người khuyết tật nặng
 # tích "Có" cả mấy nhóm là có thật nên không chặn theo tỉ lệ.
 _DEGENERATE_MIN_ROWS = 20
+# OCR hay dính dấu nháy / chấm sau STT dòng nhóm ("| 6’ | Khuyết tật khác |"): bỏ khi so STT, không thì mất cả dòng.
+_STT_NOISE = ".’‘'`´ "
 WARNING = ("Chưa đọc chắc được bảng dạng khuyết tật (Mục III.1) — cán bộ soát lại các ô Có/Không.")
 
 PROMPT = """<task>
@@ -79,7 +81,7 @@ def _cells(line: str) -> list[str] | None:
 def _row_line(key: str, copied: str, ocr_text: str) -> str:
     """Dòng bảng "| <STT> | …|" trong OCR: chỉ một dòng mang STT đó thì lấy dòng đó; nhiều dòng (hồ sơ quét trùng trang)
     thì lấy dòng model đã chép nguyên văn. Không tin dòng model tự chép khi không có trong OCR."""
-    pattern = re.compile(rf"^\|\s*{re.escape(key)}\.?\s*\|")
+    pattern = re.compile(rf"^\|\s*{re.escape(key)}[{re.escape(_STT_NOISE)}]*\|")
     lines = [line.strip() for line in str(ocr_text or "").splitlines() if pattern.match(line.strip())]
     if len(lines) == 1:
         return lines[0]
@@ -98,7 +100,7 @@ def rows_from(data, ocr_text: str = "") -> dict[str, str] | None:
     for row in rows:
         if not isinstance(row, dict):
             continue
-        key = str(row.get("so") or "").strip().rstrip(".")
+        key = str(row.get("so") or "").strip().rstrip(_STT_NOISE)
         if key not in ROWS:
             continue
         line = _row_line(key, str(row.get("dong_ocr") or ""), ocr_text)

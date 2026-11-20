@@ -111,6 +111,19 @@ test("đọc lại field bằng engine của từng loại form", () => {
   assert.equal(FS.readFields([{ name: "x", comp: "x-date" }], "legacy")[0].value, null, "lỗi đọc → null, không ném");
 });
 
+test("ô Choices trống (option mang chữ gợi ý) đọc là rỗng", () => {
+  const option = (value) => ({ value, textContent: value });
+  const select = (options, hint = "Chọn Phường/xã") => ({
+    multiple: false, selectedOptions: options, getAttribute: (k) => (k === "placeholder" ? hint : null),
+  });
+  const ns = { findStandardSelect: () => current, findStandardInput: () => null };
+  let current = select([option("Chọn Phường/xã")]);
+  const { FS } = load({ ns });
+  assert.equal(FS.readFields([{ name: "data[ownerDistrict]", comp: "dom-select" }], "standard")[0].value, "");
+  current = select([option("Phường Tiên Du")]);
+  assert.equal(FS.readFields([{ name: "data[ownerDistrict]", comp: "dom-select" }], "standard")[0].value, "Phường Tiên Du");
+});
+
 test("vòng đời fill → edit (chỉ khi đổi) → step", () => {
   let value = "A";
   const ns = { readLegacyField: () => value };

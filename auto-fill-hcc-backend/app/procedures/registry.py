@@ -8334,6 +8334,8 @@ PROCEDURES: list[dict] = [
     {
         "key": "cap-moi-giay-phep-hanh-nghe-chuyen-tiep",
         "collectFormContext": True,
+        # attach/planner.py: bật tách → PDF gộp cắt theo trang, mỗi giấy vào dòng của nó; tắt → đính nguyên tệp.
+        "supportsSplitDocuments": True,
         # Cổng Bộ Y tế dichvucongbyt.moh.gov.vn — Form.io, engine fillFormStandard dom-* + attach BẢNG
         # attp-row (như #62 tro-cap-xa-hoi-hang-thang, field-key data[...] TRÙNG KHÍT). CHỈ MỘT người =
         # người hành nghề. URL SPA là ObjectId không có MaTTHC → detect theo cụm tên đặc trưng.
@@ -8376,6 +8378,8 @@ PROCEDURES: list[dict] = [
     {
         "key": "dieu-chinh-giay-phep-hanh-nghe-chuyen-tiep",
         "collectFormContext": True,
+        # attach/planner.py: bật tách → PDF gộp cắt theo trang, mỗi giấy vào dòng của nó; tắt → đính nguyên tệp.
+        "supportsSplitDocuments": True,
         # Mã TTHC 1.012292, nộp tại Sở Y tế. Cổng Bộ Y tế dichvucongbyt.moh.gov.vn — CÙNG form với
         # cap-moi-giay-phep-hanh-nghe-chuyen-tiep (+ ô data[ghiChu]); bảng đính kèm 10 dòng, nhiều dòng trùng
         # tên. URL SPA là ObjectId không có MaTTHC → detect theo cụm tên đặc trưng.

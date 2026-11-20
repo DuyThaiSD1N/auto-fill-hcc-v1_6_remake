@@ -29,7 +29,9 @@ mới. Không có cả tờ khai lẫn bản cam đoan → mọi mục null.
   khi tờ khai nêu. Bổ sung thông tin còn trống thì "Bổ sung <thông tin>: <giá trị>".
 - Giá trị cũ = giá trị ĐANG GHI trên giấy hộ tịch cần sửa; giá trị mới = giá trị đúng theo tờ khai / giấy căn cứ.
   Giấy cần sửa có trong hồ sơ thì giá trị cũ phải đúng chữ in trên giấy đó; chữ viết tay trên tờ khai OCR đọc lệch
-  thì lấy theo chữ in của giấy hộ tịch / giấy căn cứ.
+  thì lấy theo chữ in của giấy hộ tịch / giấy căn cứ. Giá trị mới là họ tên một người có giấy in của cơ quan (trích lục
+  khai tử, giấy khai sinh, CCCD của chính người đó) → đúng chữ in trên giấy đó. So cả dấu thanh: hai cách viết chỉ
+  khác dấu là hai tên khác nhau, chọn đúng cách in.
 - Họ tên ở hai bên viết ĐỦ họ, chữ đệm, tên — kể cả khi chỉ sửa một chữ.
 - BỎ mục mà giá trị cũ và mới giống hệt nhau; bỏ nhãn "Lý do", câu cam đoan, phần lý do lạc vào nội dung.
 - Câu trên giấy đã đủ nghĩa thì GIỮ NGUYÊN câu đó, chỉ sửa lỗi OCR ở từ thông thường (vd "nam sinh" → "năm sinh");

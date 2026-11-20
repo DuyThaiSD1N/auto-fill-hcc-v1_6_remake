@@ -75,7 +75,7 @@ def test_ngay_bao_cao_theo_gio_viet_nam():
 
 def test_don_vi_gui_roi_sua_trong_ngay_khong_tao_ban_thu_hai(as_user):
     client = as_user(WARD_A)
-    assert client.get("/api/v1/daily-reports/today").json() == {"date": TODAY, "report": None}
+    assert client.get("/api/v1/daily-reports/today").json() == {"date": TODAY, "today": TODAY, "report": None}
     first = _send(client).json()
     assert first["date"] == TODAY and first["assistantCount"] == 10 and first["editable"] is True
     assert first["updatedAt"] is None
@@ -95,13 +95,31 @@ def test_kiem_so_lieu(as_user):
     assert as_user.db.raw.daily_reports.count_documents({}) == 0
 
 
-def test_bao_cao_cu_khoa_va_chi_thay_cua_minh(as_user):
+def test_bao_cao_cu_sua_duoc_va_chi_thay_cua_minh(as_user):
     _seed(as_user.db, WARD_A, "2026-11-12", 5, 6)
     _seed(as_user.db, WARD_B, "2026-11-12", 7, 7)
     body = as_user(WARD_A).get("/api/v1/daily-reports").json()
     assert body["access"] == "reporter" and body["total"] == 1
-    assert body["items"][0]["editable"] is False
+    assert body["items"][0]["editable"] is True
     assert "missingToday" not in body
+
+
+def test_gui_bu_ngay_truoc_khong_gui_ngay_toi(as_user):
+    """Quên gửi thì chọn ngày đã qua để gửi bù / sửa; không có ngày tương lai. Không gửi ngày = hôm nay (web cũ)."""
+    client = as_user(WARD_A)
+    assert client.get("/api/v1/daily-reports/today", params={"date": "2026-11-10"}).json() == {
+        "date": "2026-11-10", "today": TODAY, "report": None}
+    late = client.put("/api/v1/daily-reports/today", json={"date": "2026-11-10", "assistantCount": 3, "actualCount": 4,
+                                                           "advantages": "", "difficulties": ""}).json()
+    assert late["date"] == "2026-11-10" and late["editable"] is True
+    assert client.get("/api/v1/daily-reports/today", params={"date": "2026-11-10"}).json()["report"]["id"] == late["id"]
+    assert as_user.db.raw.daily_reports.find_one({"date": "2026-11-10"})["log"][0]["late"] is True
+    # Hôm nay vẫn chưa gửi: báo cáo bù không tính là báo cáo hôm nay.
+    assert client.get("/api/v1/daily-reports/summary").json()["sentToday"] is False
+    future = client.put("/api/v1/daily-reports/today", json={"date": "2026-11-14", "assistantCount": 1, "actualCount": 1})
+    assert future.status_code == 400
+    assert client.get("/api/v1/daily-reports/today", params={"date": "14/11/2026"}).status_code == 400
+    assert _send(client).json()["date"] == TODAY
 
 
 def test_tinh_khong_gui_duoc_va_chi_xem_don_vi_trong_tinh(as_user):

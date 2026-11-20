@@ -70,10 +70,9 @@ async def _segment_all(pages_by_file: dict[int, list[str]]) -> list[dict]:
 
 
 def segment_type(segment: dict, pages_by_file: dict[int, list[str]]) -> str:
-    """Loại giấy LLM gán; LLM để trống / other thì đọc tiêu đề trang đầu đoạn."""
-    doc_type = canonical_type(segment["doc"].get("docType"))
-    if doc_type != OTHER:
-        return doc_type
+    """Loại giấy LLM gán (kể cả other); LLM để trống mới đọc tiêu đề trang đầu đoạn."""
+    if str(segment["doc"].get("docType") or "").strip():
+        return canonical_type(segment["doc"].get("docType"))
     pages = pages_by_file.get(segment["fileIndex"]) or []
     first = (segment["pages"] or [0])[0]
     return (page_type(pages[first]) if first < len(pages) else None) or OTHER

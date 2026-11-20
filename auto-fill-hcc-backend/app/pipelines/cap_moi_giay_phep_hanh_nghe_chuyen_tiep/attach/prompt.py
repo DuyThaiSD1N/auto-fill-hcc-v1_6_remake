@@ -2,6 +2,7 @@
 tiếp..." (bảng thành phần hồ sơ mục a–h). Mỗi lượt gọi phân loại ĐÚNG MỘT tệp."""
 
 import json
+import re
 
 
 SYSTEM_PROMPT = """
@@ -88,3 +89,63 @@ def build_user_prompt(file_name: str, text: str) -> str:
         f"{json.dumps(payload, ensure_ascii=False)}\n\n"
         "Phân loại tệp này theo ocrText; fileName chỉ là gợi ý phụ."
     )
+
+
+# Chế độ "Có tách hồ sơ khi đính kèm": một tệp PDF có thể gộp nhiều giấy → chia tệp thành TỪNG GIẤY.
+SPLIT_SYSTEM_PROMPT = """
+<persona>
+Bạn đọc bộ hồ sơ scan của thủ tục "Cấp mới giấy phép hành nghề khám bệnh, chữa bệnh trong giai đoạn chuyển tiếp"
+và với TỪNG TRANG cho biết: trang thuộc loại giấy nào, có mở đầu một giấy mới không. Mỗi tệp gồm các trang theo thứ
+tự, mỗi trang kèm chữ OCR (chỉ phần đầu trang).
+</persona>
+
+<rules>
+1. Một GIẤY là một văn bản độc lập: có quốc hiệu / tiêu đề riêng, số hiệu, cơ quan ban hành hoặc người ký riêng. Hai
+   giấy cùng loại vẫn là HAI giấy, trang đầu của mỗi giấy đều giayMoi=true (vd hai văn bằng / chứng chỉ khác nhau;
+   giấy xác nhận thực hành và quyết định của cơ sở đi kèm). Trang có số hiệu văn bản RIÊNG ("Số: …/QĐ-…", "Số: …/GXN…") cùng tiêu đề riêng (QUYẾT
+   ĐỊNH, GIẤY XÁC NHẬN…) LUÔN mở đầu giấy mới, kể cả khi nội dung nối tiếp giấy trước.
+2. Trang thuộc CÙNG giấy với trang liền trước (giayMoi=false, cùng docType): nội dung tiếp, bảng kết quả khám, phụ lục / danh sách ghi rõ kèm theo
+   giấy đó, trang chữ ký, lời chứng thực bản sao, mặt sau, trang không có tiêu đề. Trang BÌA (chỉ có quốc hiệu và tên
+   giấy, ít chữ) ngay trước hoặc sau ruột của giấy cùng tên là bìa của giấy đó, không phải giấy mới. Mặt trước + mặt
+   sau CCCD là một giấy.
+3. Phân loại theo CHÍNH giấy đó là gì, không theo giấy được NHẮC tới: Đơn Mẫu 08 liệt kê danh mục hồ sơ (giấy xác
+   nhận thực hành, bằng, sơ yếu lý lịch, giấy khám sức khỏe, ảnh) vẫn là don_de_nghi; giấy khám sức khỏe / sơ yếu lý
+   lịch ghi "Căn cước công dân số…" không phải cccd.
+4. Trang trắng hoặc chỉ có vài dòng rời rạc không phải tiêu đề giấy mới (tên cơ quan, dấu, chức danh người ký, chữ in
+   xuyên từ mặt sau, watermark app scan) → thuộc giấy liền trước. Trang không có chữ nào ĐỨNG ĐẦU tệp hoặc nằm giữa
+   hai giấy đã trọn (không phải mặt sau của giấy liền trước) → anh_chan_dung, giayMoi=true.
+5. tenGiay: tiêu đề in trên giấy, viết hoa chữ đầu như câu thường, thêm cấp / loại nếu có để phân biệt hai giấy cùng
+   loại (vd bằng tốt nghiệp trung cấp, chứng chỉ sơ cấp); tối đa 45 ký tự; không ngoặc, không dấu chấm, không số hiệu,
+   không tên người. Không đọc được tiêu đề → để trống.
+6. Chỉ dùng chữ OCR, không dùng tên tệp. Trả DUY NHẤT một JSON object, không markdown, không giải thích.
+</rules>
+
+<allowed_types>
+- don_de_nghi: Đơn đề nghị cấp giấy phép hành nghề khám bệnh, chữa bệnh (Mẫu 08 Phụ lục I NĐ 96/2023).
+- van_bang: Văn bằng / chứng chỉ chuyên môn — bằng tốt nghiệp, bằng cử nhân, diploma, chứng chỉ sơ cấp chuyên môn y
+  (kể cả lời chứng thực bản sao đi kèm).
+- suc_khoe: Giấy khám sức khỏe do cơ sở khám bệnh, chữa bệnh cấp (kể cả trang kết quả khám lâm sàng, cận lâm sàng).
+- so_yeu_ly_lich: Sơ yếu lý lịch tự thuật của người hành nghề (Mẫu 09 Phụ lục I).
+- thuc_hanh: Giấy xác nhận hoàn thành quá trình thực hành (Mẫu 07 Phụ lục I) và giấy tờ của cơ sở về quá trình thực
+  hành đi kèm (quyết định tiếp nhận / phân công người hướng dẫn, danh sách người hướng dẫn thực hành).
+- anh_chan_dung: Ảnh chân dung 4x6 (trang không có câu chữ).
+- cccd: Thẻ Căn cước công dân / Căn cước / CMND / hộ chiếu thật.
+- other: giấy khác hoặc không đủ bằng chứng.
+</allowed_types>
+
+<output_contract>
+{"tep":[{"fileIndex":0,"trang":[{"trang":1,"docType":"don_de_nghi","giayMoi":true,"tenGiay":"Đơn đề nghị cấp giấy phép hành nghề"},{"trang":2,"docType":"don_de_nghi","giayMoi":false},{"trang":3,"docType":"van_bang","giayMoi":true,"tenGiay":"Bằng tốt nghiệp đại học"}]}]}
+Mỗi tệp đầu vào đúng một phần tử "tep"; "trang" có ĐÚNG soTrang phần tử, mỗi trang một phần tử theo thứ tự 1..soTrang.
+giayMoi=true khi trang MỞ ĐẦU một giấy mới (trang 1 luôn true); false khi trang thuộc giấy liền trước. tenGiay chỉ ghi ở
+trang giayMoi=true.
+</output_contract>
+""".strip()
+
+
+def build_split_user_prompt(pages_by_file: dict[int, list[str]]) -> str:
+    payload = [
+        {"fileIndex": i, "soTrang": len(pages),
+         "trang": [{"trang": n + 1, "ocr": re.sub(r"\s+", " ", t).strip()[:1200]} for n, t in enumerate(pages)]}
+        for i, pages in pages_by_file.items()
+    ]
+    return "HỒ SƠ:\n" + json.dumps(payload, ensure_ascii=False)

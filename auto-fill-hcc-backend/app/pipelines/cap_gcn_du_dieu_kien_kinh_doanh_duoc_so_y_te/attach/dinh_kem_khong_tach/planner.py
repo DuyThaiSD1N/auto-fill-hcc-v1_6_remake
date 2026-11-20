@@ -14,7 +14,7 @@ Mỗi dòng = MỘT tệp: nhiều tệp cùng dòng gộp một PDF (``sourceFi
 thuộc dòng của giấy CHÍNH (giấy đứng đầu tệp); dòng không có tệp riêng mà nằm trong tệp gộp thì đính nguyên tệp đó vào
 dòng ấy (dòng bắt buộc của cổng không bị trống) + cảnh báo.
 
-Phân loại: tiêu đề đầu từng trang (rule) trước; tệp rule không nhận ra mới hỏi LLM (MỘT lượt), LLM lỗi thì rule căn
+Phân loại: LLM đọc mọi tệp (MỘT lượt); tiêu đề đầu trang (rule) chỉ dùng cho tệp LLM lỗi / không trả, rồi mới căn
 cước / other.
 """
 
@@ -221,10 +221,10 @@ def build_plan_items(
     for index in range(len(raw_files)):
         text = ocr_text_by_index.get(index, "")
         found = rule_types(text)
-        if any(t in ROW_OF_TYPE for t in found):
-            covers[index], source[index] = found, "rule"
-        elif index in llm_by_index:
+        if index in llm_by_index:
             covers[index], source[index] = llm_by_index[index]["types"], "llm"
+        elif any(t in ROW_OF_TYPE for t in found):
+            covers[index], source[index] = found, "rule"
         else:
             covers[index], source[index] = (found or [CCCD if _looks_like_cccd(text) else OTHER]), "default"
 
@@ -300,11 +300,12 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
         if _is_docx(f) and not ocr_text_by_index[i]:
             ocr_text_by_index[i] = str(_extract_docx_text(f).get("text") or "")
 
-    # Chỉ hỏi LLM những tệp tiêu đề không nhận ra — hồ sơ đúng mẫu thì không tốn lượt gọi.
+    # Mọi tệp có chữ đều qua LLM: cụm tiêu đề dễ khớp nhầm chữ trong bảng (cột "Chứng chỉ hành nghề dược đã cấp" của
+    # bản kê nhân sự trong tài liệu kỹ thuật) nên rule chỉ dự phòng khi LLM không trả.
     llm_docs = [
         {"fileIndex": i, "ocrText": ocr_text_by_index[i][:12000]}
         for i in range(len(raw_files))
-        if ocr_text_by_index[i].strip() and not any(t in ROW_OF_TYPE for t in rule_types(ocr_text_by_index[i]))
+        if ocr_text_by_index[i].strip()
     ]
     started = time.monotonic()
     raw_classifications: list[dict] = []

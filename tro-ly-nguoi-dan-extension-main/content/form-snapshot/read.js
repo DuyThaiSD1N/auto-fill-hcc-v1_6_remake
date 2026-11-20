@@ -18,13 +18,21 @@
     return text(input.closest("label, .form-check, .radio")) || String(input.value || "");
   }
 
+  // Choices (Form.io) để ô trống bằng một option mang chính chữ gợi ý: value = chữ = thuộc tính placeholder của
+  // select ("Chọn Phường/xã") — không phải giá trị đã chọn.
+  function pickedOptions(select) {
+    const hint = String(select.getAttribute?.("placeholder") || "").trim();
+    return Array.from(select.selectedOptions || [])
+      .filter((o) => o.value !== "" && !(hint && (o.value === hint || text(o) === hint))).map(text);
+  }
+
   // Form.io/HTML thường: <select> gốc của Choices vẫn giữ option đã chọn.
   function readStandard(f) {
     const names = typeof NS.fieldCandidates === "function" ? NS.fieldCandidates(f) : [f.name];
     const occurrence = f.occurrence ?? null;
     const select = NS.findStandardSelect?.(names, occurrence);
     if (select) {
-      const picked = Array.from(select.selectedOptions || []).filter((o) => o.value !== "").map(text);
+      const picked = pickedOptions(select);
       return select.multiple ? picked : (picked[0] || "");
     }
     const el = NS.findStandardInput?.(names, occurrence);
@@ -70,7 +78,7 @@
     const el = els[f.occurrence ?? 0];
     if (!el) return null;
     if (el.tagName === "SELECT") {
-      const picked = Array.from(el.selectedOptions || []).filter((o) => o.value !== "").map(text);
+      const picked = pickedOptions(el);
       return el.multiple ? picked : (picked[0] || "");
     }
     return String(el.value ?? "").trim();

@@ -609,15 +609,18 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     details = {_compact_code(v) for v in _as_list(values.get("KhuyetTat_ChiTiet"))}
     categories.update(code.split("_", 1)[0] for code in details if "_" in code)
     # Đơn có ít nhất một dòng "Có" thì mọi radio đang hiện phải có giá trị: nhóm không "Có" → "Không" ở dòng
-    # nhóm (radio con ẩn, không tích); nhóm "Có" → dòng con không "Có" (trống hoặc "Không") tích "Không".
+    # nhóm (radio con ẩn, không tích); nhóm "Có" có ít nhất một dòng con "Có" → các dòng con còn lại tích "Không";
+    # nhóm "Có" mà không dòng con nào "Có" → tích "Có" mọi dòng con (đơn chỉ đánh dấu ở dòng nhóm).
     # Không dòng nào "Có" (Mục III bỏ trống) → không tích gì.
     if categories:
         for code, name in sorted(DISABILITY_RADIO_FIELDS.items()):
             if "_" not in code:
                 add(name, "co" if code in categories else "khong")
+        groups_with_detail = {code.split("_", 1)[0] for code in details if "_" in code}
         for code, name in sorted(DISABILITY_RADIO_FIELDS.items()):
-            if "_" in code and code.split("_", 1)[0] in categories:
-                add(name, "co" if code in details else "khong")
+            group = code.split("_", 1)[0]
+            if "_" in code and group in categories:
+                add(name, "co" if code in details or group not in groups_with_detail else "khong")
 
     muc_do = values.get("MucDo_HoatDong")
     if isinstance(muc_do, dict):
