@@ -8018,6 +8018,55 @@
     return ok;
   }
 
+  // field.firstOption: chọn mục THẬT đầu tiên (mục ngay dưới "-- Chưa chọn --"). Ô Cơ quan tiếp nhận eForm Bộ Công an
+  // (hộ chiếu 1.001456, thẻ tạm trú 1.003460, thị thực 1.001194 — user 19/11/2026) chỉ có cơ quan đã chọn ở bước chọn
+  // trường hợp hồ sơ, tên đổi theo tỉnh nên BE không biết trước chữ để khớp.
+  function firstRealSelectOption(select) {
+    return Array.from(select?.options || []).find((o) => {
+      const value = String(o.value ?? "").trim();
+      const text = foldChoiceText(o.textContent || "");
+      return value && value !== "-1" && !o.disabled && text
+        && !text.includes("chua chon") && !/^[-\s.]*(chon|lua chon)[-\s.]*$/.test(text);
+    }) || null;
+  }
+
+  // Dự phòng khi tên ô (BE suy từ file mapping) lệch DOM thật: ô select đứng cùng khối với nhãn bắt đầu bằng `label`
+  // ("Cơ quan tiếp nhận (*)"), leo tối đa 3 cấp cha từ nhãn.
+  function findSelectByLabel(label, root = document) {
+    const want = foldChoiceText(label);
+    if (!want) return null;
+    for (const node of Array.from(root.querySelectorAll("label"))) {
+      // "17. Cơ quan tiếp nhận (*)" (hộ chiếu đánh số mục) → bỏ số đầu nhãn.
+      if (!foldChoiceText(node.textContent || "").replace(/^\d+\s*[.)]?\s*/, "").startsWith(want)) continue;
+      const forId = node.getAttribute("for");
+      const byFor = forId ? document.getElementById(forId) : null;
+      if (byFor?.tagName === "SELECT") return byFor;
+      let box = node.parentElement;
+      for (let level = 0; box && level < 3; level++, box = box.parentElement) {
+        const select = box.querySelector("select");
+        if (select) return select;
+      }
+    }
+    return null;
+  }
+
+  async function pickFirstSelectOption(select, waitMs = 2500) {
+    if (!select) return false;
+    const option = firstRealSelectOption(select) || await waitFor(() => firstRealSelectOption(select), waitMs, 100);
+    if (!option) return false;
+    if (select.value === option.value) {
+      markFilled(standardMarkTarget(select));
+      return true;
+    }
+    if (bootstrapSelectWrapper(select) && await pickBootstrapSelectItem(select, option.textContent || "", waitMs)) return true;
+    select.value = option.value;
+    select.dispatchEvent(new Event("input", { bubbles: true }));
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    if (select.value !== option.value) return false;
+    markFilled(standardMarkTarget(select));
+    return true;
+  }
+
   async function fillStandardCheckbox(el, value) {
     if (!el) return false;
     const wantTrue = value === true || String(value).toLowerCase() === "true" || String(value) === "1";
@@ -9173,6 +9222,12 @@
           // cầu nối bỏ qua thì về fillStandardMultiSelect như cũ.
           const trySelect = async (attempt) => {
             let ok = false;
+            if (f.firstOption) {
+              // Chọn mục thật đầu tiên của danh sách (xem pickFirstSelectOption), không khớp theo chữ.
+              const el = findStandardSelect(candidates, occurrence, root)
+                || (f.firstOptionLabel ? findSelectByLabel(f.firstOptionLabel, root) : null);
+              return pickFirstSelectOption(el, attempt ? 1200 : 2500);
+            }
             // Cổng DVC Bộ Công an: ô bootstrap-select chọn như người dùng trước (pickBootstrapSelectItem). Danh sách Phường/Xã
             // còn của tỉnh cũ (có mục thật) thì chờ lượt sau; danh sách trống vẫn mở menu (cổng có thể nạp khi mở).
             if (location.hostname === "dichvucong.bocongan.gov.vn") {

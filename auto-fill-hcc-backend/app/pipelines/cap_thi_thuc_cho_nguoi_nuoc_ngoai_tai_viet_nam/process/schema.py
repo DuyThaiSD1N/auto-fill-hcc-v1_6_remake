@@ -15,6 +15,7 @@ Cố ý KHÔNG phát:
 - Ô readonly cổng lấy từ tài khoản đăng nhập của người bảo lãnh: Thân nhân bảo lãnh (họ tên), Ngày sinh, Giấy CCCD
   (``CongDan_soCmnd``). Ô "Cơ quan/Tổ chức hoặc Thân nhân" khoá sẵn "Thân nhân" → khối cơ quan bảo lãnh (ẩn) bỏ qua.
 - Cơ quan tiếp nhận (``CongDan__fs_BCANoiNopHS``) — danh sách chỉ có cơ quan đã chọn ở bước "Chọn trường hợp hồ sơ"
+  Từ 19/11/2026 mapper phát ô ``CongDan__fs_BCANoiNopHS`` cờ ``firstOption`` (extension chọn mục thật đầu tiên).
   (như ô 17 hộ chiếu); nơi nhận thị thực (trực tiếp / bưu chính) — giấy tờ không ghi, người nộp tự chọn.
 - Ô hidden hệ thống tự sinh (Ngày/giờ hẹn).
 """

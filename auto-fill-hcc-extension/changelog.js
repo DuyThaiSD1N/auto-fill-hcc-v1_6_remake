@@ -3,6 +3,14 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.28.23",
+    date: "19/11/2026",
+    items: [
+      "Cấp hộ chiếu phổ thông ở trong nước, Cấp thị thực và Cấp thẻ tạm trú cho người nước ngoài tại Việt Nam: tự chọn ô \"Cơ quan tiếp nhận\" (cơ quan đã chọn ở bước chọn trường hợp hồ sơ).",
+      "Các thủ tục trên Cổng dịch vụ công Bộ Công an: email đọc từ giấy tờ được làm sạch trước khi điền (dấu phẩy, dấu cách, tên miền gmail đọc lệch).",
+    ],
+  },
+  {
     version: "1.28.22",
     date: "19/11/2026",
     items: [

@@ -36,11 +36,12 @@ from app.pipelines.chuyen_muc_dich_su_dung_dat_mien_nui_lai_chau.process.mapper 
     _area,
     _by_name,
     _date,
-    _email,
     _issuer,
     _phone,
     _plain,
 )
+# Email: làm sạch chung các thủ tục Bộ Công an (dấu phẩy OCR, tên miền đọc lệch), user 19/11/2026.
+from app.pipelines._shared.formatting import clean_email as _email
 
 # Dòng 2 MRZ hộ chiếu (ICAO 9303 TD3): số 9 ký tự + kiểm tra, quốc tịch, ngày sinh + kiểm tra, giới tính, hết hạn + kiểm tra.
 _MRZ_LINE2_RE = re.compile(r"([A-Z0-9<]{9})(\d)([A-Z<]{3})(\d{6})(\d)([MFX<])(\d{6})(\d)")
@@ -64,8 +65,8 @@ PHOTO_ONLY_WARNING = (
     "tải lên, tải thêm ảnh rồi điền lại hoặc tải tay trên cổng."
 )
 AGENCY_WARNING = (
-    "Mục Nơi tiếp nhận hồ sơ: ô Cơ quan tiếp nhận theo cơ quan đã chọn ở bước chọn trường hợp hồ sơ; tự chọn Nơi nhận "
-    "thị thực (Nhận trực tiếp / Nhận qua bưu chính) — giấy tờ không ghi."
+    "Mục Nơi tiếp nhận hồ sơ: ô Cơ quan tiếp nhận tự chọn cơ quan đã chọn ở bước chọn trường hợp hồ sơ; công dân tự "
+    "chọn Nơi nhận thị thực (Nhận trực tiếp / Nhận qua bưu chính) — giấy tờ không ghi."
 )
 
 
@@ -418,4 +419,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
                             "kiểm tra lại.")
     warnings.append(PHOTO_WARNING)
     warnings.append(AGENCY_WARNING)
+    if out:
+        # Cơ quan tiếp nhận: chọn mục thật đầu tiên (cùng ô, cùng luật hộ chiếu 1.001456 — user 19/11/2026).
+        from app.pipelines.cap_ho_chieu_pho_thong_o_trong_nuoc.process.mapper import agency_field
+
+        out.append(agency_field())
     return out, warnings

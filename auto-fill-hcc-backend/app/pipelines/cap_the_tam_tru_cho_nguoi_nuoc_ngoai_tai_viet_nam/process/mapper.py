@@ -42,11 +42,12 @@ from app.pipelines.chuyen_muc_dich_su_dung_dat_mien_nui_lai_chau.process.mapper 
     _area,
     _by_name,
     _date,
-    _email,
     _issuer,
     _phone,
     _plain,
 )
+# Email: làm sạch chung các thủ tục Bộ Công an (dấu phẩy OCR, tên miền đọc lệch), user 19/11/2026.
+from app.pipelines._shared.formatting import clean_email as _email
 
 __all__ = ["enrich", "ocr_fallback"]
 
@@ -66,8 +67,8 @@ PASSPORT_PAGE_WARNING = (
     "Ô ảnh Trang nhân thân hộ chiếu ở đầu biểu mẫu (tệp .jpg dưới 2 MB) — tải tay, không thuộc bảng Thành phần hồ sơ."
 )
 AGENCY_WARNING = (
-    "Mục Nơi tiếp nhận hồ sơ: ô Cơ quan tiếp nhận theo cơ quan đã chọn ở bước chọn trường hợp hồ sơ; tự chọn Nơi nhận "
-    "kết quả (Nhận trực tiếp / Nhận qua bưu chính) — giấy tờ không ghi."
+    "Mục Nơi tiếp nhận hồ sơ: ô Cơ quan tiếp nhận tự chọn cơ quan đã chọn ở bước chọn trường hợp hồ sơ; công dân tự "
+    "chọn Nơi nhận kết quả (Nhận trực tiếp / Nhận qua bưu chính) — giấy tờ không ghi."
 )
 
 
@@ -303,4 +304,9 @@ def enrich(fields: list[dict], options: dict | None = None, *, ghi_chu: str | No
             warnings.append("Giấy tờ không có / không đọc được — nhập tay các ô bắt buộc: " + ", ".join(missing) + ".")
     warnings.append(PHOTO_WARNING)
     warnings.append(AGENCY_WARNING)
+    if out:
+        # Cơ quan tiếp nhận: chọn mục thật đầu tiên (cùng ô, cùng luật hộ chiếu 1.001456 — user 19/11/2026).
+        from app.pipelines.cap_ho_chieu_pho_thong_o_trong_nuoc.process.mapper import agency_field
+
+        out.append(agency_field())
     return out, warnings

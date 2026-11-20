@@ -43,6 +43,8 @@ def _by(out: list[dict]) -> dict:
 def test_dien_dung_mapping_bo_mau():
     out, warnings = _enrich(HO_SO)
     assert _by(out) == {
+        # Cơ quan tiếp nhận: extension chọn mục thật đầu tiên (firstOption, user 19/11/2026).
+        "CongDan__fs_BCANoiNopHS": "Cơ quan đã chọn ở bước chọn trường hợp hồ sơ",
         "CongDan__fsBCAHoCongDan": "TRẦN",
         "CongDan__fsBCAChuDemTen": "VĂN AN",
         "CongDan__fs_BCANoiKhaiSinhCD": "Hưng Yên",  # hộ chiếu ghi tỉnh cũ "THÁI BÌNH" → tỉnh sau sắp xếp

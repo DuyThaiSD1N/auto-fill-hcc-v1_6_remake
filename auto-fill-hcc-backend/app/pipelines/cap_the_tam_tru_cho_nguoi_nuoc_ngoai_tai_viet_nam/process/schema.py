@@ -15,6 +15,7 @@ Cố ý KHÔNG phát:
 - Ô readonly theo tài khoản đăng nhập: Thân nhân bảo lãnh (họ tên), Ngày sinh, ``CongDan_soCmnd``; khối Cơ quan/tổ chức
   bảo lãnh + tra cứu doanh nghiệp đang ẨN (form khoá "Thân nhân") — mapping ghi CẦN XÁC NHẬN.
 - Cơ quan tiếp nhận (theo cơ quan đã chọn ở bước chọn trường hợp), nơi nhận kết quả (công dân tự chọn), "Về việc" (ẩn),
+  Từ 19/11/2026 mapper phát ô ``CongDan__fs_BCANoiNopHS`` cờ ``firstOption`` (extension chọn mục thật đầu tiên).
   ô hidden hệ thống.
 """
 

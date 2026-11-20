@@ -69,6 +69,8 @@ def _by(out: list[dict]) -> dict:
 def test_dien_dung_mapping_bo_mau():
     out, warnings = _enrich(HO_SO)
     assert _by(out) == {
+        # Cơ quan tiếp nhận: extension chọn mục thật đầu tiên (firstOption, user 19/11/2026).
+        "CongDan__fs_BCANoiNopHS": "Cơ quan đã chọn ở bước chọn trường hợp hồ sơ",
         "CongDan_tenCongDan": "DUPONT LUC ANDRE",
         "CongDan_ngaySinhCongDan": "05/06/1988",
         "CongDan__fs_BCAGioiTinhCd": "Nam",
@@ -106,9 +108,9 @@ def test_dien_dung_mapping_bo_mau():
     fields = {f["name"]: f for f in out}
     for ward in ("CongDan__fs_BCAXaTamTru", "CongDan__fs_BCAXaThuongTru", "CongDan__fs_BCAXaTamTruBaoLanh"):
         assert fields[ward]["waitMs"] == 8000, ward
-    # Ô readonly cổng lấy từ tài khoản người bảo lãnh + ô cơ quan tiếp nhận / nơi nhận: không phát.
+    # Ô readonly cổng lấy từ tài khoản người bảo lãnh + nơi nhận: không phát (cơ quan tiếp nhận: firstOption, 19/11).
     for locked in ("CongDan__fs_BCAThanNhanBaoLanh", "CongDan__fs_BCANgaySinhBaoLanh", "CongDan_soCmnd",
-                   "CongDan__fs_BCANoiNopHS", "CongDan__fs_BCANoiNhanHoChieu", "CongDan__fs_BCA_CoQuanThanNhan"):
+                   "CongDan__fs_BCANoiNhanHoChieu", "CongDan__fs_BCA_CoQuanThanNhan"):
         assert locked not in fields
     joined = " ".join(warnings)
     assert "Ảnh chân dung 4x6" in joined and "Trang nhân thân hộ chiếu" in joined
@@ -598,6 +600,57 @@ def test_runner_gan_anh_chan_dung_dau_danh_sach(monkeypatch):
     # Không có ảnh → giữ câu nhắc 2 ô ảnh tải tay như cũ.
     res = asyncio.run(tt_runner.run({"": files[:1]}, {}))
     assert not any(f["name"] == "filename46" for f in res["fields"]) and mapper.PHOTO_WARNING in res["errors"]
+
+
+def test_email_ocr_dinh_dau_phay_lam_sach_moi_thu_tuc_bo_cong_an():
+    # Chạy thật 19/11: ô Email liên hệ ra "lethihoa,0615@example.com" (OCR đọc dấu chấm thành dấu phẩy). User: mọi thủ tục
+    # Bộ Công an có ô email đều phải ra đúng khuôn.
+    import importlib
+
+    from app.pipelines._shared.formatting import clean_email
+
+    by = _by(_enrich({**HO_SO, "ToKhai_Email": "lethihoa,0615@example.com",
+                      "ToKhai_BaoLanh_Email": "Email: le thi hoa @ gmail,com"})[0])
+    assert by["CongDan_email"] == "lethihoa.0615@example.com"
+    assert by["CongDan__fs_BCAEmailBaoLanh"] == "lethihoa@gmail.com"
+    cases = {
+        "abc@gmailcom": "abc@gmail.com", "abc@gmai.com": "abc@gmail.com", "abc@gmail.con": "abc@gmail.com",
+        ".an..binh,@gmail.com": "an.binh@gmail.com", "đặng.văn@yahoo.com.vn": "dang.van@yahoo.com.vn",
+        "a@mail.com": "a@mail.com", "a@ymail.com": "a@ymail.com", "lan_anh@outlook. com": "lan_anh@outlook.com",
+        "không có": None, "a@b@c.com": None, None: None,
+    }
+    for raw, want in cases.items():
+        assert clean_email(raw) == want, raw
+    for folder in ("dang_ky_tam_tru", "dang_ky_thuong_tru", "dieu_chinh_thong_tin_ve_cu_tru",
+                   "xac_nhan_thong_tin_ve_cu_tru", "cap_doi_the_can_cuoc", "cap_the_can_cuoc_duoi_14_tuoi",
+                   "cap_the_can_cuoc_tu_du_14_tuoi", "dang_ky_xe_lan_dau_san_xuat_lap_rap_trong_nuoc",
+                   "dang_ky_mau_con_dau", "cap_ho_chieu_pho_thong_o_trong_nuoc",
+                   "trinh_bao_mat_ho_chieu_pho_thong_cap_xa", "cap_thi_thuc_cho_nguoi_nuoc_ngoai_tai_viet_nam",
+                   "cap_the_tam_tru_cho_nguoi_nuoc_ngoai_tai_viet_nam"):
+        module = importlib.import_module(f"app.pipelines.{folder}.process.mapper")
+        assert module._email("lethihoa,0615@gmail,com") == "lethihoa.0615@gmail.com", folder
+
+
+def test_co_quan_tiep_nhan_chon_muc_that_dau_tien_ca_ba_thu_tuc():
+    # Ảnh chạy thật 19/11: ô "Cơ quan tiếp nhận" chỉ có "-- Chưa chọn --" + cơ quan đã chọn ở bước chọn trường hợp (tên đổi
+    # theo tỉnh). User: "luôn chọn cái ở dưới" → phát ô với cờ firstOption, extension chọn mục thật đầu tiên.
+    from app.pipelines.cap_ho_chieu_pho_thong_o_trong_nuoc.process import mapper as ho_chieu
+    from app.pipelines.cap_the_tam_tru_cho_nguoi_nuoc_ngoai_tai_viet_nam.process import mapper as the_tam_tru
+
+    agency = [f for f in _enrich(HO_SO)[0] if f["name"] == "CongDan__fs_BCANoiNopHS"]
+    assert agency == [ho_chieu.agency_field()]
+    assert agency[0]["comp"] == "dom-select" and agency[0]["firstOption"] is True
+    assert agency[0]["firstOptionLabel"] == "Cơ quan tiếp nhận"
+    out, _ = the_tam_tru.enrich([{"name": "ToKhai_HoTen", "value": "KIM MIN SU"}], {})
+    assert out[-1] == ho_chieu.agency_field()
+    out, _ = ho_chieu.enrich([{"name": "ToKhai_Ho", "value": "NGUYỄN"}, {"name": "ToKhai_ChuDemTen", "value": "VĂN AN"}], {})
+    assert out and out[-1] == ho_chieu.agency_field()
+    # Không đọc được gì (out rỗng) → không phát riêng ô cơ quan.
+    assert thi_thuc_empty() == []
+
+
+def thi_thuc_empty():
+    return mapper.enrich([], {})[0]
 
 
 def test_tro_ly_co_o_anh_chan_dung():

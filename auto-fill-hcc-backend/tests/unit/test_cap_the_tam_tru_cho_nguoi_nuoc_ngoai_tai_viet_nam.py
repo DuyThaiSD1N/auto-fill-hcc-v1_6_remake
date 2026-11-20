@@ -77,6 +77,8 @@ def _by(out: list[dict]) -> dict:
 def test_dien_dung_mapping_bo_mau():
     out, warnings = _enrich(HO_SO, ghi_chu="Hồ sơ gồm 01 file PDF (6 trang): ho-so.pdf. Tr.1: Danh mục thành phần hồ sơ.")
     assert _by(out) == {
+        # Cơ quan tiếp nhận: extension chọn mục thật đầu tiên (firstOption, user 19/11/2026).
+        "CongDan__fs_BCANoiNopHS": "Cơ quan đã chọn ở bước chọn trường hợp hồ sơ",
         "CongDan_tenCongDan": "KIM MIN SU",
         "CongDan__fs_BCAGioiTinhCd": "Nam",
         "CongDan_ngaySinhCongDan": "04/02/1985",
@@ -111,7 +113,7 @@ def test_dien_dung_mapping_bo_mau():
     fields = {f["name"]: f for f in out}
     assert fields["CongDan__fs_BCAXaTamTru"]["waitMs"] == 8000 and fields["CongDan__fs_BCAXaThuongTru"]["waitMs"] == 8000
     for locked in ("CongDan__fs_BCAThanNhanBaoLanh", "CongDan__fs_BCANgaySinhBaoLanh", "CongDan_soCmnd",
-                   "CongDan__fsBCACoQuanBaoLanh", "CongDan__fs_BCANoiNopHS", "CongDan__fs_BCANoiNhanHoChieu",
+                   "CongDan__fsBCACoQuanBaoLanh", "CongDan__fs_BCANoiNhanHoChieu",
                    "HoSoOnline_veViec"):
         assert locked not in fields
     joined = " ".join(warnings)

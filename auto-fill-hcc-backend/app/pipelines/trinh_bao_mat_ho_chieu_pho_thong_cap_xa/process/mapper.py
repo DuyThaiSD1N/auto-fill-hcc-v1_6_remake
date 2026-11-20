@@ -27,12 +27,13 @@ from app.pipelines.chuyen_muc_dich_su_dung_dat_mien_nui_lai_chau.process.mapper 
     _area,
     _by_name,
     _date,
-    _email,
     _issuer,
     _phone,
     _plain,
     _same_person,
 )
+# Email: làm sạch chung các thủ tục Bộ Công an (dấu phẩy OCR, tên miền đọc lệch), user 19/11/2026.
+from app.pipelines._shared.formatting import clean_email as _email
 from app.pipelines.trinh_bao_mat_ho_chieu_pho_thong_cap_xa.process.schema import UI_COMP_BY_NAME, WAIT_MS
 
 EMAIL_WARNING = "Giấy tờ không có email — ô Email (*) cần nhập tay."

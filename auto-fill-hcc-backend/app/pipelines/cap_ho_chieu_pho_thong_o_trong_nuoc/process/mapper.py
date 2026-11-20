@@ -39,12 +39,13 @@ from app.pipelines.chuyen_muc_dich_su_dung_dat_mien_nui_lai_chau.process.mapper 
     _area,
     _by_name,
     _date,
-    _email,
     _issuer,
     _phone,
     _plain,
     _same_person,
 )
+# Email: làm sạch chung các thủ tục Bộ Công an (dấu phẩy OCR, tên miền đọc lệch), user 19/11/2026.
+from app.pipelines._shared.formatting import clean_email as _email
 
 _PASSPORT_RE = re.compile(r"^[A-Z]\d{7,8}$")
 _OCR_DIGITS = str.maketrans("OQDSIL|ZBG", "0005111286")
@@ -643,4 +644,21 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
             warnings.append(f"Tờ khai không ghi ngày/năm sinh của {label} — nhập tay ô Ngày sinh ({label}) (*).")
     warnings.append(PORTRAIT_WARNING)
     warnings.append(REFUND_WARNING)
+    if out:
+        out.append(agency_field())
     return out, warnings
+
+
+# Ô 17. Cơ quan tiếp nhận (cũng có ở thị thực 1.001194, thẻ tạm trú 1.003460): danh sách chỉ có "-- Chưa chọn --" + cơ
+# quan đã chọn ở bước "Chọn trường hợp hồ sơ" (ảnh chạy thật 19/11), tên đổi theo tỉnh → không khớp theo chữ mà bảo
+# extension chọn mục thật ĐẦU TIÊN (cờ firstOption, user 19/11/2026: "luôn chọn cái ở dưới"). Extension cũ không biết cờ
+# thì khớp theo chữ `value` không ra → ô báo chưa điền, công dân tự chọn như trước.
+AGENCY_FIELD_NAME = "CongDan__fs_BCANoiNopHS"
+
+
+def agency_field() -> dict:
+    return {"name": AGENCY_FIELD_NAME, "comp": "dom-select", "value": "Cơ quan đã chọn ở bước chọn trường hợp hồ sơ",
+            "firstOption": True, "waitMs": 4000,
+            # Tên ô lấy theo file mapping thị thực / mẫu con dấu (chưa thấy DOM ô 17 hộ chiếu, thẻ tạm trú) → extension
+            # không thấy ô theo tên thì tìm ô select dưới nhãn này.
+            "firstOptionLabel": "Cơ quan tiếp nhận"}

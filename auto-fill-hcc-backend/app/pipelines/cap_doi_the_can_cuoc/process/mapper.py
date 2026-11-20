@@ -138,8 +138,10 @@ def _phone(value: Any) -> str | None:
 
 
 def _email(value: Any) -> str | None:
-    text = (_text(value) or "").replace(" ", "").lower()
-    return text if _EMAIL.match(text) else None
+    # Làm sạch chung các thủ tục Bộ Công an (user 19/11/2026): "ten,ho@gmail,com" → "ten.ho@gmail.com".
+    from app.pipelines._shared.formatting import clean_email
+
+    return clean_email(_text(value))
 
 
 def _address_below_ward(value: Any) -> str | None:

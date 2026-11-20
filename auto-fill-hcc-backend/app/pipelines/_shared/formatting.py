@@ -47,6 +47,61 @@ def upper_person_name(value) -> str:
     return text.upper()
 
 
+# ── Email đọc từ giấy (OCR/LLM) → địa chỉ đúng khuôn để điền ô Email (cổng Bộ Công an validate chặt) ──
+# Chạy thật 19/11/2026 (thị thực 1.001194): "lethihoa,0615@example.com" — OCR đọc dấu chấm thành dấu phẩy. Hay gặp thêm:
+# "gmail,com", "gmail .com", "gmailcom", "@ gmail.com", nhãn "Email:" dính trước, chữ có dấu, dấu chấm thừa ở đầu/cuối.
+_EMAIL_LABEL_RE = re.compile(r"^(?:e-?mail|thu dien tu|dia chi thu dien tu|dia chi email)\s*[:：\-]?\s*")
+_EMAIL_FINAL_RE = re.compile(r"^[a-z0-9](?:[a-z0-9._%+-]*[a-z0-9_])?@[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
+                             r"(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$")
+# Nhà cung cấp phổ biến: tên miền đọc lệch / mất dấu chấm → sửa về đúng tên ("gmai.com", "gmail.con", "gmailcom").
+_EMAIL_PROVIDERS = ("gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com")
+_EMAIL_BAD_TLDS = {"", "com", "con", "co", "cm", "om", "comm", "corn", "c0m"}
+
+
+def _fold_email_text(value: str) -> str:
+    text = unicodedata.normalize("NFKC", str(value or ""))
+    text = text.replace("Đ", "D").replace("đ", "d")
+    text = unicodedata.normalize("NFD", text)
+    return "".join(ch for ch in text if unicodedata.category(ch) != "Mn").lower().strip()
+
+
+def _email_domain(domain: str) -> str:
+    domain = re.sub(r"[,;:]", ".", domain)
+    domain = re.sub(r"[^a-z0-9.-]", "", domain)
+    domain = re.sub(r"\.{2,}", ".", domain).strip(".-")
+    head, _, tld = domain.partition(".")
+    for provider in _EMAIL_PROVIDERS:
+        name = provider.split(".")[0]
+        # "gmailcom" (mất dấu chấm) / "gmai.com" / "gmail.con" → gmail.com; "yahoo.com.vn" giữ nguyên (tld "com.vn").
+        # Cùng chữ đầu: "mail.com", "ymail.com" là nhà cung cấp thật, không kéo về gmail.
+        near = head == name or (head[:1] == name[:1] and difflib.SequenceMatcher(None, head, name).ratio() >= 0.8)
+        if domain in (name, name + "com") or (near and tld in _EMAIL_BAD_TLDS):
+            return provider
+    return domain
+
+
+def clean_email(value) -> str | None:
+    """Email đọc từ giấy → "ten.ho@gmail.com" đúng khuôn, None khi không ra được email hợp lệ.
+
+    Bỏ nhãn "Email:", dấu cách, dấu tiếng Việt; dấu phẩy / chấm phẩy / hai chấm (OCR đọc lệch dấu chấm) → dấu chấm; bỏ ký
+    tự lạ; gộp ".." và bỏ dấu chấm đầu/cuối phần tên; sửa tên miền nhà cung cấp phổ biến đọc lệch ("gmail,com",
+    "gmailcom", "gmai.com" → "gmail.com")."""
+    text = _fold_email_text(value)
+    if not text:
+        return None
+    text = re.sub(r"\s*(?:\(at\)|\[at\])\s*", "@", text)
+    text = _EMAIL_LABEL_RE.sub("", text)
+    text = re.sub(r"\s+", "", text).strip(".,;:")
+    if text.count("@") != 1:
+        return None
+    local, domain = text.split("@")
+    local = re.sub(r"[,;:]", ".", local)
+    local = re.sub(r"[^a-z0-9._%+-]", "", local)
+    local = re.sub(r"\.{2,}", ".", local).strip(".")
+    email = f"{local}@{_email_domain(domain)}"
+    return email if _EMAIL_FINAL_RE.match(email) else None
+
+
 def normalize_date(d: str | None) -> str:
     """"22/4/2021" → "22/04/2021" (zero-pad ngày & tháng)."""
     if not d:

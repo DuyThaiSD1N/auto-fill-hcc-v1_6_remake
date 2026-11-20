@@ -13,6 +13,7 @@ Cố ý KHÔNG phát:
 - Ảnh dán trên tờ khai (không cắt tự động). Ảnh chân dung 4x6 là TỆP ẢNH riêng trong bộ giấy → runner phát ô
   ``filename46`` (comp ``bca-photo``, đổi sẵn sang JPEG dưới 2 MB), xem mapper.portrait_field.
 - 17. Cơ quan tiếp nhận — danh sách chỉ có cơ quan đã chọn ở bước "Chọn trường hợp hồ sơ" (chạy thật 18/11).
+  Từ 19/11/2026 mapper phát ô ``CongDan__fs_BCANoiNopHS`` cờ ``firstOption`` (extension chọn mục thật đầu tiên).
 - Email, Đăng ký thông tin hoàn tiền (Số tài khoản / Tên chủ tài khoản / Tên ngân hàng) — giấy tờ không có; cảnh báo
   nhập tay.
 - Đề nghị bị chú nơi sinh, khối địa chỉ nhận qua bưu chính (ẩn, điều kiện hiện chưa chụp được DOM), Ngày/giờ hẹn
