@@ -1,0 +1,235 @@
+"""Xóa đăng ký tạm trú (1.010028, Cổng DVC Bộ Công an): mapper ô form, Trường hợp theo lý do, cơ quan (chọn đè mặc
+định Hà Nội của cổng, CT01 chỉ ghi xã thì tỉnh theo tài khoản), nhận diện trang dùng chung với đăng ký tạm trú, luồng
+trợ lý. Tạm thời không đính kèm."""
+import asyncio
+
+from app.channels.handfree.chat import flow
+from app.pipelines.xoa_dang_ky_tam_tru.process import mapper
+from app.pipelines.xoa_dang_ky_tam_tru.process import runner as process_runner
+from app.procedures import registry
+from app.procedures.ke_khai_links import KE_KHAI_LINKS, with_ke_khai_detect_urls
+
+KEY = "xoa-dang-ky-tam-tru"
+# Người đề nghị tự là chủ hộ tạm trú, đã đăng ký thường trú ngay tại nơi tạm trú.
+PERSON = {
+    "CoQuan_Tinh": "Tỉnh Lai Châu", "CoQuan_Xa": "Phường Đoàn Kết",
+    "TruongHop": "Nhân khẩu do đã đăng ký thường trú tại chính nơi tạm trú",
+    "NguoiDeNghi_HoTen": "Hoang Thi Mai", "NguoiDeNghi_NgaySinh": "7/9/1992", "NguoiDeNghi_GioiTinh": "Nữ",
+    "NguoiDeNghi_SoDinhDanh": "0121 9200 0555", "NguoiDeNghi_SoDienThoai": "………", "NguoiDeNghi_Email": "",
+    "ChuHo_HoTen": "Hoang Thi Mai", "ChuHo_QuanHe": "chủ hộ", "ChuHo_SoDinhDanh": "012192000555",
+    "NoiDungDeNghi": "Đề nghị xóa đăng ký tạm trú do đã đăng ký thường trú tại nơi tạm trú",
+    "ThanhVien": [],
+}
+
+
+def _enrich(values: dict, options=None) -> list[dict]:
+    return mapper.enrich([{"name": k, "value": v} for k, v in values.items()], options)
+
+
+def _by(values: dict, options=None) -> dict:
+    return {f["name"]: f for f in _enrich(values, options)}
+
+
+def test_thu_tu_va_gia_tri_o_form():
+    out = _enrich(PERSON)
+    by = {f["name"]: f for f in out}
+    names = [f["name"] for f in out]
+    assert names[:2] == ["cboRECEIVE_ORG", "cboBPROC_CASE_CODE"]
+    assert names.index("cboDATE_FORMAT") < names.index("txtDOB")
+    # Cổng chọn sẵn Hà Nội / Ba Đình → chọn đè, KHÔNG onlyIfEmpty; cặp id của trang tạm trú.
+    assert by["cboRECEIVE_ORG"]["value"] == {"province": "Tỉnh Lai Châu", "ward": "Phường Đoàn Kết",
+                                             "cityId": "cboRECEIVE_ADDR_CITY_CODE",
+                                             "wardId": "cboRECEIVE_ADDR_VILLAGE_CODE",
+                                             "readySelect": "cboBPROC_CASE_CODE"}
+    assert "onlyIfEmpty" not in by["cboRECEIVE_ORG"] and "default" not in by["cboRECEIVE_ORG"]
+    assert by["cboBPROC_CASE_CODE"]["value"] == "Nhân khẩu do đã đăng ký thường trú tại chính nơi tạm trú"
+    assert by["txtFULLNAME"]["value"] == "HOANG THI MAI" and by["txtIDENTIFIER_NUMBER"]["value"] == "012192000555"
+    assert by["txtDOB"]["value"] == "07/09/1992" and by["cboDATE_FORMAT"]["value"] == "Ngày tháng năm"
+    assert by["cboGENDER_CODE"]["value"] == "Nữ"
+    assert by["txtHH_PERSON_FULLNAME"]["value"] == "HOANG THI MAI"
+    assert by["cboHH_PERSON_RELATIONSHIP_CODE"]["value"] == "Chủ hộ"
+    assert by["txtHH_PERSON_IDENTIFIER_NUMBER"]["value"] == "012192000555"
+    # Ô trống / chấm chấm không điền; khối ẩn với TAMTRU_06 không điền.
+    assert not {"txtPHONE_NUMBER", "txtEMAIL", "listNormal", "txtCHANGED_NOTE", "txtSUGGEST_ADDRESS",
+                "txtTEMP_RESIDENT_TO", "txtFULLNAME0", "chkCHECK_LIABILITY"} & set(by)
+
+
+def test_truong_hop_theo_ly_do_khi_llm_khong_chon():
+    cases = {
+        "Đề nghị xóa đăng ký tạm trú do đã đăng ký thường trú tại nơi tạm trú":
+            "Nhân khẩu do đã đăng ký thường trú tại chính nơi tạm trú",
+        "Xóa đăng ký tạm trú cho cả hộ do đã đăng ký thường trú tại đây":
+            "Hộ do đã đăng ký thường trú tại chính nơi tạm trú",
+        "Đã hết hạn hợp đồng thuê nhà, chuyển đi nơi khác": "Nhân khẩu do không còn chỗ ở hợp pháp",
+        "Vắng mặt liên tục từ 6 tháng trở lên": "Nhân khẩu do vắng mặt từ 6 tháng trở lên",
+    }
+    for reason, want in cases.items():
+        assert _by(dict(PERSON, TruongHop="", NoiDungDeNghi=reason))["cboBPROC_CASE_CODE"]["value"] == want, reason
+    # LLM rút gọn nhãn hộ → vẫn ra đúng nhãn hộ.
+    assert _by(dict(PERSON, TruongHop="Hộ do vắng mặt 6 tháng"))["cboBPROC_CASE_CODE"]["value"] == \
+        "Hộ do vắng mặt từ 6 tháng trở lên"
+    # Không có căn cứ → không gửi ô (giữ nguyên trên cổng).
+    assert "cboBPROC_CASE_CODE" not in _by(dict(PERSON, TruongHop="", NoiDungDeNghi="Đề nghị xóa"))
+
+
+def test_ct01_chi_ghi_xa_thi_tinh_theo_tai_khoan_to_vang():
+    options = mapper.with_account_process_options({}, {"tinh": "Tỉnh Lai Châu", "xa": "Phường Tân Phong"}, KEY)
+    agency = _by(dict(PERSON, CoQuan_Tinh=""), options)["cboRECEIVE_ORG"]
+    assert agency["value"]["province"] == "Tỉnh Lai Châu" and agency["value"]["ward"] == "Phường Đoàn Kết"
+    assert agency["default"] is True
+    # Giấy không ghi cơ quan → xã/tỉnh tài khoản, tô vàng.
+    agency = _by({k: v for k, v in PERSON.items() if not k.startswith("CoQuan_")}, options)["cboRECEIVE_ORG"]
+    assert agency["value"]["ward"] == "Phường Tân Phong" and agency["default"] is True
+    # Không giấy, không tài khoản → không gửi ô cơ quan.
+    assert "cboRECEIVE_ORG" not in _by({k: v for k, v in PERSON.items() if not k.startswith("CoQuan_")})
+    assert "_accountAgency" not in mapper.with_account_process_options({}, {"tinh": "T", "xa": "X"}, "khac")
+
+
+def test_chu_ho_khac_va_bang_thanh_vien():
+    values = dict(PERSON, ChuHo_HoTen="Lo Van Tien", ChuHo_QuanHe="vợ", ChuHo_SoDinhDanh="012088000777",
+                  ThanhVien=[{"hoTen": "Lo Van Tien", "soDinhDanh": "012088000777", "quanHeVoiChuHo": "Chủ hộ"},
+                             {"hoTen": "Lo Gia Huy", "ngaySinh": "2019", "gioiTinh": "", "soDinhDanh": "012219000888",
+                              "quanHeVoiChuHo": "con"}])
+    by = _by(values)
+    assert by["txtHH_PERSON_FULLNAME"]["value"] == "LO VAN TIEN"
+    assert by["cboHH_PERSON_RELATIONSHIP_CODE"]["value"] == "Vợ"
+    table = by["listNormal"]["value"]
+    assert table["addSelector"].startswith("#listNormal")
+    # Chủ hộ chép nhầm vào bảng → bỏ; ngày sinh chỉ có năm → Định dạng "Năm" chọn trước ô ngày.
+    assert table["rows"] == [[
+        {"id": "txtFULLNAME_CUNGTD0", "comp": "dom-input", "value": "LO GIA HUY"},
+        {"id": "cboDATE_FORMAT_CUNGTD0", "comp": "dom-select", "value": "Năm"},
+        {"id": "txtDOB_CUNGTD0", "comp": "dom-input", "value": "2019"},
+        {"id": "cboGENDER_CUNGTD0", "comp": "dom-select", "value": "Nam"},
+        {"id": "txtIDENTIFIER_NOCARD_NUMBER_CUNGTD0", "comp": "dom-input", "value": "012219000888"},
+        {"id": "cboRELATIONSHIP_CHUHO_CUNGTD0", "comp": "dom-select", "value": "Con"},
+    ]]
+
+
+def test_runner_dung_mapper(monkeypatch):
+    async def fake_run(files_by_role, **kwargs):
+        assert kwargs["comp_by_name"]["ThanhVien"] == "x-array" and "TruongHop" in kwargs["allowed"]
+        return {"fields": [{"name": k, "value": v} for k, v in PERSON.items()]}
+
+    monkeypatch.setattr(process_runner.runner, "run", fake_run)
+    res = asyncio.run(process_runner.run({}, {}))
+    assert {f["name"] for f in res["fields"]} >= {"cboRECEIVE_ORG", "cboBPROC_CASE_CODE", "txtFULLNAME"}
+
+
+def _detect(url: str) -> str:
+    """Bước khớp URL của popup.js: rule urlIncludes đầu tiên (đúng urlScope) thắng, so trên URL đã lower-case."""
+    url = url.lower()
+    for proc in with_ke_khai_detect_urls(registry.PROCEDURES):
+        detect = proc.get("detect") or {}
+        scope = detect.get("urlScope") or []
+        if scope and not any(s and s.lower() in url for s in scope):
+            continue
+        if any(u and u.lower() in url for u in detect.get("urlIncludes") or []):
+            return proc["key"]
+    return ""
+
+
+def test_link_registry_va_nhan_dien_trang_chung_voi_tam_tru():
+    link = next(item for item in KE_KHAI_LINKS if item["key"] == KEY)
+    assert link["code"] == "1.010028" and "TT=TAMTRU_06" in link["url"]
+    proc = registry.get_procedure(KEY)
+    assert registry.get_pipeline(KEY) is not None
+    # Tạm thời không đính kèm.
+    assert proc["hasAttachmentStep"] is False and registry.get_attach_pipeline(KEY) is None
+    # Cùng trang dang-ky-tam-tru.html: _06 → thủ tục này, _01 vẫn là đăng ký tạm trú.
+    assert _detect(link["url"]) == KEY
+    assert _detect(next(item for item in KE_KHAI_LINKS if item["key"] == "dang-ky-tam-tru")["url"]) == \
+        "dang-ky-tam-tru"
+
+
+def test_entry_tro_ly_cung_key_toan_quoc_khong_dinh_kem():
+    from app.channels.handfree import procedure_registry as handfree
+    from app.channels.handfree.chat.intents import Intent
+
+    hf = handfree.get_procedure(KEY)
+    link = next(item for item in KE_KHAI_LINKS if item["key"] == KEY)
+    assert hf["keKhaiUrl"] == link["url"] and hf["detect"] == registry.get_procedure(KEY)["detect"]
+    assert hf["bcaPortal"] is True and hf["submitCommitCheckbox"] == "chkCHECK_LIABILITY"
+    assert hf["hasAttachmentStep"] is False and "samePageAttach" not in hf and "provinceOnly" not in hf
+    assert handfree._HOAN_THIEN_THEO_TINH[KEY] == handfree._TAT_CA
+    conv = {"state": "greet", "procedure_key": None,
+            "location": {"province": "Tỉnh Lai Châu", "province_slug": "lai_chau", "ward": "Phường Đoàn Kết"}}
+    flow._to_confirm_procedure(conv, KEY)
+    r = flow._handle_guide_login(conv, Intent("event", "page_status", {"bcaAgencyBlock": True}))
+    assert "nơi đang đăng ký tạm trú" in r.display_md
+    # Trang có sẵn bảng giấy tờ đính kèm → giấy tờ vẫn để điền tờ khai, không thành bước đính kèm.
+    page = {"attachmentTarget": True, "attachmentComponentCount": 2, "bcaAgencyBlock": True}
+    conv = {"state": "collecting_docs", "procedure_key": KEY, "agency_done": True}
+    assert flow._resolve_docs_target(hf, page, conv) == "declaration"
+    assert flow._attachment_page_reached(conv, hf, page) is False
+
+
+# ── Trợ lý: chọn xong cơ quan → hỏi Trường hợp (cổng chưa hiện tờ khai) → chọn hộ → mới sang giấy tờ ──
+def _conv_after_agency(caps=None):
+    from app.channels.handfree.chat.intents import Intent
+
+    conv = {"state": "greet", "procedure_key": None, "client_capabilities": dict(caps or {}),
+            "location": {"province": "Tỉnh Lai Châu", "province_slug": "lai_chau", "ward": "Phường Đoàn Kết"}}
+    flow._to_confirm_procedure(conv, KEY)
+    conv["state"] = "guide_login"
+    flow._handle_guide_login(conv, Intent("event", "page_status", {"bcaAgencyBlock": True}))
+    r = flow._handle_guide_login(conv, Intent("event", "bca_agency_result",
+                                              {"ok": True, "ward": "Phường Đoàn Kết", "province": "Tỉnh Lai Châu"}))
+    return conv, r
+
+
+def test_tro_ly_chon_co_quan_xong_hoi_truong_hop_bang_nut():
+    from app.channels.handfree.chat.intents import Intent
+    from app.pipelines.xoa_dang_ky_tam_tru.process.schema import CASES
+
+    conv, r = _conv_after_agency({"supportsBcaCase": True})
+    # Chưa sang bước giấy tờ: hỏi Trường hợp, 6 nút đúng nhãn trên cổng (= nhãn mapper dùng).
+    assert conv["state"] == "guide_login" and conv["bca_case_pending"] is True and conv["agency_done"] is True
+    assert [c["label"] for c in r.chips] == list(CASES)
+    assert r.chips[4]["send"] == "__action:bca_case:4"
+    assert "Đã chọn Cơ quan thực hiện" in r.actions[0]["md"] and "Trường hợp" in r.display_md
+    assert flow.build_progress(conv)["label"] == "Chọn trường hợp"
+    # Trang đổi (cổng nạp lại ô) trong lúc hỏi → không hỏi lặp.
+    again = flow._handle_guide_login(conv, Intent("event", "page_status", {"bcaAgencyBlock": True,
+                                                                            "bcaAgencyDone": True}))
+    assert not again.display_md and not again.chips
+    # Bấm nút → extension chọn ô Trường hợp trên trang.
+    r = flow._handle_guide_login(conv, Intent("action", "bca_case", {"value": 4}))
+    assert r.actions == [{"type": "bca_select_case", "label": CASES[4], "id": "cboBPROC_CASE_CODE"}]
+    assert conv["bca_case"] == CASES[4] and conv["state"] == "guide_login"
+    # Chọn xong → sang bước giấy tờ, kèm câu đã chọn.
+    r = flow._handle_guide_login(conv, Intent("event", "bca_case_result", {"ok": True}))
+    assert conv["state"] == "consent" and "Đã chọn Trường hợp" in r.actions[0]["md"]
+
+
+def test_tro_ly_ban_cu_khong_chon_ho_duoc_thi_dan_chon_tay_roi_sang_giay_to():
+    from app.channels.handfree.chat.intents import Intent
+
+    conv, _ = _conv_after_agency()
+    r = flow._handle_guide_login(conv, Intent("action", "bca_case", {"value": 0}))
+    assert conv["state"] == "consent" and "chọn giúp tôi ô **Trường hợp**" in r.actions[0]["md"]
+    # Gõ linh tinh lúc đang hỏi → nhắc kèm lại các nút.
+    conv, _ = _conv_after_agency()
+    r = flow._handle_guide_login(conv, Intent("unknown", "", {"free_text": True}))
+    assert len(r.chips) == 6 and conv["bca_case_pending"] is True
+
+
+def test_truong_hop_cong_dan_chon_di_vao_pipeline_va_thang_nhan_llm():
+    from app.channels.handfree.procedure_registry import case_pipeline_options, get_procedure
+
+    chosen = "Hộ do vắng mặt từ 6 tháng trở lên"
+    options = case_pipeline_options(get_procedure(KEY), {"bca_case": chosen})
+    assert options == {"bcaCase": chosen}
+    assert _by(PERSON, options)["cboBPROC_CASE_CODE"]["value"] == chosen
+    # Nhãn lạ không lọt vào pipeline.
+    assert case_pipeline_options(get_procedure(KEY), {"bca_case": "Khác"}) == {}
+
+
+def test_thu_tuc_bo_cong_an_khac_chon_co_quan_xong_sang_thang_giay_to():
+    from app.channels.handfree.chat.intents import Intent
+
+    conv = {"state": "guide_login", "procedure_key": "dang-ky-tam-tru", "client_capabilities": {},
+            "location": {"province": "Tỉnh Lai Châu", "ward": "Phường Đoàn Kết"}}
+    flow._handle_guide_login(conv, Intent("event", "bca_agency_result",
+                                          {"ok": True, "ward": "Phường Đoàn Kết", "province": "Tỉnh Lai Châu"}))
+    assert conv["state"] == "consent" and not conv.get("bca_case_pending")

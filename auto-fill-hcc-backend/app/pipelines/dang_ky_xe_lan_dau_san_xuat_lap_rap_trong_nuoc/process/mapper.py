@@ -34,6 +34,7 @@ from app.pipelines.dang_ky_xe_lan_dau_san_xuat_lap_rap_trong_nuoc.process.schema
     HINH_THUC_NHAN_KQ,
     UI_COMP_BY_NAME,
 )
+from app.pipelines._shared.formatting import keep_portal_values
 
 TRA_CUU_WARNING = (
     "Nhập Mã bảo mật rồi bấm \"Tra cứu\" để cổng lấy dữ liệu lệ phí trước bạ, hóa đơn và thông tin xe từ CSDL; tự tải "
@@ -323,4 +324,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         missing = [label for label, value in (("Số seri phiếu KTCLXX", serial), ("Mã hồ sơ LPTB", lptb_code)) if not value]
         warnings.append("Không đọc được " + ", ".join(missing) + " — cần nhập tay trước khi bấm Tra cứu.")
     warnings.append(TRA_CUU_WARNING)
+    # Ô chủ xe = chủ tài khoản VNeID: cổng đổ sẵn thì giữ nguyên, trống mới điền theo giấy (user 20/11/2026).
+    keep_portal_values(out, ('CongDan_diDong', 'CongDan_email'))
     return out, warnings

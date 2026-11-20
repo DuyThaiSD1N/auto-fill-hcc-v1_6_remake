@@ -494,3 +494,21 @@ test("ảnh chân dung: gắn tệp JPEG vào input filename46, phát change, t�
   assert.equal(await ctx.fillBcaPhotoField({ name: "filename46", comp: "bca-photo", value }, missing), false);
   assert.deepEqual(missing.notFound, ["filename46"]);
 });
+
+test("keepPortalValue: ô chủ tài khoản cổng đổ sẵn (VNeID) giữ nguyên; ô trống / ô extension tự ghi lượt trước thì ghi", () => {
+  const start = RELATION_SRC.indexOf("function standardKeepsPortalValue(");
+  const fn = RELATION_SRC.slice(start, RELATION_SRC.indexOf("function fillStandardInput(", start));
+  const keep = new Function(`${fn}; return standardKeepsPortalValue;`)();
+  const flag = { keepPortalValue: true };
+  assert.strictEqual(keep(flag, { value: "0912000111", dataset: {} }), true);
+  assert.strictEqual(keep(flag, { value: "  ", dataset: {} }), false);
+  // Lượt trước extension ghi đúng giá trị này → điền lại được.
+  assert.strictEqual(keep(flag, { value: "0912000111", dataset: { autofillValue: "0912000111" } }), false);
+  // Cán bộ / cổng đổi sau lượt điền → giữ.
+  assert.strictEqual(keep(flag, { value: "0988000222", dataset: { autofillValue: "0912000111" } }), true);
+  assert.strictEqual(keep({}, { value: "0912000111", dataset: {} }), false);
+  assert.strictEqual(keep({ ...flag, clear: true }, { value: "0912000111", dataset: {} }), false);
+  // Vòng điền chuẩn: ô giữ nguyên tính là đã điền; ô tự ghi thì nhớ giá trị đã ghi.
+  assert.match(RELATION_SRC, /else if \(standardKeepsPortalValue\(f, el\)\) \{[\s\S]{0,200}?ok = true;/);
+  assert.match(RELATION_SRC, /if \(ok && f\.keepPortalValue && el\?\.dataset\) el\.dataset\.autofillValue = String\(el\.value \?\? ""\);/);
+});

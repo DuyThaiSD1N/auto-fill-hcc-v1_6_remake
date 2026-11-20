@@ -5628,7 +5628,9 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "cap-ho-chieu-pho-thong-o-trong-nuoc" ||
       // [Bộ Công an] 1.010386 (trình báo mất hộ chiếu cấp xã): cùng ô khoá theo VNeID → mốc tài khoản để BE bỏ ngày cấp /
       // nơi cấp CCCD khi giấy tờ là của người khác (cha mẹ khai thay cho con) — không chặn điền.
-      cfg.key === "trinh-bao-mat-ho-chieu-pho-thong-cap-xa"
+      cfg.key === "trinh-bao-mat-ho-chieu-pho-thong-cap-xa" ||
+      // [Bộ Công an] 1.001445 (trình báo mất hộ chiếu cấp tỉnh): cùng ô khoá theo VNeID như bản cấp xã.
+      cfg.key === "trinh-bao-mat-ho-chieu-pho-thong-cap-tinh"
     ) {
       const ctxRes = await sendToContent({ action: "collectFormContext" });
       if (ctxRes?.formContext) options.formContext = ctxRes.formContext;

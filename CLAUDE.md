@@ -192,6 +192,11 @@ Chỉ chạy hai cây `tests/unit` và `tests/integration`. Cây `tests/handfree
 Baseline hiện tại có sẵn một số test đỏ không liên quan đến code mới; so số fail trước và sau khi
 sửa thay vì cố đưa về 0.
 
+Baseline ngày 2026-11-20, sau khi thêm 1.001445 trình báo mất hộ chiếu cấp tỉnh (máy local, plugin win_socketpair, có
+PYTHONUTF8=1): `17 failed, 5810 passed, 41 skipped, 12 errors` (gồm 3 test chặn tài khoản khác người thêm cùng ngày). Vẫn
+đúng 17 đỏ của bản 2026-11-18; lỗi collect thứ 12 là
+`tests/unit/test_role_bo_cong_an.py` (đến từ commit a753a9b4), cũng thiếu `mongomock`.
+
 Baseline ngày 2026-11-18, sau khi kéo BE thai_dev d3a90fb6 (máy local, plugin win_socketpair, có PYTHONUTF8=1):
 `17 failed, 5611 passed, 41 skipped, 11 errors`. 16 đỏ môi trường cũ + 1 đỏ
 `tests/unit/test_khai_sinh_lien_thong_tach_trang.py::test_moc_trang_chi_nhan_moc_cua_dich_vu_ocr_o_moi_planner_tach` (glob trả

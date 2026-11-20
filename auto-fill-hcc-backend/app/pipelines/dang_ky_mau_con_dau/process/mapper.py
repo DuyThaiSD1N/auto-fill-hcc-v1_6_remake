@@ -42,6 +42,7 @@ from app.pipelines.dang_ky_mau_con_dau.process.schema import (
     UI_COMP_BY_NAME,
     WAIT_MS,
 )
+from app.pipelines._shared.formatting import keep_portal_values
 
 NOI_DUNG_MAC_DINH = "Đăng ký mẫu con dấu mới"
 # Giấy tờ không ghi cách nhận kết quả: điền xong người nộp tự chọn rồi mới sang trang đính kèm (user 18/11/2026).
@@ -311,4 +312,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     if "CongDan_diDong" not in seen:
         warnings.append("Giấy tờ không có số điện thoại liên hệ — ô Số điện thoại liên hệ (*) cần nhập tay.")
     warnings.append(RESULT_WARNING)
+    # Ô người nộp = chủ tài khoản VNeID: cổng đổ sẵn thì giữ nguyên, trống mới điền theo giấy (user 20/11/2026).
+    keep_portal_values(out, ('CongDan_tenCongDan', 'CongDan_diDong', 'CongDan_email'))
     return out, warnings

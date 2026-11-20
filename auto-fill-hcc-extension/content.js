@@ -50,7 +50,7 @@
   // header hiện "1.17 · 8/9" trong khi manifest đã là 1.17.0.6. Đúng lúc cần trả
   // lời "bản vá đã tới máy này chưa?" thì nhãn lại nói sai.
   // NGÀY vẫn ghi tay (để hỗ trợ), đổi cùng mục đầu changelog.js — tests/release-version.test.js kiểm.
-  const APP_RELEASE_DATE = "19/11";
+  const APP_RELEASE_DATE = "20/11";
   const APP_VERSION_LABEL = (() => {
     let v = "?";
     try { v = chrome.runtime.getManifest().version; } catch (e) { /* context đã mất */ }
@@ -6496,6 +6496,17 @@
     return true;
   }
 
+  // keepPortalValue (BE gửi theo ô, cổng DVC Bộ Công an): ô của CHỦ TÀI KHOẢN VNeID mà cổng có thể đổ sẵn (SĐT, email
+  // người kê khai…). Ô đang có giá trị KHÔNG do extension ghi (cổng lấy từ VNeID / CSDL dân cư, hoặc cán bộ gõ tay) → giữ
+  // nguyên, không ghi giấy tờ đè lên (user 20/11/2026: SĐT/email Phần I cấp lại căn cước bị thay bằng của người trên
+  // giấy). Ô extension tự ghi ở lượt trước (data-autofill-value trùng giá trị đang hiện) vẫn ghi lại được khi điền lại.
+  // Bản copy ở tro-ly-nguoi-dan-extension-main/content/fill-core.js — sửa một bên thì port bên kia.
+  function standardKeepsPortalValue(f, el) {
+    if (!f?.keepPortalValue || f.clear || !el) return false;
+    const shown = String(el.value ?? "").trim();
+    return !!shown && shown !== String(el.dataset?.autofillValue ?? "").trim();
+  }
+
   function fillStandardInput(el, value, options = {}) {
     if (!el) return false;
     setNativeValue(el, value, {
@@ -9293,7 +9304,13 @@
           const postbackAddressInput = isPostbackAddressField(f);
           if (!f.clear && f.dateFormat) await pickStandardDateFormat(el, f.dateFormat);
           if (f.clear) ok = clearStandardInput(el);
-          else ok = fillStandardInput(el, f.value, postbackAddressInput ? { change: false, commit: false } : {});
+          else if (standardKeepsPortalValue(f, el)) {
+            console.log(`[AutoFill-STD] ${f.name}: cổng đã có sẵn "${el.value}" (tài khoản VNeID) → giữ nguyên.`);
+            ok = true;
+          } else {
+            ok = fillStandardInput(el, f.value, postbackAddressInput ? { change: false, commit: false } : {});
+            if (ok && f.keepPortalValue && el?.dataset) el.dataset.autofillValue = String(el.value ?? "");
+          }
         } else {
           const input = findStandardInputForField(f, candidates, occurrence, root);
           if (input) ok = fillStandardInput(input, f.value);

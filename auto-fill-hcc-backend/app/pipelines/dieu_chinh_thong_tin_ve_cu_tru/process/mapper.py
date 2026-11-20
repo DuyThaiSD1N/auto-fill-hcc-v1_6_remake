@@ -27,6 +27,7 @@ from app.pipelines.dang_ky_thuong_tru.process.schema import (
     MEMBER_ADD_SELECTOR,
 )
 from app.pipelines.dieu_chinh_thong_tin_ve_cu_tru.process.schema import CASE_CHANGE_HEAD, UI_COMP_BY_NAME
+from app.pipelines._shared.formatting import keep_portal_values
 
 PROCEDURE_KEY = "dieu-chinh-thong-tin-ve-cu-tru"
 
@@ -94,4 +95,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         if name in defaults:
             field["default"] = True
         out.append(field)
+    # Ô người đề nghị = chủ tài khoản VNeID: cổng đổ sẵn thì giữ nguyên, trống mới điền theo giấy (user 20/11/2026).
+    keep_portal_values(out, ('txtPHONE_NUMBER', 'txtEMAIL'))
     return out

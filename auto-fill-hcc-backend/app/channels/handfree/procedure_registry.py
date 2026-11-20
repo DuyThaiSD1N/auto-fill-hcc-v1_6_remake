@@ -6620,6 +6620,63 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        # CÙNG trang + cùng bộ id với "dang-ky-tam-tru" (chỉ khác TT=TAMTRU_06) → entry đứng TRƯỚC thủ tục đó (rule
+        # urlIncludes khớp đầu tiên), cùng ô cam kết chkCHECK_LIABILITY. Trợ lý chọn hộ cơ quan trên thẻ như tạm trú.
+        # Tạm thời KHÔNG đính kèm (user 20/11/2026): bảng #tblGiayToDinhKem có sẵn trên trang không làm trợ lý nhảy
+        # sang bước đính kèm (flow._no_attachment). Toàn quốc. URL + detect giống ke_khai_links.json / lõi (1.010028).
+        "key": "xoa-dang-ky-tam-tru",
+        "detect": {
+            "urlScope": ["dang-ky-tam-tru.html"],
+            "urlIncludes": ["TT=TAMTRU_06"],
+            "headingDisabled": True,
+        },
+        "label": "Xóa đăng ký tạm trú",
+        "shortLabel": "Xóa đăng ký tạm trú",
+        "subtitle": "Đã đăng ký thường trú / không còn ở nơi tạm trú — kê khai trên Cổng dịch vụ công Bộ Công an",
+        "icon": "🧾",
+        "keKhaiUrl": (
+            "https://dichvucong.dancuquocgia.gov.vn/portal/p/home/dang-ky-tam-tru.html?ma_thu_tuc=1.004194"
+            "&TT=TAMTRU_06&TT_NAME=X%C3%B3a%20%C4%91%C4%83ng%20k%C3%BD%20t%E1%BA%A1m%20tr%C3%BA"
+        ),
+        "bcaPortal": True,
+        "bcaAgencyPlace": "nơi đang đăng ký tạm trú",
+        # Ô cơ quan theo cặp id + bảng thành viên comp bca-rows: cùng engine trang thường trú.
+        "requiresCapability": "supportsBcaThuongTru",
+        # Chọn xong cơ quan, cổng còn bắt chọn "Trường hợp" thì mới hiện tờ khai (user 20/11/2026): trợ lý hỏi bằng nút
+        # rồi chọn hộ trên trang (flow._bca_case_ask). Nhãn đúng chữ trên cổng = CASES của pipeline xoa_dang_ky_tam_tru.
+        "bcaCase": {
+            "selectId": "cboBPROC_CASE_CODE",
+            "options": [
+                "Nhân khẩu do không còn chỗ ở hợp pháp",
+                "Cả hộ do không còn chỗ ở hợp pháp",
+                "Nhân khẩu do vắng mặt từ 6 tháng trở lên",
+                "Hộ do vắng mặt từ 6 tháng trở lên",
+                "Nhân khẩu do đã đăng ký thường trú tại chính nơi tạm trú",
+                "Hộ do đã đăng ký thường trú tại chính nơi tạm trú",
+            ],
+        },
+        "hasAttachmentStep": False,
+        "submitCommitLabel": "Tôi xin chịu trách nhiệm trước pháp luật về lời khai trên",
+        "submitCommitCheckbox": "chkCHECK_LIABILITY",
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "to_khai", "name": "Tờ khai thay đổi thông tin cư trú (Mẫu CT01)", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đề nghị", "icon": "🪪",
+             "sides": 2, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai thay đổi thông tin cư trú (Mẫu CT01) — nguồn chính.\n"
+            "2. CCCD của người đề nghị (nếu có).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
         # Cổng DVC Bộ Công an (bcaPortal — flow._bca_portal_on_page): chọn thẻ là mở thẳng trang kê khai,
         # không hỏi xác nhận nơi làm. Trên trang, trợ lý hỏi rồi chọn hộ Tỉnh + Xã/Phường/Đặc khu ở khối
         # "Cơ quan thực hiện" (chọn xong cổng mới hiện các mục sau), rồi mới xin giấy tờ để điền
@@ -6639,6 +6696,8 @@ PROCEDURES: list[dict] = [
         "bcaPortal": True,
         "samePageAttach": True,
         "hasAttachmentStep": True,
+        # "Điều chỉnh giấy tờ" chốt xong ĐIỀN LẠI tờ khai, không đính lại ("đính kèm lại" là lệnh riêng — flow._docs_adjust_refills).
+        "docsAdjustRefill": True,
         # Điền xong hỏi trước, công dân bấm "Đính kèm giấy tờ" mới đính (flow fill_report).
         "askBeforeAttach": True,
         # Đính xong nhắc tích ô cam kết cuối trang rồi mới bấm "Nộp hồ sơ" (flow._attach_done_template).
@@ -6686,6 +6745,8 @@ PROCEDURES: list[dict] = [
         "requiresCapability": "supportsBcaThuongTru",
         "samePageAttach": True,
         "hasAttachmentStep": True,
+        # "Điều chỉnh giấy tờ" chốt xong ĐIỀN LẠI tờ khai, không đính lại ("đính kèm lại" là lệnh riêng — flow._docs_adjust_refills).
+        "docsAdjustRefill": True,
         "askBeforeAttach": True,
         "submitCommitLabel": "Tôi xin chịu trách nhiệm trước pháp luật về lời khai trên",
         "submitCommitCheckbox": "chkRULE",
@@ -6734,6 +6795,8 @@ PROCEDURES: list[dict] = [
         "requiresCapability": "supportsBcaThuongTru",
         "samePageAttach": True,
         "hasAttachmentStep": True,
+        # "Điều chỉnh giấy tờ" chốt xong ĐIỀN LẠI tờ khai, không đính lại ("đính kèm lại" là lệnh riêng — flow._docs_adjust_refills).
+        "docsAdjustRefill": True,
         "supportsSplitDocuments": True,
         "askBeforeAttach": True,
         "submitCommitLabel": "Tôi xin chịu trách nhiệm trước pháp luật về lời khai trên",
@@ -6805,6 +6868,55 @@ PROCEDURES: list[dict] = [
             "1. Tờ khai thay đổi thông tin cư trú (Mẫu CT01) — nguồn chính.\n"
             "2. Giấy ủy quyền (nếu người khác nộp thay).\n"
             "3. CCCD của người đề nghị (nếu có).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        # CÙNG trang + cùng bộ id với "dang-ky-thuong-tru" (chỉ khác TT=THUONGTRU_05) → cùng cờ supportsBcaThuongTru,
+        # cùng ô cam kết chkRULE. Toàn quốc. URL + detect giống hệt ke_khai_links.json / lõi (mã TTHC 1.010038).
+        # Đính kèm như "dieu-chinh-thong-tin-ve-cu-tru" (user 20/11/2026: tách 2 luồng như tư pháp): bảng giấy tờ CÙNG
+        # trang nhưng điền xong DỪNG hỏi (askBeforeAttach), công dân bấm "Đính kèm giấy tờ" mới đính.
+        "key": "tach-ho",
+        "detect": {
+            "urlScope": ["dang-ky-thuong-tru.html"],
+            "urlIncludes": ["TT=THUONGTRU_05"],
+            "headingDisabled": True,
+        },
+        "label": "Tách hộ",
+        "shortLabel": "Tách hộ",
+        "subtitle": "Tách khỏi hộ cũ, lập hộ mới — kê khai trên Cổng dịch vụ công Bộ Công an",
+        "icon": "🏡",
+        "keKhaiUrl": (
+            "https://dichvucong.dancuquocgia.gov.vn/portal/p/home/dang-ky-thuong-tru.html?ma_thu_tuc=1.004222"
+            "&TT=THUONGTRU_05&TT_NAME=T%C3%A1ch%20h%E1%BB%99"
+        ),
+        "bcaPortal": True,
+        "bcaAgencyPlace": "nơi thường trú của hộ",
+        "requiresCapability": "supportsBcaThuongTru",
+        "samePageAttach": True,
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,
+        "askBeforeAttach": True,
+        "submitCommitLabel": "Tôi xin chịu trách nhiệm trước pháp luật về lời khai trên",
+        "submitCommitCheckbox": "chkRULE",
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "to_khai", "name": "Tờ khai thay đổi thông tin cư trú (Mẫu CT01)", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "don_xac_nhan", "name": "Đơn xác nhận tách hộ / ý kiến đồng ý của chủ hộ, chủ sở hữu chỗ ở",
+             "icon": "✍️", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân, giấy khai sinh của người tách hộ và các thành viên", "icon": "🪪",
+             "sides": 2, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai thay đổi thông tin cư trú (Mẫu CT01) — nguồn chính.\n"
+            "2. Đơn xác nhận tách hộ / ý kiến đồng ý của chủ hộ, chủ sở hữu chỗ ở hợp pháp (nếu có).\n"
+            "3. CCCD, giấy khai sinh, giấy chứng nhận kết hôn của các thành viên (nếu có).\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
     },
@@ -7143,7 +7255,11 @@ PROCEDURES: list[dict] = [
             "capability": "supportsBcaCaseStep", "caseOnly": True, "caseGroups": "auto",
             "caseHint": "**Cơ quan giải quyết hồ sơ** (Công an tỉnh, thành phố nơi cơ quan, tổ chức đặt trụ sở)",
         },
+        # Điền xong DỪNG ở rà soát, công dân bấm "Đính kèm giấy tờ" mới đính — như hộ chiếu / thị thực (user 20/11/2026).
+        "askBeforeAttach": True,
         "hasAttachmentStep": True,
+        # "Điều chỉnh giấy tờ" chốt xong ĐIỀN LẠI tờ khai, không đính lại ("đính kèm lại" là lệnh riêng — flow._docs_adjust_refills).
+        "docsAdjustRefill": True,
         "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach
         "resultMethodHint": True,
         "hideRepeatableHint": True,
@@ -7205,6 +7321,8 @@ PROCEDURES: list[dict] = [
         # vẫn hiểu; bấm "Đính kèm giấy tờ" mới đính vào bảng Thành phần hồ sơ trên trang.
         "askBeforeAttach": True,
         "hasAttachmentStep": True,
+        # "Điều chỉnh giấy tờ" chốt xong ĐIỀN LẠI tờ khai, không đính lại ("đính kèm lại" là lệnh riêng — flow._docs_adjust_refills).
+        "docsAdjustRefill": True,
         "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach
         "hideRepeatableHint": True,
         "requiredDocs": [
@@ -7270,6 +7388,8 @@ PROCEDURES: list[dict] = [
         # vẫn hiểu; bấm "Đính kèm giấy tờ" mới đính vào bảng Thành phần hồ sơ trên trang.
         "askBeforeAttach": True,
         "hasAttachmentStep": True,
+        # "Điều chỉnh giấy tờ" chốt xong ĐIỀN LẠI tờ khai, không đính lại ("đính kèm lại" là lệnh riêng — flow._docs_adjust_refills).
+        "docsAdjustRefill": True,
         "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach
         "resultMethodHint": True,
         "hideRepeatableHint": True,
@@ -7337,6 +7457,8 @@ PROCEDURES: list[dict] = [
         # vẫn hiểu; bấm "Đính kèm giấy tờ" mới đính vào bảng Thành phần hồ sơ trên trang.
         "askBeforeAttach": True,
         "hasAttachmentStep": True,
+        # "Điều chỉnh giấy tờ" chốt xong ĐIỀN LẠI tờ khai, không đính lại ("đính kèm lại" là lệnh riêng — flow._docs_adjust_refills).
+        "docsAdjustRefill": True,
         "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach
         "resultMethodHint": True,
         "hideRepeatableHint": True,
@@ -7406,7 +7528,11 @@ PROCEDURES: list[dict] = [
             "caseHint": "**Phường/Xã** nơi muốn nộp (Công an xã, phường thuận tiện) và **Trường hợp giải quyết** nếu cổng "
                         "hiện; ô Tỉnh/Thành phố tôi chọn theo tỉnh của công dân",
         },
+        # Điền xong DỪNG ở rà soát, công dân bấm "Đính kèm giấy tờ" mới đính — như hộ chiếu / thị thực (user 20/11/2026).
+        "askBeforeAttach": True,
         "hasAttachmentStep": True,
+        # "Điều chỉnh giấy tờ" chốt xong ĐIỀN LẠI tờ khai, không đính lại ("đính kèm lại" là lệnh riêng — flow._docs_adjust_refills).
+        "docsAdjustRefill": True,
         "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach
         "hideRepeatableHint": True,
         "requiredDocs": [
@@ -7425,6 +7551,68 @@ PROCEDURES: list[dict] = [
             "1. Đơn trình báo mất hộ chiếu phổ thông (Mẫu TK05) đã ký.\n"
             "2. Tờ khai đề nghị cấp hộ chiếu phổ thông (nếu có).\n"
             "3. Thẻ căn cước hai mặt (nếu có).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        # 1.001445, bản CẤP TỈNH (Phòng Quản lý XNC Công an tỉnh) của thủ tục ngay trên, pipeline lõi riêng. Cùng cổng,
+        # cùng bộ ô Tỉnh → Phường/xã nơi cư trú (_BCATinhTamTru → _BCAXaTamTru) → dùng chung cờ supportsBcaThiThuc, nộp
+        # thẳng như thị thực (agencyDirectSubmit — trang thủ tục cổng Bộ Công an ?MaTTHC=1.001445 bấm "Nộp hồ sơ"). Trang
+        # chọn trường hợp: SUY theo hộ chiếu 1.001456 (cùng Phòng QLXNC cấp tỉnh) — ô "Cơ quan giải quyết hồ sơ" (Công an
+        # tỉnh …) trợ lý tự chọn theo tỉnh, chưa thấy trang thật. Form + bảng Thành phần hồ sơ 2 dòng (người đại diện /
+        # đơn TK05 + tờ khai) cùng trang. Toàn quốc (user không nói phạm vi). Detect y hệt lõi.
+        "key": "trinh-bao-mat-ho-chieu-pho-thong-cap-tinh",
+        "detect": {
+            "urlScope": ["dichvucong.bocongan.gov.vn"],
+            "textIncludes": [
+                "số hộ chiếu bị mất",
+                "thời gian mất hộ chiếu",
+                "đại diện hợp pháp đối với trường hợp trình báo mất hộ chiếu",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+            "codeOnPage": True,  # cờ của Auto Fill (khớp mã TTHC in trên trang); giữ detect y hệt lõi
+        },
+        "label": "Trình báo mất hộ chiếu phổ thông (thực hiện tại cấp tỉnh)",
+        "shortLabel": "Báo mất hộ chiếu (cấp tỉnh)",
+        "subtitle": "Trình báo với Phòng Quản lý xuất nhập cảnh Công an tỉnh khi bị mất hộ chiếu phổ thông",
+        "icon": "🛂",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf7-5fc6-72ba-a7f1-3506927a9517",
+        "agencyDirectSubmit": True,
+        "bcaTthcCode": "1.001445",
+        "requiresCapability": "supportsBcaThiThuc",
+        "laiChauFeeStep": {
+            "capability": "supportsBcaCaseStep", "caseOnly": True, "caseGroups": "auto",
+            "caseAgencyByProvince": {"label": "Cơ quan giải quyết hồ sơ", "prefer": "cong an"},
+            "caseHint": "**Trường hợp giải quyết** nếu cổng hiện; ô Cơ quan giải quyết hồ sơ (Công an tỉnh …) tôi chọn "
+                        "theo tỉnh của công dân",
+        },
+        # Điền xong DỪNG ở rà soát, công dân bấm "Đính kèm giấy tờ" mới đính — như hộ chiếu / thị thực (user 20/11/2026).
+        "askBeforeAttach": True,
+        "hasAttachmentStep": True,
+        # "Điều chỉnh giấy tờ" chốt xong ĐIỀN LẠI tờ khai, không đính lại ("đính kèm lại" là lệnh riêng — flow._docs_adjust_refills).
+        "docsAdjustRefill": True,
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don_trinh_bao", "name": "Đơn trình báo mất hộ chiếu phổ thông (Mẫu TK05) đã ký", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "to_khai", "name": "Tờ khai đề nghị cấp hộ chiếu (nếu có)", "icon": "📄", "sides": 1,
+             "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Thẻ căn cước", "icon": "🪪", "sides": 2, "optional": True},
+            {"key": "dai_dien", "name": "Giấy khai sinh / giấy tờ giám hộ (khi trình báo thay cho trẻ dưới 14 tuổi)",
+             "icon": "📄", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn trình báo mất hộ chiếu phổ thông (Mẫu TK05) đã ký.\n"
+            "2. Tờ khai đề nghị cấp hộ chiếu phổ thông (nếu có).\n"
+            "3. Thẻ căn cước hai mặt (nếu có).\n"
+            "4. Giấy khai sinh / giấy tờ giám hộ (chỉ khi cha, mẹ, người đại diện trình báo thay cho trẻ dưới 14 tuổi).\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
     },
@@ -11206,6 +11394,10 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "dieu-chinh-thong-tin-ve-cu-tru": _TAT_CA,
     # Vắng bảng theo dõi, user không nói phạm vi → toàn quốc (mặc định 16/11/2026), cùng trang thường trú.
     "xac-nhan-thong-tin-ve-cu-tru": _TAT_CA,
+    # Vắng bảng theo dõi, user không nói phạm vi → toàn quốc (mặc định 16/11/2026), cùng trang thường trú. 20/11/2026.
+    "tach-ho": _TAT_CA,
+    # Vắng bảng theo dõi, user không nói phạm vi → toàn quốc (mặc định 16/11/2026), cùng trang tạm trú. 20/11/2026.
+    "xoa-dang-ky-tam-tru": _TAT_CA,
     # Toàn quốc (user 16/11/2026).
     "cap-doi-the-can-cuoc": _TAT_CA,
     # Vắng bảng theo dõi — mặc định toàn quốc như cấp đổi căn cước (cùng trang Bộ Công an), 16/11/2026.
@@ -11220,6 +11412,7 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam": _TAT_CA,  # 18/11/2026: ngoài bảng, không nói phạm vi → toàn quốc
     "cap-the-tam-tru-cho-nguoi-nuoc-ngoai-tai-viet-nam": _TAT_CA,  # 19/11/2026: ngoài bảng, không nói phạm vi → toàn quốc
     "trinh-bao-mat-ho-chieu-pho-thong-cap-xa": _TAT_CA,  # 19/11/2026: ngoài bảng, user không nói phạm vi → toàn quốc
+    "trinh-bao-mat-ho-chieu-pho-thong-cap-tinh": _TAT_CA,  # 20/11/2026: ngoài bảng, user không nói phạm vi → toàn quốc
     "thong-bao-luu-tru": _TAT_CA,
     "dang-ky-noi-quy-lao-dong": _TAT_CA,
     "cap-gcn-diem-tro-choi-dien-tu-cong-cong": _TAT_CA,
@@ -11359,6 +11552,9 @@ def case_pipeline_options(proc: dict | None, conv: dict | None) -> dict:
     """
     if not proc or not conv:
         return {}
+    # Cổng DVC Bộ Công an (registry bcaCase): Trường hợp công dân chọn ở nút sau bước cơ quan → mapper chọn đúng ô đó.
+    if conv.get("bca_case") and conv["bca_case"] in ((proc.get("bcaCase") or {}).get("options") or []):
+        return {"bcaCase": conv["bca_case"]}
     process = (conv.get("mae_dialog_options") or {}).get("process") or {}
     labels = process.get("options") or []
     picked = (conv.get("mae_dialog_choice") or {}).get("process")

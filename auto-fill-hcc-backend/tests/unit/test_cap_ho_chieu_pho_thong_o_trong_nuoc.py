@@ -790,3 +790,40 @@ def test_tro_ly_noi_dinh_kem_lai_thi_dinh_lai_luon_khong_hoi_khong_dien_lai(monk
     calls.clear()
     asyncio.run(flow._handle_turn_inner(conv, Intent("action", "reattach", {})))
     assert calls == []
+
+
+def test_tro_ly_dieu_chinh_giay_to_sau_dinh_kem_la_dien_lai_khong_dinh_lai(monkeypatch):
+    """User 20/11/2026: "Điều chỉnh giấy tờ" ở bước cuối eForm Nth → chốt xong ĐIỀN LẠI tờ khai, không đính lại; nút
+    "Đính kèm lại" riêng."""
+    from app.channels.handfree.chat import pipeline_runner, tracing
+
+    calls = []
+    monkeypatch.setattr(pipeline_runner, "run_process", lambda *a: calls.append("process"))
+    monkeypatch.setattr(pipeline_runner, "run_attach", lambda *a: calls.append("attach"))
+    monkeypatch.setattr(pipeline_runner, "spawn", lambda _job: None)
+
+    async def noop(*_a, **_k):
+        return None
+
+    async def reopen(sid):
+        return {"_id": sid, "files": [{"name": "ho-so.pdf"}]}
+
+    async def progress(_sid):
+        return {"received": 1, "total": 1, "files_count": 1}
+
+    monkeypatch.setattr(tracing, "set_report", noop)
+    monkeypatch.setattr(flow.conv_store, "save", noop)
+    monkeypatch.setattr(flow.up_store, "reopen_for_supplement", reopen)
+    monkeypatch.setattr(flow.upload_service, "sync_for_conversation", noop)
+    monkeypatch.setattr(flow.upload_service, "progress_of", progress)
+    conv = _nth_conv({**NTH_CAPS, "supportsPageBoundDocsComplete": True}, state="done", docs_target="attachment",
+                     attach_done=True, fields=[{"name": "x"}])
+    r = asyncio.run(flow._handle_turn_inner(conv, Intent("action", "add_documents", {})))
+    assert [c["label"] for c in r.chips] == ["✅ Hoàn tất điều chỉnh, điền lại tờ khai"]
+    asyncio.run(flow._docs_complete(conv, SAME_PAGE))
+    assert calls == ["process"] and conv["auto_attach_after_fill"] is False
+    r = asyncio.run(flow._handle_turn_inner(conv, Intent("action", "fill_report", {
+        "filled": 30, "review": {"filled": 30, "optional": 0, "required": 0}})))
+    sends = [c["send"] for c in r.chips]
+    assert calls == ["process"] and conv["state"] == "done"
+    assert "__action:reattach" in sends and "__action:refill" in sends

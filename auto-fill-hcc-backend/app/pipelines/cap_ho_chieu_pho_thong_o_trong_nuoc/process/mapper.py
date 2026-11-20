@@ -46,6 +46,7 @@ from app.pipelines.chuyen_muc_dich_su_dung_dat_mien_nui_lai_chau.process.mapper 
 )
 # Email: làm sạch chung các thủ tục Bộ Công an (dấu phẩy OCR, tên miền đọc lệch), user 19/11/2026.
 from app.pipelines._shared.formatting import clean_email as _email
+from app.pipelines._shared.formatting import keep_portal_values
 
 _PASSPORT_RE = re.compile(r"^[A-Z]\d{7,8}$")
 _OCR_DIGITS = str.maketrans("OQDSIL|ZBG", "0005111286")
@@ -646,6 +647,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     warnings.append(REFUND_WARNING)
     if out:
         out.append(agency_field())
+    # Ô người đề nghị = chủ tài khoản VNeID: cổng đổ sẵn thì giữ nguyên, trống mới điền theo giấy (user 20/11/2026).
+    keep_portal_values(out, ('CongDan_diDong', 'CongDan_email'))
     return out, warnings
 
 

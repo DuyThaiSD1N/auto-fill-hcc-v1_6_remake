@@ -42,6 +42,7 @@ from app.pipelines.cap_the_can_cuoc_tu_du_14_tuoi.process.schema import (
     REASON_FIRST,
     UI_COMP_BY_NAME,
 )
+from app.pipelines._shared.formatting import keep_portal_values
 
 PROCEDURE_KEY = "cap-the-can-cuoc-tu-du-14-tuoi"
 # CMND thôi cấp từ 01/7/2021: sinh sau giữa năm 2007 thì đủ 14 tuổi khi đã hết cấp CMND → không thể "chuyển từ CMND".
@@ -144,4 +145,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         if name in defaults:
             field["default"] = True
         out.append(field)
+    # Ô Phần I người kê khai = chủ tài khoản VNeID: cổng đổ sẵn thì giữ nguyên, trống mới điền theo giấy (user 20/11/2026).
+    keep_portal_values(out, ('txtPHONE_NUMBER_NDN', 'txtEMAIL_ADDRESS_NDN'))
     return out

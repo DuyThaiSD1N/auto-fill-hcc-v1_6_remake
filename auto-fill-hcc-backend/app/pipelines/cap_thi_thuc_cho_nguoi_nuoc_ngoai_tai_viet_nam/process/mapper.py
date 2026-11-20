@@ -42,6 +42,7 @@ from app.pipelines.chuyen_muc_dich_su_dung_dat_mien_nui_lai_chau.process.mapper 
 )
 # Email: làm sạch chung các thủ tục Bộ Công an (dấu phẩy OCR, tên miền đọc lệch), user 19/11/2026.
 from app.pipelines._shared.formatting import clean_email as _email
+from app.pipelines._shared.formatting import keep_portal_values
 
 # Dòng 2 MRZ hộ chiếu (ICAO 9303 TD3): số 9 ký tự + kiểm tra, quốc tịch, ngày sinh + kiểm tra, giới tính, hết hạn + kiểm tra.
 _MRZ_LINE2_RE = re.compile(r"([A-Z0-9<]{9})(\d)([A-Z<]{3})(\d{6})(\d)([MFX<])(\d{6})(\d)")
@@ -424,4 +425,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         from app.pipelines.cap_ho_chieu_pho_thong_o_trong_nuoc.process.mapper import agency_field
 
         out.append(agency_field())
+    # Ô liên hệ khối Thân nhân (khoá theo tài khoản) = chủ tài khoản VNeID: cổng đổ sẵn thì giữ (user 20/11/2026).
+    keep_portal_values(out, ('CongDan__fs_BCADiDongBaoLanh', 'CongDan__fs_BCAEmailBaoLanh'))
     return out, warnings

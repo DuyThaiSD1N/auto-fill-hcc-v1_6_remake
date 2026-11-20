@@ -586,6 +586,35 @@ BCA_AGENCY_FILLED = {
     "tts": "Dạ, tôi đã chọn xong cơ quan thực hiện ạ.",
 }
 
+# Cổng DVC Bộ Công an: thủ tục mà chọn xong Cơ quan thực hiện còn phải chọn ô "Trường hợp" thì cổng mới hiện form
+# (registry `bcaCase`, vd xóa đăng ký tạm trú 1.010028). {cases} = danh sách đánh số.
+BCA_CASE_ASK = {
+    "md": "Công dân chọn **Trường hợp** đúng hồ sơ của mình ở nút bên dưới (cổng bắt buộc chọn thì mới hiện "
+          "tờ khai):\n\n{cases}",
+    "tts": "Dạ, công dân chọn trường hợp đúng hồ sơ của mình ở các nút bên dưới giúp tôi ạ.",
+}
+
+BCA_CASE_REMIND = {
+    "md": "Dạ, công dân chọn **Trường hợp** ở các nút bên dưới giúp tôi ạ.",
+    "tts": "Dạ, công dân chọn trường hợp ở các nút bên dưới giúp tôi ạ.",
+}
+
+BCA_CASE_FILLING = {
+    "md": "Tôi đang chọn Trường hợp **{case}** trên trang ạ.",
+    "tts": "Dạ, tôi đang chọn trường hợp trên trang ạ.",
+}
+
+BCA_CASE_FILLED = {
+    "md": "✓ Đã chọn Trường hợp: **{case}**.",
+    "tts": "Dạ, tôi đã chọn xong trường hợp ạ.",
+}
+
+# Extension chưa có lệnh chọn Trường hợp, hoặc chọn hộ không được → công dân chọn tay; lúc điền tờ khai trợ lý chọn lại.
+BCA_CASE_MANUAL = {
+    "md": "⚠️ Công dân chọn giúp tôi ô **Trường hợp** trên trang: **{case}** ạ.",
+    "tts": "Dạ, công dân chọn giúp tôi ô trường hợp trên trang ạ.",
+}
+
 BCA_AGENCY_FILL_FAILED = {
     "md": (
         "⚠️ Tôi chưa chọn được **{missing}** trên trang cho **{place}** ạ.\n\n"
@@ -3017,6 +3046,7 @@ STEP_LABELS = {
 }
 
 BCA_AGENCY_STEP_LABEL = "Chọn cơ quan thực hiện"
+BCA_CASE_STEP_LABEL = "Chọn trường hợp"
 
 # Thứ tự bước cho progress.step (1-based).
 STEP_ORDER = [

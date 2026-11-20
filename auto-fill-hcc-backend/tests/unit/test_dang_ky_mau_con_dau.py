@@ -303,10 +303,12 @@ def test_tro_ly_dien_xong_nhac_hinh_thuc_nhan_ket_qua_roi_moi_sang_dinh_kem():
             "client_capabilities": dict(CAPS)}
     with mock.patch.object(tracing, "set_report", mock.AsyncMock()):
         r = asyncio.run(flow._handle_filling(conv, Intent("action", "fill_report", {"filled": 17})))
-    # Chờ trang Thành phần hồ sơ để tự đính; câu đuôi nhắc chọn Hình thức nhận kết quả + địa chỉ trước khi bấm tiếp.
-    assert conv["state"] == "attaching" and conv["pipeline_status"] == "waiting_attachment_page"
+    # User 20/11/2026: điền xong DỪNG ở rà soát như hộ chiếu / thị thực (askBeforeAttach), không tự đính; câu đuôi vẫn nhắc
+    # chọn Hình thức nhận kết quả + địa chỉ, công dân bấm "Đính kèm giấy tờ" mới đính.
+    assert conv["state"] == "reviewing" and conv.get("pipeline_status") != "waiting_attachment_page"
     assert "Hình thức nhận kết quả" in r.display_md and "Địa chỉ nhận kết quả" in r.display_md
-    assert "Đồng ý và tiếp tục" in r.display_md and "tôi tự đính kèm" in r.display_md
+    assert "tôi tự đính kèm" not in r.display_md and "Đính kèm giấy tờ" in r.display_md
+    assert "__action:confirm_review" in [c["send"] for c in r.chips]
     # Không tự đính sau điền: câu đuôi bảo bấm Đính kèm giấy tờ trong Trợ lý, vẫn nhắc nhận kết quả.
     conv = {**conv, "state": "filling", "auto_attach_after_fill": False}
     with mock.patch.object(tracing, "set_report", mock.AsyncMock()):

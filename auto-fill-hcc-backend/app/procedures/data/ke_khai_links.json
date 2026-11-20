@@ -3638,6 +3638,22 @@
       "autoConfirm": false
     },
     {
+      "key": "tach-ho",
+      "code": "1.010038",
+      "label": "Tách hộ",
+      "url": "https://dichvucong.dancuquocgia.gov.vn/portal/p/home/dang-ky-thuong-tru.html?ma_thu_tuc=1.004222&TT=THUONGTRU_05&TT_NAME=T%C3%A1ch%20h%E1%BB%99",
+      "needsAgencySelect": false,
+      "autoConfirm": false
+    },
+    {
+      "key": "xoa-dang-ky-tam-tru",
+      "code": "1.010028",
+      "label": "Xóa đăng ký tạm trú",
+      "url": "https://dichvucong.dancuquocgia.gov.vn/portal/p/home/dang-ky-tam-tru.html?ma_thu_tuc=1.004194&TT=TAMTRU_06&TT_NAME=X%C3%B3a%20%C4%91%C4%83ng%20k%C3%BD%20t%E1%BA%A1m%20tr%C3%BA",
+      "needsAgencySelect": false,
+      "autoConfirm": false
+    },
+    {
       "key": "cap-doi-the-can-cuoc",
       "code": "2.001195",
       "label": "Cấp đổi thẻ căn cước",

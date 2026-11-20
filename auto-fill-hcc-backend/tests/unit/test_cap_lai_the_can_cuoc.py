@@ -126,3 +126,45 @@ def test_tro_ly_entry_cung_key_url_detect_toan_quoc():
     assert pipeline_runner.with_cap_lai_the_can_cuoc_account_process_options(
         {}, {"tinh": "Khánh Hòa", "xa": "Phường Nam Nha Trang"}, KEY)["_accountAgency"]["xa"] == "Phường Nam Nha Trang"
     assert script_mong.PROCEDURE_HMONG[KEY] and "mất thẻ căn cước" in PROCEDURE_HINTS[KEY]
+
+
+def test_sdt_email_phan_i_giu_gia_tri_cong_do_san_tu_vneid():
+    # Ảnh chạy thật 20/11/2026: tài khoản VNeID là người khác người trên giấy mà SĐT / email Phần I bị thay bằng của người
+    # cần cấp lại. Ô Phần I (chủ tài khoản) khai keepPortalValue: cổng đổ sẵn thì extension giữ, trống mới điền theo giấy.
+    out = {f["name"]: f for f in _enrich(SELF)}
+    for name in ("txtPHONE_NUMBER_NDN", "txtEMAIL_ADDRESS_NDN"):
+        assert out[name]["keepPortalValue"] is True and out[name]["bcaSelfOnly"] is True, name
+    # Ô của người cần cấp / người nhận kết quả không phải của tài khoản → điền theo giấy như cũ.
+    for name in ("txtFULLNAME_NCC", "txtIDENTIFY_NUMBER_NCC", "txtPHONE_NUMBER_NN"):
+        assert "keepPortalValue" not in out[name], name
+
+
+def test_moi_thu_tuc_bo_cong_an_khai_o_chu_tai_khoan_giu_gia_tri_cong():
+    """Mọi mapper Bộ Công an có ô liên hệ của chủ tài khoản VNeID gắn keepPortalValue đúng khối của tài khoản."""
+    import importlib
+    import inspect
+
+    cccd = ("txtPHONE_NUMBER_NDN", "txtEMAIL_ADDRESS_NDN")
+    cu_tru = ("txtPHONE_NUMBER", "txtEMAIL")
+    nth = ("CongDan_diDong", "CongDan_email")
+    bao_lanh = ("CongDan__fs_BCADiDongBaoLanh", "CongDan__fs_BCAEmailBaoLanh")
+    expected = {
+        "cap_doi_the_can_cuoc": cccd, "cap_the_can_cuoc_duoi_14_tuoi": cccd, "cap_the_can_cuoc_tu_du_14_tuoi": cccd,
+        "dang_ky_thuong_tru": cu_tru, "dang_ky_tam_tru": cu_tru, "dieu_chinh_thong_tin_ve_cu_tru": cu_tru,
+        "xac_nhan_thong_tin_ve_cu_tru": cu_tru, "tach_ho": cu_tru, "xoa_dang_ky_tam_tru": cu_tru,
+        "cap_ho_chieu_pho_thong_o_trong_nuoc": nth, "trinh_bao_mat_ho_chieu_pho_thong_cap_xa": nth,
+        "trinh_bao_mat_ho_chieu_pho_thong_cap_tinh": nth, "dang_ky_xe_lan_dau_san_xuat_lap_rap_trong_nuoc": nth,
+        "dang_ky_mau_con_dau": ("CongDan_tenCongDan",) + nth,
+        # Thị thực / thẻ tạm trú: khối CongDan_* là người nước ngoài; tài khoản là khối Thân nhân bảo lãnh.
+        "cap_thi_thuc_cho_nguoi_nuoc_ngoai_tai_viet_nam": bao_lanh,
+        "cap_the_tam_tru_cho_nguoi_nuoc_ngoai_tai_viet_nam": bao_lanh,
+    }
+    for folder, names in expected.items():
+        src = inspect.getsource(importlib.import_module(f"app.pipelines.{folder}.process.mapper").enrich)
+        assert f"keep_portal_values(out, {names!r})" in src, folder
+
+    from app.pipelines._shared.formatting import keep_portal_values
+
+    fields = [{"name": "a", "value": 1}, {"name": "b", "value": 2}]
+    assert keep_portal_values(fields, ("b",)) is fields
+    assert fields == [{"name": "a", "value": 1}, {"name": "b", "value": 2, "keepPortalValue": True}]

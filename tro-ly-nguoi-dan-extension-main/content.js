@@ -1567,6 +1567,30 @@
     return true; // async
   });
 
+  // Ô "Trường hợp" (#cboBPROC_CASE_CODE) cổng nạp sau khi chọn cơ quan; chưa chọn thì cổng chưa hiện tờ khai (xóa đăng
+  // ký tạm trú). Chờ có option thật rồi khớp TRỌN nhãn (bỏ dấu) — các nhãn chỉ khác chữ đầu "Nhân khẩu" / "Hộ".
+  async function selectBcaCase(id, label) {
+    for (let waited = 0; waited <= 8000; waited += 250) {
+      const select = document.getElementById(id);
+      const option = Array.from(select?.options || [])
+        .find((o) => o.value && o.value !== "-1" && bcaFold(o.text) === bcaFold(label));
+      if (option) {
+        bcaSetSelect(select, option);
+        return { ok: true, label: option.text.trim() };
+      }
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    return { ok: false, error: document.getElementById(id) ? "option_not_found" : "no_select" };
+  }
+
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg?.action !== "bcaSelectCase" || !IS_TOP_FRAME) return;
+    selectBcaCase(String(msg.id || "cboBPROC_CASE_CODE"), String(msg.label || ""))
+      .then(sendResponse)
+      .catch((e) => sendResponse({ ok: false, error: String(e?.message || e) }));
+    return true; // async
+  });
+
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg?.action === "setSubmitRules") {
       submitRules = msg.rules && typeof msg.rules === "object" ? msg.rules : null;

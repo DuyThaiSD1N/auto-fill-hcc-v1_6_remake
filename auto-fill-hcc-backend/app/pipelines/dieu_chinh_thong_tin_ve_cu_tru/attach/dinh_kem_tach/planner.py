@@ -68,12 +68,14 @@ def _mark_document_starts(titles: dict[int, list[str]], documents: list[dict]) -
             page_titles[first - 1] = str(doc.get("documentName") or doc.get("docType") or "giấy").strip()
 
 
-async def _segment_all(pages_by_file: dict[int, list[str]]) -> list[dict]:
+async def _segment_all(pages_by_file: dict[int, list[str]], system_prompt: str = SYSTEM_PROMPT,
+                       user_prompt=build_user_prompt) -> list[dict]:
+    """Chia trang một lượt. Tách hộ (cùng trang cổng) dùng lại hàm này với prompt riêng của mình."""
     payload = [{"fileIndex": i, "pages": [{"page": n + 1, "text": t[:2500]} for n, t in enumerate(pages)]}
                for i, pages in pages_by_file.items()]
     messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": build_user_prompt(payload)},
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt(payload)},
     ]
     data: dict = {}
     for attempt in range(2):  # JSON hỏng / rỗng → hỏi lại một lần

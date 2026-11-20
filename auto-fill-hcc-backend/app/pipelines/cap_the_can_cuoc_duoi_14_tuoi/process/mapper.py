@@ -36,6 +36,7 @@ from app.pipelines.cap_doi_the_can_cuoc.process.schema import (
     RESULT_POST,
 )
 from app.pipelines.cap_the_can_cuoc_duoi_14_tuoi.process.schema import UI_COMP_BY_NAME
+from app.pipelines._shared.formatting import keep_portal_values
 
 PROCEDURE_KEY = "cap-the-can-cuoc-duoi-14-tuoi"
 
@@ -169,4 +170,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         if name in defaults:
             field["default"] = True
         out.append(field)
+    # Ô Phần I người kê khai = chủ tài khoản VNeID: cổng đổ sẵn thì giữ nguyên, trống mới điền theo giấy (user 20/11/2026).
+    keep_portal_values(out, ('txtPHONE_NUMBER_NDN', 'txtEMAIL_ADDRESS_NDN'))
     return out

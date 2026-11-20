@@ -258,8 +258,12 @@ def test_tro_ly_dien_xong_hoi_dinh_kem_khong_tu_dinh(monkeypatch):
     from app.channels.handfree import procedure_registry as hf
     from app.channels.handfree.chat import pipeline_runner
 
-    for key in (KEY, "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam", "cap-ho-chieu-pho-thong-o-trong-nuoc"):
+    # 20/11/2026 thêm mẫu con dấu + trình báo mất hộ chiếu (xã, tỉnh): mọi eForm Nth Bộ Công an có đính kèm đều hỏi.
+    for key in (KEY, "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam", "cap-ho-chieu-pho-thong-o-trong-nuoc",
+                "dang-ky-mau-con-dau", "trinh-bao-mat-ho-chieu-pho-thong-cap-xa",
+                "trinh-bao-mat-ho-chieu-pho-thong-cap-tinh"):
         assert hf.get_procedure(key)["askBeforeAttach"] is True, key
+    assert all(p.get("askBeforeAttach") for p in hf.PROCEDURES if flow._bca_nth(p)), "eForm Nth BCA tự đính"
     calls = []
     monkeypatch.setattr(pipeline_runner, "run_process", lambda *a: calls.append("process"))
     monkeypatch.setattr(pipeline_runner, "run_attach", lambda *a: calls.append("attach"))

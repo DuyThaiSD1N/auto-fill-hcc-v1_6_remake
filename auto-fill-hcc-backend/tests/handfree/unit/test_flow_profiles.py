@@ -540,6 +540,12 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert bca_tam_tru["bcaPortal"] is True and bca_tam_tru["samePageAttach"] is True
     assert bca_tam_tru["askBeforeAttach"] is True
     assert "wizard" not in bca_tam_tru and "maePortal" not in bca_tam_tru
+    # Xóa đăng ký tạm trú: CÙNG trang tạm trú (TT=TAMTRU_06), cùng khuôn cổng + ô cam kết, tạm thời KHÔNG đính kèm.
+    bca_xoa_tam_tru = procedures.pop("xoa-dang-ky-tam-tru")
+    for field in ("flowProfile", "bcaPortal", "submitCommitCheckbox", "wizard", "maePortal", "provinceOnly"):
+        assert bca_xoa_tam_tru.get(field) == bca_tam_tru.get(field), field
+    assert bca_xoa_tam_tru["hasAttachmentStep"] is False and "samePageAttach" not in bca_xoa_tam_tru
+    assert bca_xoa_tam_tru["detect"]["urlIncludes"] == ["TT=TAMTRU_06"]
     # Đăng ký thường trú (Cổng DVC Bộ Công an): như tạm trú — một trang, đính kèm cùng trang, hỏi trước khi đính.
     bca_thuong_tru = procedures.pop("dang-ky-thuong-tru")
     assert bca_thuong_tru.get("flowProfile") is None
@@ -559,6 +565,13 @@ def test_registered_procedures_use_their_declared_flow_family():
         assert bca_xac_nhan.get(field) == bca_thuong_tru.get(field), field
     assert bca_xac_nhan["hasAttachmentStep"] is False and "samePageAttach" not in bca_xac_nhan
     assert bca_xac_nhan["detect"]["urlIncludes"] == ["TT=THUONGTRU_09"]
+    # Tách hộ: CÙNG trang thường trú (TT=THUONGTRU_05), cùng khuôn luồng + cùng cờ extension như điều chỉnh (điền xong
+    # hỏi rồi mới đính kèm cùng trang — user 20/11/2026).
+    bca_tach_ho = procedures.pop("tach-ho")
+    for field in ("flowProfile", "bcaPortal", "requiresCapability", "samePageAttach", "askBeforeAttach",
+                  "submitCommitCheckbox", "wizard", "maePortal", "provinceOnly"):
+        assert bca_tach_ho.get(field) == bca_thuong_tru.get(field), field
+    assert bca_tach_ho["detect"]["urlIncludes"] == ["TT=THUONGTRU_05"]
     # Thông báo lưu trú (Cổng DVC Bộ Công an): một trang, không có mục đính kèm, người lưu trú thêm qua modal.
     bca_luu_tru = procedures.pop("thong-bao-luu-tru")
     assert bca_luu_tru.get("flowProfile") is None
@@ -645,6 +658,15 @@ def test_registered_procedures_use_their_declared_flow_family():
             if k not in ("caseHint", "caseAgencyByProvince")} == bca_xe["laiChauFeeStep"]
     assert bca_trinh_bao["laiChauFeeStep"]["caseAgencyByProvince"] == {"label": "Tỉnh/Thành phố", "prefer": "cong an"}
     assert bca_trinh_bao["bcaTthcCode"] == "1.010386" and "resultMethodHint" not in bca_trinh_bao
+    # Trình báo mất hộ chiếu CẤP TỈNH (20/11, pipeline lõi riêng): khuôn trợ lý như bản cấp xã, ô cơ quan ở trang chọn
+    # trường hợp tự chọn theo tỉnh như hộ chiếu (cùng Phòng QLXNC cấp tỉnh — SUY, chưa thấy trang thật).
+    bca_trinh_bao_tinh = procedures.pop("trinh-bao-mat-ho-chieu-pho-thong-cap-tinh")
+    for field in ("flowProfile", "bcaPortal", "wizard", "maePortal", "needsAgencySelect", "provinceOnly",
+                  "hasAttachmentStep", "supportsSplitDocuments", "requiresCapability", "agencyDirectSubmit"):
+        assert bca_trinh_bao_tinh.get(field) == bca_trinh_bao.get(field), field
+    assert bca_trinh_bao_tinh["laiChauFeeStep"]["caseAgencyByProvince"] == \
+        bca_ho_chieu["laiChauFeeStep"]["caseAgencyByProvince"]
+    assert bca_trinh_bao_tinh["bcaTthcCode"] == "1.001445" and "resultMethodHint" not in bca_trinh_bao_tinh
 
     # Đợt 26/10. Nội quy lao động (Bộ Nội vụ): cùng khuôn cấp Sở với sửa đổi thông tin hồ sơ người có công.
     moha_labor = procedures.pop("dang-ky-noi-quy-lao-dong")
@@ -971,7 +993,10 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 cổng Bộ Nội vụ (19/11) "cong-nhan-che-do-khang-chien-nhiem-chat-doc-hoa-hoc" (1.010816): tỉnh → Sở, xã → xã.
     # +1 cổng Bộ Xây dựng (19/11) "cap-giay-phep-lien-van-viet-lao-campuchia" (1.002877): toàn quốc, chọn Sở Xây dựng.
     # +1 cổng iGate Lâm Đồng (19/11) "tinh-tien-su-dung-dat-nd-50-2026-lam-dong" (1.115148), luồng "xay-dung".
-    assert len(procedures) == 182
+    # +1 cổng Bộ Công an dichvucong.bocongan.gov.vn (20/11) "trinh-bao-mat-ho-chieu-pho-thong-cap-tinh" (1.001445).
+    # +1 cổng Bộ Công an (20/11) "tach-ho" (1.010038), cùng trang thường trú TT=THUONGTRU_05.
+    # +1 cổng Bộ Công an (20/11) "xoa-dang-ky-tam-tru" (1.010028), cùng trang tạm trú TT=TAMTRU_06.
+    assert len(procedures) == 185
 
     for procedure in procedures:
         key = procedure["key"]

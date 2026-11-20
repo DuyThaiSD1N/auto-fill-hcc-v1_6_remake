@@ -12,6 +12,7 @@ from app.pipelines.dang_ky_tam_tru.process.schema import (
     ROLE_OWNER,
     UI_COMP_BY_NAME,
 )
+from app.pipelines._shared.formatting import keep_portal_values
 
 # Đoạn địa chỉ từ cấp xã trở lên — cắt khỏi ô "Địa chỉ" (txtSUGGEST_ADDRESS) vì Tỉnh/Xã đã có ô chọn riêng.
 _AREA_PREFIX = re.compile(r"^(phuong|xa|thi tran|dac khu|quan|huyen|thi xa|thanh pho|tinh|tp)\b")
@@ -164,4 +165,6 @@ def enrich(fields: list[dict]) -> list[dict]:
         if name in defaults:
             field["default"] = True
         out.append(field)
+    # Ô người đề nghị = chủ tài khoản VNeID: cổng đổ sẵn thì giữ nguyên, trống mới điền theo giấy (user 20/11/2026).
+    keep_portal_values(out, ('txtPHONE_NUMBER', 'txtEMAIL'))
     return out

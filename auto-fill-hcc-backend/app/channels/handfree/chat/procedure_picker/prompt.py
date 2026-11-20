@@ -477,6 +477,15 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
     "xac-nhan-thong-tin-ve-cu-tru": ["xin giấy xác nhận cư trú", "xác nhận nơi thường trú", "xin xác nhận cư trú",
                                      "giấy xác nhận thông tin về cư trú", "xin giấy CT07",
                                      "cần giấy xác nhận hộ khẩu để nộp hồ sơ đi học", "xác nhận thường trú"],
+    # Phân biệt "tach-ho" với "dieu-chinh-thong-tin-ve-cu-tru" (đổi chủ hộ, hộ giữ nguyên) và "dang-ky-thuong-tru" (chuyển
+    # đến chỗ ở khác): tách hộ là TÁCH một phần thành viên ra khỏi hộ đang ở để lập hộ mới (thường ngay trên cùng chỗ ở).
+    "tach-ho": ["tách hộ", "tách khẩu", "tách hộ khẩu ra riêng", "lập hộ mới trên nhà bố mẹ",
+                "vợ chồng con cái muốn tách ra hộ riêng", "tách hộ trên cùng một chỗ ở hợp pháp",
+                "làm chủ hộ mới tách khỏi hộ bố mẹ"],
+    # Phân biệt "xoa-dang-ky-tam-tru" (BỎ tạm trú đang có) với "dang-ky-tam-tru" (đăng ký MỚI nơi tạm trú).
+    "xoa-dang-ky-tam-tru": ["xóa đăng ký tạm trú", "xóa tạm trú", "hủy tạm trú", "cắt tạm trú",
+                            "đã nhập hộ khẩu thường trú rồi giờ xóa tạm trú", "hết thuê trọ muốn xóa tạm trú",
+                            "chuyển đi nơi khác xóa tạm trú chỗ cũ"],
     # Phân biệt "cap-the-can-cuoc-duoi-14-tuoi" (trẻ dưới 14) và "cap-doi-the-can-cuoc" (đã có thẻ, đổi thẻ): người từ
     # đủ 14 tuổi CHƯA từng có thẻ căn cước (làm lần đầu, hoặc chỉ có CMND cũ) → thủ tục này.
     "cap-the-can-cuoc-tu-du-14-tuoi": ["con vừa đủ 14 tuổi làm căn cước lần đầu", "làm căn cước lần đầu",
@@ -503,6 +512,12 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
     "trinh-bao-mat-ho-chieu-pho-thong-cap-xa": ["báo mất hộ chiếu", "trình báo mất hộ chiếu ở công an xã",
                                                 "làm đơn trình báo mất hộ chiếu", "tôi đánh rơi hộ chiếu, muốn báo công an",
                                                 "nộp đơn báo mất passport", "hộ chiếu bị mất cắp, đi trình báo"],
+    # Cùng việc BÁO MẤT hộ chiếu nhưng nộp ở Phòng Quản lý xuất nhập cảnh Công an TỈNH (đơn kính gửi Phòng QLXNC, hoặc
+    # trình báo thay cho con dưới 14 tuổi). Người dân chỉ nói "báo mất hộ chiếu", không nói nơi nộp → chọn bản cấp xã ở trên.
+    "trinh-bao-mat-ho-chieu-pho-thong-cap-tinh": ["báo mất hộ chiếu ở phòng xuất nhập cảnh",
+                                                  "trình báo mất hộ chiếu ở công an tỉnh",
+                                                  "nộp đơn báo mất hộ chiếu cho phòng quản lý xuất nhập cảnh",
+                                                  "báo mất hộ chiếu cho con dưới 14 tuổi ở công an tỉnh"],
     # Thị thực (visa) cho NGƯỜI NƯỚC NGOÀI đang ở Việt Nam, người thân / cơ quan ở Việt Nam đứng ra bảo lãnh — phân biệt
     # hộ chiếu (công dân Việt Nam đi nước ngoài) và thẻ căn cước. "Gia hạn visa" vẫn chọn ở đây khi người dân nói xin visa.
     "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam": ["xin visa cho chồng người nước ngoài", "làm visa cho vợ nước ngoài",

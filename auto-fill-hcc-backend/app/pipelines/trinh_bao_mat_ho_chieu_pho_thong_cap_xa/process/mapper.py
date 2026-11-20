@@ -35,6 +35,7 @@ from app.pipelines.chuyen_muc_dich_su_dung_dat_mien_nui_lai_chau.process.mapper 
 # Email: làm sạch chung các thủ tục Bộ Công an (dấu phẩy OCR, tên miền đọc lệch), user 19/11/2026.
 from app.pipelines._shared.formatting import clean_email as _email
 from app.pipelines.trinh_bao_mat_ho_chieu_pho_thong_cap_xa.process.schema import UI_COMP_BY_NAME, WAIT_MS
+from app.pipelines._shared.formatting import keep_portal_values
 
 EMAIL_WARNING = "Giấy tờ không có email — ô Email (*) cần nhập tay."
 AGENCY_WARNING = (
@@ -273,4 +274,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     if "CongDan_email" not in seen:
         warnings.append(EMAIL_WARNING)
     warnings.append(AGENCY_WARNING)
+    # Ô người đề nghị = chủ tài khoản VNeID: cổng đổ sẵn thì giữ nguyên, trống mới điền theo giấy (user 20/11/2026).
+    keep_portal_values(out, ('CongDan_diDong', 'CongDan_email'))
     return out, warnings

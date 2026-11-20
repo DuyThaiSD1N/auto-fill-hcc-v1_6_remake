@@ -74,6 +74,8 @@ from app.pipelines.cap_ho_chieu_pho_thong_o_trong_nuoc.process import run as cap
 from app.pipelines.cap_ho_chieu_pho_thong_o_trong_nuoc.attach import plan as cap_ho_chieu_pho_thong_o_trong_nuoc_attach
 from app.pipelines.trinh_bao_mat_ho_chieu_pho_thong_cap_xa.process import run as trinh_bao_mat_ho_chieu_cap_xa_process
 from app.pipelines.trinh_bao_mat_ho_chieu_pho_thong_cap_xa.attach import plan as trinh_bao_mat_ho_chieu_cap_xa_attach
+from app.pipelines.trinh_bao_mat_ho_chieu_pho_thong_cap_tinh.process import run as trinh_bao_mat_ho_chieu_cap_tinh_process
+from app.pipelines.trinh_bao_mat_ho_chieu_pho_thong_cap_tinh.attach import plan as trinh_bao_mat_ho_chieu_cap_tinh_attach
 from app.pipelines.cap_thi_thuc_cho_nguoi_nuoc_ngoai_tai_viet_nam.process import run as cap_thi_thuc_nnn_process
 from app.pipelines.cap_thi_thuc_cho_nguoi_nuoc_ngoai_tai_viet_nam.attach import plan as cap_thi_thuc_nnn_attach
 from app.pipelines.cap_the_tam_tru_cho_nguoi_nuoc_ngoai_tai_viet_nam.process import run as cap_the_tam_tru_nnn_process
@@ -83,6 +85,9 @@ from app.pipelines.dang_ky_thuong_tru.attach import plan as dang_ky_thuong_tru_a
 from app.pipelines.dieu_chinh_thong_tin_ve_cu_tru.process import run as dieu_chinh_thong_tin_ve_cu_tru_process
 from app.pipelines.dieu_chinh_thong_tin_ve_cu_tru.attach import plan as dieu_chinh_thong_tin_ve_cu_tru_attach
 from app.pipelines.xac_nhan_thong_tin_ve_cu_tru.process import run as xac_nhan_thong_tin_ve_cu_tru_process
+from app.pipelines.tach_ho.process import run as tach_ho_process
+from app.pipelines.tach_ho.attach import plan as tach_ho_attach
+from app.pipelines.xoa_dang_ky_tam_tru.process import run as xoa_dang_ky_tam_tru_process
 from app.pipelines.dang_ky_dat_dai.process import run as dang_ky_dat_dai_process
 from app.pipelines.dang_ky_dat_dai_tai_san.process import run as dang_ky_dat_dai_tai_san_process
 from app.pipelines.dang_ky_dat_dai_tai_san.attach import plan as dang_ky_dat_dai_tai_san_attach
@@ -10995,6 +11000,29 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        # Cổng DVC Bộ Công an: CÙNG trang dang-ky-tam-tru.html với "dang-ky-tam-tru" (cùng bộ id ô), chỉ khác
+        # TT=TAMTRU_06 trên URL → entry này PHẢI đứng TRƯỚC "dang-ky-tam-tru" (popup lấy rule urlIncludes khớp đầu
+        # tiên). Link kê khai + mã 1.010028 ở ke_khai_links.json. Trường hợp chọn theo lý do xóa ở mục 10 CT01.
+        # Tạm thời không đính kèm (user 20/11/2026).
+        "key": "xoa-dang-ky-tam-tru",
+        "detect": {
+            "urlScope": ["dang-ky-tam-tru.html"],
+            "urlIncludes": ["TT=TAMTRU_06"],
+            "headingDisabled": True,
+        },
+        "label": "Xóa đăng ký tạm trú",
+        "mode": "agent",
+        "roles": [],
+        "useDangKyBy": False,
+        "hasAttachmentStep": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai thay đổi thông tin cư trú (Mẫu CT01) — nguồn chính: người đề nghị, chủ hộ, lý do xóa đăng ký "
+            "tạm trú, thành viên cùng thay đổi.\n"
+            "2. CCCD của người đề nghị (nếu có) để đối chiếu."
+        ),
+    },
+    {
         # Cổng DVC Bộ Công an (jQuery + select2, ô id = name). Link kê khai + mã 1.004194 ở ke_khai_links.json.
         # Khối "Cơ quan thực hiện" do công dân/trợ lý chọn trước, pipeline chỉ điền phần người đăng ký + nơi
         # đề nghị + thời hạn.
@@ -11065,6 +11093,31 @@ PROCEDURES: list[dict] = [
             "đề nghị.\n"
             "2. Giấy ủy quyền (nếu người khác nộp thay).\n"
             "3. CCCD của người đề nghị hoặc người được ủy quyền (nếu có) để đối chiếu."
+        ),
+    },
+    {
+        # Cổng DVC Bộ Công an: CÙNG trang dang-ky-thuong-tru.html với "dang-ky-thuong-tru" (cùng bộ id ô), chỉ khác
+        # TT=THUONGTRU_05 trên URL → entry này PHẢI đứng TRƯỚC "dang-ky-thuong-tru" (popup lấy rule urlIncludes khớp
+        # đầu tiên). Link kê khai + mã 1.010038 ở ke_khai_links.json. Người đề nghị = chủ hộ MỚI. Đính kèm (user
+        # 20/11/2026): bảng 3 dòng hiện sẵn cùng trang + dòng "+" cho giấy khác; trợ lý điền xong hỏi rồi mới đính.
+        "key": "tach-ho",
+        "detect": {
+            "urlScope": ["dang-ky-thuong-tru.html"],
+            "urlIncludes": ["TT=THUONGTRU_05"],
+            "headingDisabled": True,
+        },
+        "label": "Tách hộ",
+        "mode": "agent",
+        "roles": [],
+        "useDangKyBy": False,
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai thay đổi thông tin cư trú (Mẫu CT01) — nguồn chính: người đề nghị tách hộ (chủ hộ mới), nơi "
+            "tách hộ, nội dung đề nghị, thành viên cùng tách.\n"
+            "2. Đơn xác nhận tách hộ / ý kiến đồng ý của chủ hộ, chủ sở hữu chỗ ở hợp pháp (nếu có).\n"
+            "3. CCCD, giấy khai sinh, giấy chứng nhận kết hôn của các thành viên (nếu có) để đối chiếu nhân thân."
         ),
     },
     {
@@ -11328,7 +11381,7 @@ PROCEDURES: list[dict] = [
         # ke_khai_links (directSubmit + bcaSubmit: DVCQG "Nộp hồ sơ" → "Nộp trực tuyến" → "Nộp hồ sơ" ở trang thủ tục cổng
         # Bộ Công an ?MaTTHC=1.010386). Trang nhập thông tin + bảng Thành phần hồ sơ CÙNG trang, có cả dòng "đơn trình báo
         # mất hộ chiếu phổ thông" → chữ "hộ chiếu phổ thông" của 1.001456 cũng khớp: textIncludes dùng hai nhãn ô riêng
-        # của form trình báo (tổng độ dài hơn). Bản cấp tỉnh 1.001445 cùng form chưa làm. Điền theo file mapping
+        # của form trình báo (tổng độ dài hơn). Bản cấp tỉnh 1.001445 cùng form là pipeline riêng ngay dưới. Điền theo file mapping
         # "Mapping_Trinh_bao_mat_ho_chieu_cap_xa_BCA" (đơn TK05 + tờ khai TK01 + CCCD); ô khoá theo VNeID và khối Nơi tiếp
         # nhận (đã chọn ở bước Lựa chọn DVC) không phát. Đính kèm theo ảnh ánh xạ 19/11/2026: bảng 1 dòng (đơn TK05). Có
         # tách giấy. Chưa chạy cổng thật.
@@ -11360,6 +11413,48 @@ PROCEDURES: list[dict] = [
             "3. Thẻ căn cước hai mặt (nếu có) — ngày cấp, nơi cấp.\n"
             "Sau khi điền: nhập Email, kiểm tra ô Cơ quan thực hiện. Bước đính kèm: đơn trình báo vào dòng 'Đơn trình "
             "báo mất hộ chiếu phổ thông'; tờ khai và thẻ căn cước chỉ dùng để điền, không đính."
+        ),
+    },
+    {
+        # 1.001445, cùng cổng + cùng nền eForm Nth với bản cấp xã ngay trên nhưng là pipeline RIÊNG (user 20/11/2026). Key
+        # TRÙNG ke_khai_links (directSubmit + bcaSubmit: DVCQG "Nộp hồ sơ" → "Nộp trực tuyến" → "Nộp hồ sơ" ở trang thủ
+        # tục cổng Bộ Công an ?MaTTHC=1.001445). Form trùng ô với bản cấp xã nên hai nhãn ô của cấp xã cũng khớp: thêm
+        # cụm của dòng 1 bảng Thành phần hồ sơ chỉ bản cấp tỉnh có ("…người đại diện hợp pháp đối với trường hợp trình
+        # báo mất hộ chiếu…") → tổng độ dài hơn cấp xã, trang cấp xã thì không khớp đủ. Điền theo file mapping
+        # "Mapping_Trinh_bao_mat_ho_chieu_1.001445" (đơn TK05 + tờ khai TK01 + CCCD); ô khoá theo VNeID không phát, ô Cơ
+        # quan tiếp nhận chọn mục thật đầu tiên (firstOption). Đính kèm theo ảnh ánh xạ 20/11/2026: dòng 1 người đại
+        # diện hợp pháp (chỉ khi có giấy), dòng 2 đơn TK05 + tờ khai TK01 đính chung. Có tách giấy. Chưa chạy cổng thật.
+        "key": "trinh-bao-mat-ho-chieu-pho-thong-cap-tinh",
+        "detect": {
+            "urlScope": ["dichvucong.bocongan.gov.vn"],
+            "textIncludes": [
+                "số hộ chiếu bị mất",
+                "thời gian mất hộ chiếu",
+                "đại diện hợp pháp đối với trường hợp trình báo mất hộ chiếu",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+            "codeOnPage": True,
+        },
+        "label": "Trình báo mất hộ chiếu phổ thông (thực hiện tại cấp tỉnh)",
+        "mode": "agent",
+        # Auto Fill gửi options.formContext (ô khoá Họ và tên + Số CCCD của tài khoản VNeID) → giấy tờ của người khác thì
+        # CHẶN như hộ chiếu (mapper.account_block, user 20/11); trừ người trên giấy dưới 14 tuổi (cha mẹ khai thay): điền
+        # phần trình báo, bỏ ngày cấp / nơi cấp CCCD, SĐT, email của người đề nghị.
+        "collectFormContext": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn trình báo mất hộ chiếu phổ thông (Mẫu TK05) đã ký — nơi cư trú, số điện thoại, thông tin hộ chiếu "
+            "bị mất, thời gian và hoàn cảnh bị mất.\n"
+            "2. Tờ khai đề nghị cấp hộ chiếu phổ thông (nếu có) — ngày cấp số định danh.\n"
+            "3. Thẻ căn cước hai mặt (nếu có) — ngày cấp, nơi cấp.\n"
+            "4. Giấy khai sinh / giấy tờ giám hộ (chỉ khi cha, mẹ, người đại diện trình báo thay cho trẻ dưới 14 tuổi).\n"
+            "Sau khi điền: nhập Email, kiểm tra ô Cơ quan tiếp nhận. Bước đính kèm: đơn trình báo và tờ khai đính chung "
+            "dòng '01 đơn trình báo mất hộ chiếu (mẫu TK05)'; giấy người đại diện vào dòng đầu; thẻ căn cước không đính."
         ),
     },
     {
@@ -11616,11 +11711,14 @@ _PIPELINE = {
     "dang-ky-mau-con-dau": dang_ky_mau_con_dau_process,
     "cap-ho-chieu-pho-thong-o-trong-nuoc": cap_ho_chieu_pho_thong_o_trong_nuoc_process,
     "trinh-bao-mat-ho-chieu-pho-thong-cap-xa": trinh_bao_mat_ho_chieu_cap_xa_process,
+    "trinh-bao-mat-ho-chieu-pho-thong-cap-tinh": trinh_bao_mat_ho_chieu_cap_tinh_process,
     "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam": cap_thi_thuc_nnn_process,
     "cap-the-tam-tru-cho-nguoi-nuoc-ngoai-tai-viet-nam": cap_the_tam_tru_nnn_process,
     "dang-ky-thuong-tru": dang_ky_thuong_tru_process,
     "dieu-chinh-thong-tin-ve-cu-tru": dieu_chinh_thong_tin_ve_cu_tru_process,
     "xac-nhan-thong-tin-ve-cu-tru": xac_nhan_thong_tin_ve_cu_tru_process,
+    "tach-ho": tach_ho_process,
+    "xoa-dang-ky-tam-tru": xoa_dang_ky_tam_tru_process,
     "chuyen-doi-ten-hop-dong-nuoc-sach": doi_ten_nuoc_sach_process,
     "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham": an_toan_thuc_pham_process,
     "cap-gcn-attp-nong-lam-thuy-san": cap_gcn_attp_nong_lam_thuy_san_process,
@@ -11985,6 +12083,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-mau-con-dau": dang_ky_mau_con_dau_attach,
     "cap-ho-chieu-pho-thong-o-trong-nuoc": cap_ho_chieu_pho_thong_o_trong_nuoc_attach,
     "trinh-bao-mat-ho-chieu-pho-thong-cap-xa": trinh_bao_mat_ho_chieu_cap_xa_attach,
+    "trinh-bao-mat-ho-chieu-pho-thong-cap-tinh": trinh_bao_mat_ho_chieu_cap_tinh_attach,
     "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam": cap_thi_thuc_nnn_attach,
     "cap-the-tam-tru-cho-nguoi-nuoc-ngoai-tai-viet-nam": cap_the_tam_tru_nnn_attach,
     "giao-dat-cho-thue-dat-lai-chau": giao_dat_cho_thue_dat_lai_chau_attach,
@@ -12092,6 +12191,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-tam-tru": dang_ky_tam_tru_attach,
     "dang-ky-thuong-tru": dang_ky_thuong_tru_attach,
     "dieu-chinh-thong-tin-ve-cu-tru": dieu_chinh_thong_tin_ve_cu_tru_attach,
+    "tach-ho": tach_ho_attach,
     "chuyen-doi-ten-hop-dong-nuoc-sach": doi_ten_nuoc_sach_attach,
     "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham": an_toan_thuc_pham_attach,
     "cap-gcn-attp-nong-lam-thuy-san": cap_gcn_attp_nong_lam_thuy_san_attach,

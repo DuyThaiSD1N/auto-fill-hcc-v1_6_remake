@@ -155,3 +155,26 @@ def test_entry_tro_ly_cung_key_toan_quoc():
 
     r = flow._handle_guide_login(conv, Intent("event", "page_status", {"bcaAgencyBlock": True}))
     assert "nơi thường trú" in r.display_md
+
+
+def test_moi_thu_tuc_bo_cong_an_tren_trang_ke_khai_thi_dien_truoc_roi_moi_dinh():
+    """Ảnh chạy thật 20/11/2026: trang kê khai Bộ Công an có sẵn bảng đính kèm (#tblGiayToDinhKem / Thành phần hồ sơ)
+    nên extension báo attachmentTarget → trợ lý hiện "Đã đưa đủ giấy tờ, đính kèm đi" khi form còn trống. Mọi thủ tục
+    Bộ Công an trên trợ lý: đứng ở trang kê khai thì nhận giấy để ĐIỀN tờ khai; đính kèm (nếu có) chạy sau khi điền."""
+    from app.channels.handfree import procedure_registry as handfree
+
+    bca = [p for p in handfree.PROCEDURES
+           if p.get("bcaPortal") or flow._BCA_NTH_HOST in ((p.get("detect") or {}).get("urlScope") or [])]
+    assert len(bca) >= 18
+    # Trang thường trú / tạm trú / căn cước: form + khối cơ quan + bảng đính kèm cùng DOM.
+    dan_cu = {"formKind": "standard", "attachmentTarget": True, "bcaAgencyBlock": True, "bcaKeKhaiForm": False}
+    # eForm Nth bocongan: form CongDan_* đang hiện cùng bảng Thành phần hồ sơ (extension mới / cũ chưa báo cờ).
+    nth_moi = {"formKind": "standard", "attachmentTarget": True, "bcaKeKhaiForm": True}
+    nth_cu = {"formKind": "standard", "attachmentTarget": True}
+    for p in bca:
+        for ctx in (nth_moi, nth_cu) if flow._bca_nth(p) else (dan_cu,):
+            assert flow._resolve_docs_target(p, ctx, {"agency_done": True}) == "declaration", (p["key"], ctx)
+        if flow._bca_nth(p):
+            # Sang trang Thành phần hồ sơ riêng (form ẩn) thì mới là bước đính kèm.
+            ctx = {"formKind": "", "attachmentTarget": True, "bcaKeKhaiForm": False}
+            assert flow._resolve_docs_target(p, ctx, {"agency_done": True}) == "attachment", p["key"]

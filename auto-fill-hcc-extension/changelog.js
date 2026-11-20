@@ -3,6 +3,14 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.28.24",
+    date: "20/11/2026",
+    items: [
+      "Thêm thủ tục Trình báo mất hộ chiếu phổ thông (thực hiện tại cấp tỉnh) trên Cổng dịch vụ công Bộ Công an; đơn trình báo và tờ khai đính chung dòng đơn trình báo, có tách giấy tờ khi đính kèm.",
+      "Thủ tục Bộ Công an: số điện thoại, email của chủ tài khoản VNeID mà cổng đã điền sẵn thì giữ nguyên, không ghi đè bằng thông tin trên giấy tờ (vd cấp lại thẻ căn cước khi cha/mẹ khai thay).",
+    ],
+  },
+  {
     version: "1.28.23",
     date: "19/11/2026",
     items: [

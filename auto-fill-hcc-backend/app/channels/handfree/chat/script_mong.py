@@ -103,6 +103,12 @@ PROCEDURE_HMONG = {
     "dieu-chinh-thong-tin-ve-cu-tru": "Hloov tus tswv tsev",
     # BẢN NHÁP chờ anh Dư soát — "lees paub" (xác nhận) + "qhov chaw nyob" (chỗ ở) đã có; TỪ MỚI "ruaj" (cố định, thường trú).
     "xac-nhan-thong-tin-ve-cu-tru": "Lees paub qhov chaw nyob ruaj",
+    # BẢN NHÁP chờ anh Dư soát — ghép "faib" (tách, như "Faib los yog muab daim av ua ke") + "tsev" (hộ, như "tus tswv
+    # tsev" chủ hộ) đã có trong file, không thêm từ mới.
+    "tach-ho": "Faib tsev",
+    # BẢN NHÁP chờ anh Dư soát — "Cuv npe nyob ib ntus" (đăng ký tạm trú) đã có trong file; chưa có từ Mông cho "xóa"
+    # → giữ chữ tiếng Việt "Xóa" như các nhãn ghép tiếng Việt khác.
+    "xoa-dang-ky-tam-tru": "Xóa cuv npe nyob ib ntus",
     # BẢN NHÁP chờ anh Dư soát — ghép "hloov" (thay đổi) + "daim npav" (thẻ) đã có; "Căn cước" giữ tiếng Việt như câu
     # "daim Căn cước công dân" sẵn trong file.
     "cap-doi-the-can-cuoc": "Hloov daim npav Căn cước",
@@ -122,6 +128,8 @@ PROCEDURE_HMONG = {
     "cap-ho-chieu-pho-thong-o-trong-nuoc": "Ua phau ntawv hla teb chaws",
     # BẢN NHÁP chờ anh Dư soát — "qhia" (báo) + "poob" (mất) + "phau ntawv hla teb chaws" (hộ chiếu).
     "trinh-bao-mat-ho-chieu-pho-thong-cap-xa": "Qhia poob phau ntawv hla teb chaws",
+    # BẢN NHÁP chờ anh Dư soát — như bản cấp xã + "rau tub ceev xwm xeev" (cho công an tỉnh).
+    "trinh-bao-mat-ho-chieu-pho-thong-cap-tinh": "Qhia poob phau ntawv hla teb chaws rau tub ceev xwm xeev",
     # BẢN NHÁP chờ anh Dư soát — "ua" (làm) + "ntawv tso cai nkag teb chaws" (thị thực, nghĩa đen: giấy cho phép vào
     # nước) + "rau neeg txawv teb chaws" (cho người nước ngoài).
     "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam": "Ua ntawv tso cai nkag teb chaws rau neeg txawv teb chaws",
@@ -2002,6 +2010,29 @@ BCA_AGENCY_FILL_FAILED = {
 BCA_AGENCY_NEED_WARD = {
     "md": "Pej xeem xaiv ntxiv zos hauv {province}.",
     "tts": "Pej xeem xaiv ntxiv zos hauv {province}.",
+}
+# BẢN NHÁP chờ anh Dư soát — bước chọn "Trường hợp" sau cơ quan (xóa đăng ký tạm trú), ghép từ câu BCA_AGENCY_* sẵn có
+# ("xaiv" chọn, "nplooj ntawv" trang, "hauv qab" bên dưới, "tiav lawm" xong); "Trường hợp" giữ chữ Việt như trên cổng.
+BCA_CASE_ASK = {
+    "md": "Pej xeem xaiv Trường hợp raws li cov ntaub ntawv ntawm koj hauv qab no (yuav tsum xaiv ces nplooj ntawv "
+          "thiaj qhib daim ntawv tshaj tawm):\n\n{cases}",
+    "tts": "Pej xeem xaiv Trường hợp hauv qab no.",
+}
+BCA_CASE_REMIND = {
+    "md": "Pej xeem xaiv Trường hợp hauv qab no.",
+    "tts": "Pej xeem xaiv Trường hợp hauv qab no.",
+}
+BCA_CASE_FILLING = {
+    "md": "Kuv tab tom xaiv Trường hợp {case} ntawm nplooj ntawv.",
+    "tts": "Kuv tab tom xaiv Trường hợp ntawm nplooj ntawv.",
+}
+BCA_CASE_FILLED = {
+    "md": "Kuv xaiv Trường hợp {case} tiav lawm.",
+    "tts": "Kuv xaiv Trường hợp tiav lawm.",
+}
+BCA_CASE_MANUAL = {
+    "md": "Pej xeem xaiv Trường hợp {case} ntawm nplooj ntawv.",
+    "tts": "Pej xeem xaiv Trường hợp ntawm nplooj ntawv.",
 }
 BCA_AGENCY_READY = {
     "md": "Xaiv {ward}, {province} lawm. Nias Điền cơ quan thực hiện kom kuv xaiv ntawm nplooj ntawv.",

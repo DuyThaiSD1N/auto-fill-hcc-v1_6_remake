@@ -137,6 +137,9 @@
     // Có engine trang Đăng ký thường trú (ô cơ quan theo cặp id cboRECEIVE_ADDR_*_ID, bảng thành viên comp bca-rows).
     // Thiếu cờ → BE báo thủ tục cần cập nhật Trợ lý.
     supportsBcaThuongTru: true,
+    // Biết chọn ô "Trường hợp" sau bước cơ quan (lệnh bca_select_case → content.js::selectBcaCase, xóa đăng ký tạm trú).
+    // Thiếu cờ → BE dặn công dân chọn tay.
+    supportsBcaCase: true,
     // Có engine trang Cấp đổi thẻ căn cước (cơ quan Công an tỉnh cboORGTinh → xã cboORGXa → địa chỉ trạm cboDiaChiTram,
     // option "Công an …"). Thiếu cờ → BE báo thủ tục cần cập nhật Trợ lý.
     supportsBcaCanCuoc: true,
@@ -5984,6 +5987,12 @@
         const res = await sendToContent({ action: "fillBcaAgency", province: a.province, ward: a.ward });
         setStatus("");
         ask(`__event:bca_agency_result:${JSON.stringify(res || { ok: false, error: "no_response" })}`, "system");
+      } else if (a.type === "bca_select_case") {
+        // Cổng DVC Bộ Công an: chọn ô "Trường hợp" công dân vừa bấm (sau bước cơ quan). Báo lại cả khi lỗi — BE dặn chọn tay.
+        setStatus("Đang chọn trường hợp…");
+        const res = await sendToContent({ action: "bcaSelectCase", id: a.id || "", label: a.label || "" });
+        setStatus("");
+        ask(`__event:bca_case_result:${JSON.stringify(res || { ok: false, error: "no_response" })}`, "system");
       } else if (a.type === "tick_commit" && (a.id || a.label)) {
         // Nút cam "Tôi xin chịu trách nhiệm…": content.js tích ô cam kết theo id (không có id / không thấy id thì theo
         // nhãn — trang căn cước), báo lại để BE hiện nút Nộp hồ sơ.

@@ -102,6 +102,18 @@ def clean_email(value) -> str | None:
     return email if _EMAIL_FINAL_RE.match(email) else None
 
 
+def keep_portal_values(fields: list[dict], names) -> list[dict]:
+    """Gắn cờ ``keepPortalValue`` cho các ô của CHỦ TÀI KHOẢN VNeID mà cổng DVC Bộ Công an có thể đổ sẵn (SĐT, email người
+    kê khai / người đề nghị / người bảo lãnh…). Extension (Auto Fill + trợ lý) thấy ô đang có giá trị không do chính nó
+    ghi thì giữ nguyên, ô trống vẫn điền theo giấy (user 20/11/2026: SĐT / email Phần I cấp lại căn cước bị thay bằng của
+    người trên giấy). Sửa tại chỗ và trả lại chính ``fields``."""
+    names = set(names)
+    for field in fields:
+        if field.get("name") in names:
+            field["keepPortalValue"] = True
+    return fields
+
+
 def normalize_date(d: str | None) -> str:
     """"22/4/2021" → "22/04/2021" (zero-pad ngày & tháng)."""
     if not d:

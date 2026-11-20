@@ -130,3 +130,103 @@ def test_planner_llm_loi_van_dinh_du_tep_va_bao_can_bo():
     assert source == "default" and len(items) == len(FILES)
     assert all(i["rowKey"] == "to khai thay doi thong tin cu tru" for i in items)
     assert registry.get_attach_pipeline(KEY) is not None
+
+
+# ── Trợ lý: "Điều chỉnh giấy tờ" sau khi đã đính = điền lại tờ khai, đính lại là lệnh riêng (user 20/11/2026) ──
+def _adjust_mocks(monkeypatch, calls):
+    from app.channels.handfree.chat import pipeline_runner, tracing
+
+    async def noop(*_a, **_k):
+        return None
+
+    async def reopen(sid):
+        return {"_id": sid, "files": [{"name": "to-khai.pdf"}]}
+
+    async def progress(_sid):
+        return {"received": 3, "total": 3, "files_count": 3}
+
+    monkeypatch.setattr(pipeline_runner, "run_process", lambda *a: calls.append("process"))
+    monkeypatch.setattr(pipeline_runner, "run_attach", lambda *a: calls.append("attach"))
+    monkeypatch.setattr(pipeline_runner, "spawn", lambda _job: None)
+    monkeypatch.setattr(tracing, "set_report", noop)
+    monkeypatch.setattr(flow.conv_store, "save", noop)
+    monkeypatch.setattr(flow.up_store, "reopen_for_supplement", reopen)
+    monkeypatch.setattr(flow.upload_service, "sync_for_conversation", noop)
+    monkeypatch.setattr(flow.upload_service, "complete_session", noop)
+    monkeypatch.setattr(flow.upload_service, "progress_of", progress)
+
+
+def test_tro_ly_dieu_chinh_giay_to_sau_dinh_kem_la_dien_lai_khong_dinh_lai(monkeypatch):
+    import asyncio
+
+    from app.channels.handfree.procedure_registry import get_procedure
+
+    # Mọi thủ tục Bộ Công an có đính kèm khai cờ, trừ tách hộ (đang làm riêng).
+    for key in ("dang-ky-tam-tru", KEY, "dieu-chinh-thong-tin-ve-cu-tru", "dang-ky-mau-con-dau",
+                "cap-ho-chieu-pho-thong-o-trong-nuoc", "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam",
+                "cap-the-tam-tru-cho-nguoi-nuoc-ngoai-tai-viet-nam", "trinh-bao-mat-ho-chieu-pho-thong-cap-xa",
+                "trinh-bao-mat-ho-chieu-pho-thong-cap-tinh"):
+        assert get_procedure(key).get("docsAdjustRefill") is True, key
+    assert not get_procedure("tach-ho").get("docsAdjustRefill")
+
+    calls = []
+    _adjust_mocks(monkeypatch, calls)
+    caps = {"supportsFieldReview": True, "supportsBcaFlow": True, "supportsTickCommit": True,
+            "supportsPageBoundDocsComplete": True}
+    conv = {"_id": "c-adj", "state": "done", "history": [], "procedure_key": KEY, "upload_session_id": "s1",
+            "docs_target": "attachment", "attach_done": True, "fields": [{"name": "x"}], "location": {},
+            "client_capabilities": caps}
+    r = asyncio.run(flow._handle_turn_inner(conv, Intent("action", "add_documents", {})))
+    assert conv["documents_adjustment_target"] == "declaration"
+    assert [c["label"] for c in r.chips] == ["✅ Hoàn tất điều chỉnh, điền lại tờ khai"]
+    assert "Đính kèm lại" in r.display_md and conv["attach_done"] is True
+
+    # Chốt giấy tờ (trang báo form + bảng cùng trang) → chỉ điền lại, không đính.
+    page = {"pageContextCaptured": True, "formKind": "standard", "attachmentTarget": True, "bcaAgencyBlock": True}
+    asyncio.run(flow._docs_complete(conv, page))
+    assert calls == ["process"] and conv["auto_attach_after_fill"] is False
+
+    # Điền xong: về bước cuối, nút tích cam kết + Đính kèm lại; không có "Đính kèm giấy tờ ▶".
+    r = asyncio.run(flow._handle_filling(conv, Intent("action", "fill_report", {
+        "filled": 9, "review": {"filled": 9, "optional": 0, "required": 0}})))
+    sends = [c["send"] for c in r.chips]
+    assert calls == ["process"] and conv["state"] == "done"
+    assert "__action:reattach" in sends and "__action:confirm_review" not in sends
+    assert [c["send"] for c in r.chips if c.get("cta")] == ["__action:tick_commit"]
+    assert not conv.get("supplementing_documents")
+
+    # "Đính kèm lại" là lệnh riêng: chỉ đính, không điền lại.
+    asyncio.run(flow._handle_turn_inner(conv, Intent("action", "reattach", {})))
+    assert calls == ["process", "attach"]
+
+
+def test_tro_ly_dieu_chinh_giay_to_truoc_dinh_kem_van_hoi_dinh_kem(monkeypatch):
+    """Chưa đính lần nào (đang rà soát sau điền): điều chỉnh xong điền lại rồi hỏi đính kèm như lượt đầu."""
+    import asyncio
+
+    calls = []
+    _adjust_mocks(monkeypatch, calls)
+    caps = {"supportsFieldReview": True, "supportsBcaFlow": True, "supportsTickCommit": True}
+    conv = {"_id": "c-adj2", "state": "reviewing", "history": [], "procedure_key": KEY, "upload_session_id": "s1",
+            "docs_target": "attachment", "location": {}, "client_capabilities": caps}
+    asyncio.run(flow._handle_turn_inner(conv, Intent("action", "add_documents", {})))
+    assert conv["documents_adjustment_target"] == "declaration" and not conv.get("refill_keeps_attach")
+    asyncio.run(flow._docs_complete(conv))
+    r = asyncio.run(flow._handle_filling(conv, Intent("action", "fill_report", {
+        "filled": 9, "review": {"filled": 9, "optional": 0, "required": 0}})))
+    assert conv["state"] == "reviewing" and r.chips[0]["send"] == "__action:confirm_review"
+    assert calls == ["process"]
+
+
+def test_tro_ly_dien_lai_to_khai_o_buoc_cuoi_khong_dinh_lai(monkeypatch):
+    """Ảnh chạy thật 20/11: nói "Điền lại tờ khai" sau khi đã đính trên trang thường trú thì trước đây bị nuốt."""
+    import asyncio
+
+    calls = []
+    _adjust_mocks(monkeypatch, calls)
+    conv = {"_id": "c-adj3", "state": "done", "history": [], "procedure_key": KEY, "upload_session_id": "s1",
+            "docs_target": "attachment", "attach_done": True, "auto_attach_after_fill": True, "location": {},
+            "client_capabilities": {"supportsFieldReview": True, "supportsBcaFlow": True}}
+    asyncio.run(flow._handle_turn_inner(conv, Intent("action", "refill", {})))
+    assert calls == ["process"] and conv["docs_target"] == "declaration"
+    assert conv["auto_attach_after_fill"] is False and conv["refill_keeps_attach"] is True

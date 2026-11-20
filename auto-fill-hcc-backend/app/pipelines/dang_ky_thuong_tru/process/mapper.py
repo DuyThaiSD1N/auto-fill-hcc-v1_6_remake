@@ -21,6 +21,7 @@ from app.pipelines.dang_ky_thuong_tru.process.schema import (
     MEMBER_IDS,
     UI_COMP_BY_NAME,
 )
+from app.pipelines._shared.formatting import keep_portal_values
 
 PROCEDURE_KEY = "dang-ky-thuong-tru"
 # Xã + tỉnh của tài khoản quầy (server gắn ở app/process/router.py, client không tự gửi được).
@@ -241,4 +242,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         if name in defaults:
             field["default"] = True
         out.append(field)
+    # Ô người đề nghị = chủ tài khoản VNeID: cổng đổ sẵn thì giữ nguyên, trống mới điền theo giấy (user 20/11/2026).
+    keep_portal_values(out, ('txtPHONE_NUMBER', 'txtEMAIL'))
     return out

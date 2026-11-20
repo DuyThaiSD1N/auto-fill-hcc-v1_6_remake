@@ -622,7 +622,7 @@ def test_email_ocr_dinh_dau_phay_lam_sach_moi_thu_tuc_bo_cong_an():
     for raw, want in cases.items():
         assert clean_email(raw) == want, raw
     for folder in ("dang_ky_tam_tru", "dang_ky_thuong_tru", "dieu_chinh_thong_tin_ve_cu_tru",
-                   "xac_nhan_thong_tin_ve_cu_tru", "cap_doi_the_can_cuoc", "cap_the_can_cuoc_duoi_14_tuoi",
+                   "xac_nhan_thong_tin_ve_cu_tru", "tach_ho", "xoa_dang_ky_tam_tru", "cap_doi_the_can_cuoc", "cap_the_can_cuoc_duoi_14_tuoi",
                    "cap_the_can_cuoc_tu_du_14_tuoi", "dang_ky_xe_lan_dau_san_xuat_lap_rap_trong_nuoc",
                    "dang_ky_mau_con_dau", "cap_ho_chieu_pho_thong_o_trong_nuoc",
                    "trinh_bao_mat_ho_chieu_pho_thong_cap_xa", "cap_thi_thuc_cho_nguoi_nuoc_ngoai_tai_viet_nam",
@@ -659,3 +659,13 @@ def test_tro_ly_co_o_anh_chan_dung():
     docs = {d["key"]: d for d in hf.get_procedure(KEY)["requiredDocs"]}
     assert docs["anh_chan_dung"]["sides"] == 1 and not docs["anh_chan_dung"].get("optional")
     assert "Ảnh chân dung 4x6" in hf.get_procedure(KEY)["uploadHint"]
+
+
+def test_lien_he_nguoi_bao_lanh_giu_gia_tri_cong_lien_he_nguoi_nuoc_ngoai_dien_theo_giay():
+    # Khối Thân nhân bảo lãnh khoá theo tài khoản VNeID: SĐT / email cổng đổ sẵn thì giữ (user 20/11/2026). Khối người
+    # nước ngoài (CongDan_diDong / CongDan_email) không phải của tài khoản → điền theo tờ khai như cũ.
+    out = {f["name"]: f for f in _enrich(HO_SO)[0]}
+    for name in ("CongDan__fs_BCADiDongBaoLanh", "CongDan__fs_BCAEmailBaoLanh"):
+        assert out[name]["keepPortalValue"] is True, name
+    for name in ("CongDan_diDong", "CongDan_email"):
+        assert "keepPortalValue" not in out[name], name

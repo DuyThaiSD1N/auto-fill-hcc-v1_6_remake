@@ -586,6 +586,13 @@ def _resolve_docs_target(proc: dict, page_context: dict | None, conv: dict | Non
     return target
 
 
+def _no_attachment(proc: dict) -> bool:
+    """Thủ tục khai KHÔNG có bước đính kèm (hasAttachmentStep False, không phải thủ tục chỉ đính kèm). Trang thường trú
+    Bộ Công an (tách hộ 1.010038, xác nhận cư trú 1.010041) luôn có bảng #tblGiayToDinhKem trong DOM nên extension báo
+    attachmentTarget — ảnh chạy thật 20/11/2026: trợ lý nhận giấy rồi "đính kèm đi" thay vì điền tờ khai."""
+    return proc.get("hasAttachmentStep") is False and proc.get("mode") != "attach"
+
+
 def _resolve_page_docs_target(proc: dict, page_context: dict | None) -> str:
     if _is_business_flow(proc):
         return "business"
@@ -594,7 +601,8 @@ def _resolve_page_docs_target(proc: dict, page_context: dict | None) -> str:
     # Cổng 2-tab cùng trang (Bắc Ninh): DOM chứa ĐỒNG THỜI form kê khai + ô đính kèm nên
     # attachmentTarget luôn dương — phải vào kê khai trước, đính kèm chạy tự động sau khi điền.
     same_page = bool(proc.get("samePageAttach")) and proc.get("mode") != "attach"
-    if not same_page and (step == _wizard_step(proc, "attachmentStep", 3) or ctx["attachmentTarget"]):
+    if not same_page and not _no_attachment(proc) and (
+            step == _wizard_step(proc, "attachmentStep", 3) or ctx["attachmentTarget"]):
         return "attachment"
     if (step == _wizard_step(proc, "declarationStep", 2)
             or ctx["declarationTarget"] or ctx["formKind"]):
@@ -679,7 +687,7 @@ _ADJUSTMENT_KEYS = ("state", "doc_method", "docs_target", "documents_adjustment_
                     "pipeline_error", "awaiting_events", "supplementing_documents", "supplement_reuse_session",
                     "owner_info_done", "owner_fields", "owner_review", "hkd", "hkd_checked", "business_action_started",
                     "business_result", "business_refill_only", "fields", "fill_report", "trace_request_id",
-                    "second_pass",
+                    "second_pass", "refill_keeps_attach",
                     "attach_action_in_progress", "attach_action_dispatch_id", "attach_action_lease_until")
 
 
@@ -967,6 +975,8 @@ _ATTACH_HEADER_OPTIONAL_PROCEDURES = {"khai-sinh-dang-ky", "khai-tu-lien-thong"}
 
 def _attachment_page_reached(conv: dict, proc: dict, page_context: dict | None) -> bool:
     """Tin stepper, hoặc fallback bằng bảng hồ sơ thật thay vì nút chọn tệp đơn lẻ."""
+    if _no_attachment(proc):
+        return False
     current = _docs_page_context(page_context)
     if _bca_nth(proc) and current["bcaKeKhaiForm"] is True:
         # Form kê khai eForm Nth Bộ Công an còn hiện: đã tới chỗ đính kèm chỉ khi bảng Thành phần hồ sơ HIỆN cùng trang
@@ -1815,6 +1825,9 @@ def _reset_for_new_procedure(conv: dict) -> None:
     conv["state"] = "greet"
     conv["procedure_key"] = None
     conv["procedure_variant"] = ""
+    conv["bca_case"] = ""
+    conv["bca_case_pending"] = False
+    conv["bca_case_filling"] = False
     conv["mae_dialog_options"] = {}
     conv["mae_dialog_choice"] = {}
     conv["mae_dialog_choice_labels"] = {}
@@ -1896,6 +1909,7 @@ def _to_confirm_procedure(conv: dict, key: str) -> Reply:
         conv["attach_has_files"] = False  # hồ sơ mới: lượt đầu không gỡ tệp nào
         split_submit.clear(conv)
         conv["procedure_variant"] = ""  # trường hợp giải quyết gắn với TỪNG thủ tục
+        conv["bca_case"] = ""
         conv["mae_dialog_options"] = {}
         conv["mae_dialog_choice"] = {}
         conv["mae_dialog_choice_labels"] = {}
@@ -2150,6 +2164,10 @@ def _start_guide_login(conv: dict) -> Reply:
     conv["milestones"] = []
     lien_thong.reset_agency(conv)
     conv["agency_done"] = False
+    # Trường hợp (cổng Bộ Công an, registry bcaCase) gắn với lượt chọn cơ quan của hồ sơ này.
+    conv["bca_case"] = ""
+    conv["bca_case_pending"] = False
+    conv["bca_case_filling"] = False
     conv["agency_dispatched_at"] = 0
     conv["agency_no_response"] = 0
     conv["doi_ma_lan_thu"] = 0
@@ -3440,6 +3458,11 @@ def _bca_portal_on_page(conv: dict, ctx: dict) -> Reply:
         # Cơ quan điền theo giấy tờ lúc điền form (comp bca-agency của pipeline, vd "Kính gửi" Phiếu DC02 cấp đổi căn
         # cước) → không hỏi nơi, sang thẳng bước giấy tờ.
         return _bca_to_documents(conv)
+    if conv.get("bca_case_filling"):
+        return Reply()  # trợ lý đang chọn Trường hợp — chờ bca_case_result
+    if conv.get("bca_case_pending"):
+        # Đang hỏi Trường hợp: trang đổi (cổng nạp lại ô) không hỏi lặp; công dân bấm kiểm tra lại thì nhắc nút.
+        return _bca_case_ask(conv, get_procedure(conv.get("procedure_key") or "") or {}) if manual_check else Reply()
     if ctx.get("bcaAgencyDone"):
         if conv.get("bca_agency_filling"):
             return Reply()  # trợ lý đang chọn hộ — chờ bca_agency_result rồi mới sang bước giấy tờ
@@ -3489,12 +3512,64 @@ def _bca_agency_ready(conv: dict) -> Reply:
     return r
 
 
+def _bca_case_options(proc: dict | None) -> list[str]:
+    """Nhãn ô "Trường hợp" (registry `bcaCase.options`, đúng chữ trên cổng) của thủ tục phải chọn trường hợp sau cơ quan."""
+    return [str(o).strip() for o in ((proc or {}).get("bcaCase") or {}).get("options") or [] if str(o or "").strip()]
+
+
+def _bca_case_chips(proc: dict) -> list[dict]:
+    return [{"label": label, "send": f"__action:bca_case:{i}"} for i, label in enumerate(_bca_case_options(proc))]
+
+
+def _bca_case_ask(conv: dict, proc: dict) -> Reply:
+    """Chọn xong cơ quan, cổng còn bắt chọn "Trường hợp" thì mới hiện tờ khai (xóa đăng ký tạm trú): hỏi bằng nút."""
+    conv["bca_case_pending"] = True
+    cases = "\n".join(f"{i}. {label}" for i, label in enumerate(_bca_case_options(proc), 1))
+    r = Reply(*_fmt(vi.BCA_CASE_ASK, cases=cases))
+    r.chips = _bca_case_chips(proc)
+    return r
+
+
+def _bca_pick_case(conv: dict, proc: dict, payload: dict) -> Reply:
+    """Công dân bấm một trường hợp → extension chọn ô Trường hợp trên trang (bản có cờ supportsBcaCase), báo lại bằng
+    event `bca_case_result`. Bản cũ: dặn công dân chọn tay rồi sang bước giấy tờ — lúc điền tờ khai pipeline vẫn chọn
+    lại đúng trường hợp này (case_pipeline_options)."""
+    options = _bca_case_options(proc)
+    try:
+        index = int(payload.get("value"))
+    except (TypeError, ValueError):
+        index = -1
+    if not 0 <= index < len(options):
+        return _bca_case_ask(conv, proc)
+    case = options[index]
+    conv["bca_case"] = case
+    conv["bca_case_pending"] = False
+    if (conv.get("client_capabilities") or {}).get("supportsBcaCase") is True:
+        conv["bca_case_filling"] = True
+        r = Reply(*_fmt(vi.BCA_CASE_FILLING, case=case))
+        r.actions = [{"type": "bca_select_case", "label": case,
+                      "id": str((proc.get("bcaCase") or {}).get("selectId") or "cboBPROC_CASE_CODE")}]
+        return r
+    return _bca_to_documents(conv, _fmt(vi.BCA_CASE_MANUAL, case=case))
+
+
+def _bca_case_result(conv: dict, payload: dict) -> Reply:
+    conv["bca_case_filling"] = False
+    lead = vi.BCA_CASE_FILLED if payload.get("ok") is True else vi.BCA_CASE_MANUAL
+    return _bca_to_documents(conv, _fmt(lead, case=str(conv.get("bca_case") or "")))
+
+
 def _bca_to_documents(conv: dict, lead: tuple[str, str] | None = None) -> Reply:
-    """Cơ quan thực hiện đã chọn → bước giấy tờ như mọi thủ tục (xin phép xử lý dữ liệu → QR/Scan)."""
+    """Cơ quan thực hiện đã chọn → bước giấy tờ như mọi thủ tục (xin phép xử lý dữ liệu → QR/Scan). Thủ tục khai
+    `bcaCase` mà chưa chọn trường hợp → hỏi trường hợp trước (cổng chưa hiện tờ khai)."""
     conv["agency_done"] = True
     conv["bca_agency_pending"] = False
     conv["bca_agency_filling"] = False
-    r = _to_ask_doc_method(conv)
+    proc = get_procedure(conv.get("procedure_key") or "") or {}
+    if _bca_case_options(proc) and not conv.get("bca_case"):
+        r = _bca_case_ask(conv, proc)
+    else:
+        r = _to_ask_doc_method(conv)
     if lead:
         # Câu "✓ Đã chọn …" là một bong bóng riêng đứng trước lời mời gửi giấy tờ.
         r.actions = [{"type": "lead_message", "md": lead[0]}, *r.actions]
@@ -3543,6 +3618,10 @@ def _handle_guide_login(conv: dict, intent: Intent) -> Reply:
             return _bca_agency_result(conv, intent.payload or {})
         if conv.get("bca_agency_pending") and intent.kind == "action" and intent.value == "bca_fill_agency":
             return _bca_fill_agency(conv)
+        if intent.kind == "event" and intent.value == "bca_case_result":
+            return _bca_case_result(conv, intent.payload or {})
+        if conv.get("bca_case_pending") and intent.kind == "action" and intent.value == "bca_case":
+            return _bca_pick_case(conv, proc, intent.payload or {})
     if intent.kind == "action" and intent.value == "reload_page":
         r = Reply()
         r.actions = [{"type": "reload_page"}]
@@ -3640,6 +3719,11 @@ def _handle_guide_login(conv: dict, intent: Intent) -> Reply:
     if proc.get("bcaPortal") and conv.get("bca_agency_pending"):
         # Chọn cơ quan chỉ qua thẻ phía trên (không nhận nói tên tỉnh/phường) — nhắc ngắn, không vẽ thêm thẻ.
         return Reply(*_fmt(vi.BCA_AGENCY_REMIND))
+    if proc.get("bcaPortal") and conv.get("bca_case_pending"):
+        # Đang hỏi Trường hợp: nhắc ngắn kèm lại các nút.
+        r = Reply(*_fmt(vi.BCA_CASE_REMIND))
+        r.chips = _bca_case_chips(proc)
+        return r
     if conv.get("needed_login"):
         template = vi.WAIT_LOGIN_REMIND
     else:
@@ -3944,6 +4028,7 @@ async def _docs_complete(conv: dict, page_context: dict | None = None) -> Reply:
         # tiếp tục chờ bước Thành phần hồ sơ, không rơi về nút rà soát thủ công cũ.
         conv["auto_attach_after_fill"] = bool(
             page_bound and get_attach_pipeline(conv.get("procedure_key") or "")
+            and not conv.get("refill_keeps_attach")
         )
         pipeline_runner.spawn(pipeline_runner.run_process(
             conv["_id"], conv.get("upload_session_id") or "", conv.get("procedure_key") or ""))
@@ -4133,6 +4218,42 @@ async def _reattach_now(conv: dict) -> Reply:
         return reply
     await upload_service.complete_session(sid)
     return await _docs_complete(conv)
+
+
+def _docs_adjust_refills(proc: dict | None) -> bool:
+    """Thủ tục Bộ Công an có form kê khai + bảng đính kèm cùng trang (registry docsAdjustRefill, user 20/11/2026):
+    "Điều chỉnh giấy tờ" chốt xong là ĐIỀN LẠI tờ khai, không đính lại — "đính kèm lại" là lệnh riêng (_reattach_now)."""
+    return bool((proc or {}).get("docsAdjustRefill")) and (proc or {}).get("mode") != "attach"
+
+
+async def _start_refill_adjustment(conv: dict) -> Reply:
+    """Mở "Điều chỉnh giấy tờ" đích tờ khai (docsAdjustRefill). Đã đính rồi thì tệp vẫn nằm trên bảng của trang: giữ
+    attach_done, lượt điền lại xong không tự đính lại (refill_keeps_attach → fill_report kết luận luôn)."""
+    attached = bool(conv.get("attach_done"))
+    reply = await _start_documents_adjustment(
+        conv, "declaration",
+        finish_detail=("tôi sẽ đọc lại toàn bộ danh sách giấy tờ và điền lại tờ khai; tệp đã đính trên trang giữ "
+                       "nguyên, muốn đính lại thì nói Đính kèm lại" if attached else None),
+    )
+    if attached:
+        conv["attach_done"] = True
+        conv["refill_keeps_attach"] = True
+    return reply
+
+
+def _refill_keeps_attach_ready(conv: dict, proc: dict | None) -> None:
+    """"Điền lại tờ khai" ở thủ tục docsAdjustRefill trên cổng dancuquocgia (form + bảng cùng trang): đích là tờ khai dù
+    lượt đính đã đổi docs_target; đã đính xong thì lượt điền lại không đính lại. eForm Nth đi _bca_nth_refill_ready."""
+    if not _docs_adjust_refills(proc) or _bca_nth(proc):
+        return
+    conv["docs_target"] = "declaration"
+    if conv.get("attach_done"):
+        conv["auto_attach_after_fill"] = False
+        conv["refill_keeps_attach"] = True
+
+
+def _reattach_chip() -> dict:
+    return {"label": "📎 Đính kèm lại", "send": "__action:reattach"}
 
 
 # Chip ĐỔI cách gửi giấy tờ (chỉ 2 cách vì profile đã ẩn) — send GIỐNG card doc_options nên đi qua
@@ -5106,11 +5227,16 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
             # Xem trước → Xác nhận) và chờ trang đính kèm như thường — Xác nhận xong tờ khai đóng, trang về bảng Thành
             # phần hồ sơ thì tự đính (_eform_pending hết, _attachment_page_reached mới tính).
             conv["auto_attach_after_fill"] = True
+        # Điền lại tờ khai sau khi đã đính (docsAdjustRefill): tệp còn trên bảng, không đính lại, kết luận luôn.
+        keep_attach = bool(conv.pop("refill_keeps_attach", False) and conv.get("attach_done"))
+        if keep_attach and _bca_nth(proc):
+            conv["bca_nth_refill_after_attach"] = True
         # askBeforeAttach (registry): điền xong DỪNG ở rà soát, công dân bấm "Đính kèm giấy tờ" mới đính.
         auto_wait_attachment = bool(
             conv.get("auto_attach_after_fill")
             and get_attach_pipeline(conv.get("procedure_key") or "")
             and not proc.get("askBeforeAttach")
+            and not keep_attach
         )
         # Cổng 2-tab cùng trang (Bắc Ninh): DOM không đổi sau khi điền → watcher (chỉ bắn khi
         # chữ ký trang đổi) sẽ KHÔNG phát page_status nữa. Không được chờ chuyển bước — chạy
@@ -5163,7 +5289,7 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
             _clear_documents_adjustment(conv)
             # Cổng Lai Châu: thêm nút cam "Đồng ý và tiếp tục" (trợ lý bấm sang Thành phần hồ sơ).
             return lai_chau.fill_report_reply(conv, proc, v2)
-        bca_fill = _bca_fill_report_reply(conv, proc, rep, intent.payload.get("review"))
+        bca_fill = _bca_fill_report_reply(conv, proc, rep, intent.payload.get("review"), keep_attach=keep_attach)
         if bca_fill is not None:
             _clear_documents_adjustment(conv)
             return bca_fill
@@ -5196,7 +5322,13 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
         # Một lượt điều chỉnh kê khai kết thúc ở report thật từ extension. Xóa target tạm
         # trước khi render để lần sau nút Điều chỉnh mở một lượt mới độc lập.
         _clear_documents_adjustment(conv)
-        if auto_wait_attachment:
+        if keep_attach:
+            # Extension chưa trả số ô (luồng cũ): tệp đã đính còn trên trang → về bước cuối, đính lại là lệnh riêng.
+            conv["state"] = "done"
+            conv["pipeline_status"] = ""
+            r.chips = [{"label": "🔁 Điền lại thông tin", "send": "__action:refill"},
+                       _supplement_documents_chip(), _reattach_chip()]
+        elif auto_wait_attachment:
             r.chips = [
                 {"label": "🔁 Điền lại thông tin", "send": "__action:refill"},
                 _supplement_documents_chip(),
@@ -5434,7 +5566,10 @@ async def _handle_reviewing(conv: dict, intent: Intent) -> Reply:
             return eform_reply
     if intent.kind == "action" and intent.value == "refill":
         _bca_nth_refill_ready(conv, proc)
+        _refill_keeps_attach_ready(conv, proc)
         return await _restart_declaration_pipeline(conv)
+    if intent.kind == "action" and intent.value == "add_documents" and _docs_adjust_refills(proc):
+        return await _start_refill_adjustment(conv)
     if intent.kind == "action" and intent.value == "add_documents":
         if conv.get("docs_target") != "declaration":
             return Reply(*_fmt(vi.REFILL_WRONG_PAGE))
@@ -5485,7 +5620,14 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
             return await _eform_fill(conv, proc)
     if intent.kind == "action" and intent.value == "refill":
         _bca_nth_refill_ready(conv, get_procedure(conv.get("procedure_key") or "") or {})
+        _refill_keeps_attach_ready(conv, get_procedure(conv.get("procedure_key") or "") or {})
         return await _restart_declaration_pipeline(conv)
+    if (intent.kind == "action" and intent.value == "add_documents"
+            and _docs_adjust_refills(get_procedure(conv.get("procedure_key") or ""))):
+        # Form + bảng đính kèm cùng trang: điều chỉnh giấy tờ = điền lại tờ khai (đang đính dở thì chờ xong).
+        if conv.get("attach_action_in_progress"):
+            return Reply(*_fmt(vi.ATTACH_RUNNING))
+        return await _start_refill_adjustment(conv)
     if intent.kind == "action" and intent.value == "add_documents":
         if conv.get("docs_target") != "declaration":
             return Reply(*_fmt(vi.REFILL_WRONG_PAGE))
@@ -5879,6 +6021,9 @@ async def _handle_done(conv: dict, intent: Intent) -> Reply:
         # còn lại và extension tự bỏ qua file trùng đã có trên cổng.
         # HkdOnline: điền + đính chạy chung một máy → lượt điều chỉnh đọc lại giấy, điền lại cả hồ sơ.
         proc = get_procedure(conv.get("procedure_key") or "") or {}
+        if _docs_adjust_refills(proc):
+            # Thủ tục Bộ Công an (form + bảng cùng trang): chốt xong điền lại tờ khai; đính lại là lệnh "Đính kèm lại".
+            return await _start_refill_adjustment(conv)
         return await _start_documents_adjustment(conv, "business" if _business_redo_ok(proc) else "attachment")
 
     if intent.kind == "action" and intent.value == "business_refill":
@@ -5895,6 +6040,9 @@ async def _handle_done(conv: dict, intent: Intent) -> Reply:
         proc = get_procedure(conv.get("procedure_key") or "") or {}
         if _bca_nth(proc):
             _bca_nth_refill_ready(conv, proc)
+            return await _restart_declaration_pipeline(conv)
+        if _docs_adjust_refills(proc):
+            _refill_keeps_attach_ready(conv, proc)
             return await _restart_declaration_pipeline(conv)
 
     if intent.kind == "action" and intent.value == attach_files.RETRY_ACTION:
@@ -6088,10 +6236,12 @@ def _bca_submit_chip() -> dict:
     return {"label": vi.BCA_SUBMIT_CHIP, "send": _BCA_SUBMIT_SEND, "solid": True, "cta": True}
 
 
-def _bca_keep_chips(conv: dict, proc: dict) -> list[dict]:
+def _bca_keep_chips(conv: dict, proc: dict, *, attached: bool = False) -> list[dict]:
     """Bộ nút sau điền: nút đi tiếp (cta) + nút sửa nhỏ. Trang có mục đính kèm thì đi tiếp là đính kèm (hỏi trước khi
-    đính); không thì ô cam kết + Nộp hồ sơ."""
+    đính); không thì ô cam kết + Nộp hồ sơ. `attached`: điền lại sau khi đã đính → ô cam kết + Nộp, thêm Đính kèm lại."""
     small = [{"label": "🔁 Điền lại thông tin", "send": "__action:refill"}, _supplement_documents_chip()]
+    if attached:
+        return [*_bca_commit_or_submit(conv, proc), *small, _reattach_chip()]
     if proc.get("hasAttachmentStep") is not False:
         return [{"label": "📎 Đính kèm giấy tờ ▶", "send": "__action:confirm_review", "solid": True, "cta": True},
                 *small]
@@ -6104,13 +6254,17 @@ def _bca_commit_or_submit(conv: dict, proc: dict) -> list[dict]:
     return _commit_chip(conv, proc) or [_bca_submit_chip()]
 
 
-def _bca_fill_report_reply(conv: dict, proc: dict, rep: dict, review) -> Reply | None:
-    """Khung kết quả điền + khung kết luận (ô đỏ → Bổ sung; đủ → nút đi tiếp). None = luồng cũ."""
+def _bca_fill_report_reply(conv: dict, proc: dict, rep: dict, review, *, keep_attach: bool = False) -> Reply | None:
+    """Khung kết quả điền + khung kết luận (ô đỏ → Bổ sung; đủ → nút đi tiếp). None = luồng cũ.
+    `keep_attach`: điền lại sau khi đã đính (docsAdjustRefill) → về bước cuối, đi tiếp là cam kết + Nộp hồ sơ."""
     if not _bca_flow(conv, proc) or not isinstance(review, dict):
         return None
+    if keep_attach:
+        conv["state"] = "done"
+        conv["pipeline_status"] = ""
     stats = field_review.begin(conv, review)
     r = Reply(*tpm.fill_result(conv, rep, stats))
-    field_review.conclusion_trail(conv, proc, r, _bca_keep_chips(conv, proc))
+    field_review.conclusion_trail(conv, proc, r, _bca_keep_chips(conv, proc, attached=keep_attach))
     return r
 
 
@@ -6262,7 +6416,10 @@ def _bca_nth_fill_report_reply(conv: dict, proc: dict, rep: dict, review, *, not
         field_review.begin(conv, review)
         r = Reply(*_fmt(vi.FILL_REPORT_REVIEW, filled=rep["filled"], missing_note=note))
         next_ok = _bca_same_page(proc, conv.get("docs_page_context"))
-        field_review.conclusion_trail(conv, proc, r, _bca_nth_keep(conv, proc, next_ok=next_ok))
+        keep = _bca_nth_keep(conv, proc, next_ok=next_ok)
+        if _docs_adjust_refills(proc):
+            keep.insert(len(keep) - (1 if keep and keep[-1].get("cta") else 0), _reattach_chip())
+        field_review.conclusion_trail(conv, proc, r, keep)
         return r
     r = Reply(*_fmt(vi.FILL_REPORT_REVIEW, filled=rep["filled"], missing_note=note, note=tail))
     r.chips = [_bca_nth_refill_chip(), _supplement_documents_chip()]
@@ -6459,6 +6616,8 @@ def build_progress(conv: dict) -> dict:
     if (state == "guide_login" and (conv.get("bca_agency_pending") or conv.get("agency_done"))
             and (get_procedure(conv.get("procedure_key") or "") or {}).get("bcaPortal")):
         progress["label"] = vi.BCA_AGENCY_STEP_LABEL  # đã qua đăng nhập, ở khối cơ quan (cổng Bộ Công an)
+        if conv.get("bca_case_pending") or conv.get("bca_case_filling"):
+            progress["label"] = vi.BCA_CASE_STEP_LABEL
     # Đọc conv.lang trực tiếp (router GET conversation gọi ngoài handle_turn).
     if (conv.get("lang") or "vi") == "hmong" and progress["label"] == vi.STEP_LABELS.get(state, ""):
         hmong_label = mong.STEP_LABELS_HMONG.get(state, "")
