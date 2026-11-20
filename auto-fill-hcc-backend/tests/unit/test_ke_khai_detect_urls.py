@@ -106,3 +106,27 @@ def test_procedure_endpoints_filter_by_account_province():
 
     # Chưa đăng nhập (extension bản cũ gọi trơn) vẫn ra đủ danh mục.
     assert len(asyncio.run(ke_khai_links(None))["links"]) > len(links)
+
+
+def test_thu_tuc_dang_ky_xe_bca_mo_thang_trang_thu_tuc_bo_cong_an():
+    """20/11/2026: 5 thủ tục đăng ký xe không có trang DVCQG (DVCQG gộp sang mã 1.115970/1.115971) → link là trang
+    thủ tục cổng Bộ Công an tthc?matt=…, khai directSubmit + bcaSubmit như các thủ tục BCA hai lần "Nộp hồ sơ"."""
+    from app.procedures.ke_khai_links import KE_KHAI_LINKS
+
+    by_key = {link["key"]: link for link in KE_KHAI_LINKS}
+    expected = {
+        "dang-ky-xe-lan-dau-nhap-khau": ("1.013066", "58712"),
+        "dang-ky-sang-ten-di-chuyen-xe-cap-tinh": ("2.000076", "43474"),
+        "thu-hoi-chung-nhan-dang-ky-bien-so-xe-cap-tinh": ("2.001485", "43493"),
+        "thu-hoi-chung-nhan-dang-ky-bien-so-xe-cap-xa": ("1.010919", "64190"),
+        "thu-hoi-chung-nhan-dang-ky-bien-so-xe-tai-cuc": ("2.000311", "26125"),
+    }
+    for key, (code, matt) in expected.items():
+        link = by_key[key]
+        assert link["code"] == code
+        assert link["url"] == f"https://dichvucong.bocongan.gov.vn/bocongan/bothutuc/tthc?matt={matt}"
+        assert link["needsAgencySelect"] is False and link["directSubmit"] is True and link["bcaSubmit"] is True
+        assert link["autoConfirm"] is False
+    # Mỗi mã chỉ một link: key trùng nhau là popup chọn nhầm dòng.
+    for code, _ in expected.values():
+        assert sum(1 for link in KE_KHAI_LINKS if link.get("code") == code) == 1

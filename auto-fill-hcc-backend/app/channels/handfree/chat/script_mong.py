@@ -122,6 +122,17 @@ PROCEDURE_HMONG = {
     "cap-the-can-cuoc-tu-du-14-tuoi": "Ua daim npav Căn cước rau neeg hnub nyoog 14 xyoo rov saum toj",
     # BẢN NHÁP chờ anh Dư soát — "cuv npe" (đăng ký) + "tsheb" (xe) + "thawj zaug" (lần đầu).
     "dang-ky-xe-lan-dau-san-xuat-lap-rap-trong-nuoc": "Cuv npe tsheb thawj zaug",
+    # BẢN NHÁP chờ anh Dư soát — như trên + TỪ MỚI "txawv teb chaws" (nước ngoài) cho "nhập khẩu".
+    "dang-ky-xe-lan-dau-nhap-khau": "Cuv npe tsheb txawv teb chaws thawj zaug",
+    # BẢN NHÁP chờ anh Dư soát — "cuv npe" (đăng ký) + "hloov npe" (đổi tên, sang tên) + "tsheb" (xe); TỪ MỚI "hloov npe".
+    "dang-ky-sang-ten-di-chuyen-xe-cap-tinh": "Cuv npe hloov npe tsheb",
+    # BẢN NHÁP chờ anh Dư soát — "rho" (thu hồi, như thu-hoi-gcn-cap-sai-bac-ninh) + "daim ntawv cuv npe tsheb" (giấy
+    # đăng ký xe) + "thiab" (và) + TỪ MỚI "phaj tsheb" (biển số xe) + "rau tub ceev xwm xeev" (cho công an tỉnh).
+    "thu-hoi-chung-nhan-dang-ky-bien-so-xe-cap-tinh": "Rho daim ntawv cuv npe tsheb thiab phaj tsheb rau tub ceev xwm xeev",
+    # BẢN NHÁP chờ anh Dư soát — như bản cấp tỉnh, đổi "xeev" (tỉnh) thành "zos" (xã).
+    "thu-hoi-chung-nhan-dang-ky-bien-so-xe-cap-xa": "Rho daim ntawv cuv npe tsheb thiab phaj tsheb rau tub ceev xwm zos",
+    # BẢN NHÁP chờ anh Dư soát — như bản cấp tỉnh, giữ nguyên tên "Cục Cảnh sát giao thông".
+    "thu-hoi-chung-nhan-dang-ky-bien-so-xe-tai-cuc": "Rho daim ntawv cuv npe tsheb thiab phaj tsheb rau Cục Cảnh sát giao thông",
     # BẢN NHÁP chờ anh Dư soát — "cuv npe" (đăng ký) + "qauv" (mẫu) + "foob" (con dấu) + "tshiab" (mới).
     "dang-ky-mau-con-dau": "Cuv npe qauv foob tshiab",
     # BẢN NHÁP chờ anh Dư soát — "ua" (làm) + "phau ntawv hla teb chaws" (hộ chiếu, nghĩa đen: sổ đi qua nước).
@@ -1102,6 +1113,13 @@ WAIT_ATTACHMENT_SAME_PAGE = {
     "md": ("\n\nTam sim no kuv hloov mus rau **Thành phần hồ sơ** ces muab ntaub ntawv "
            "tso rau phau ntaub ntawv — pej xeem tos ib pliag."),
     "tts": " Tam sim no kuv hloov mus rau Thành phần hồ sơ ces muab ntaub ntawv tso. Pej xeem tos ib pliag.",
+}
+
+# NỢ DỊCH (20/11/2026): ghép từ cụm đã dịch ("nias … kom mus rau", ATTACH_REQUEST_ON_DECLARATION "txog lawm kuv muab
+# tso kiag"), bỏ vế "cổng báo thiếu gì thì nói lại"; chờ người soát. eForm Nth Bộ Công an, bấm "Đính kèm giấy tờ".
+BCA_NTH_NEXT_TO_ATTACH = {
+    "md": "Kuv nias **Đồng ý và tiếp tục** kom mus rau **Thành phần hồ sơ**, txog lawm kuv muab ntaub ntawv tso kiag.",
+    "tts": "Kuv nias Đồng ý và tiếp tục kom mus rau Thành phần hồ sơ, txog lawm kuv muab ntaub ntawv tso kiag.",
 }
 
 DOCS_COMPLETE_ATTACH = {

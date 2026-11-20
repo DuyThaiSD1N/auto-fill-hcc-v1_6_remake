@@ -233,11 +233,41 @@ test("bca-declarant: id radio lệch thì chọn theo nhãn (cấp đổi căn c
   assert.strictEqual(r.result.notFound.length, 1);
 });
 
-test("vòng điền chuẩn: ô bcaOtherOnly bỏ qua trừ khi bca-declarant chọn khai thay", () => {
+test("vòng điền chuẩn: ô bcaOtherOnly / bcaSelfOnly / bcaAccountIs bỏ ở cả vòng chính lẫn các vòng điền lại", () => {
   assert.match(RELATION_SRC, /f\.comp === "bca-declarant"\)\s*\{\s*bcaDeclarant = await fillBcaDeclarantField\(f, result\);/);
-  assert.match(RELATION_SRC, /if \(f\.bcaOtherOnly && bcaDeclarant !== "other"\) continue;/);
-  // SĐT / email Phần I của người cần cấp chỉ ghi khi tài khoản chính là người đó (cấp đổi căn cước, 19/11).
-  assert.match(RELATION_SRC, /if \(f\.bcaSelfOnly && bcaDeclarant !== "self"\) continue;/);
+  // Khối Phần II chỉ khi khai thay; SĐT / email Phần I của người cần cấp chỉ khi tài khoản chính là người đó (19/11).
+  assert.match(RELATION_SRC, /if \(\(f\.bcaOtherOnly && bcaDeclarant !== "other"\) \|\| \(f\.bcaSelfOnly && bcaDeclarant !== "self"\)\) \{\s*heldBack\.add\(f\);\s*continue;/);
+  assert.match(RELATION_SRC, /if \(f\.bcaAccountIs && !await bcaAccountIs\(f\.bcaAccountIs\)\) \{[\s\S]{0,300}?heldBack\.add\(f\);\s*continue;/);
+  // 20/11 (req cấp đổi): vòng điền lại ô trống ghi SĐT / email người trên giấy vào Phần I của tài khoản khác.
+  assert.match(RELATION_SRC, /const writable = fields\.filter\(\(f\) => !heldBack\.has\(f\)\);/);
+  assert.match(RELATION_SRC, /await reapplyEmptyStandardTextFields\(writable\);/);
+  assert.match(RELATION_SRC, /await settleBcaDatepickers\(writable\);/);
+  assert.doesNotMatch(RELATION_SRC, /await reapplyEmptyStandardTextFields\(fields\);/);
+});
+
+function runAccountIs(src, account, match) {
+  const fn = src.slice(src.indexOf("async function bcaAccountIs("),
+    src.indexOf("// \"Mối quan hệ của người kê khai với người cần cấp căn cước\""));
+  const els = { txtFULLNAME_NDN: { value: account.name }, txtIDENTIFY_NUMBER_NDN: { value: account.id } };
+  const deps = {
+    document: { getElementById: (id) => els[id] || null },
+    waitFor: async (cond) => cond(),
+    bcaGuestFold: (s) => String(s || "").replace(/Đ/g, "D").replace(/đ/g, "d").normalize("NFD")
+      .replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim().toLowerCase(),
+  };
+  return new Function(...Object.keys(deps), `${fn}; return bcaAccountIs;`)(...Object.values(deps))(match);
+}
+
+test("bcaAccountIs: SĐT / email Phần I chỉ ghi khi tài khoản đúng là người có nó trên giấy (20/11)", async () => {
+  const owner = { name: "ĐINH VĂN MẪU", id: "012201000009" };
+  // Tài khoản người khác (khai thay / cán bộ đăng nhập tài khoản riêng) → không ghi.
+  assert.equal(await runAccountIs(RELATION_SRC, { name: "Nguyễn Văn Khác", id: "001204000001" }, owner), false);
+  assert.equal(await runAccountIs(RELATION_SRC, { name: "Đinh Văn Mẫu", id: "012201000009" }, owner), true);
+  // Trùng tên khác số = người khác; giấy không có số → so họ tên.
+  assert.equal(await runAccountIs(RELATION_SRC, { name: "Đinh Văn Mẫu", id: "012201999999" }, owner), false);
+  assert.equal(await runAccountIs(RELATION_SRC, { name: "Đinh Văn Mẫu", id: "012201999999" }, { name: "ĐINH VĂN MẪU" }), true);
+  // Phần I chưa đổ tài khoản → không ghi.
+  assert.equal(await runAccountIs(RELATION_SRC, { name: "", id: "" }, owner), false);
 });
 
 

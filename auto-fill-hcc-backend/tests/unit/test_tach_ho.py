@@ -345,3 +345,155 @@ def test_llm_loi_khong_tach_van_dinh_du_tep_vao_dong_to_khai(monkeypatch):
     res = asyncio.run(attach.plan(_files("a.pdf", "b.pdf"), {}))
     assert [i["rowKey"] for i in res["attachments"]] == [ROWS["to_khai"]["rowKey"]] * 2
     assert res["attachments"][0]["rowFields"]["count"] == "02"
+
+
+# ── Trợ lý, bước cuối sắp nộp (ảnh chạy thật 20/11/2026): đã đính + đã tích cam kết, công dân gõ "Điền lại tờ khai" → trợ
+# lý hỏi "làm lại việc gì" kèm nút Nộp hồ sơ; gõ lại "điền lại tờ khai" → hỏi "bỏ hồ sơ đang làm?". ──
+_DONE_CAPS = {"supportsFieldReview": True, "supportsBcaFlow": True, "supportsTickCommit": True,
+              "supportsPageBoundDocsComplete": True}
+
+
+def _done_conv(**extra):
+    return {"_id": "c-done", "state": "done", "history": [], "procedure_key": KEY, "upload_session_id": "s1",
+            "docs_target": "attachment", "attach_done": True, "auto_attach_after_fill": True, "location": {},
+            "fields": [{"name": "x"}], "attach_plan": [{"fileIndex": 0}], "client_capabilities": dict(_DONE_CAPS),
+            **extra}
+
+
+def _no_llm(monkeypatch):
+    from app.channels.handfree.chat import cach_noi
+
+    async def boom(*_a, **_k):
+        raise AssertionError("câu này phải bắt tất định, không qua LLM")
+
+    monkeypatch.setattr(cach_noi, "classify", boom)
+
+
+def _run_mocks(monkeypatch, calls):
+    from app.channels.handfree.chat import pipeline_runner, tracing
+
+    async def noop(*_a, **_k):
+        return None
+
+    async def reopen(sid):
+        return {"_id": sid, "files": [{"name": "ho-so.pdf"}]}
+
+    async def progress(_sid):
+        return {"received": 1, "total": 1, "files_count": 1}
+
+    monkeypatch.setattr(pipeline_runner, "run_process", lambda *a: calls.append("process"))
+    monkeypatch.setattr(pipeline_runner, "run_attach", lambda *a: calls.append("attach"))
+    monkeypatch.setattr(pipeline_runner, "spawn", lambda _job: None)
+    monkeypatch.setattr(tracing, "set_report", noop)
+    monkeypatch.setattr(flow.conv_store, "save", noop)
+    monkeypatch.setattr(flow.up_store, "reopen_for_supplement", reopen)
+    monkeypatch.setattr(flow.upload_service, "sync_for_conversation", noop)
+    monkeypatch.setattr(flow.upload_service, "complete_session", noop)
+    monkeypatch.setattr(flow.upload_service, "progress_of", progress)
+
+
+def test_moi_thu_tuc_bo_cong_an_co_dinh_kem_deu_dien_lai_duoc_o_buoc_cuoi():
+    # Thủ tục mới trên cổng Bộ Công an có đính kèm mà quên cờ docsAdjustRefill → bước cuối "điền lại" bị nuốt (tách hộ).
+    from app.channels.handfree import procedure_registry as handfree
+
+    for proc in handfree.PROCEDURES:
+        scope = " ".join((proc.get("detect") or {}).get("urlScope") or [])
+        bca = proc.get("bcaPortal") or "dichvucong.bocongan.gov.vn" in scope
+        if bca and proc.get("hasAttachmentStep") and proc.get("mode") != "attach":
+            assert proc.get("docsAdjustRefill") is True, proc["key"]
+            assert flow.refill_at_done(proc), proc["key"]
+
+
+def test_tro_ly_buoc_cuoi_go_dien_lai_to_khai_thi_dien_lai_ngay(monkeypatch):
+    from app.channels.handfree.chat import intents
+    from app.channels.handfree.chat.intents import Intent
+
+    _no_llm(monkeypatch)
+    conv = _done_conv()
+    for said in ("Điền lại tờ khai", "điền lại tờ khai", "dien lai to khai", "tôi muốn điền lại tờ khai giúp tôi",
+                 "điền lại đi", "điền lại thông tin", "kê khai lại"):
+        assert asyncio.run(intents.resolve(said, "done", conv)) == Intent("action", "refill"), said
+    # Đính kèm lại vẫn là lệnh riêng; sửa một ô / phủ định không phải điền lại cả tờ khai.
+    assert asyncio.run(intents.resolve("đính kèm lại", "done", conv)) == Intent("action", "reattach")
+    for said in ("điền lại ngày sinh", "điền lại ô họ tên", "không điền lại", "đừng điền lại nữa, chưa cần",
+                 "đính kèm lại", "Nộp hồ sơ"):
+        assert not intents.asks_refill(said), said
+    # Rà soát / đang đính cũng vậy (nút Điền lại thông tin của bước).
+    for state in ("reviewing", "attaching"):
+        assert asyncio.run(intents.resolve("Điền lại tờ khai", state, _done_conv(state=state))) \
+            == Intent("action", "refill"), state
+
+
+def test_tro_ly_buoc_cuoi_dien_lai_khong_dinh_lai_va_con_nut_dinh_kem_lai(monkeypatch):
+    from app.channels.handfree.chat.intents import Intent
+
+    calls = []
+    _run_mocks(monkeypatch, calls)
+    conv = _done_conv()
+    asyncio.run(flow.handle_turn(conv, Intent("action", "refill")))
+    assert calls == ["process"] and conv["docs_target"] == "declaration"
+    assert conv["auto_attach_after_fill"] is False and conv["refill_keeps_attach"] is True
+
+    # Điền xong: về bước cuối, tích cam kết là nút đi tiếp, có Đính kèm lại; không mời "Đính kèm giấy tờ" lần nữa.
+    r = asyncio.run(flow._handle_filling(conv, Intent("action", "fill_report", {
+        "filled": 9, "review": {"filled": 9, "optional": 0, "required": 0}})))
+    sends = [c["send"] for c in r.chips]
+    assert calls == ["process"] and conv["state"] == "done"
+    assert "__action:reattach" in sends and "__action:confirm_review" not in sends
+    assert [c["send"] for c in r.chips if c.get("cta")] == ["__action:tick_commit"]
+
+    # "Đính kèm lại" sau đó chỉ đính, không điền lại.
+    asyncio.run(flow.handle_turn(conv, Intent("action", "reattach")))
+    assert calls == ["process", "attach"]
+
+
+def test_tro_ly_tich_cam_ket_xong_van_con_nut_dien_lai_dinh_kem_lai():
+    from app.channels.handfree.chat.intents import Intent
+
+    conv = _done_conv()
+    for intent in (Intent("event", "commit_result", {"ok": True}),
+                   Intent("event", "commit_result", {"ok": True, "source": "page"})):
+        r = asyncio.run(flow._handle_turn_inner(conv, intent))
+        sends = [c["send"] for c in r.chips]
+        assert sends[0] == "__action:bca_submit" and r.chips[0]["cta"]
+        assert sends[1:] == ["__action:refill", "__action:add_documents", "__action:reattach"]
+        assert not any(c.get("cta") for c in r.chips[1:])
+    # Chưa đính (rà soát sau điền) → chỉ nút Nộp như cũ.
+    conv = _done_conv(state="reviewing", attach_done=False)
+    r = asyncio.run(flow._handle_turn_inner(conv, Intent("event", "commit_result", {"ok": True})))
+    assert [c["send"] for c in r.chips] == ["__action:bca_submit"]
+
+
+def test_tro_ly_lam_lai_chua_ro_viec_khong_dua_nut_nop_ho_so():
+    # Màn hình chỉ còn Nộp hồ sơ: câu "làm lại" chưa rõ việc → nút làm lại của bước, không phải nút Nộp.
+    from app.channels.handfree.chat import cach_noi
+    from app.channels.handfree.chat.cach_noi import lop1, policy
+    from app.channels.handfree.chat.intents import Intent
+
+    conv = _done_conv()
+    flow.update_voice_options(conv, flow.Reply("x", chips=[flow._bca_submit_chip()]))
+    r = asyncio.run(policy.intercept(conv, Intent(cach_noi.KIND, lop1.LAM_LAI, {"_voice": True}), None))
+    sends = [c["send"] for c in r.chips]
+    assert sends == ["__action:refill", "__action:add_documents", "__action:reattach"]
+    assert "*điền lại tờ khai*, *điều chỉnh giấy tờ*, hay *đính kèm lại*" in r.display_md
+
+
+def test_tro_ly_buoc_cuoi_llm_co_lenh_dien_lai_chi_khi_dien_lai_duoc(monkeypatch):
+    from app.channels.handfree.chat import cach_noi, intents
+    from app.channels.handfree.chat.intents import Intent
+
+    def values(conv):
+        return [e["value"] for e in intents._state_entries("done", conv)]
+
+    assert "refill" in values(_done_conv())
+    assert "refill" not in values(_done_conv(submitted_completed=True))
+    # Thủ tục không điền lại được tại bước cuối (không có bước đính kèm cùng trang).
+    assert "refill" not in values(_done_conv(procedure_key="thong-bao-luu-tru"))
+
+    # Đã nộp: "điền lại tờ khai" không chạy lại lượt điền.
+    async def unknown(*_a, **_k):
+        return Intent("unknown")
+
+    monkeypatch.setattr(cach_noi, "classify", unknown)
+    assert asyncio.run(intents.resolve("điền lại tờ khai", "done", _done_conv(submitted_completed=True))) \
+        == Intent("unknown")

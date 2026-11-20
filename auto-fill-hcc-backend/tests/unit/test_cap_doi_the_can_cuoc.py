@@ -101,6 +101,34 @@ def test_cha_me_ke_khai_thay_khai_nguoi_can_cap_o_phan_ii():
     assert "txtEMAIL_ADDRESS_NDN" not in by
 
 
+def test_sdt_email_phan_i_chi_ghi_khi_tai_khoan_dung_la_nguoi_co_no_tren_giay():
+    # Chạy thật 20/11/2026: tài khoản VNeID là người khác (radio "khai thay" chọn đúng) mà SĐT / email Phần I vẫn bị ghi
+    # của người cần cấp đổi (vòng điền lại ô trống của extension). Mỗi ô gắn bcaAccountIs = người có giá trị đó trên
+    # giấy; extension so với Phần I (tài khoản) trước khi ghi, ở mọi vòng điền.
+    contact = ("txtPHONE_NUMBER_NDN", "txtEMAIL_ADDRESS_NDN")
+    out = _enrich(SELF)
+    for name in contact:
+        assert _field(out, name)["bcaAccountIs"] == {"name": "NGUYEN VAN AN", "id": "012201000001"}, name
+    assert not any("bcaAccountIs" in f for f in out if f["name"] not in contact)
+    # Mục II ghi người kê khai thay → SĐT mục II.5 là của người đó.
+    rep = _enrich({**SELF, "NguoiDaiDien_HoTen": "Tran Thi Binh", "NguoiDaiDien_SoDinhDanh": "012170000002",
+                   "NguoiDaiDien_SoDienThoai": "0987 000 222", "NguoiDaiDien_QuanHe": "Mẹ"})
+    assert _field(rep, "txtPHONE_NUMBER_NDN")["bcaAccountIs"] == {"name": "TRAN THI BINH", "id": "012170000002"}
+    # Giấy không cho biết SĐT / email là của ai → không ghi vào Phần I của tài khoản.
+    unknown = _by(_enrich({k: v for k, v in SELF.items() if not k.startswith("NguoiCanCap_")}))
+    assert not set(contact) & set(unknown)
+
+
+def test_only_for_account_gan_chu_tai_khoan_va_bo_o_khong_ro_chu():
+    from app.pipelines._shared.formatting import only_for_account
+
+    fields = [{"name": "a", "value": 1}, {"name": "b", "value": 2}]
+    got = only_for_account(fields, ("b",), name="NGUYEN VAN AN", id=None)
+    assert got == [{"name": "a", "value": 1}, {"name": "b", "value": 2, "bcaAccountIs": {"name": "NGUYEN VAN AN"}}]
+    assert fields[1] == {"name": "b", "value": 2}  # không sửa list gốc
+    assert only_for_account(fields, ("b",)) == [{"name": "a", "value": 1}]
+
+
 def test_muc_ii_ghi_chinh_nguoi_can_cap_van_la_tu_ke_khai():
     by = _by(_enrich({**SELF, "NguoiDaiDien_HoTen": "Nguyễn Văn An", "NguoiDaiDien_SoDinhDanh": "012201000001",
                       "NguoiDaiDien_QuanHe": "Mẹ"}))

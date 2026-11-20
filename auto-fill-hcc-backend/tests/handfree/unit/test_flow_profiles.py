@@ -540,11 +540,13 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert bca_tam_tru["bcaPortal"] is True and bca_tam_tru["samePageAttach"] is True
     assert bca_tam_tru["askBeforeAttach"] is True
     assert "wizard" not in bca_tam_tru and "maePortal" not in bca_tam_tru
-    # Xóa đăng ký tạm trú: CÙNG trang tạm trú (TT=TAMTRU_06), cùng khuôn cổng + ô cam kết, tạm thời KHÔNG đính kèm.
+    # Xóa đăng ký tạm trú: CÙNG trang tạm trú (TT=TAMTRU_06), cùng khuôn cổng + ô cam kết + đính kèm cùng trang, hỏi
+    # trước khi đính (20/11/2026).
     bca_xoa_tam_tru = procedures.pop("xoa-dang-ky-tam-tru")
-    for field in ("flowProfile", "bcaPortal", "submitCommitCheckbox", "wizard", "maePortal", "provinceOnly"):
+    for field in ("flowProfile", "bcaPortal", "submitCommitCheckbox", "samePageAttach", "askBeforeAttach",
+                  "hasAttachmentStep", "docsAdjustRefill", "wizard", "maePortal", "provinceOnly"):
         assert bca_xoa_tam_tru.get(field) == bca_tam_tru.get(field), field
-    assert bca_xoa_tam_tru["hasAttachmentStep"] is False and "samePageAttach" not in bca_xoa_tam_tru
+    assert bca_xoa_tam_tru["supportsSplitDocuments"] is True
     assert bca_xoa_tam_tru["detect"]["urlIncludes"] == ["TT=TAMTRU_06"]
     # Đăng ký thường trú (Cổng DVC Bộ Công an): như tạm trú — một trang, đính kèm cùng trang, hỏi trước khi đính.
     bca_thuong_tru = procedures.pop("dang-ky-thuong-tru")
@@ -608,6 +610,39 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert bca_xe["hasAttachmentStep"] is False and "bcaPortal" not in bca_xe and "provinceOnly" not in bca_xe
     assert "wizard" not in bca_xe and "maePortal" not in bca_xe and "needsAgencySelect" not in bca_xe
     assert bca_xe["detect"]["urlScope"] == ["dichvucong.bocongan.gov.vn"]
+    # Đăng ký xe lần đầu xe NHẬP KHẨU 1.013066 (20/11): cùng cổng, cùng khuôn trợ lý với xe lắp ráp trong nước (mở thẳng
+    # trang chọn trường hợp, luồng trang 1 Lai Châu, cùng cờ extension); detect thêm mã in trên trang.
+    bca_xe_nk = procedures.pop("dang-ky-xe-lan-dau-nhap-khau")
+    for field in ("flowProfile", "bcaPortal", "wizard", "maePortal", "needsAgencySelect", "provinceOnly",
+                  "hasAttachmentStep", "requiresCapability", "laiChauFeeStep", "agencyDirectSubmit"):
+        assert bca_xe_nk.get(field) == bca_xe.get(field), field
+    assert bca_xe_nk["detect"]["urlScope"] == bca_xe["detect"]["urlScope"] and bca_xe_nk["detect"]["codeOnPage"] is True
+    # Đăng ký sang tên, di chuyển xe 2.000076 (20/11): cùng khuôn trợ lý với xe nhập khẩu (mở thẳng trang chọn trường
+    # hợp, luồng trang 1 Lai Châu, cùng cờ extension, không đính kèm).
+    bca_sang_ten = procedures.pop("dang-ky-sang-ten-di-chuyen-xe-cap-tinh")
+    for field in ("flowProfile", "bcaPortal", "wizard", "maePortal", "needsAgencySelect", "provinceOnly",
+                  "hasAttachmentStep", "requiresCapability", "agencyDirectSubmit"):
+        assert bca_sang_ten.get(field) == bca_xe_nk.get(field), field
+    assert bca_sang_ten["detect"]["urlScope"] == bca_xe["detect"]["urlScope"]
+    # Thêm: ô "Cơ quan giải quyết hồ sơ" hiện sau khi chọn Loại xe → trợ lý tự chọn theo tỉnh (user 20/11).
+    assert {k: v for k, v in bca_sang_ten["laiChauFeeStep"].items()
+            if k != "caseAgencyByProvince"} == bca_xe_nk["laiChauFeeStep"]
+    assert bca_sang_ten["laiChauFeeStep"]["caseAgencyByProvince"]["afterPick"] is True
+    # Thu hồi chứng nhận đăng ký xe, biển số xe 2.001485 (20/11): khuôn trợ lý y hệt sang tên xe (mở thẳng trang chọn
+    # trường hợp, luồng trang 1 Lai Châu + tự chọn cơ quan theo tỉnh, cùng cờ extension, không đính kèm).
+    bca_thu_hoi = procedures.pop("thu-hoi-chung-nhan-dang-ky-bien-so-xe-cap-tinh")
+    for field in ("flowProfile", "bcaPortal", "wizard", "maePortal", "needsAgencySelect", "provinceOnly",
+                  "hasAttachmentStep", "requiresCapability", "agencyDirectSubmit", "laiChauFeeStep"):
+        assert bca_thu_hoi.get(field) == bca_sang_ten.get(field), field
+    assert bca_thu_hoi["detect"]["urlScope"] == bca_xe["detect"]["urlScope"]
+    # Thu hồi cấp xã 1.010919 / tại Cục 2.000311 (20/11): cùng mẫu kê khai, pipeline riêng; khuôn trợ lý như xe nhập khẩu
+    # (không tự chọn cơ quan theo tỉnh — cơ quan là công an xã / Cục CSGT).
+    for key in ("thu-hoi-chung-nhan-dang-ky-bien-so-xe-cap-xa", "thu-hoi-chung-nhan-dang-ky-bien-so-xe-tai-cuc"):
+        level = procedures.pop(key)
+        for field in ("flowProfile", "bcaPortal", "wizard", "maePortal", "needsAgencySelect", "provinceOnly",
+                      "hasAttachmentStep", "requiresCapability", "agencyDirectSubmit", "laiChauFeeStep"):
+            assert level.get(field) == bca_xe_nk.get(field), (key, field)
+        assert level["detect"] == bca_thu_hoi["detect"]
     # Đăng ký mẫu con dấu mới (cùng cổng, cùng khuôn đăng ký xe): mở thẳng trang chọn trường hợp, cờ riêng của extension.
     bca_con_dau = procedures.pop("dang-ky-mau-con-dau")
     for field in ("flowProfile", "bcaPortal", "wizard", "maePortal", "needsAgencySelect", "provinceOnly"):
@@ -615,7 +650,8 @@ def test_registered_procedures_use_their_declared_flow_family():
     # Khác đăng ký xe: có trang đính kèm (bảng Thành phần hồ sơ eForm Nth), có tách giấy.
     assert bca_con_dau["hasAttachmentStep"] is True and bca_con_dau["supportsSplitDocuments"] is True
     # Trang chọn trường hợp dẫn như đăng ký xe, thêm câu nói rõ phải chọn gì; điền xong nhắc nhận kết quả rồi đính kèm.
-    assert {k: v for k, v in bca_con_dau["laiChauFeeStep"].items() if k != "caseHint"} == bca_xe["laiChauFeeStep"]
+    assert {k: v for k, v in bca_con_dau["laiChauFeeStep"].items()
+            if k not in ("caseHint", "caseAgencyByProvince")} == bca_xe["laiChauFeeStep"]
     assert bca_con_dau["laiChauFeeStep"]["caseHint"] and bca_con_dau["resultMethodHint"] is True
     assert bca_con_dau["detect"]["urlScope"] == bca_xe["detect"]["urlScope"]
     assert bca_con_dau["requiresCapability"] == "supportsBcaConDau"
@@ -629,8 +665,9 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert {k: v for k, v in bca_ho_chieu["laiChauFeeStep"].items()
             if k not in ("caseHint", "caseAgencyByProvince")} == bca_xe["laiChauFeeStep"]
     assert bca_ho_chieu["laiChauFeeStep"]["caseAgencyByProvince"]["label"] == "Cơ quan giải quyết hồ sơ"
-    # Thủ tục khác dùng laiChauFeeStep (Lai Châu, đăng ký xe, mẫu con dấu) KHÔNG tự chọn cơ quan.
-    assert "caseAgencyByProvince" not in bca_con_dau["laiChauFeeStep"] and "caseAgencyByProvince" not in bca_xe["laiChauFeeStep"]
+    # Mẫu con dấu cũng tự chọn ô cơ quan theo tỉnh như hộ chiếu (user 20/11); Lai Châu, đăng ký xe thì KHÔNG.
+    assert bca_con_dau["laiChauFeeStep"]["caseAgencyByProvince"] == bca_ho_chieu["laiChauFeeStep"]["caseAgencyByProvince"]
+    assert "caseAgencyByProvince" not in bca_xe["laiChauFeeStep"]
     assert "resultMethodHint" not in bca_ho_chieu and bca_ho_chieu["requiresCapability"] == "supportsBcaHoChieu"
     # Cấp thị thực cho người nước ngoài (cùng cổng, cùng khuôn hộ chiếu): tự chọn cơ quan theo tỉnh như hộ chiếu; nơi
     # nhận thị thực giấy tờ không ghi → nhắc nhận kết quả như mẫu con dấu; cờ riêng.
@@ -996,7 +1033,11 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 cổng Bộ Công an dichvucong.bocongan.gov.vn (20/11) "trinh-bao-mat-ho-chieu-pho-thong-cap-tinh" (1.001445).
     # +1 cổng Bộ Công an (20/11) "tach-ho" (1.010038), cùng trang thường trú TT=THUONGTRU_05.
     # +1 cổng Bộ Công an (20/11) "xoa-dang-ky-tam-tru" (1.010028), cùng trang tạm trú TT=TAMTRU_06.
-    assert len(procedures) == 185
+    # +1 cổng Bộ Công an dichvucong.bocongan.gov.vn (20/11) "dang-ky-xe-lan-dau-nhap-khau" (1.013066).
+    # +1 cổng Bộ Công an dichvucong.bocongan.gov.vn (20/11) "dang-ky-sang-ten-di-chuyen-xe-cap-tinh" (2.000076).
+    # +1 cổng Bộ Công an dichvucong.bocongan.gov.vn (20/11) "thu-hoi-chung-nhan-dang-ky-bien-so-xe-cap-tinh" (2.001485).
+    # +2 cổng Bộ Công an (20/11) "thu-hoi-chung-nhan-dang-ky-bien-so-xe-cap-xa" (1.010919), "…-tai-cuc" (2.000311).
+    assert len(procedures) == 190
 
     for procedure in procedures:
         key = procedure["key"]

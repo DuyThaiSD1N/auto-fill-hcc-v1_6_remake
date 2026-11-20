@@ -33,6 +33,10 @@ của Bộ Công an cấp tỉnh) — trợ lý bấm thẳng "Nộp hồ sơ" r
 (dichvucong.bocongan.gov.vn/bocongan/bothutuc/tthc?...MaTTHC=<mã>) → trợ lý bấm tiếp nút "Nộp hồ sơ"
 (`a.bca-search-btn`) bên đó, chỉ khi MaTTHC trên URL trùng `code`. Đi cùng `autoConfirm: false`: luồng này
 không có modal "Thông tin chung" trên DVCQG.
+Thủ tục KHÔNG có trang DVCQG (vd 1.013066, 2.000076, 2.001485, 1.010919, 2.000311 về đăng ký xe — DVCQG đã gộp
+sang mã mới) thì `url` là chính trang thủ tục cổng Bộ Công an `/bocongan/bothutuc/tthc?matt=<số>`, vẫn khai
+`directSubmit` + `bcaSubmit`: popup lên đạn thẳng chặng "bca", mở trang xong bấm "Nộp hồ sơ" bên đó. URL này không
+mang MaTTHC nên mã đối chiếu đọc ở mục "Mã thủ tục" trên trang.
 
 `submitCardIncludes`: trang kết quả của Cổng QG ra NHIỀU thẻ cùng tên thủ tục, khác nhau ở "Cơ quan
 thực hiện" / "Đối tượng". Mặc định trợ lý lấy thẻ ĐẦU; khai chuỗi này thì nó tìm đúng thẻ chứa chuỗi

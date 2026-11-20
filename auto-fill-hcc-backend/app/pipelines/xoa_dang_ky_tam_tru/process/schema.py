@@ -8,7 +8,7 @@ LLM chỉ trả DỮ KIỆN đọc từ giấy tờ (Tờ khai CT01, CCCD). Ô f
 Khai hộ / tự khai (cổng chọn theo tài khoản), khối "Thông tin đề nghị đăng ký tạm trú" gồm cả Nội dung đề nghị
 txtCHANGED_NOTE (ẩn với TAMTRU_06 — nội dung đề nghị chỉ dùng để chọn Trường hợp), khối người đại diện / thời hạn
 (ẩn), khối VNeID xin ý kiến (ẩn), nhận thông báo / kết quả (mặc định của cổng), ô cam kết (người dân tự tích).
-Tạm thời KHÔNG đính kèm (user 20/11/2026).
+Đính kèm ở attach/ (bảng #tblGiayToDinhKem cùng trang, nạp theo Trường hợp).
 """
 
 FIELDS: list[dict] = [

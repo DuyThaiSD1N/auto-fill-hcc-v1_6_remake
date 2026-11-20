@@ -624,6 +624,9 @@ def test_email_ocr_dinh_dau_phay_lam_sach_moi_thu_tuc_bo_cong_an():
     for folder in ("dang_ky_tam_tru", "dang_ky_thuong_tru", "dieu_chinh_thong_tin_ve_cu_tru",
                    "xac_nhan_thong_tin_ve_cu_tru", "tach_ho", "xoa_dang_ky_tam_tru", "cap_doi_the_can_cuoc", "cap_the_can_cuoc_duoi_14_tuoi",
                    "cap_the_can_cuoc_tu_du_14_tuoi", "dang_ky_xe_lan_dau_san_xuat_lap_rap_trong_nuoc",
+                   "dang_ky_xe_lan_dau_nhap_khau", "dang_ky_sang_ten_di_chuyen_xe_cap_tinh",
+                   "thu_hoi_chung_nhan_dang_ky_bien_so_xe_cap_tinh", "thu_hoi_chung_nhan_dang_ky_bien_so_xe_cap_xa",
+                   "thu_hoi_chung_nhan_dang_ky_bien_so_xe_tai_cuc",
                    "dang_ky_mau_con_dau", "cap_ho_chieu_pho_thong_o_trong_nuoc",
                    "trinh_bao_mat_ho_chieu_pho_thong_cap_xa", "cap_thi_thuc_cho_nguoi_nuoc_ngoai_tai_viet_nam",
                    "cap_the_tam_tru_cho_nguoi_nuoc_ngoai_tai_viet_nam"):

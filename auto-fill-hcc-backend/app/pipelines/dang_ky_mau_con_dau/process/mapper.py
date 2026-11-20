@@ -1,7 +1,9 @@
 """Dựng ô form ``CongDan__fs*`` / ``CongDan_*`` từ dữ kiện nguồn — thủ tục 2.001428 (Cổng DVC Bộ Công an).
 
 Thứ tự nguồn theo file mapping (sheet "Ma trận đối chiếu"):
-- Cơ quan, tổ chức (ô 1–8, 17, 20, 21): Văn bản đề nghị (Mẫu số 03) → Quyết định thành lập → Công văn đồng ý khắc dấu.
+- Ô (1) Chọn nơi tiếp nhận hồ sơ: không theo giấy — danh sách chỉ có cơ quan đã chọn ở bước chọn trường hợp hồ sơ, phát
+  cờ ``firstOption`` (chọn mục thật đầu tiên) như hộ chiếu 1.001456. Dòng "Kính gửi" của văn bản không dùng.
+- Cơ quan, tổ chức (ô 2–8, 17, 20, 21): Văn bản đề nghị (Mẫu số 03) → Quyết định thành lập → Công văn đồng ý khắc dấu.
 - Người nộp (ô 9–16): người ở mục 6 văn bản đề nghị (không có mục 6 thì người đứng đầu ở mục 2). Số giấy tờ, ngày sinh,
   giới tính, ngày cấp ưu tiên thẻ CCCD của CHÍNH người đó; nơi cấp ưu tiên dòng "Nơi cấp" của văn bản (đúng nhãn) khi
   văn bản ghi cùng số giấy tờ.
@@ -19,6 +21,7 @@ import re
 from app.pipelines._shared import fold
 from app.pipelines._shared.area_remap import province_label
 from app.pipelines._shared.compact_agent.issuer import default_issuer
+from app.pipelines.cap_ho_chieu_pho_thong_o_trong_nuoc.process.mapper import AGENCY_FIELD_NAME, agency_field
 from app.pipelines.chuyen_muc_dich_su_dung_dat_mien_nui_lai_chau.process.mapper import (
     _area,
     _by_name,
@@ -51,8 +54,6 @@ RESULT_WARNING = (
     "thì nhập Địa chỉ nhận kết quả, rồi bấm \"Đồng ý và tiếp tục\" sang trang Thành phần hồ sơ để đính kèm."
 )
 
-# "Kính gửi: Phòng Cảnh sát QLHC về TTXH, Công an tỉnh An Bình" → "Công an tỉnh An Bình".
-_POLICE_RE = re.compile(r"c[ôo]ng\s+an\s+(t[ỉi]nh|th[àa]nh\s+ph[ốo]|tp\.?)\s+([^,;.\n]+)", re.IGNORECASE)
 _PASSPORT_RE = re.compile(r"^[A-Z]\d{7,8}$")
 # Tên tổ chức đảng: đảng ủy / đảng bộ / chi bộ / cấp ủy (tỉnh ủy, thành ủy…) / ban cán sự, đảng đoàn. So trên chữ đã bỏ
 # dấu nên "đăng ký" cũng thành "dang" — chỉ bắt cụm đi kèm "uy"/"bo"/"doan" để "Trung tâm Đăng kiểm" không lọt.
@@ -133,25 +134,6 @@ def _org_id(value) -> str | None:
         return None
     compact = re.sub(r"\s", "", text)
     return compact if re.search(r"\d", compact) and len(compact) >= 5 else None
-
-
-def _police(value) -> str | None:
-    match = _POLICE_RE.search(_plain(value) or "")
-    if not match:
-        return None
-    kind = "thành phố" if fold(match.group(1)).startswith(("thanh", "tp")) else "tỉnh"
-    name = match.group(2).strip()
-    return f"Công an {kind} {name}" if name else None
-
-
-def _police_of_province(province) -> str | None:
-    label = province_label(province)
-    if not label:
-        return None
-    kind, _, name = label.partition(" ")
-    if kind == "Thành":  # "Thành phố X"
-        return "Công an thành phố " + label[len("Thành phố "):]
-    return f"Công an tỉnh {name}"
 
 
 def _truong_hop(name: str | None, llm_choice) -> str | None:
@@ -236,11 +218,15 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         warnings.append("Thẻ căn cước tải lên không phải của người nộp hồ sơ ghi trong văn bản đề nghị — đã bỏ qua thẻ.")
 
     # ── Phần 1: cơ quan tiếp nhận ──
+    # Ô (1) "Chọn nơi tiếp nhận hồ sơ" chỉ có cơ quan đã chọn ở bước "Chọn trường hợp hồ sơ" (ảnh chạy thật 20/11: trợ
+    # lý chọn Công an tỉnh theo tỉnh tài khoản, văn bản gửi Công an tỉnh khác → khớp theo chữ trượt) → chọn mục thật đầu
+    # tiên như ô Cơ quan tiếp nhận hộ chiếu (firstOption). Phát trước mọi ô: ô (5) nạp lại sau khi chọn ô này.
+    if has_request:
+        out.append({**agency_field(), "firstOptionLabel": "Chọn nơi tiếp nhận hồ sơ"})
+        seen.add(AGENCY_FIELD_NAME)
     area = _area(values.get("VanBan_DiaChiToChuc"))
     if area and not (area.get("tinh") or area.get("xa")):
         area = None  # chuỗi trần không tách được tỉnh/xã → không đổ cả dòng vào ô chi tiết
-    police = _police(values.get("VanBan_KinhGui")) or _police_of_province(area.get("tinh") if area else None)
-    add("CongDan__fs_BCANoiNopHS", police)
 
     # ── Phần 2: thông tin cơ bản — cơ quan, tổ chức ──
     org_id = _org_id(values.get("VanBan_SoDinhDanhToChuc"))
@@ -312,6 +298,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     if "CongDan_diDong" not in seen:
         warnings.append("Giấy tờ không có số điện thoại liên hệ — ô Số điện thoại liên hệ (*) cần nhập tay.")
     warnings.append(RESULT_WARNING)
-    # Ô người nộp = chủ tài khoản VNeID: cổng đổ sẵn thì giữ nguyên, trống mới điền theo giấy (user 20/11/2026).
-    keep_portal_values(out, ('CongDan_tenCongDan', 'CongDan_diDong', 'CongDan_email'))
+    # SĐT / email liên hệ: cổng đổ sẵn của chủ tài khoản VNeID thì giữ, trống mới điền theo giấy (user 20/11/2026).
+    # Họ và tên KHÔNG giữ giá trị cổng (user 20/11/2026): là người nộp ở mục 6 văn bản đề nghị, phải khớp số giấy tờ /
+    # ngày sinh điền theo giấy — ảnh chạy thật: giữ tên chủ tài khoản cổng đổ sẵn mà số CCCD là của người trên giấy.
+    keep_portal_values(out, ('CongDan_diDong', 'CongDan_email'))
     return out, warnings

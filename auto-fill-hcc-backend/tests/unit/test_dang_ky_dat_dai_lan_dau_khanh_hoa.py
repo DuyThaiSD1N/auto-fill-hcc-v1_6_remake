@@ -364,6 +364,79 @@ def test_authorized_submitter_never_borrows_owner_facts():
     assert values["data[ownerAddress]"] == "Tổ dân phố 3"
 
 
+_AUTHORIZED = dict(
+    NguoiNop_HoTen="Lê Văn An",
+    NguoiNop_NgaySinh="01/02/1980",
+    NguoiNop_SoDinhDanh="001090012345",
+    NguoiNop_NgayCap="03/04/2022",
+    NguoiNop_NoiCap="Cục Cảnh sát quản lý hành chính về trật tự xã hội",
+    NguoiNop_DiaChi={"tinh": "Khánh Hòa", "xa": "Xã Cam An", "chiTietDuoiXa": "Thôn 1"},
+)
+
+
+def test_nam_nha_trang_nguoi_nop_la_nguoi_uy_quyen():
+    # Phường Nam Nha Trang (cờ do server đặt): có ủy quyền vẫn khai Phần I = chủ hồ sơ (người đứng Đơn), không lấy
+    # bên được ủy quyền.
+    options = mapper.with_account_process_options(
+        {}, {"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Nam Nha Trang"}, _KEY
+    )
+    assert mapper.owner_as_applicant(options)
+    fields, warnings = mapper.enrich(_facts(
+        **_OWNER, ChuHoSo_NgayCap="10/10/2021", ChuHoSo_NoiCap="Bộ Công an", **_AUTHORIZED, **_PARCEL,
+    ), options)
+    values = _values(fields)
+
+    assert warnings == []
+    for applicant, owner in (
+        ("data[fullname]", "data[ownerFullname]"),
+        ("data[phoneNumber]", "data[ownerPhoneNumber]"),
+        ("data[birthday]", "data[ownerBirthday]"),
+        ("data[identityNumber]", "data[ownerIdentityNumber]"),
+        ("data[identityDate]", "data[ownerIdentityDate]"),
+        ("data[identityAgency_text]", "data[ownerIdentityAgency]"),
+        ("data[province]", "data[province1]"),
+        ("data[village]", "data[village1]"),
+        ("data[address]", "data[ownerAddress]"),
+    ):
+        assert values[applicant] == values[owner], applicant
+    assert values["data[fullname]"] == "Trần Thị Bình"
+    assert values["data[identityNumber]"] == "056175012345"
+    assert values["data[birthday]"] == "05/06/1975"
+    assert values["data[village]"] == "Phường Nam Nha Trang"
+    assert values["data[address]"] == "Tổ dân phố 3"
+    # Không ô nào của Phần I còn mang dữ liệu bên được ủy quyền.
+    assert not {"Lê Văn An", "001090012345", "01/02/1980", "Xã Cam An", "Thôn 1"} & set(values.values())
+
+    # Chủ hồ sơ thiếu điện thoại: Phần I trả TRỐNG như Phần II, không mượn của bên được ủy quyền.
+    fields, _warnings = mapper.enrich(_facts(
+        **{key: value for key, value in _OWNER.items() if key != "ChuHoSo_DienThoai"},
+        **_AUTHORIZED, NguoiNop_DienThoai="0987654321",
+    ), options)
+    values = _values(fields)
+    assert values["data[phoneNumber]"] == values["data[ownerPhoneNumber]"] == ""
+
+
+def test_co_nguoi_nop_la_nguoi_uy_quyen_chi_cho_nam_nha_trang():
+    nam_nha_trang = {"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Nam Nha Trang"}
+    assert mapper.owner_as_applicant(mapper.with_account_process_options({}, nam_nha_trang, _KEY))
+    assert mapper.owner_as_applicant(mapper.with_account_process_options({}, {"tinh": "Khánh Hoà", "xa": "Nam Nha Trang"}, _KEY))
+    # Phường khác (kể cả phường Nha Trang), tỉnh khác, thủ tục Khánh Hòa khác: không bật; client tự gửi cờ cũng bị gỡ.
+    for user, procedure in (
+        ({"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Nha Trang"}, _KEY),
+        ({"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Bắc Nha Trang"}, _KEY),
+        ({"tinh": "Tỉnh Lâm Đồng", "xa": "Phường Nam Nha Trang"}, _KEY),
+        (nam_nha_trang, "giao-thue-chuyen-muc-dich-dat-khanh-hoa"),
+        (None, _KEY),
+    ):
+        options = mapper.with_account_process_options({mapper.OWNER_AS_APPLICANT_OPTION: True}, user, procedure)
+        assert not mapper.owner_as_applicant(options), (user, procedure)
+
+    # Không có cờ: giữ mặc định, Phần I là bên được ủy quyền.
+    values = _values(mapper.enrich(_facts(**_OWNER, **_AUTHORIZED), {})[0])
+    assert values["data[fullname]"] == "Lê Văn An"
+    assert values["data[identityNumber]"] == "001090012345"
+
+
 def test_parcel_block_only_from_parcel_facts():
     fields, _warnings = mapper.enrich(_facts(**_OWNER, **_PARCEL))
     values = _values(fields)

@@ -497,6 +497,30 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
                                                        "đăng ký xe lần đầu", "bấm biển số xe máy mới",
                                                        "đăng ký ô tô mới mua lắp ráp trong nước",
                                                        "mua xe mới cần đăng ký cấp biển"],
+    # Cùng là đăng ký LẦN ĐẦU nhưng xe NHẬP KHẨU (xe ngoại, có tờ khai hải quan). Xe lắp ráp trong nước → thủ tục trên.
+    "dang-ky-xe-lan-dau-nhap-khau": ["đăng ký xe nhập khẩu", "làm biển số xe nhập khẩu mới mua",
+                                     "đăng ký ô tô nhập khẩu lần đầu", "xe nhập về chưa có biển số",
+                                     "đăng ký xe máy nhập khẩu"],
+    # Xe ĐÃ có biển số, mua lại / được cho tặng của người khác (sang tên), hoặc chủ xe chuyển về tỉnh khác (di chuyển).
+    # Xe mới mua lần đầu chưa có biển → hai thủ tục đăng ký lần đầu ở trên.
+    "dang-ky-sang-ten-di-chuyen-xe-cap-tinh": ["sang tên xe", "mua xe cũ cần sang tên", "sang tên ô tô mua lại",
+                                               "làm giấy tờ xe mua lại của người khác", "đổi chủ xe ô tô",
+                                               "được cho tặng xe muốn đứng tên", "di chuyển xe về tỉnh khác"],
+    # Chủ xe (người ĐANG đứng tên, thường là người BÁN / cho xe) xin rút giấy đăng ký + biển số trước khi bên mua sang tên,
+    # hoặc khi xe hỏng / hết niên hạn / chuyển xe đi tỉnh khác. Bên mua làm giấy tờ đứng tên mình → sang tên xe ở trên.
+    "thu-hoi-chung-nhan-dang-ky-bien-so-xe-cap-tinh": ["thu hồi đăng ký xe", "thu hồi biển số xe", "rút hồ sơ gốc xe",
+                                                       "bán xe rồi cần thu hồi cà vẹt", "nộp lại giấy đăng ký xe",
+                                                       "xe hỏng muốn hủy đăng ký", "chuyển xe đi tỉnh khác rút biển",
+                                                       "giấy đăng ký xe do công an tỉnh cấp"],
+    # Cùng việc thu hồi nhưng phân theo NƠI ĐÃ CẤP đăng ký xe: Công an xã/phường (được phân cấp) hoặc Cục Cảnh sát giao
+    # thông. Người dân không nói rõ nơi cấp → hỏi lại giữa ba thủ tục thu hồi.
+    "thu-hoi-chung-nhan-dang-ky-bien-so-xe-cap-xa": ["thu hồi đăng ký xe máy ở công an xã",
+                                                     "thu hồi biển số xe đăng ký ở công an phường",
+                                                     "bán xe máy rồi cần thu hồi cà vẹt",
+                                                     "giấy đăng ký xe do công an xã cấp"],
+    "thu-hoi-chung-nhan-dang-ky-bien-so-xe-tai-cuc": ["thu hồi đăng ký xe ở Cục Cảnh sát giao thông",
+                                                      "giấy đăng ký xe do Cục CSGT cấp",
+                                                      "thu hồi biển số xe đăng ký tại Cục"],
     # Thủ tục của CƠ QUAN, TỔ CHỨC (không phải cá nhân) xin khắc / đăng ký con dấu lần đầu. Phân biệt chứng thực chữ ký,
     # chứng thực bản sao (đóng dấu sao y) — những việc đó không đăng ký con dấu.
     "dang-ky-mau-con-dau": ["đăng ký mẫu con dấu", "khắc con dấu mới cho cơ quan", "làm con dấu cho đảng ủy mới thành lập",

@@ -197,10 +197,31 @@ async def _label(conv: dict, intent: Intent, state: str, page_context: dict | No
     if label == lop1.QUAY_LAI:
         return await _quay_lai(conv, proc, page_context, meta)
     if label == lop1.LAM_LAI:
-        _, chips = _options(conv)
-        lam_lai = [c for c in chips if c.get("send") in LAM_LAI_SENDS]
-        return _with_chips(_say(vi.CN_LAM_LAI_CHON), conv, lam_lai or chips)
+        return _lam_lai_chon(conv, proc)
     return None
+
+
+# Việc làm lại của từng nút → chữ công dân nói được để chọn (câu hỏi "làm lại việc gì" nêu đúng các nút đang đưa ra).
+_VIEC_LAM_LAI = {"__action:refill": "điền lại tờ khai", "__action:reattach": "đính kèm lại",
+                 "__action:add_documents": "điều chỉnh giấy tờ"}
+
+
+def _lam_lai_chon(conv: dict, proc: dict):
+    """"Làm lại" chưa rõ việc nào: đưa các nút làm lại đang hiện; màn hình không còn nút nào như thế (bước cuối sau khi
+    tích cam kết chỉ còn Nộp hồ sơ — ảnh tách hộ 20/11/2026) thì dựng nút làm lại của chính bước đó, KHÔNG đưa nút đi
+    tiếp / Nộp hồ sơ làm lựa chọn "làm lại"."""
+    from app.channels.handfree.chat import flow
+    _, chips = _options(conv)
+    lam_lai = [c for c in chips if c.get("send") in LAM_LAI_SENDS or c.get("send") == "__action:reattach"]
+    lam_lai = lam_lai or flow.redo_chips(conv, proc)
+    viec = [v for c in lam_lai if (v := _VIEC_LAM_LAI.get(str(c.get("send") or "")))]
+    if not viec:
+        return _with_chips(_say(vi.CN_LAM_LAI_CHON), conv, lam_lai or chips)
+    viec = list(dict.fromkeys(viec))
+    head, last = viec[:-1], viec[-1]
+    md = (", ".join(f"*{v}*" for v in head) + f", hay *{last}*") if head else f"*{last}*"
+    tts = (", ".join(head) + f", hay {last}") if head else last
+    return _with_chips(_say(vi.CN_LAM_LAI_CHON_VIEC, viec_md=md, viec_tts=tts), conv, lam_lai)
 
 
 def _khong_hieu(conv: dict):

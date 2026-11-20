@@ -176,6 +176,10 @@ _STATE_INTENTS: dict[str, list[dict]] = {
                  "các tệp đang có)"},
         {"kind": "action", "value": "reattach",
          "desc": "muốn ĐÍNH KÈM LẠI các tệp đang có lên bảng Thành phần hồ sơ (tệp chưa lên / lên sai), không thêm bớt giấy"},
+        # Chỉ thủ tục điền lại được ngay tại bước cuối (form kê khai + bảng đính kèm cùng trang — flow.refill_at_done).
+        {"kind": "action", "value": "refill", "only": "refill_done",
+         "desc": "muốn ĐIỀN LẠI / làm lại / sửa lại cả TỜ KHAI (chạy lại lượt điền với giấy tờ đang có) trước khi nộp; tệp "
+                 "đã đính giữ nguyên"},
     ],
 }
 
@@ -183,7 +187,8 @@ _STATE_INTENTS: dict[str, list[dict]] = {
 _GLOBAL_INTENTS: list[dict] = [
     {"kind": "action", "value": "new_procedure",
      "desc": "muốn bỏ thủ tục đang làm, chọn thủ tục khác mà CHƯA nêu tên thủ tục mới (nêu tên → kind procedure). "
-             "KHÔNG phải câu xin sang bước tiếp theo / bước nhận kết quả của hồ sơ đang làm"},
+             "KHÔNG phải câu xin sang bước tiếp theo / bước nhận kết quả của hồ sơ đang làm, KHÔNG phải câu xin điền "
+             "lại tờ khai / đính kèm lại / điều chỉnh giấy tờ của chính hồ sơ đang làm"},
     {"kind": "action", "value": "repeat",
      "desc": "CHƯA NGHE RÕ / chưa hiểu câu trợ lý vừa nói và muốn trợ lý NÓI LẠI (\"sao cơ\", \"gì cơ\", \"hả\", "
              "\"nói lại đi\", \"em nói gì\", \"nhắc lại\") — không hỏi thêm thông tin gì mới"},
@@ -232,6 +237,43 @@ def asks_reattach(text: str) -> bool:
     if not said or len(said.split()) > _STEP_MAX_WORDS:
         return False
     return bool(_REATTACH_RE.search(said)) and not _STEP_NEGATION_RE.search(said)
+
+
+# "Điền lại tờ khai" sau khi điền (rà soát / đang đính / đã đính, sắp nộp) = CHỈ chạy lại lượt điền với giấy tờ đang có,
+# như nút "🔁 Điền lại thông tin", không hỏi lại (user 20/11/2026, ảnh tách hộ: ở bước cuối danh sách ý định không có lệnh
+# điền lại → trợ lý hỏi "làm lại việc gì", nhắc lại "điền lại tờ khai" thì LLM xếp vào bỏ hồ sơ). Chữ còn lại trong câu
+# phải là tên tờ khai / lời đệm: "điền lại ngày sinh", "điền lại ô họ tên" là sửa một ô → bộ phân loại LLM.
+_REFILL_RE = re.compile(r"(?:^|\s)(?:dien|nhap|khai)\s+lai(?:\s|$)")
+_REFILL_FILLER = frozenset((
+    "to khai form phieu bieu mau don thong tin ho so ke trang "
+    "toi minh em chau con anh chi co chu bac ong ba ban tro ly oi a "
+    "muon can hay vui long giup dum ho cho voi nhe nha di luon thu nao the xem lai "
+    "tu dau toan bo het ca mot lan nua nhanh len"
+).split())
+_REFILL_STATES = frozenset({"reviewing", "attaching", "done"})
+
+
+def asks_refill(text: str) -> bool:
+    said = _step_words(text)
+    if not said or len(said.split()) > _STEP_MAX_WORDS or _STEP_NEGATION_RE.search(said):
+        return False
+    m = _REFILL_RE.search(said)
+    if not m:
+        return False
+    rest = (said[:m.start()] + " " + said[m.end():]).split()
+    return all(w in _REFILL_FILLER for w in rest)
+
+
+def _refill_here(state: str, conv: dict) -> bool:
+    """Bước này điền lại được không: rà soát / đang đính luôn được (nút Điền lại thông tin của bước); bước cuối chỉ khi
+    form kê khai còn trên trang (flow.refill_at_done); đã nộp thì thôi."""
+    if conv.get("submitted_completed"):
+        return False
+    if state != "done":
+        return True
+    from app.channels.handfree.chat import flow
+    from app.channels.handfree.procedure_registry import get_procedure
+    return flow.refill_at_done(get_procedure(conv.get("procedure_key") or ""))
 
 
 def _resolve_machine(message: str) -> Intent | None:
@@ -307,15 +349,17 @@ def resolve_logout_choice(message: str) -> str | None:
 
 def _state_entries(state: str, conv: dict | None) -> list[dict]:
     """Ý định của state; mục "only": "hkd" (lối vào không giấy tờ) chỉ mở khi luồng hỏi đáp hộ kinh doanh bật lối đó,
-    "only": "step_back" (quay lại bước trước) chỉ khi extension bấm được nút Quay lại của wizard tư pháp."""
+    "only": "step_back" (quay lại bước trước) chỉ khi extension bấm được nút Quay lại của wizard tư pháp,
+    "only": "refill_done" (điền lại ở bước cuối) chỉ khi thủ tục điền lại được tại chỗ và chưa nộp."""
     entries = _STATE_INTENTS.get(state, [])
-    on = {"": True, "hkd": False, "step_back": False}
+    on = {"": True, "hkd": False, "step_back": False, "refill_done": False}
     if conv and any(e.get("only") for e in entries):
         from app.channels.handfree.chat import hkd_tro_ly, step_back
         from app.channels.handfree.procedure_registry import get_procedure
         proc = get_procedure(conv.get("procedure_key") or "")
         on["hkd"] = any(e.get("only") == "hkd" for e in entries) and hkd_tro_ly.no_docs_on(conv, proc)
         on["step_back"] = step_back.enabled(conv, proc)
+        on["refill_done"] = any(e.get("only") == "refill_done" for e in entries) and _refill_here("done", conv)
     return _GLOBAL_INTENTS + [e for e in entries if on.get(e.get("only") or "", False)]
 
 
@@ -403,6 +447,9 @@ async def resolve(message: str, state: str, conv: dict | None = None) -> Intent:
     # Đã đính kèm xong mà nói "đính kèm lại" → chạy lại bước đính kèm luôn (tất định, không qua LLM).
     if state == "done" and asks_reattach(text):
         return Intent("action", "reattach")
+    # "Điền lại tờ khai" sau khi điền → chạy lại lượt điền luôn như nút Điền lại thông tin (tất định, không hỏi lại).
+    if state in _REFILL_STATES and asks_refill(text) and _refill_here(state, conv):
+        return Intent("action", "refill")
 
     # (3) Các bước khác: bộ phân loại trước; nhắc tới thủ tục mới hỏi agent chọn thủ tục, sửa nơi
     # làm / đối tượng mới hỏi agent nơi làm.

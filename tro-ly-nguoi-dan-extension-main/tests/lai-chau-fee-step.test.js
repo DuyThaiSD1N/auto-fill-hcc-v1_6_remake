@@ -69,11 +69,11 @@ test("portal (Bộ Công an, hộ chiếu 1.001456): bootstrap-select đứng c�
   assert.match(portal, /msg\.prepare === false && Array\.isArray\(msg\.presets\)[\s\S]{0,40}\s*prepared = await applyPresets/);
 });
 
-function runPortal({ title, hostname = "dichvucong.laichau.gov.vn", pathname = "/dich-vu-cong/tiep-nhan-online/nhap-le-phi-ho-so" }) {
+function runPortal({ title, hostname = "dichvucong.laichau.gov.vn", pathname = "/dich-vu-cong/tiep-nhan-online/nhap-le-phi-ho-so", doc = {} }) {
   const window = {};
   const context = {
     window,
-    document: { title, querySelectorAll: () => [], querySelector: () => null, getElementById: () => null },
+    document: { title, querySelectorAll: () => [], querySelector: () => null, getElementById: () => null, ...doc },
     location: { hostname, pathname },
     chrome: { runtime: { onMessage: { addListener() {} } } },
     getComputedStyle: () => ({ visibility: "visible" }),
@@ -98,6 +98,24 @@ test("portal: số bước đọc từ tiêu đề \"Bước N - …\" của tra
   // Cổng DVC Bộ Công an cùng nền eForm Nth (đăng ký xe): trang chọn trường hợp cũng là bước 1.
   assert.equal(runPortal({ title: "Bộ công an", hostname: "dichvucong.bocongan.gov.vn",
     pathname: "/bo-cong-an/tiep-nhan-online/chon-truong-hop-ho-so" }), 1);
+});
+
+test("portal (Bộ Công an): trang chọn trường hợp nhận cả theo DOM khi đường dẫn đã đổi", () => {
+  // Chạy thật 20/11 (sang tên xe 2.000076): chọn Loại xe xong trang báo lcStep 0 + formKind "standard" dù vẫn là trang
+  // chọn trường hợp → trợ lý xin phép xử lý dữ liệu quá sớm. Nhận theo tiêu đề / khung #noi-giai-quyet-ho-so-wrapper.
+  const el = (text) => ({ textContent: text, getClientRects: () => [1] });
+  const bca = { title: "Bộ công an", hostname: "dichvucong.bocongan.gov.vn" };
+  const heading = { querySelectorAll: (sel) => (sel.startsWith("input") ? [] : [el("Chọn trường hợp hồ sơ")]) };
+  assert.equal(runPortal({ ...bca, pathname: "/bo-cong-an/tiep-nhan-online/khac", doc: heading }), 1);
+  assert.equal(runPortal({ ...bca, pathname: "/bo-cong-an/khac", doc: heading }), 1);
+  const wrapper = { getElementById: (id) => (id === "noi-giai-quyet-ho-so-wrapper" ? el("") : null) };
+  assert.equal(runPortal({ ...bca, pathname: "/bo-cong-an/tiep-nhan-online/khac", doc: wrapper }), 1);
+  // Trang nhập thông tin (ô kê khai CongDan_* đang hiện) không phải trang chọn trường hợp dù còn sót tiêu đề.
+  const form = { querySelectorAll: (sel) => (sel.startsWith("input") ? [el("")] : [el("Chọn trường hợp hồ sơ")]) };
+  assert.equal(runPortal({ ...bca, pathname: "/bo-cong-an/tiep-nhan-online/nhap-thong-tin-nguoi-nop-ho-so", doc: form }), 0);
+  // Cổng Lai Châu vẫn chỉ nhận theo đường dẫn.
+  assert.equal(runPortal({ title: "Dịch vụ công", pathname: "/dich-vu-cong/tiep-nhan-online/khac", doc: heading }), 0);
+  assert.match(content, /window\.__TLND__\.laiChauCasePage\(\)/);
 });
 
 test("portal: nhóm ô \"*\" = tự dò mọi ô chọn đang hiện trong khung có nút Đồng ý và tiếp tục (nhãn #_lbl_<name>)", () => {

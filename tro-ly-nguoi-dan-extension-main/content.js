@@ -1875,8 +1875,12 @@
       // Cổng DVC Bộ Công an (dichvucong.bocongan.gov.vn, eForm Nth như Lai Châu): trang "Trường hợp nộp hồ sơ"
       // (chon-truong-hop-ho-so) có ô chọn mang name → detectFormKind dương tính giả, trợ lý xin giấy tờ / điền ngay ở
       // trang chọn trường hợp. Chỉ trang nhập thông tin sau nút "Đồng ý và tiếp tục" mới là form kê khai.
+      // Nhận cả theo DOM (content/laichau/portal.js laiChauCasePage): chạy thật 20/11 sang tên xe 2.000076, chọn Loại xe
+      // xong trang không còn khớp URL mà vẫn là trang chọn trường hợp → formKind "standard", trợ lý xin phép quá sớm.
       const bcaCasePage = location.hostname === "dichvucong.bocongan.gov.vn"
-        && location.pathname.includes("/chon-truong-hop-ho-so");
+        && (location.pathname.includes("/chon-truong-hop-ho-so")
+          || !!(window.__TLND__ && typeof window.__TLND__.laiChauCasePage === "function"
+            && window.__TLND__.laiChauCasePage()));
       // Trang THỦ TỤC của cổng Bộ Công an (/bocongan/bothutuc/tthc?...MaTTHC=<mã>) mà "Nộp trực tuyến" của DVCQG ném
       // sang (thủ tục nộp thẳng, vd 1.001194): BE ra lệnh bcaTthcSubmit bấm "Nộp hồ sơ" (portal-dvc.js). Không phải form.
       const bcaTthcPage = location.hostname === "dichvucong.bocongan.gov.vn"

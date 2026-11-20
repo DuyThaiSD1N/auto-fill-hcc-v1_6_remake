@@ -874,10 +874,27 @@
       .find((node) => fold(node.textContent) === "nop ho so") || null;
   }
 
-  async function bcaStage(arm) {
-    // Chỉ bấm ở đúng trang thủ tục vừa chọn: URL mang MaTTHC (hoặc MaTTHCDP) = mã TTHC.
+  /**
+   * Mã TTHC của trang thủ tục BCA. Đi vòng từ DVCQG thì URL mang MaTTHC (hoặc MaTTHCDP); link mở THẲNG trang
+   * (tthc?matt=58712, thủ tục không có trang DVCQG) thì chỉ có matt → đọc mục "Mã thủ tục" trên trang:
+   * <div class="tthc-list-item"><div class="item-title">Mã thủ tục</div>…<div class="tthc-list-item-detail">1.013066</div>.
+   */
+  function bcaPageCode() {
     const params = new URLSearchParams(location.search);
-    const code = params.get("MaTTHC") || params.get("MaTTHCDP") || "";
+    const fromUrl = params.get("MaTTHC") || params.get("MaTTHCDP") || "";
+    if (fromUrl) return fromUrl;
+    for (const item of document.querySelectorAll(".tthc-list-item")) {
+      if (fold(item.querySelector(".item-title")?.textContent) !== "ma thu tuc") continue;
+      const code = String(item.querySelector(".tthc-list-item-detail")?.textContent || "").trim();
+      if (code) return code;
+    }
+    return "";
+  }
+
+  async function bcaStage(arm) {
+    // Chỉ bấm ở đúng trang thủ tục vừa chọn: mã TTHC trên URL / trên trang = mã của link.
+    // Script chạy ở document_start: trang mở thẳng chưa kịp dựng mục "Mã thủ tục" -> chờ một nhịp.
+    const code = await waitFor(bcaPageCode, 8000, 300) || "";
     if (!code) return;   // trang trung gian -> giữ cờ cho lần tải kế
     if (arm.procedureCode && code !== arm.procedureCode) {
       await clearArm();

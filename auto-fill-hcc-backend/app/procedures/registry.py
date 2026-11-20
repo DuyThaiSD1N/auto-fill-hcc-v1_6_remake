@@ -68,6 +68,19 @@ from app.pipelines.cap_the_can_cuoc_tu_du_14_tuoi.process import run as cap_the_
 from app.pipelines.dang_ky_xe_lan_dau_san_xuat_lap_rap_trong_nuoc.process import (
     run as dang_ky_xe_lan_dau_san_xuat_lap_rap_trong_nuoc_process,
 )
+from app.pipelines.dang_ky_xe_lan_dau_nhap_khau.process import run as dang_ky_xe_lan_dau_nhap_khau_process
+from app.pipelines.dang_ky_sang_ten_di_chuyen_xe_cap_tinh.process import (
+    run as dang_ky_sang_ten_di_chuyen_xe_cap_tinh_process,
+)
+from app.pipelines.thu_hoi_chung_nhan_dang_ky_bien_so_xe_cap_tinh.process import (
+    run as thu_hoi_chung_nhan_dang_ky_bien_so_xe_cap_tinh_process,
+)
+from app.pipelines.thu_hoi_chung_nhan_dang_ky_bien_so_xe_cap_xa.process import (
+    run as thu_hoi_chung_nhan_dang_ky_bien_so_xe_cap_xa_process,
+)
+from app.pipelines.thu_hoi_chung_nhan_dang_ky_bien_so_xe_tai_cuc.process import (
+    run as thu_hoi_chung_nhan_dang_ky_bien_so_xe_tai_cuc_process,
+)
 from app.pipelines.dang_ky_mau_con_dau.process import run as dang_ky_mau_con_dau_process
 from app.pipelines.dang_ky_mau_con_dau.attach import plan as dang_ky_mau_con_dau_attach
 from app.pipelines.cap_ho_chieu_pho_thong_o_trong_nuoc.process import run as cap_ho_chieu_pho_thong_o_trong_nuoc_process
@@ -88,6 +101,7 @@ from app.pipelines.xac_nhan_thong_tin_ve_cu_tru.process import run as xac_nhan_t
 from app.pipelines.tach_ho.process import run as tach_ho_process
 from app.pipelines.tach_ho.attach import plan as tach_ho_attach
 from app.pipelines.xoa_dang_ky_tam_tru.process import run as xoa_dang_ky_tam_tru_process
+from app.pipelines.xoa_dang_ky_tam_tru.attach import plan as xoa_dang_ky_tam_tru_attach
 from app.pipelines.dang_ky_dat_dai.process import run as dang_ky_dat_dai_process
 from app.pipelines.dang_ky_dat_dai_tai_san.process import run as dang_ky_dat_dai_tai_san_process
 from app.pipelines.dang_ky_dat_dai_tai_san.attach import plan as dang_ky_dat_dai_tai_san_attach
@@ -11007,7 +11021,8 @@ PROCEDURES: list[dict] = [
         # Cổng DVC Bộ Công an: CÙNG trang dang-ky-tam-tru.html với "dang-ky-tam-tru" (cùng bộ id ô), chỉ khác
         # TT=TAMTRU_06 trên URL → entry này PHẢI đứng TRƯỚC "dang-ky-tam-tru" (popup lấy rule urlIncludes khớp đầu
         # tiên). Link kê khai + mã 1.010028 ở ke_khai_links.json. Trường hợp chọn theo lý do xóa ở mục 10 CT01.
-        # Tạm thời không đính kèm (user 20/11/2026).
+        # Đính kèm (user 20/11/2026, ảnh trường hợp không còn chỗ ở hợp pháp): bảng #tblGiayToDinhKem cùng trang, dòng
+        # Tờ khai + dòng chứng minh không còn chỗ ở hợp pháp, giấy khác qua "+ Thêm mới"; trợ lý điền xong hỏi rồi mới đính.
         "key": "xoa-dang-ky-tam-tru",
         "detect": {
             "urlScope": ["dang-ky-tam-tru.html"],
@@ -11018,12 +11033,15 @@ PROCEDURES: list[dict] = [
         "mode": "agent",
         "roles": [],
         "useDangKyBy": False,
-        "hasAttachmentStep": False,
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
             "1. Tờ khai thay đổi thông tin cư trú (Mẫu CT01) — nguồn chính: người đề nghị, chủ hộ, lý do xóa đăng ký "
             "tạm trú, thành viên cùng thay đổi.\n"
-            "2. CCCD của người đề nghị (nếu có) để đối chiếu."
+            "2. Giấy tờ chứng minh không còn chỗ ở hợp pháp (thanh lý / hết hạn hợp đồng thuê, mượn, ở nhờ…) nếu xóa vì "
+            "không còn chỗ ở hợp pháp.\n"
+            "3. CCCD của người đề nghị (nếu có) để đối chiếu."
         ),
     },
     {
@@ -11300,6 +11318,187 @@ PROCEDURES: list[dict] = [
             "5. Thẻ căn cước của chủ xe (ngày cấp, nơi cấp, giới tính).\n"
             "Sau khi điền: nhập Mã bảo mật rồi bấm 'Tra cứu'; tự tải ảnh phương tiện và ảnh hai mặt Phiếu kiểm tra chất "
             "lượng xuất xưởng; nhập Email nếu giấy tờ không có."
+        ),
+    },
+    {
+        # 1.013066, Cổng DVC Bộ Công an — cùng nền form-builder với 1.012575 ngay trên, Phần V là Hải quan + Cục Đăng
+        # kiểm. Link kê khai ở ke_khai_links.json là trang thủ tục cổng Bộ Công an tthc?matt=58712 (directSubmit +
+        # bcaSubmit: Auto Fill bấm "Nộp hồ sơ" bên đó sang trang chọn trường hợp hồ sơ). Trang nhập thông tin không mang
+        # mã trên URL: khớp mã in trên trang (codeOnPage) hoặc chữ "đối với xe nhập khẩu" — cụm dài hơn "lắp ráp trong
+        # nước" của 1.012575 để thắng khi ô "Xe nhập khẩu" của trang liệt kê cả option xe lắp ráp trong nước. Điền theo
+        # file mapping "Mapping_DK_xe_lan_dau_nhap_khau_1.013066". Không có bước đính kèm. Chưa chạy thử trên cổng thật.
+        "key": "dang-ky-xe-lan-dau-nhap-khau",
+        "detect": {
+            "urlScope": ["dichvucong.bocongan.gov.vn"],
+            "textIncludes": [
+                "đăng ký xe lần đầu",
+                "đối với xe nhập khẩu",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+            "codeOnPage": True,
+        },
+        "label": "Đăng ký xe lần đầu trực tuyến toàn trình đối với xe nhập khẩu",
+        "mode": "agent",
+        # Auto Fill gửi options.formContext (ô khoá Họ và tên chủ xe + Mã định danh của tài khoản VNeID) → mapper không
+        # điền khi chủ xe trên giấy là người khác chủ tài khoản (mapper.account_block, user 20/11/2026).
+        "collectFormContext": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "hasAttachmentStep": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (chủ xe tự nộp bằng tài khoản VNeID của mình):\n"
+            "1. Dữ liệu điện tử về lệ phí trước bạ / Thông báo nộp lệ phí trước bạ — mã hồ sơ LPTB dùng để Tra cứu, "
+            "số điện thoại chủ xe.\n"
+            "2. Hóa đơn bán xe hoặc Hợp đồng mua bán xe.\n"
+            "3. Tờ khai hàng hóa nhập khẩu (nếu có) — số tờ khai, cơ quan hải quan, đơn vị nhập khẩu.\n"
+            "4. Giấy tờ xe có số khung, số máy, đặc điểm xe (Giấy khai đăng ký xe, Giấy chứng nhận thu hồi đăng ký…).\n"
+            "5. Thẻ căn cước của chủ xe (ngày cấp, nơi cấp, giới tính).\n"
+            "Sau khi điền: nhập Mã bảo mật rồi bấm 'Tra cứu'; tự tải ảnh phương tiện và ảnh hai mặt chứng từ nguồn gốc; "
+            "nhập Email nếu giấy tờ không có."
+        ),
+    },
+    {
+        # 2.000076, Cổng DVC Bộ Công an — cùng nền form-builder với đăng ký xe lần đầu 1.012575 / 1.013066 ngay trên.
+        # Link kê khai ở ke_khai_links.json là trang thủ tục tthc?matt=43474 (directSubmit + bcaSubmit: Auto Fill bấm "Nộp
+        # hồ sơ" bên đó sang trang chọn trường hợp hồ sơ ?ma-thu-tuc-public=43474). Trang nhập thông tin không mang mã
+        # trên URL: khớp mã in trên trang (codeOnPage) hoặc dòng chú thích Phần I "Trước khi sang tên bắt buộc phải thu
+        # hồi" (DOM trong file mapping "Mapping_Dang_ky_sang_ten_xe_o_to_BCA"). Một form cho cả sang tên và di chuyển
+        # (ô Loại đăng ký); hai kịch bản chủ xe tự nộp / người khai hộ chọn theo tài khoản VNeID (collectFormContext).
+        # Không có bước đính kèm. Chưa chạy thử trên cổng thật.
+        "key": "dang-ky-sang-ten-di-chuyen-xe-cap-tinh",
+        "detect": {
+            "urlScope": ["dichvucong.bocongan.gov.vn"],
+            "textIncludes": [
+                "sang tên",
+                "bắt buộc phải thu hồi",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+            "codeOnPage": True,
+        },
+        "label": "Đăng ký sang tên, di chuyển xe thực hiện tại Công an cấp tỉnh",
+        "mode": "agent",
+        # Auto Fill gửi options.formContext (ô khoá Họ và tên chủ xe + Mã định danh của tài khoản VNeID): tài khoản khác
+        # chủ xe trên giấy → mapper tích "Người nộp hồ sơ là người khai hộ" và điền khối người làm thủ tục.
+        "collectFormContext": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "hasAttachmentStep": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy chứng nhận thu hồi đăng ký, biển số xe — biển số, màu biển, số khung, số máy dùng để Tra cứu.\n"
+            "2. Hợp đồng mua bán / tặng cho xe có công chứng (khi sang tên).\n"
+            "3. Dữ liệu điện tử / thông báo nộp lệ phí trước bạ — mã hồ sơ LPTB dùng để Tra cứu, số điện thoại chủ xe.\n"
+            "4. Thẻ căn cước của chủ xe (ngày cấp, nơi cấp).\n"
+            "5. Người khai hộ: giấy ủy quyền của chủ xe + thẻ căn cước người được ủy quyền.\n"
+            "Sau khi điền: nhập Mã bảo mật rồi bấm 'Tra cứu'; chọn Hình thức nhận kết quả nếu giấy tờ không ghi."
+        ),
+    },
+    {
+        # 2.001485, Cổng DVC Bộ Công an — cùng nền form-builder với đăng ký / sang tên xe ngay trên. Link kê khai ở
+        # ke_khai_links.json là trang thủ tục tthc?matt=43493 (directSubmit + bcaSubmit: Auto Fill bấm "Nộp hồ sơ" bên đó
+        # sang trang chọn trường hợp hồ sơ ?ma-thu-tuc-public=43493, href đọc từ trang thủ tục 20/11). Trang kê khai không
+        # mang mã trên URL: khớp mã in trên trang (codeOnPage) hoặc nhãn "Lý do thu hồi" + tiêu đề Phần V "Thông tin chù
+        # xe mới" (cổng viết sai "chù"; so khớp bỏ dấu) theo DOM trong file mapping "Mapping_Thu_hoi_CNDK_BSX". Trang sang
+        # tên 2.000076 không có hai cụm này. Hai kịch bản chủ xe tự nộp / người khai hộ chọn theo tài khoản VNeID
+        # (collectFormContext). Không có bước đính kèm. Chưa chạy thử trên cổng thật.
+        "key": "thu-hoi-chung-nhan-dang-ky-bien-so-xe-cap-tinh",
+        "detect": {
+            "urlScope": ["dichvucong.bocongan.gov.vn"],
+            "textIncludes": [
+                "lý do thu hồi",
+                "chủ xe mới",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+            "codeOnPage": True,
+        },
+        "label": "Thu hồi chứng nhận đăng ký xe, biển số xe thực hiện tại Công an cấp tỉnh",
+        "mode": "agent",
+        # Auto Fill gửi options.formContext (ô khoá Họ và tên chủ xe + Mã định danh của tài khoản VNeID): tài khoản khác
+        # chủ xe trên giấy → mapper tích "Người nộp hồ sơ là người khai hộ" và điền khối người làm thủ tục.
+        "collectFormContext": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "hasAttachmentStep": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy chứng nhận đăng ký xe — biển số, màu biển, số khung, số máy dùng để Tra cứu.\n"
+            "2. Hợp đồng mua bán / tặng cho xe có công chứng (khi bán, cho xe) — thông tin chủ xe mới.\n"
+            "3. Thẻ căn cước của chủ xe (ngày cấp, nơi cấp); thẻ của bên mua nếu có.\n"
+            "4. Giấy khai thu hồi (nếu có) — lý do thu hồi, số điện thoại chủ xe.\n"
+            "5. Người khai hộ: giấy ủy quyền của chủ xe + thẻ căn cước người được ủy quyền.\n"
+            "Sau khi điền: nhập Mã bảo mật rồi bấm 'Tra cứu'; nhập Năm sản xuất, số điện thoại nếu giấy tờ không ghi; "
+            "chọn Hình thức nhận kết quả."
+        ),
+    },
+    {
+        # 1.010919, Cổng DVC Bộ Công an — CÙNG mẫu kê khai với thu hồi cấp tỉnh 2.001485 ngay trên (user 20/11/2026) nhưng
+        # pipeline RIÊNG (thu_hoi_chung_nhan_dang_ky_bien_so_xe_cap_xa/, user: "không dùng chung"). Link kê khai tthc?matt=64190
+        # (directSubmit + bcaSubmit → chọn trường hợp ?ma-thu-tuc-public=64190, href đọc từ trang thủ tục 20/11). Ba
+        # thủ tục cùng cụm chữ detect: phân biệt bằng mã in trên trang (codeOnPage); trang không in mã thì Auto Fill
+        # (popup.js, hoà điểm) giữ thủ tục đang chọn. Không có bước đính kèm. Chưa chạy thử trên cổng thật.
+        "key": "thu-hoi-chung-nhan-dang-ky-bien-so-xe-cap-xa",
+        "detect": {
+            "urlScope": ["dichvucong.bocongan.gov.vn"],
+            "textIncludes": [
+                "lý do thu hồi",
+                "chủ xe mới",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+            "codeOnPage": True,
+        },
+        "label": "Thu hồi chứng nhận đăng ký xe, biển số xe thực hiện tại Công an cấp xã được phân cấp đăng ký xe",
+        "mode": "agent",
+        "collectFormContext": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "hasAttachmentStep": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy chứng nhận đăng ký xe — biển số, màu biển, số khung, số máy dùng để Tra cứu.\n"
+            "2. Hợp đồng mua bán / tặng cho xe có công chứng (khi bán, cho xe) — thông tin chủ xe mới.\n"
+            "3. Thẻ căn cước của chủ xe (ngày cấp, nơi cấp); thẻ của bên mua nếu có.\n"
+            "4. Giấy khai thu hồi (nếu có) — lý do thu hồi, số điện thoại chủ xe.\n"
+            "5. Người khai hộ: giấy ủy quyền của chủ xe + thẻ căn cước người được ủy quyền.\n"
+            "Sau khi điền: nhập Mã bảo mật rồi bấm 'Tra cứu'; nhập Năm sản xuất, số điện thoại nếu giấy tờ không ghi; "
+            "chọn Hình thức nhận kết quả."
+        ),
+    },
+    {
+        # 2.000311, Cổng DVC Bộ Công an — CÙNG mẫu kê khai với thu hồi cấp tỉnh 2.001485 ngay trên (user 20/11/2026) nhưng
+        # pipeline RIÊNG (thu_hoi_chung_nhan_dang_ky_bien_so_xe_tai_cuc/, user: "không dùng chung"). Link kê khai tthc?matt=26125
+        # (directSubmit + bcaSubmit → chọn trường hợp ?ma-thu-tuc-public=26125, href đọc từ trang thủ tục 20/11). Ba
+        # thủ tục cùng cụm chữ detect: phân biệt bằng mã in trên trang (codeOnPage); trang không in mã thì Auto Fill
+        # (popup.js, hoà điểm) giữ thủ tục đang chọn. Không có bước đính kèm. Chưa chạy thử trên cổng thật.
+        "key": "thu-hoi-chung-nhan-dang-ky-bien-so-xe-tai-cuc",
+        "detect": {
+            "urlScope": ["dichvucong.bocongan.gov.vn"],
+            "textIncludes": [
+                "lý do thu hồi",
+                "chủ xe mới",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+            "codeOnPage": True,
+        },
+        "label": "Thu hồi chứng nhận đăng ký xe, biển số xe thực hiện tại Cục",
+        "mode": "agent",
+        "collectFormContext": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "hasAttachmentStep": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy chứng nhận đăng ký xe — biển số, màu biển, số khung, số máy dùng để Tra cứu.\n"
+            "2. Hợp đồng mua bán / tặng cho xe có công chứng (khi bán, cho xe) — thông tin chủ xe mới.\n"
+            "3. Thẻ căn cước của chủ xe (ngày cấp, nơi cấp); thẻ của bên mua nếu có.\n"
+            "4. Giấy khai thu hồi (nếu có) — lý do thu hồi, số điện thoại chủ xe.\n"
+            "5. Người khai hộ: giấy ủy quyền của chủ xe + thẻ căn cước người được ủy quyền.\n"
+            "Sau khi điền: nhập Mã bảo mật rồi bấm 'Tra cứu'; nhập Năm sản xuất, số điện thoại nếu giấy tờ không ghi; "
+            "chọn Hình thức nhận kết quả."
         ),
     },
     {
@@ -11712,6 +11911,11 @@ _PIPELINE = {
     "cap-the-can-cuoc-duoi-14-tuoi": cap_the_can_cuoc_duoi_14_tuoi_process,
     "cap-the-can-cuoc-tu-du-14-tuoi": cap_the_can_cuoc_tu_du_14_tuoi_process,
     "dang-ky-xe-lan-dau-san-xuat-lap-rap-trong-nuoc": dang_ky_xe_lan_dau_san_xuat_lap_rap_trong_nuoc_process,
+    "dang-ky-xe-lan-dau-nhap-khau": dang_ky_xe_lan_dau_nhap_khau_process,
+    "dang-ky-sang-ten-di-chuyen-xe-cap-tinh": dang_ky_sang_ten_di_chuyen_xe_cap_tinh_process,
+    "thu-hoi-chung-nhan-dang-ky-bien-so-xe-cap-tinh": thu_hoi_chung_nhan_dang_ky_bien_so_xe_cap_tinh_process,
+    "thu-hoi-chung-nhan-dang-ky-bien-so-xe-cap-xa": thu_hoi_chung_nhan_dang_ky_bien_so_xe_cap_xa_process,
+    "thu-hoi-chung-nhan-dang-ky-bien-so-xe-tai-cuc": thu_hoi_chung_nhan_dang_ky_bien_so_xe_tai_cuc_process,
     "dang-ky-mau-con-dau": dang_ky_mau_con_dau_process,
     "cap-ho-chieu-pho-thong-o-trong-nuoc": cap_ho_chieu_pho_thong_o_trong_nuoc_process,
     "trinh-bao-mat-ho-chieu-pho-thong-cap-xa": trinh_bao_mat_ho_chieu_cap_xa_process,
@@ -12196,6 +12400,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-thuong-tru": dang_ky_thuong_tru_attach,
     "dieu-chinh-thong-tin-ve-cu-tru": dieu_chinh_thong_tin_ve_cu_tru_attach,
     "tach-ho": tach_ho_attach,
+    "xoa-dang-ky-tam-tru": xoa_dang_ky_tam_tru_attach,
     "chuyen-doi-ten-hop-dong-nuoc-sach": doi_ten_nuoc_sach_attach,
     "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham": an_toan_thuc_pham_attach,
     "cap-gcn-attp-nong-lam-thuy-san": cap_gcn_attp_nong_lam_thuy_san_attach,

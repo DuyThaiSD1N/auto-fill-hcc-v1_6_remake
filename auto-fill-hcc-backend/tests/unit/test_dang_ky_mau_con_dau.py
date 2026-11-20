@@ -55,7 +55,10 @@ def test_ho_so_mau_dien_du_o_theo_mapping():
     # Loại hình (2) trước Mã định danh (3); Tỉnh (7) trước Xã (8) — script cổng phụ thuộc thứ tự.
     assert names.index("CongDan__fsLoaiHinhToChuc") < names.index("CongDan__fs_BCATenCQDangKy")
     assert names.index("CongDan__fs_BCAQueQuanMaTinh") < names.index("CongDan__fs_BCAQueQuanMaPX")
-    assert by["CongDan__fs_BCANoiNopHS"] == "Công an tỉnh Lai Châu"
+    # Ô (1) phát đầu tiên, chọn mục thật đầu tiên (danh sách chỉ có cơ quan đã chọn ở bước chọn trường hợp).
+    agency = out[0]
+    assert agency["name"] == "CongDan__fs_BCANoiNopHS" and agency["firstOption"] is True
+    assert agency["firstOptionLabel"] == "Chọn nơi tiếp nhận hồ sơ" and agency["comp"] == "dom-select"
     assert by["CongDan__fsLoaiHinhToChuc"] == "Cơ quan tổ chức khác" and "CongDan__fs_BCAMaDinhDanh" not in by
     assert by["CongDan__fs_BCATenCQDangKy"] == "Đảng uỷ Trường PTDTBT THCS An Bình"
     assert by["CongDan__fs_BCATruongHop"] == "Tổ chức Đảng"
@@ -63,6 +66,10 @@ def test_ho_so_mau_dien_du_o_theo_mapping():
     assert by["CongDan__fs_BCAQueQuanMaTinh"] == "Tỉnh Lai Châu" and by["CongDan__fs_BCAQueQuanMaPX"] == "Xã Hồng Thu"
     assert by["CongDan_tenCongDan"] == "Lê Văn An" and by["CongDan_diDong"] == "0912345678"
     assert "CongDan_email" not in by
+    # Ảnh chạy thật 20/11: cổng đổ sẵn tên chủ tài khoản mà số CCCD điền theo giấy → Họ và tên phải ghi đè theo giấy;
+    # SĐT / email vẫn giữ giá trị cổng.
+    keep = {f["name"] for f in out if f.get("keepPortalValue")}
+    assert "CongDan_tenCongDan" not in keep and keep == {"CongDan_diDong"}
     assert by["CongDan_soCmnd"] == "001080000001"
     assert by["CongDan__fs_BCANgayCapCMND"] == "20/08/2021"
     assert by["CongDan__fs_BCANoiCapCMND"] == "Cục Cảnh sát quản lý hành chính về trật tự xã hội"
@@ -185,13 +192,18 @@ def test_loai_hinh_to_chuc_va_con_dau():
 
 
 def test_noi_tiep_nhan_va_dia_chi():
-    by = _by(_enrich({**HO_SO, "VanBan_KinhGui": "Phòng Cảnh sát QLHC về TTXH, Công an tỉnh Lai Châu"})[0])
-    assert by["CongDan__fs_BCANoiNopHS"] == "Công an tỉnh Lai Châu"
-    # Không có dòng Kính gửi → suy theo tỉnh của địa chỉ cơ quan (thành phố trực thuộc TW giữ chữ "thành phố").
+    # Ô (1) không theo dòng Kính gửi: văn bản gửi Công an tỉnh Lai Châu mà bước chọn trường hợp chọn tỉnh khác (trợ lý
+    # chọn theo tỉnh tài khoản) thì danh sách chỉ có tỉnh đó → vẫn chọn mục thật đầu tiên (ảnh chạy thật 20/11).
+    out, _ = _enrich({**HO_SO, "VanBan_KinhGui": "Phòng Cảnh sát QLHC về TTXH, Công an tỉnh Lai Châu"})
+    agency = [f for f in out if f["name"] == "CongDan__fs_BCANoiNopHS"]
+    assert len(agency) == 1 and agency[0]["firstOption"] is True and "Lai Châu" not in agency[0]["value"]
+    # Chỉ có thẻ căn cước (không văn bản đề nghị) → không phát ô cơ quan.
+    out, _ = _enrich({"Cccd_HoTen": "Lê Văn An", "Cccd_SoDinhDanh": "001080000001"})
+    assert "CongDan__fs_BCANoiNopHS" not in _by(out)
+    # Địa chỉ cơ quan ở thành phố trực thuộc TW giữ chữ "Thành phố".
     values = {k: v for k, v in HO_SO.items() if k != "VanBan_KinhGui"}
     values["VanBan_DiaChiToChuc"] = {"tinh": "Hà Nội", "xa": "Phường Hoàn Kiếm", "chiTietDuoiXa": "Số 1 phố A"}
     by = _by(_enrich(values)[0])
-    assert by["CongDan__fs_BCANoiNopHS"] == "Công an thành phố Hà Nội"
     assert by["CongDan__fs_BCAQueQuanMaTinh"] == "Thành phố Hà Nội"
     # Địa chỉ là chuỗi trần không tách được tỉnh/xã → không đổ cả dòng vào ô chi tiết.
     out, warnings = _enrich({**HO_SO, "VanBan_DiaChiToChuc": "Bản A, xã B, tỉnh C"})
@@ -273,7 +285,10 @@ def test_tro_ly_trang_chon_truong_hop_dan_nhu_trang_1():
     flow._start_guide_login(conv)
     r = asyncio.run(flow._handle_turn_inner(conv, Intent("event", "page_status",
                                                           {"loggedIn": True, "formKind": "", "lcStep": 1})))
-    assert r.actions == [{"type": "lc_result_scan", "groups": [{"name": "*"}]}] and conv["state"] == "guide_login"
+    # Tài khoản thiếu tỉnh → chọn sẵn ô cơ quan theo nơi làm thủ tục (user 20/11, như hộ chiếu).
+    assert r.actions == [{"type": "lc_result_scan", "groups": [{"name": "*"}],
+                          "presets": [{"label": "Cơ quan giải quyết hồ sơ", "match": "lai chau", "prefer": "cong an"}]}]
+    assert conv["state"] == "guide_login"
     # Bản trợ lý chưa có cờ trang chọn trường hợp → giữ luồng cũ (công dân tự chọn).
     from app.channels.handfree import procedure_registry as hf
 
@@ -317,6 +332,54 @@ def test_tro_ly_dien_xong_nhac_hinh_thuc_nhan_ket_qua_roi_moi_sang_dinh_kem():
     assert "__action:confirm_review" in [c["send"] for c in r.chips]
 
 
+def test_tro_ly_bam_dinh_kem_tu_sang_trang_thanh_phan_ho_so_roi_dinh():
+    """User 20/11/2026 ("giống các thủ tục tư pháp"): ở trang kê khai bấm "Đính kèm giấy tờ" thì trợ lý tự bấm "Đồng ý
+    và tiếp tục" của cổng (lc_next), sang tới trang Thành phần hồ sơ là tự lập kế hoạch đính — không bắt công dân tự
+    chuyển trang."""
+    import asyncio
+    from unittest import mock
+
+    from app.channels.handfree.chat import pipeline_runner, tracing
+
+    caps = {**CAPS, "supportsLaiChauFeeStep": True, "supportsBcaCaseStep": True}
+    conv = {"_id": "c1", "state": "filling", "procedure_key": KEY, "docs_target": "declaration",
+            "auto_attach_after_fill": True, "upload_session_id": "s1", "location": {}, "client_capabilities": caps}
+    with mock.patch.object(tracing, "set_report", mock.AsyncMock()):
+        r = asyncio.run(flow._handle_filling(conv, Intent("action", "fill_report", {"filled": 17})))
+    # Câu đuôi: vẫn nhắc chọn Hình thức nhận kết quả, rồi nói rõ bấm Đính kèm giấy tờ là trợ lý tự sang trang.
+    assert conv["state"] == "reviewing" and "Hình thức nhận kết quả" in r.display_md
+    assert "tôi bấm **Đồng ý và tiếp tục** sang **Thành phần hồ sơ** rồi tự đính kèm" in r.display_md
+    assert "trong Trợ lý" not in r.display_md
+    # Bấm "Đính kèm giấy tờ" ở trang kê khai → bấm nút cổng, chờ trang đính kèm.
+    r = asyncio.run(flow._handle_turn_inner(conv, Intent("action", "confirm_review", {})))
+    assert r.actions == [{"type": "lc_next"}] and "Đồng ý và tiếp tục" in r.display_md
+    assert conv["state"] == "attaching" and conv["pipeline_status"] == "waiting_attachment_page"
+    assert "Mình đang ở trang" not in r.display_md
+    # Cổng chặn (chưa chọn Hình thức nhận kết quả) → nói lời cổng + nút thử lại; bấm lại "Đính kèm giấy tờ" cũng bấm lại.
+    r = asyncio.run(flow._handle_turn_inner(conv, Intent("action", "lc_step_report", {
+        "clicked": True, "message": "Vui lòng chọn Hình thức nhận kết quả"})))
+    assert "Vui lòng chọn Hình thức nhận kết quả" in r.display_md
+    assert "__action:lc_next" in [c["send"] for c in r.chips]
+    r = asyncio.run(flow._handle_turn_inner(conv, Intent("action", "confirm_review", {})))
+    assert r.actions == [{"type": "lc_next"}] and conv["pipeline_status"] == "waiting_attachment_page"
+    # Sang trang Thành phần hồ sơ (bảng 2 dòng, form kê khai không còn) → tự lập kế hoạch đính kèm.
+    conv["attachment_context"] = {"components": [{"name": "Quyết định công nhận tổ chức"},
+                                                 {"name": "Giấy giới thiệu hoặc giấy ủy quyền"}],
+                                  "hasAttachmentTableHeader": True, "hasFileControl": True}
+    with mock.patch.object(pipeline_runner, "spawn") as spawn, \
+            mock.patch.object(pipeline_runner, "run_attach", mock.MagicMock(return_value=None)):
+        asyncio.run(flow._handle_turn_inner(conv, Intent("event", "page_status", {
+            "loggedIn": True, "pageContextCaptured": True, "formKind": "standard", "attachmentTarget": True,
+            "attachmentComponentCount": 2, "bcaKeKhaiForm": False})))
+    assert spawn.called and conv["attachment_plan_started"] is True
+
+    # Extension cũ (chưa có engine trang chọn trường hợp Bộ Công an) → giữ câu bảo công dân tự sang trang.
+    old = {"_id": "c2", "state": "reviewing", "procedure_key": KEY, "docs_target": "declaration",
+           "upload_session_id": "s1", "location": {}, "client_capabilities": dict(CAPS)}
+    r = asyncio.run(flow._handle_turn_inner(old, Intent("action", "confirm_review", {})))
+    assert not r.actions and "Mình đang ở trang" in r.display_md
+
+
 def test_tro_ly_trang_chon_truong_hop_noi_ro_phai_chon_co_quan_giai_quyet():
     import asyncio
 
@@ -336,6 +399,37 @@ def test_tro_ly_trang_chon_truong_hop_noi_ro_phai_chon_co_quan_giai_quyet():
              "fixed": False, "label": "Cơ quan giải quyết hồ sơ", "required": True}
     r = turn("action", "lc_result_report", {"groups": [group], "prepared": ["auto:maCoQuan"]})
     assert [row["label"] for row in r.cards[0]["rows"]] == ["Cơ quan giải quyết hồ sơ"]
+
+
+def test_tro_ly_tu_chon_co_quan_giai_quyet_theo_tinh_tai_khoan():
+    import asyncio
+
+    caps = {**CAPS, "supportsLaiChauFeeStep": True, "supportsBcaCaseStep": True}
+    # User 20/11 (ảnh trang chọn trường hợp, tài khoản Khánh Hòa): ô cơ quan tự chọn theo tỉnh TÀI KHOẢN như hộ chiếu,
+    # không bày thẻ 34 Công an tỉnh (thẻ cắt còn 8 nút). Tỉnh tài khoản thắng nơi làm thủ tục.
+    conv = {"_id": "c1", "state": "greet", "procedure_key": None, "client_capabilities": caps,
+            "auth_user": {"tinh": "Khánh Hòa", "province_slug": "khanhhoa"},
+            "location": {"province": "Tỉnh Lai Châu", "province_slug": "laichau", "ward": "Xã Hồng Thu"}}
+    flow._to_confirm_procedure(conv, KEY)
+    flow._start_guide_login(conv)
+    turn = lambda kind, value, payload=None: asyncio.run(flow._handle_turn_inner(conv, Intent(kind, value, payload or {})))  # noqa: E731
+    r = turn("event", "page_status", {"loggedIn": True, "formKind": "", "lcStep": 1})
+    assert r.actions == [{"type": "lc_result_scan", "groups": [{"name": "*"}],
+                          "presets": [{"label": "Cơ quan giải quyết hồ sơ", "match": "khanh hoa", "prefer": "cong an"}]}]
+    assert "tôi chọn sẵn" in r.display_md
+    # Extension chọn xong → báo đã chọn, dòng cơ quan chỉ hiện giá trị, không hỏi thêm ô nào.
+    agency = {"name": "maCoQuan", "present": True, "value": "Công an tỉnh Khánh Hòa",
+              "options": ["Công an thành phố Bắc Ninh", "Công an tỉnh Gia Lai", "Công an tỉnh Khánh Hòa"],
+              "fixed": False, "label": "Cơ quan giải quyết hồ sơ", "required": True}
+    r = turn("action", "lc_result_report", {"groups": [agency], "prepared": ["preset:maCoQuan"]})
+    assert "Tôi đã chọn sẵn **Cơ quan giải quyết hồ sơ**: **Công an tỉnh Khánh Hòa**" in r.display_md
+    row = r.cards[0]["rows"][0]
+    assert row["fixed"] is True and row["options"] == []
+    trail = " ".join(a.get("md", "") for a in r.actions if a.get("type") == "trail_message")
+    assert "**Cơ quan giải quyết hồ sơ**" not in trail
+    # Ô cơ quan nạp chậm / công dân đổi trên trang → đọc lại vẫn kèm preset để chọn bù.
+    r = turn("action", "lc_case_changed", {})
+    assert r.actions[0]["prepare"] is False and r.actions[0]["presets"][0]["match"] == "khanh hoa"
 
 
 # ── Đính kèm: trang "Thông tin hồ sơ" (bảng Thành phần hồ sơ 2 dòng + Giấy tờ khác) ──

@@ -9017,6 +9017,22 @@
     return decision;
   }
 
+  // Ô Phần I của CHỦ TÀI KHOẢN (SĐT, email người kê khai trang căn cước) BE gắn bcaAccountIs {name, id} = người có giá trị
+  // đó trên giấy: chỉ ghi khi Phần I (txtFULLNAME_NDN / txtIDENTIFY_NUMBER_NDN, cổng khoá theo tài khoản) đúng là người
+  // đó — so số định danh, một bên thiếu số thì so họ tên; Phần I chưa đổ thì không ghi (user 20/11/2026: tài khoản khác
+  // người trên giấy vẫn bị ghi SĐT / email người trên giấy vào Phần I).
+  // Bản copy ở tro-ly-nguoi-dan-extension-main/content/fill-core.js (bcaAccountIs) — sửa một bên thì port bên kia.
+  async function bcaAccountIs(match) {
+    const shown = (id) => String(document.getElementById(id)?.value || "").trim();
+    await waitFor(() => shown("txtFULLNAME_NDN") || shown("txtIDENTIFY_NUMBER_NDN"), 3000, 200);
+    const accountName = bcaGuestFold(shown("txtFULLNAME_NDN"));
+    const accountId = shown("txtIDENTIFY_NUMBER_NDN").replace(/\D/g, "");
+    const wantName = bcaGuestFold(match?.name);
+    const wantId = String(match?.id || "").replace(/\D/g, "");
+    if (accountId && wantId) return accountId === wantId;
+    return !!accountName && !!wantName && accountName === wantName;
+  }
+
   // "Mối quan hệ của người kê khai với người cần cấp căn cước" (comp "bca-relation", trang cấp căn cước dưới 14 tuổi):
   // người kê khai là TÀI KHOẢN VNeID đang đăng nhập (Phần I, cổng đổ sẵn và khoá), giấy tờ chỉ cho biết ai là cha, mẹ.
   // value {target, people: [{relation, name, id}], fallback}: so số định danh rồi họ tên Phần I với từng người trên giấy
@@ -9134,6 +9150,10 @@
       Array.from(listedPanels).some((prefix) => String(f.name || "").startsWith(`${prefix}[`));
 
     let bcaDeclarant = null;
+    // Ô vòng này cố ý KHÔNG ghi theo tài khoản đăng nhập (bcaOtherOnly / bcaSelfOnly / bcaAccountIs): các vòng sau
+    // (điền lại ô trống, gán ngày datepicker…) cũng phải bỏ, không thì ô trống bị ghi lại (20/11: SĐT / email người
+    // trên giấy vẫn vào Phần I của tài khoản khác qua reapplyEmptyStandardTextFields).
+    const heldBack = new Set();
     for (const f of orderedFields) {
       if (inListedPanel(f)) {
         result.filled++;
@@ -9144,10 +9164,17 @@
         continue;
       }
       // Khối người cần cấp chỉ mở khi tài khoản là cha/mẹ/người đại diện (xem fillBcaDeclarantField).
-      if (f.bcaOtherOnly && bcaDeclarant !== "other") continue;
       // SĐT / email Phần I lấy của người cần cấp trên giấy: tài khoản là người khác (cha/mẹ/người đại diện) thì
       // không ghi số / email người khác vào ô của chủ tài khoản (19/11).
-      if (f.bcaSelfOnly && bcaDeclarant !== "self") continue;
+      if ((f.bcaOtherOnly && bcaDeclarant !== "other") || (f.bcaSelfOnly && bcaDeclarant !== "self")) {
+        heldBack.add(f);
+        continue;
+      }
+      if (f.bcaAccountIs && !await bcaAccountIs(f.bcaAccountIs)) {
+        console.log(`[AutoFill-STD] ${f.name}: tài khoản đăng nhập không phải người có giá trị này trên giấy → không ghi.`);
+        heldBack.add(f);
+        continue;
+      }
       if (f.comp === "bca-guest-list") {
         await fillBcaGuestList(f, result);
         continue;
@@ -9331,15 +9358,16 @@
       await sleep(50);
     }
 
-    await retryStandardAreaSelects(fields, result, areaDeadlines, failedFieldKeys);
-    await stabilizeStandardAreaSelects(fields, result, failedFieldKeys);
+    const writable = fields.filter((f) => !heldBack.has(f));
+    await retryStandardAreaSelects(writable, result, areaDeadlines, failedFieldKeys);
+    await stabilizeStandardAreaSelects(writable, result, failedFieldKeys);
     // Cổng DVC Bộ Công an: ô ngày là bootstrap-datepicker — gõ chữ thì lịch treo, giá trị không vào model của picker.
     if (location.hostname === "dichvucong.dancuquocgia.gov.vn") {
-      await bcaSetPickerDates(fields.filter((f) => f.comp === "dom-date" && f.value && !f.clear)
+      await bcaSetPickerDates(writable.filter((f) => f.comp === "dom-date" && f.value && !f.clear)
         .map((f) => ({ id: f.name, value: String(f.value) })));
     }
-    await reapplyEmptyStandardTextFields(fields);
-    await reapplyOwnerDossierCopy(fields);
+    await reapplyEmptyStandardTextFields(writable);
+    await reapplyOwnerDossierCopy(writable);
     // Trả lại khối cấm ghi trước khi tô đỏ, để ô vừa hoàn nguyên được đánh dấu đúng là đang trống.
     const reverted = restoreStandardForbidden(forbiddenSnapshot, standardWrittenValueKeys(fields));
     if (reverted.length) {

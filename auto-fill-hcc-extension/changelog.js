@@ -3,6 +3,21 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.28.26",
+    date: "20/11/2026",
+    items: [
+      "Đi đến thủ tục: thêm 5 thủ tục đăng ký xe của Bộ Công an (Đăng ký xe lần đầu đối với xe nhập khẩu; Đăng ký sang tên, di chuyển xe tại Công an cấp tỉnh; Thu hồi chứng nhận đăng ký xe, biển số xe tại Công an cấp tỉnh, cấp xã và tại Cục). Trợ lý mở trang thủ tục trên Cổng dịch vụ công Bộ Công an rồi tự bấm \"Nộp hồ sơ\".",
+      "Thu hồi chứng nhận đăng ký xe, biển số xe (Bộ Công an): ba thủ tục cấp tỉnh, cấp xã và tại Cục dùng chung một mẫu kê khai — trang không in mã thủ tục thì giữ đúng thủ tục đang chọn, không tự đổi sang thủ tục khác cùng mẫu.",
+    ],
+  },
+  {
+    version: "1.28.25",
+    date: "20/11/2026",
+    items: [
+      "Cổng dịch vụ công Bắc Ninh: sau khi điền, Trợ lý soát lại hồ sơ và tự ghi lại các ô cần sửa (ô cán bộ đã sửa tay thì giữ nguyên) — bật dần theo từng thủ tục.",
+    ],
+  },
+  {
     version: "1.28.24",
     date: "20/11/2026",
     items: [

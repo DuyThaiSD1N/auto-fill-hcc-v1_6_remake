@@ -161,13 +161,12 @@ def test_tro_ly_dieu_chinh_giay_to_sau_dinh_kem_la_dien_lai_khong_dinh_lai(monke
 
     from app.channels.handfree.procedure_registry import get_procedure
 
-    # Mọi thủ tục Bộ Công an có đính kèm khai cờ, trừ tách hộ (đang làm riêng).
+    # Mọi thủ tục Bộ Công an có đính kèm khai cờ (tách hộ thêm 20/11/2026 khi trợ lý đã đính kèm).
     for key in ("dang-ky-tam-tru", KEY, "dieu-chinh-thong-tin-ve-cu-tru", "dang-ky-mau-con-dau",
                 "cap-ho-chieu-pho-thong-o-trong-nuoc", "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam",
                 "cap-the-tam-tru-cho-nguoi-nuoc-ngoai-tai-viet-nam", "trinh-bao-mat-ho-chieu-pho-thong-cap-xa",
-                "trinh-bao-mat-ho-chieu-pho-thong-cap-tinh"):
+                "trinh-bao-mat-ho-chieu-pho-thong-cap-tinh", "tach-ho"):
         assert get_procedure(key).get("docsAdjustRefill") is True, key
-    assert not get_procedure("tach-ho").get("docsAdjustRefill")
 
     calls = []
     _adjust_mocks(monkeypatch, calls)
@@ -198,6 +197,35 @@ def test_tro_ly_dieu_chinh_giay_to_sau_dinh_kem_la_dien_lai_khong_dinh_lai(monke
     # "Đính kèm lại" là lệnh riêng: chỉ đính, không điền lại.
     asyncio.run(flow._handle_turn_inner(conv, Intent("action", "reattach", {})))
     assert calls == ["process", "attach"]
+
+
+def test_tro_ly_mo_dieu_chinh_giay_to_trang_bao_bang_dinh_kem_khong_tu_chot(monkeypatch):
+    """Ảnh chạy thật 20/11 (1.010039): vừa mở "Điều chỉnh giấy tờ", watcher gửi page_status của trang (form + bảng
+    #tblGiayToDinhKem cùng trang) → trước đây coi là công dân tự sang bước đính kèm, tự chốt phiên và đính lại khi công
+    dân chưa kịp thêm / xoá tệp. Phải đứng chờ tới khi bấm "Hoàn tất điều chỉnh, điền lại tờ khai"."""
+    import asyncio
+
+    for key in ("dieu-chinh-thong-tin-ve-cu-tru", KEY, "dang-ky-tam-tru"):
+        calls = []
+        _adjust_mocks(monkeypatch, calls)
+        caps = {"supportsFieldReview": True, "supportsBcaFlow": True, "supportsTickCommit": True,
+                "supportsPageBoundDocsComplete": True}
+        page = {"pageContextCaptured": True, "formKind": "standard", "attachmentTarget": True,
+                "attachmentComponentCount": 3, "bcaAgencyBlock": True, "loggedIn": True}
+        conv = {"_id": "c-adj4", "state": "done", "history": [], "procedure_key": key, "upload_session_id": "s1",
+                "docs_target": "attachment", "attach_done": True, "fields": [{"name": "x"}], "location": {},
+                "client_capabilities": caps, "docs_page_context": flow._docs_page_context(page)}
+        asyncio.run(flow._handle_turn_inner(conv, Intent("action", "add_documents", {})))
+        assert conv["documents_adjustment_target"] == "declaration", key
+
+        asyncio.run(flow._handle_turn_inner(conv, Intent("event", "page_status", dict(page))))
+        assert calls == [], key
+        assert conv["state"] == "ask_doc_method" and conv["supplementing_documents"] is True, key
+        assert conv["documents_adjustment_target"] == "declaration" and conv["docs_target"] == "declaration", key
+
+        # Bấm nút hoàn tất mới chạy: điền lại tờ khai, không đính lại.
+        asyncio.run(flow._handle_turn_inner(conv, Intent("action", "docs_done", dict(page))))
+        assert calls == ["process"] and conv["auto_attach_after_fill"] is False, key
 
 
 def test_tro_ly_dieu_chinh_giay_to_truoc_dinh_kem_van_hoi_dinh_kem(monkeypatch):

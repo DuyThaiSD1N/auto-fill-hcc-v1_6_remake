@@ -963,11 +963,13 @@ REVIEW_ATTACHMENT_SAME_PAGE_BCA = {
 
 # Trang kê khai có mục Nhận kết quả để công dân tự chọn (registry resultMethodHint, vd đăng ký mẫu con dấu — cổng DVC
 # Bộ Công an): nhắc chọn trước khi bấm "Đồng ý và tiếp tục" sang trang đính kèm.
-_RESULT_METHOD_MD = ("\n\n👉 Kiểm tra xong, công dân chọn **Hình thức nhận kết quả** ở mục **Nhận kết quả** cuối trang: "
-                     "**Trực tiếp** hoặc **Qua dịch vụ bưu chính công ích**. Chọn bưu chính thì nhập **Địa chỉ nhận kết "
-                     "quả**. Xong bấm **Đồng ý và tiếp tục** sang **Thành phần hồ sơ**")
-_RESULT_METHOD_TTS = (" Kiểm tra xong, công dân chọn hình thức nhận kết quả ở cuối trang, trực tiếp hoặc qua bưu chính. "
-                      "Chọn bưu chính thì nhập địa chỉ nhận kết quả, xong bấm Đồng ý và tiếp tục sang thành phần hồ sơ")
+_RESULT_METHOD_PICK_MD = ("\n\n👉 Kiểm tra xong, công dân chọn **Hình thức nhận kết quả** ở mục **Nhận kết quả** cuối "
+                          "trang: **Trực tiếp** hoặc **Qua dịch vụ bưu chính công ích**. Chọn bưu chính thì nhập **Địa "
+                          "chỉ nhận kết quả**.")
+_RESULT_METHOD_PICK_TTS = (" Kiểm tra xong, công dân chọn hình thức nhận kết quả ở cuối trang, trực tiếp hoặc qua bưu "
+                           "chính. Chọn bưu chính thì nhập địa chỉ nhận kết quả")
+_RESULT_METHOD_MD = _RESULT_METHOD_PICK_MD + " Xong bấm **Đồng ý và tiếp tục** sang **Thành phần hồ sơ**"
+_RESULT_METHOD_TTS = _RESULT_METHOD_PICK_TTS + ", xong bấm Đồng ý và tiếp tục sang thành phần hồ sơ"
 WAIT_ATTACHMENT_RESULT_METHOD = {
     "md": _RESULT_METHOD_MD + ", tôi tự đính kèm ạ.",
     "tts": _RESULT_METHOD_TTS + ", tôi tự đính kèm ạ.",
@@ -980,6 +982,25 @@ REVIEW_RESULT_METHOD = {
 REVIEW_ATTACHMENT_ACTION = {
     "md": "\n\nKiểm tra xong → sang **Thành phần hồ sơ** → bấm **Đính kèm giấy tờ** trong Trợ lý ạ.",
     "tts": " Kiểm tra xong, công dân sang bước thành phần hồ sơ, rồi bấm Đính kèm giấy tờ ạ.",
+}
+
+# eForm Nth cổng DVC Bộ Công an, bảng Thành phần hồ sơ ở TRANG SAU: bấm "Đính kèm giấy tờ" thì trợ lý tự bấm "Đồng ý và
+# tiếp tục" của cổng, sang tới trang Thành phần hồ sơ là tự đính (user 20/11/2026: "giống các thủ tục tư pháp").
+_NEXT_TO_ATTACH_MD = ("bấm **Đính kèm giấy tờ**: tôi bấm **Đồng ý và tiếp tục** sang **Thành phần hồ sơ** rồi tự đính "
+                      "kèm ạ.")
+_NEXT_TO_ATTACH_TTS = "bấm Đính kèm giấy tờ, tôi bấm Đồng ý và tiếp tục sang thành phần hồ sơ rồi tự đính kèm ạ."
+REVIEW_ATTACHMENT_NEXT_BCA = {
+    "md": "\n\nKiểm tra xong → " + _NEXT_TO_ATTACH_MD,
+    "tts": " Kiểm tra xong, công dân " + _NEXT_TO_ATTACH_TTS,
+}
+REVIEW_RESULT_METHOD_NEXT_BCA = {
+    "md": _RESULT_METHOD_PICK_MD + " Xong " + _NEXT_TO_ATTACH_MD,
+    "tts": _RESULT_METHOD_PICK_TTS + ", xong " + _NEXT_TO_ATTACH_TTS,
+}
+BCA_NTH_NEXT_TO_ATTACH = {
+    "md": ("Tôi bấm **Đồng ý và tiếp tục** sang trang **Thành phần hồ sơ**, sang tới nơi là tôi tự đính kèm ạ. Cổng "
+           "báo còn thiếu gì thì tôi nói lại ngay."),
+    "tts": "Dạ, tôi bấm Đồng ý và tiếp tục sang thành phần hồ sơ, sang tới nơi là tôi tự đính kèm ạ.",
 }
 
 # Tờ khai điện tử mở bằng nút "Khai tờ khai" trong bảng Thành phần hồ sơ (registry declarationEforms,
@@ -2738,6 +2759,11 @@ LC_CASE_PRESET = {
     "md": "\n\n📌 Tôi đã chọn sẵn **{label}**: **{value}** theo tỉnh công dân chọn lúc đầu.",
     "tts": " Tôi đã chọn sẵn {label}: {value} theo tỉnh công dân chọn lúc đầu.",
 }
+# Ô cơ quan hiện SAU một lựa chọn (laiChauFeeStep.caseAgencyByProvince.afterPick, sang tên xe 2.000076): đang chọn theo tỉnh.
+LC_CASE_PRESET_PICKING = {
+    "md": "\n\n⏳ Tôi đang chọn **{label}** theo tỉnh công dân chọn lúc đầu…",
+    "tts": " Tôi đang chọn {label} theo tỉnh công dân chọn lúc đầu.",
+}
 LC_CASE_AUTO = {
     "md": "\n\n📌 Cổng chỉ có một trường hợp giải quyết nên tôi đã chọn sẵn.",
     "tts": " Cổng chỉ có một trường hợp giải quyết nên tôi đã chọn sẵn.",
@@ -4026,6 +4052,9 @@ CN_HUY_HOI = {"md": "Công dân muốn **bỏ hồ sơ đang làm** để làm t
 CN_LAM_LAI_HUY = {"md": "Dạ, tôi giữ nguyên ạ.", "tts": "Dạ, tôi giữ nguyên ạ."}
 CN_LAM_LAI_CHON = {"md": "Công dân muốn làm lại việc gì ạ? Bấm chọn bên dưới, hoặc nói rõ: *điền lại tờ khai*, hay *điều chỉnh giấy tờ*.",
                    "tts": "Công dân muốn làm lại việc gì ạ? Bấm chọn bên dưới, hoặc nói rõ: điền lại tờ khai, hay điều chỉnh giấy tờ."}
+# Cùng câu, nêu đúng các việc làm lại đang có nút (bước cuối có thêm "đính kèm lại").
+CN_LAM_LAI_CHON_VIEC = {"md": "Công dân muốn làm lại việc gì ạ? Bấm chọn bên dưới, hoặc nói rõ: {viec_md}.",
+                        "tts": "Công dân muốn làm lại việc gì ạ? Bấm chọn bên dưới, hoặc nói rõ: {viec_tts}."}
 CN_GIU_NGUYEN_CHIP = "Không, giữ nguyên"
 # Đang điều chỉnh giấy tờ mà nói đi tiếp: bỏ điều chỉnh, giữ tờ khai, làm tiếp bước đang dở.
 CN_DIEU_CHINH_HUY = {"md": "Dạ, tôi giữ nguyên tờ khai và giấy tờ đã có, không điền lại.",

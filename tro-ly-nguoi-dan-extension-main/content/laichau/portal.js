@@ -30,7 +30,8 @@
   const textOf = (el) => String(el?.textContent || "").replace(/\s+/g, " ").trim();
   const shown = (el) => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden";
   const sameText = (a, b) => fold(a).replace(/[.\s]+$/, "") === fold(b).replace(/[.\s]+$/, "");
-  const ourPage = () => HOSTS.includes(location.hostname) && location.pathname.includes("/tiep-nhan-online/");
+  const ourPage = () => HOSTS.includes(location.hostname)
+    && (location.pathname.includes("/tiep-nhan-online/") || casePage());
   // Ô chọn bị bootstrap-select / select2 che: thẻ <select> gốc ẩn, khung công dân thấy nằm ở wrapper / ngay sau.
   const controlShown = (el) => shown(el) || shown(bootstrapOf(el)) || shown(select2Of(el));
   // bootstrap-select: bản cũ bọc thẻ <select>; cổng Bộ Công an (hộ chiếu 1.001456, ảnh 18/11) đặt khung
@@ -71,9 +72,24 @@
   // Ô chọn của khung chọn trường hợp: select có name, hoặc chỉ có id (ô "Cơ quan giải quyết hồ sơ" của một số thủ tục).
   const CASE_CONTROLS = "select[name], select[id], input[type='radio'][name]";
 
+  // Trang "Chọn trường hợp hồ sơ": nhận theo URL, cổng Bộ Công an nhận thêm theo DOM — chạy thật 20/11 (sang tên xe
+  // 2.000076): chọn Loại xe xong trang báo như đã rời trang chọn trường hợp (lcStep 0, formKind "standard") nên trợ lý
+  // xin phép xử lý dữ liệu ngay tại đây. DOM: khung #noi-giai-quyet-ho-so-wrapper hoặc tiêu đề "Chọn trường hợp hồ sơ"
+  // đang hiện, và chưa có ô kê khai CongDan_* (trang nhập thông tin).
+  function casePage() {
+    if (location.pathname.includes(CASE_PAGE)) return true;
+    if (location.hostname !== "dichvucong.bocongan.gov.vn") return false;
+    if (Array.from(document.querySelectorAll('input[name^="CongDan_"]:not([type="hidden"])')).some(shown)) return false;
+    const wrapper = document.getElementById("noi-giai-quyet-ho-so-wrapper");
+    if (wrapper && shown(wrapper)) return true;
+    return Array.from(document.querySelectorAll("h1, h2, h3, h4, h5, legend, .title, .panel-title"))
+      .some((el) => shown(el) && fold(textOf(el)) === "chon truong hop ho so");
+  }
+  H.laiChauCasePage = casePage;
+
   function step() {
     if (!ourPage()) return 0;
-    if (location.pathname.includes(CASE_PAGE)) return 1;
+    if (casePage()) return 1;
     const match = /^buoc\s+(\d+)\s*-/.exec(fold(document.title));
     return match ? Number(match[1]) : 0;
   }
@@ -342,7 +358,7 @@
   let caseReported = "";
   const caseSig = () => JSON.stringify(readGroups([{ name: AUTO }]).map((g) => [g.name, g.present, g.value]));
   function watchCase() {
-    if (caseWatching || !location.pathname.includes(CASE_PAGE)) return;
+    if (caseWatching || !casePage()) return;
     caseWatching = true;
     let timer = null;
     const changed = () => {
@@ -553,7 +569,7 @@
       if (errors && errors !== beforeErrors) return { clicked: true, message: errors.slice(0, 200) };
     }
     // Trang vẫn đứng yên, cổng không nói gì: trang chọn trường hợp còn ô bắt buộc trống thì báo đúng các ô đó.
-    const missing = location.pathname.includes(CASE_PAGE) ? emptyRequired() : [];
+    const missing = casePage() ? emptyRequired() : [];
     if (missing.length) return { clicked: true, message: `Còn trống: ${missing.join(", ")}`, missing };
     return { clicked: true, message: "" };
   }

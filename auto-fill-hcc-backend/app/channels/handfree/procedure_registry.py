@@ -6622,8 +6622,9 @@ PROCEDURES: list[dict] = [
     {
         # CÙNG trang + cùng bộ id với "dang-ky-tam-tru" (chỉ khác TT=TAMTRU_06) → entry đứng TRƯỚC thủ tục đó (rule
         # urlIncludes khớp đầu tiên), cùng ô cam kết chkCHECK_LIABILITY. Trợ lý chọn hộ cơ quan trên thẻ như tạm trú.
-        # Tạm thời KHÔNG đính kèm (user 20/11/2026): bảng #tblGiayToDinhKem có sẵn trên trang không làm trợ lý nhảy
-        # sang bước đính kèm (flow._no_attachment). Toàn quốc. URL + detect giống ke_khai_links.json / lõi (1.010028).
+        # Đính kèm như "tach-ho" (user 20/11/2026): bảng #tblGiayToDinhKem CÙNG trang (nạp theo Trường hợp) nhưng điền
+        # xong DỪNG hỏi (askBeforeAttach), công dân bấm "Đính kèm giấy tờ" mới đính. Toàn quốc. URL + detect giống
+        # ke_khai_links.json / lõi (1.010028).
         "key": "xoa-dang-ky-tam-tru",
         "detect": {
             "urlScope": ["dang-ky-tam-tru.html"],
@@ -6655,13 +6656,21 @@ PROCEDURES: list[dict] = [
                 "Hộ do đã đăng ký thường trú tại chính nơi tạm trú",
             ],
         },
-        "hasAttachmentStep": False,
+        "samePageAttach": True,
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,
+        # Như tách hộ: "Điều chỉnh giấy tờ" / "Điền lại tờ khai" sau khi đính là ĐIỀN LẠI tờ khai, không đính lại;
+        # "Đính kèm lại" là lệnh riêng — flow._docs_adjust_refills.
+        "docsAdjustRefill": True,
+        "askBeforeAttach": True,
         "submitCommitLabel": "Tôi xin chịu trách nhiệm trước pháp luật về lời khai trên",
         "submitCommitCheckbox": "chkCHECK_LIABILITY",
         "hideRepeatableHint": True,
         "requiredDocs": [
             {"key": "to_khai", "name": "Tờ khai thay đổi thông tin cư trú (Mẫu CT01)", "icon": "📄",
              "sides": 1, "repeatable": True},
+            {"key": "cho_o", "name": "Giấy tờ chứng minh không còn chỗ ở hợp pháp (thanh lý / hết hạn hợp đồng thuê…)",
+             "icon": "📑", "sides": 1, "optional": True, "repeatable": True},
             {"key": "cccd", "name": "Căn cước công dân của người đề nghị", "icon": "🪪",
              "sides": 2, "optional": True, "repeatable": True},
         ],
@@ -6672,7 +6681,8 @@ PROCEDURES: list[dict] = [
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
             "1. Tờ khai thay đổi thông tin cư trú (Mẫu CT01) — nguồn chính.\n"
-            "2. CCCD của người đề nghị (nếu có).\n"
+            "2. Giấy tờ chứng minh không còn chỗ ở hợp pháp (nếu xóa vì không còn chỗ ở hợp pháp).\n"
+            "3. CCCD của người đề nghị (nếu có).\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
     },
@@ -6896,6 +6906,9 @@ PROCEDURES: list[dict] = [
         "samePageAttach": True,
         "hasAttachmentStep": True,
         "supportsSplitDocuments": True,
+        # Như thường trú / điều chỉnh cư trú (user 20/11/2026, ảnh bước cuối): "Điều chỉnh giấy tờ" / "Điền lại tờ khai"
+        # sau khi đính là ĐIỀN LẠI tờ khai, không đính lại; "Đính kèm lại" là lệnh riêng — flow._docs_adjust_refills.
+        "docsAdjustRefill": True,
         "askBeforeAttach": True,
         "submitCommitLabel": "Tôi xin chịu trách nhiệm trước pháp luật về lời khai trên",
         "submitCommitCheckbox": "chkRULE",
@@ -7223,6 +7236,256 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        # 1.013066 (20/11/2026), cùng cổng + cùng khuôn trợ lý với 1.012575 ngay trên (eForm Nth Bộ Công an, không
+        # bcaPortal). Bản lõi (Auto Fill, ke_khai_links) mở trang thủ tục tthc?matt=58712 rồi bấm "Nộp hồ sơ"; nút đó trỏ
+        # thẳng trang "Chọn trường hợp hồ sơ" ?ma-thu-tuc-public=58712 (href nút, đọc từ trang thủ tục 20/11) nên trợ lý
+        # mở luôn trang này như 1.012575 — engine trang thủ tục BCA của trợ lý (bca_tthc_submit) chỉ nhận URL có MaTTHC. Trang
+        # chọn trường hợp đi luồng trang 1 Lai Châu (caseOnly), trang nhập thông tin đi luồng chung. Toàn quốc. Detect y
+        # hệt lõi. Không có mục đính kèm. Chưa chạy thử trên cổng thật.
+        "key": "dang-ky-xe-lan-dau-nhap-khau",
+        "detect": {
+            "urlScope": ["dichvucong.bocongan.gov.vn"],
+            "textIncludes": [
+                "đăng ký xe lần đầu",
+                "đối với xe nhập khẩu",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+            "codeOnPage": True,  # cờ của Auto Fill (khớp mã TTHC in trên trang); giữ detect y hệt lõi
+        },
+        "label": "Đăng ký xe lần đầu trực tuyến toàn trình đối với xe nhập khẩu",
+        "shortLabel": "Đăng ký xe nhập khẩu mới mua",
+        "subtitle": "Đăng ký, cấp biển số lần đầu cho ô tô, xe máy nhập khẩu",
+        "icon": "🚗",
+        "keKhaiUrl": "https://dichvucong.bocongan.gov.vn/bo-cong-an/tiep-nhan-online/chon-truong-hop-ho-so?ma-thu-tuc-public=58712",
+        "requiresCapability": "supportsBcaDangKyXe",
+        "laiChauFeeStep": {"capability": "supportsBcaCaseStep", "caseOnly": True, "caseGroups": "auto"},
+        "hasAttachmentStep": False,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "le_phi", "name": "Lệ phí trước bạ (dữ liệu điện tử / thông báo nộp)", "icon": "💵", "sides": 1,
+             "repeatable": True},
+            {"key": "hoa_don", "name": "Hóa đơn hoặc hợp đồng mua bán xe", "icon": "🧾", "sides": 1,
+             "repeatable": True},
+            {"key": "to_khai_hai_quan", "name": "Tờ khai hàng hóa nhập khẩu", "icon": "🚢", "sides": 1,
+             "optional": True, "repeatable": True},
+            {"key": "giay_to_xe", "name": "Giấy tờ xe (giấy khai đăng ký xe, giấy thu hồi đăng ký…)", "icon": "📄",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Thẻ căn cước của chủ xe", "icon": "🪪", "sides": 2, "optional": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (chủ xe tự nộp bằng tài khoản VNeID của mình):\n"
+            "1. Dữ liệu điện tử / thông báo nộp lệ phí trước bạ — mã hồ sơ lệ phí trước bạ.\n"
+            "2. Hóa đơn bán xe hoặc hợp đồng mua bán xe.\n"
+            "3. Tờ khai hàng hóa nhập khẩu (nếu có).\n"
+            "4. Giấy tờ xe có số khung, số máy (giấy khai đăng ký xe, giấy thu hồi đăng ký…).\n"
+            "5. Thẻ căn cước của chủ xe.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        # 2.000076 (20/11/2026), cùng cổng + cùng khuôn trợ lý với đăng ký xe lần đầu 1.013066 ngay trên (eForm Nth Bộ
+        # Công an, không bcaPortal). Bản lõi mở trang thủ tục tthc?matt=43474 rồi bấm "Nộp hồ sơ"; nút đó trỏ thẳng trang
+        # "Chọn trường hợp hồ sơ" ?ma-thu-tuc-public=43474 (href đọc từ trang thủ tục 20/11) nên trợ lý mở luôn trang này.
+        # Trang chọn trường hợp đi luồng trang 1 Lai Châu (caseOnly), trang nhập thông tin đi luồng chung. Toàn quốc.
+        # Detect y hệt lõi. Không có mục đính kèm. Chưa chạy thử trên cổng thật.
+        "key": "dang-ky-sang-ten-di-chuyen-xe-cap-tinh",
+        "detect": {
+            "urlScope": ["dichvucong.bocongan.gov.vn"],
+            "textIncludes": [
+                "sang tên",
+                "bắt buộc phải thu hồi",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+            "codeOnPage": True,  # cờ của Auto Fill (khớp mã TTHC in trên trang); giữ detect y hệt lõi
+        },
+        "label": "Đăng ký sang tên, di chuyển xe thực hiện tại Công an cấp tỉnh",
+        "shortLabel": "Đăng ký sang tên xe mua lại",
+        "subtitle": "Sang tên ô tô, xe máy mua lại của người khác hoặc chuyển xe sang tỉnh khác",
+        "icon": "🔁",
+        "keKhaiUrl": "https://dichvucong.bocongan.gov.vn/bo-cong-an/tiep-nhan-online/chon-truong-hop-ho-so?ma-thu-tuc-public=43474",
+        "requiresCapability": "supportsBcaDangKyXe",
+        # Chạy thật 20/11: chọn Loại xe xong cổng mới hiện ô "Cơ quan giải quyết hồ sơ" (danh sách Công an các tỉnh) → user
+        # muốn trợ lý tự chọn theo tỉnh (afterPick). prefer "cong an tinh": danh sách có cả "Công an thành phố Bắc Ninh"
+        # lẫn Công an tỉnh; tỉnh là thành phố trực thuộc TW thì chỉ một mục "Công an Thành phố …" khớp, prefer không lọc.
+        "laiChauFeeStep": {"capability": "supportsBcaCaseStep", "caseOnly": True, "caseGroups": "auto",
+                           "caseAgencyByProvince": {"label": "Cơ quan giải quyết hồ sơ", "prefer": "cong an tinh",
+                                                    "afterPick": True}},
+        "hasAttachmentStep": False,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "thu_hoi", "name": "Giấy chứng nhận thu hồi đăng ký, biển số xe", "icon": "📄", "sides": 1,
+             "repeatable": True},
+            {"key": "hop_dong", "name": "Hợp đồng mua bán / tặng cho xe", "icon": "🤝", "sides": 1,
+             "optional": True, "repeatable": True},
+            {"key": "le_phi", "name": "Lệ phí trước bạ (dữ liệu điện tử / thông báo nộp)", "icon": "💵", "sides": 1,
+             "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Thẻ căn cước của chủ xe", "icon": "🪪", "sides": 2, "optional": True},
+            {"key": "uy_quyen", "name": "Giấy ủy quyền + căn cước người được ủy quyền (nếu nộp thay)", "icon": "✍️",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy chứng nhận thu hồi đăng ký, biển số xe.\n"
+            "2. Hợp đồng mua bán / tặng cho xe (khi sang tên).\n"
+            "3. Dữ liệu điện tử / thông báo nộp lệ phí trước bạ — mã hồ sơ lệ phí trước bạ.\n"
+            "4. Thẻ căn cước của chủ xe.\n"
+            "5. Nộp thay chủ xe: giấy ủy quyền + thẻ căn cước người được ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        # 2.001485 (20/11/2026), cùng cổng + cùng khuôn trợ lý với sang tên xe 2.000076 ngay trên (eForm Nth Bộ Công an,
+        # không bcaPortal). Bản lõi mở trang thủ tục tthc?matt=43493 rồi bấm "Nộp hồ sơ"; nút đó trỏ thẳng trang "Chọn
+        # trường hợp hồ sơ" ?ma-thu-tuc-public=43493 (href đọc từ trang thủ tục 20/11) nên trợ lý mở luôn trang này. Trang
+        # chọn trường hợp đi luồng trang 1 Lai Châu (caseOnly) kèm tự chọn Cơ quan giải quyết theo tỉnh như sang tên (SUY:
+        # cùng thủ tục xe cấp tỉnh, chưa thấy trang chọn trường hợp của mã này). Toàn quốc. Detect y hệt lõi. Không có mục
+        # đính kèm. Chưa chạy thử trên cổng thật.
+        "key": "thu-hoi-chung-nhan-dang-ky-bien-so-xe-cap-tinh",
+        "detect": {
+            "urlScope": ["dichvucong.bocongan.gov.vn"],
+            "textIncludes": [
+                "lý do thu hồi",
+                "chủ xe mới",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+            "codeOnPage": True,  # cờ của Auto Fill (khớp mã TTHC in trên trang); giữ detect y hệt lõi
+        },
+        "label": "Thu hồi chứng nhận đăng ký xe, biển số xe thực hiện tại Công an cấp tỉnh",
+        "shortLabel": "Thu hồi đăng ký, biển số xe (công an tỉnh)",
+        "subtitle": "Xe đăng ký ở Công an tỉnh: rút đăng ký, biển số khi bán, cho xe, chuyển đi tỉnh khác hoặc xe hỏng",
+        "icon": "📤",
+        "keKhaiUrl": "https://dichvucong.bocongan.gov.vn/bo-cong-an/tiep-nhan-online/chon-truong-hop-ho-so?ma-thu-tuc-public=43493",
+        "requiresCapability": "supportsBcaDangKyXe",
+        "laiChauFeeStep": {"capability": "supportsBcaCaseStep", "caseOnly": True, "caseGroups": "auto",
+                           "caseAgencyByProvince": {"label": "Cơ quan giải quyết hồ sơ", "prefer": "cong an tinh",
+                                                    "afterPick": True}},
+        "hasAttachmentStep": False,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "dang_ky_xe", "name": "Giấy chứng nhận đăng ký xe (cà vẹt)", "icon": "📄", "sides": 2},
+            {"key": "hop_dong", "name": "Hợp đồng mua bán / tặng cho xe (nếu bán, cho xe)", "icon": "🤝", "sides": 1,
+             "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Thẻ căn cước của chủ xe", "icon": "🪪", "sides": 2, "optional": True},
+            {"key": "uy_quyen", "name": "Giấy ủy quyền + căn cước người được ủy quyền (nếu nộp thay)", "icon": "✍️",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy chứng nhận đăng ký xe (cà vẹt) — biển số, số khung, số máy.\n"
+            "2. Hợp đồng mua bán / tặng cho xe (khi bán, cho xe) — thông tin chủ xe mới.\n"
+            "3. Thẻ căn cước của chủ xe.\n"
+            "4. Nộp thay chủ xe: giấy ủy quyền + thẻ căn cước người được ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        # 1.010919 (20/11/2026), cùng mẫu kê khai + cùng khuôn trợ lý với thu hồi cấp tỉnh 2.001485 ngay trên, pipeline
+        # riêng. Mở thẳng trang "Chọn trường hợp hồ sơ" ?ma-thu-tuc-public=64190 (href đọc từ trang thủ tục 20/11).
+        # KHÔNG tự chọn Cơ quan giải quyết theo tỉnh như bản cấp tỉnh: cơ quan là Công an cấp xã, chưa thấy danh sách
+        # trên trang chọn trường hợp → để công dân chọn trên thẻ (như xe nhập khẩu 1.013066). Toàn quốc. Chưa chạy thật.
+        "key": "thu-hoi-chung-nhan-dang-ky-bien-so-xe-cap-xa",
+        "detect": {
+            "urlScope": ["dichvucong.bocongan.gov.vn"],
+            "textIncludes": [
+                "lý do thu hồi",
+                "chủ xe mới",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+            "codeOnPage": True,  # cờ của Auto Fill (khớp mã TTHC in trên trang); giữ detect y hệt lõi
+        },
+        "label": "Thu hồi chứng nhận đăng ký xe, biển số xe thực hiện tại Công an cấp xã được phân cấp đăng ký xe",
+        "shortLabel": "Thu hồi đăng ký, biển số xe (công an xã)",
+        "subtitle": "Xe đăng ký ở Công an xã, phường: rút đăng ký, biển số khi bán, cho xe hoặc xe hỏng",
+        "icon": "📤",
+        "keKhaiUrl": "https://dichvucong.bocongan.gov.vn/bo-cong-an/tiep-nhan-online/chon-truong-hop-ho-so?ma-thu-tuc-public=64190",
+        "requiresCapability": "supportsBcaDangKyXe",
+        "laiChauFeeStep": {"capability": "supportsBcaCaseStep", "caseOnly": True, "caseGroups": "auto"},
+        "hasAttachmentStep": False,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "dang_ky_xe", "name": "Giấy chứng nhận đăng ký xe (cà vẹt)", "icon": "📄", "sides": 2},
+            {"key": "hop_dong", "name": "Hợp đồng mua bán / tặng cho xe (nếu bán, cho xe)", "icon": "🤝", "sides": 1,
+             "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Thẻ căn cước của chủ xe", "icon": "🪪", "sides": 2, "optional": True},
+            {"key": "uy_quyen", "name": "Giấy ủy quyền + căn cước người được ủy quyền (nếu nộp thay)", "icon": "✍️",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy chứng nhận đăng ký xe (cà vẹt) — biển số, số khung, số máy.\n"
+            "2. Hợp đồng mua bán / tặng cho xe (khi bán, cho xe) — thông tin chủ xe mới.\n"
+            "3. Thẻ căn cước của chủ xe.\n"
+            "4. Nộp thay chủ xe: giấy ủy quyền + thẻ căn cước người được ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        # 2.000311 (20/11/2026), cùng mẫu kê khai + cùng khuôn trợ lý với thu hồi cấp tỉnh 2.001485 ngay trên, pipeline
+        # riêng. Mở thẳng trang "Chọn trường hợp hồ sơ" ?ma-thu-tuc-public=26125 (href đọc từ trang thủ tục 20/11).
+        # KHÔNG tự chọn Cơ quan giải quyết theo tỉnh như bản cấp tỉnh: cơ quan là Cục Cảnh sát giao thông, chưa thấy danh sách
+        # trên trang chọn trường hợp → để công dân chọn trên thẻ (như xe nhập khẩu 1.013066). Toàn quốc. Chưa chạy thật.
+        "key": "thu-hoi-chung-nhan-dang-ky-bien-so-xe-tai-cuc",
+        "detect": {
+            "urlScope": ["dichvucong.bocongan.gov.vn"],
+            "textIncludes": [
+                "lý do thu hồi",
+                "chủ xe mới",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+            "codeOnPage": True,  # cờ của Auto Fill (khớp mã TTHC in trên trang); giữ detect y hệt lõi
+        },
+        "label": "Thu hồi chứng nhận đăng ký xe, biển số xe thực hiện tại Cục",
+        "shortLabel": "Thu hồi đăng ký, biển số xe (Cục CSGT)",
+        "subtitle": "Xe đăng ký ở Cục Cảnh sát giao thông: rút đăng ký, biển số khi bán, cho xe hoặc xe hỏng",
+        "icon": "📤",
+        "keKhaiUrl": "https://dichvucong.bocongan.gov.vn/bo-cong-an/tiep-nhan-online/chon-truong-hop-ho-so?ma-thu-tuc-public=26125",
+        "requiresCapability": "supportsBcaDangKyXe",
+        "laiChauFeeStep": {"capability": "supportsBcaCaseStep", "caseOnly": True, "caseGroups": "auto"},
+        "hasAttachmentStep": False,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "dang_ky_xe", "name": "Giấy chứng nhận đăng ký xe (cà vẹt)", "icon": "📄", "sides": 2},
+            {"key": "hop_dong", "name": "Hợp đồng mua bán / tặng cho xe (nếu bán, cho xe)", "icon": "🤝", "sides": 1,
+             "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Thẻ căn cước của chủ xe", "icon": "🪪", "sides": 2, "optional": True},
+            {"key": "uy_quyen", "name": "Giấy ủy quyền + căn cước người được ủy quyền (nếu nộp thay)", "icon": "✍️",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy chứng nhận đăng ký xe (cà vẹt) — biển số, số khung, số máy.\n"
+            "2. Hợp đồng mua bán / tặng cho xe (khi bán, cho xe) — thông tin chủ xe mới.\n"
+            "3. Thẻ căn cước của chủ xe.\n"
+            "4. Nộp thay chủ xe: giấy ủy quyền + thẻ căn cước người được ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
         # 2.001428, Cổng DVC Bộ Công an dichvucong.bocongan.gov.vn, cùng nền eForm Nth với đăng ký xe (không bcaPortal).
         # Bản lõi (Auto Fill) đi từ trang thủ tục DVCQG qua hai nút; trợ lý KHÔNG có engine bấm chuỗi đó nên mở THẲNG trang
         # "Chọn trường hợp hồ sơ" của cổng Bộ Công an như đăng ký xe. Mã ma-thu-tuc-public=40852 SUY từ trang thủ tục
@@ -7250,10 +7513,13 @@ PROCEDURES: list[dict] = [
         # caseHint: trang chọn trường hợp chỉ có ô "Cơ quan giải quyết hồ sơ" (ảnh 18/11) — trợ lý nói ngay việc phải
         # chọn, cả khi không đọc được ô. resultMethodHint: mục Nhận kết quả nằm cuối trang kê khai, giấy tờ không ghi →
         # điền xong nhắc chọn Hình thức nhận kết quả + nhập Địa chỉ nhận kết quả rồi bấm "Đồng ý và tiếp tục" sang trang
-        # đính kèm (user 18/11).
+        # đính kèm (user 18/11). User 20/11: ô cơ quan trợ lý tự chọn theo tỉnh của tài khoản như hộ chiếu / thị thực
+        # (caseAgencyByProvince) thay vì bày thẻ 34 Công an tỉnh; trụ sở ở tỉnh khác thì công dân đổi trên trang.
         "laiChauFeeStep": {
             "capability": "supportsBcaCaseStep", "caseOnly": True, "caseGroups": "auto",
-            "caseHint": "**Cơ quan giải quyết hồ sơ** (Công an tỉnh, thành phố nơi cơ quan, tổ chức đặt trụ sở)",
+            "caseAgencyByProvince": {"label": "Cơ quan giải quyết hồ sơ", "prefer": "cong an"},
+            "caseHint": "**Cơ quan giải quyết hồ sơ** (tôi chọn sẵn Công an tỉnh, thành phố theo tỉnh của công dân; cơ "
+                        "quan, tổ chức đặt trụ sở ở tỉnh khác thì chọn lại trên trang)",
         },
         # Điền xong DỪNG ở rà soát, công dân bấm "Đính kèm giấy tờ" mới đính — như hộ chiếu / thị thực (user 20/11/2026).
         "askBeforeAttach": True,
@@ -11407,6 +11673,11 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     # Vắng bảng theo dõi, user không nói phạm vi → toàn quốc (mặc định 16/11/2026).
     "cap-the-can-cuoc-tu-du-14-tuoi": _TAT_CA,
     "dang-ky-xe-lan-dau-san-xuat-lap-rap-trong-nuoc": _TAT_CA,  # 16/11/2026: ngoài bảng, chốt toàn quốc
+    "dang-ky-xe-lan-dau-nhap-khau": _TAT_CA,  # 20/11/2026: ngoài bảng, mặc định toàn quốc
+    "dang-ky-sang-ten-di-chuyen-xe-cap-tinh": _TAT_CA,  # 20/11/2026: ngoài bảng, mặc định toàn quốc
+    "thu-hoi-chung-nhan-dang-ky-bien-so-xe-cap-tinh": _TAT_CA,  # 20/11/2026: ngoài bảng, mặc định toàn quốc
+    "thu-hoi-chung-nhan-dang-ky-bien-so-xe-cap-xa": _TAT_CA,  # 20/11/2026: ngoài bảng, mặc định toàn quốc
+    "thu-hoi-chung-nhan-dang-ky-bien-so-xe-tai-cuc": _TAT_CA,  # 20/11/2026: ngoài bảng, mặc định toàn quốc
     "dang-ky-mau-con-dau": _TAT_CA,  # 18/11/2026: ngoài bảng, user không nói phạm vi → toàn quốc (mặc định)
     "cap-ho-chieu-pho-thong-o-trong-nuoc": _TAT_CA,  # 18/11/2026: ngoài bảng, user không nói phạm vi → toàn quốc
     "cap-thi-thuc-cho-nguoi-nuoc-ngoai-tai-viet-nam": _TAT_CA,  # 18/11/2026: ngoài bảng, không nói phạm vi → toàn quốc

@@ -22,8 +22,12 @@ của `laiChauFeeStep`:
   - `caseOnly`: chỉ dẫn trang "Chọn trường hợp hồ sơ" (các trang sau đi luồng chung — không nút "Đồng ý và tiếp tục"
     sau điền / đính kèm, không bước Lệ phí);
   - `caseGroups: "auto"`: không biết trước tên ô → extension tự đọc MỌI ô chọn đang hiện trong khung chọn trường hợp
-    (Loại xe, rồi các ô cổng hiện thêm sau khi chọn), nhãn + dấu (*) lấy trên trang.
+    (Loại xe, rồi các ô cổng hiện thêm sau khi chọn), nhãn + dấu (*) lấy trên trang;
+  - `caseAgencyByProvince`: ô cơ quan trợ lý tự chọn theo tỉnh; `afterPick` = ô đó chỉ hiện SAU một lựa chọn khác (sang
+    tên xe 2.000076: chọn Loại xe xong cổng mới hiện "Cơ quan giải quyết hồ sơ") → không chờ ô ở lượt đọc đầu, ô vừa
+    hiện mà còn trống thì đọc lại kèm presets.
 """
+import json
 import re
 
 from app.channels.handfree.chat import lien_thong
@@ -100,6 +104,32 @@ def _presets(conv: dict, proc: dict | None) -> list[dict]:
     if not isinstance(cfg, dict) or not cfg.get("label") or not province:
         return []
     return [{"label": cfg["label"], "match": fold(province), "prefer": cfg.get("prefer") or ""}]
+
+
+def _preset_after_pick(proc: dict | None) -> bool:
+    cfg = _config(proc).get("caseAgencyByProvince")
+    return isinstance(cfg, dict) and cfg.get("afterPick") is True
+
+
+def _preset_followup(conv: dict, proc: dict | None, rows: list[dict], payload: dict) -> dict | None:
+    """`afterPick`: ô cơ quan theo tỉnh đang hiện mà còn trống (vừa hiện sau khi công dân chọn Loại xe) → lệnh đọc lại
+    kèm presets để extension chọn theo tỉnh. Mỗi trạng thái các ô chỉ thử một lần (không ra đúng một mục thì để công dân
+    chọn trên thẻ, không lặp)."""
+    if not _preset_after_pick(proc):
+        return None
+    if any(str(x).startswith("preset:") for x in payload.get("prepared") or []):
+        return None
+    label = _clean(_config(proc)["caseAgencyByProvince"].get("label")).lower()
+    row = next((row for row in rows if label and label in row["label"].lower()), None)
+    presets = _presets(conv, proc)
+    if not row or row["value"] or not presets:
+        return None
+    signature = json.dumps([[row["name"], row["value"]] for row in rows], ensure_ascii=False)
+    st = _st(conv)
+    if st.get("preset_try") == signature:
+        return None
+    st["preset_try"] = signature
+    return {"type": "lc_result_scan", "groups": _groups(proc, CASE), "prepare": False, "presets": presets}
 
 
 def _groups(proc: dict | None, page: int = FEE) -> list[dict]:
@@ -242,6 +272,12 @@ def _on_page(conv: dict, proc: dict | None, payload: dict):
         # rỗng không đè last_reply) cho tới khi trang thật sự sang bước 2.
         return _reply()
     if case_only(proc) and step != CASE:
+        if (before == CASE and payload.get("bcaKeKhaiForm") is False and not payload.get("loginPage")
+                and not payload.get("bcaConfirmPage")):
+            # Chạy thật 20/11 (sang tên xe 2.000076): chọn Loại xe xong trang báo lcStep 0 + formKind "standard" dù vẫn
+            # là trang chọn trường hợp (chưa có form kê khai CongDan_*) → luồng cũ xin phép xử lý dữ liệu ngay ở đây.
+            # Chỉ rời trang khi form kê khai thật đã hiện.
+            return _reply()
         st["at"] = step  # rời trang chọn trường hợp: các trang sau đi luồng chung
         return None
     if not step or step == before:
@@ -255,7 +291,8 @@ def _on_page(conv: dict, proc: dict | None, payload: dict):
             md, tts = md + hint_md, tts + hint_tts
         r = _reply((md, tts))
         action = {"type": "lc_result_scan", "groups": _groups(proc, CASE)}
-        presets = _presets(conv, proc)
+        # afterPick: ô cơ quan chưa có ở lượt đọc đầu → không gửi presets (extension sẽ chờ ô tới 6 giây vô ích).
+        presets = [] if _preset_after_pick(proc) else _presets(conv, proc)
         if presets:
             action["presets"] = presets
         r.actions = [action]
@@ -299,6 +336,18 @@ def _result_report(conv: dict, proc: dict | None, payload: dict):
         r.chips = [next_chip()]
         return r
     changed = payload.get("changed") if isinstance(payload.get("changed"), dict) else None
+    followup = _preset_followup(conv, proc, rows, payload) if page == CASE else None
+    if followup:
+        # Ô cơ quan vừa hiện: chọn theo tỉnh trước rồi mới hiện thẻ (lượt đọc lại trả về lc_result_report đủ thẻ + nút).
+        md, tts = ("", "")
+        if changed and changed.get("ok"):
+            label = next((row["label"] for row in rows if row["name"] == changed.get("name")), "")
+            md, tts = _say(vi.LT_RESULT_CHANGED, label=label, value=_clean(changed.get("value"), 80))
+        pick_md, pick_tts = _say(vi.LC_CASE_PRESET_PICKING, label=_clean(
+            _config(proc)["caseAgencyByProvince"].get("label"), 80))
+        r = _reply(((md + pick_md).lstrip(), (tts + pick_tts).lstrip()))
+        r.actions = [followup]
+        return r
     if changed:
         label = next((row["label"] for row in rows if row["name"] == changed.get("name")), "")
         value = _clean(changed.get("value"), 80)

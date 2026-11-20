@@ -1796,7 +1796,9 @@ function detectProcedureKeyFromSignals(signals) {
       if (!phrases.length) continue;
       if (!phrases.every((ph) => body.includes(ph))) continue;
       const score = phrases.reduce((s, ph) => s + ph.length, 0);
-      if (score > bestPriorityScore) {
+      // Hoà điểm (nhiều thủ tục cùng một form, vd thu hồi đăng ký xe cấp tỉnh / cấp xã / tại Cục của Bộ Công an) → giữ
+      // thủ tục đang chọn thay vì luôn nhảy về thủ tục đứng trước trong danh sách.
+      if (score > bestPriorityScore || (score === bestPriorityScore && p.key === selected?.key)) {
         bestPriority = p.key;
         bestPriorityScore = score;
       }
@@ -1845,7 +1847,7 @@ function detectProcedureKeyFromSignals(signals) {
       if (!phrases.length) continue;
       if (!phrases.every((ph) => body.includes(ph))) continue;
       const score = phrases.reduce((s, ph) => s + ph.length, 0);
-      if (score > bestScore) {
+      if (score > bestScore || (score === bestScore && p.key === selected?.key)) {  // hoà điểm: giữ thủ tục đang chọn
         best = p.key;
         bestScore = score;
       }
@@ -6704,6 +6706,12 @@ function updateKeKhaiUI() {
     return;
   }
   // Trang thủ tục không bắt chọn Tỉnh/Xã (directSubmit): bấm thẳng "Nộp hồ sơ" rồi "Nộp trực tuyến".
+  if (link.directSubmit && link.bcaSubmit && opensOnBcaPortal(link)) {
+    keKhaiStatus.textContent =
+      'Trợ lý sẽ mở trang thủ tục trên Cổng DVC Bộ Công an rồi bấm "Nộp hồ sơ".';
+    keKhaiStatus.className = 'status info';
+    return;
+  }
   if (link.directSubmit && link.bcaSubmit) {
     keKhaiStatus.textContent =
       'Trợ lý sẽ bấm "Nộp hồ sơ", "Nộp trực tuyến" rồi bấm tiếp "Nộp hồ sơ" trên Cổng DVC Bộ Công an.';
@@ -6787,6 +6795,18 @@ async function onKeKhaiProcedureChosen() {
   }
 }
 
+/**
+ * Link `bcaSubmit` trỏ THẲNG trang thủ tục Cổng DVC Bộ Công an (/bocongan/bothutuc/tthc?matt=…): thủ tục không
+ * có trang DVCQG (vd 1.013066 đăng ký xe nhập khẩu) nên không có chặng "Nộp hồ sơ" → "Nộp trực tuyến" bên DVCQG.
+ */
+function opensOnBcaPortal(link) {
+  try {
+    return new URL(String(link?.url || "")).hostname === "dichvucong.bocongan.gov.vn";
+  } catch (_) {
+    return false;
+  }
+}
+
 /** Mở trang kê khai của thủ tục đang chọn, kèm "lên đạn" cho content/agency-select.js. */
 async function openKeKhaiPage() {
   const link = selectedKeKhaiLink();
@@ -6796,6 +6816,9 @@ async function openKeKhaiPage() {
     // Không có khối Tỉnh/Xã: content/agency-select.js chỉ bấm "Nộp hồ sơ" rồi đi tiếp như thường.
     await chrome.storage.local.set({
       [AGENCY_ARM_KEY]: {
+        // Link mở thẳng trang thủ tục cổng Bộ Công an → vào luôn chặng "bca" (bấm "Nộp hồ sơ" bên đó). Để trống
+        // stage thì agency-select.js bên dichvucong.gov.vn sẽ bấm nhầm "Nộp hồ sơ" của trang DVCQG nào mở kế tiếp.
+        ...(link.bcaSubmit && opensOnBcaPortal(link) ? { stage: "bca" } : {}),
         directSubmit: true,
         // "Nộp trực tuyến" ném sang Cổng DVC Bộ Công an -> bấm tiếp "Nộp hồ sơ" bên đó, chỉ ở trang đúng mã.
         bcaSubmit: !!link.bcaSubmit,

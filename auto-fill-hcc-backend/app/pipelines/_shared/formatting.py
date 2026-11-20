@@ -114,6 +114,25 @@ def keep_portal_values(fields: list[dict], names) -> list[dict]:
     return fields
 
 
+def only_for_account(fields: list[dict], names, *, name: str | None = None, id: str | None = None) -> list[dict]:
+    """Ô Phần I của CHỦ TÀI KHOẢN VNeID (SĐT, email người kê khai trang căn cước Bộ Công an) lấy từ giấy của người
+    ``name`` / ``id``: gắn ``bcaAccountIs`` để extension (Auto Fill + trợ lý) chỉ ghi khi Phần I (txtFULLNAME_NDN /
+    txtIDENTIFY_NUMBER_NDN, cổng khoá theo tài khoản) đúng là người đó — so số định danh, một bên thiếu số thì so họ tên.
+    Tài khoản là người khác (vd con kê khai thay bố, cán bộ đăng nhập tài khoản riêng) thì không ghi SĐT / email người
+    trên giấy vào ô của chủ tài khoản (user 20/11/2026, req cấp đổi + cấp dưới 14 tuổi). Giấy không cho biết ô đó của ai
+    → bỏ ô. Trả list mới."""
+    names = set(names)
+    owner = {k: v for k, v in (("name", name), ("id", id)) if v}
+    out = []
+    for field in fields:
+        if field.get("name") in names:
+            if not owner:
+                continue
+            field = {**field, "bcaAccountIs": owner}
+        out.append(field)
+    return out
+
+
 def normalize_date(d: str | None) -> str:
     """"22/4/2021" → "22/04/2021" (zero-pad ngày & tháng)."""
     if not d:

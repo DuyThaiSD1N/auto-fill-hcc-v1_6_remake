@@ -62,6 +62,21 @@ def test_me_ke_khai_thay_dien_phan_ii_co_quan_va_nhan_truc_tiep():
     assert not {"cboGET_RESULT_CITY_ADDR", "txtGET_RESULT_DETAIL_ADDR", "txtFULLNAME_NN"} & set(by)
 
 
+def test_sdt_email_phan_i_chi_ghi_khi_tai_khoan_la_nguoi_ky_muc_ii():
+    # 20/11/2026 (1.012549 / 1.014062): Phần I là tài khoản đăng nhập — SĐT / email mục II DC02 chỉ ghi khi tài khoản đúng
+    # là người ký mục II (extension so Phần I với bcaAccountIs), không thì để ô cho chủ tài khoản.
+    out = _enrich({**HO_SO, "NguoiDaiDien_SoDienThoai": "0987 000 222", "NguoiDaiDien_Email": "Hoa.Mau@Example.com"})
+    for name in ("txtPHONE_NUMBER_NDN", "txtEMAIL_ADDRESS_NDN"):
+        field = next(f for f in out if f["name"] == name)
+        assert field["bcaAccountIs"] == {"name": "TRẦN THỊ HOA", "id": "012190000002"}, name
+        assert field["keepPortalValue"] is True, name
+    assert not any("bcaAccountIs" in f for f in out if f["name"] not in ("txtPHONE_NUMBER_NDN", "txtEMAIL_ADDRESS_NDN"))
+    # Mục II không ghi người ký → không biết SĐT là của ai → không ghi vào Phần I.
+    by = _by(_enrich({**HO_SO, "NguoiDaiDien_HoTen": "", "NguoiDaiDien_SoDinhDanh": "",
+                      "NguoiDaiDien_SoDienThoai": "0987 000 222"}))
+    assert "txtPHONE_NUMBER_NDN" not in by
+
+
 def test_danh_sach_cha_me_cho_extension_so_tai_khoan():
     people = lambda **kw: _by(_enrich({**HO_SO, **kw})).get("cboRELATIONSHIP_WITH_NDN", {}).get("people")  # noqa: E731
     # Người giám hộ ghi trên giấy (không phải cha mẹ) → thêm một dòng "Người đại diện hợp pháp".

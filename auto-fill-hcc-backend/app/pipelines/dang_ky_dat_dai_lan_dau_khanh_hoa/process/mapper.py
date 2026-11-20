@@ -8,6 +8,8 @@ Ba khối tách riêng (xem schema.py):
 - Phần III thửa đất   -> data[diaChiThuaDat]/SoThuaDat/SoToBanDo/province2/village2/nation2.
 Không có văn bản ủy quyền (tên người nộp trùng chủ hồ sơ) thì hai vai là MỘT người: thuộc tính thiếu ở vai này
 được lấy từ vai kia. Có ủy quyền thì mỗi khối chỉ dùng facts của đúng vai, không mượn chéo.
+⚑ Cờ theo tài khoản `ownerAsApplicant` (phường Nam Nha Trang, xem with_account_process_options): Phần I khai luôn
+chủ hồ sơ (người ủy quyền / người đứng Đơn), kể cả khi hồ sơ có văn bản ủy quyền.
 Ô chữ/ngày giấy tờ không có dữ liệu thì trả về TRỐNG (clear_blank_fields), không bỏ qua — dùng chung cho cả 5 thủ tục
 Khánh Hòa cùng template.
 """
@@ -44,6 +46,45 @@ def _fold(value: Any) -> str:
     text = "".join(char for char in text if unicodedata.category(char) != "Mn")
     text = text.replace("Đ", "D").replace("đ", "d")
     return re.sub(r"\s+", " ", text).strip().lower()
+
+
+# Cấu hình theo tài khoản (người dùng chốt 20/11/2026): phường Nam Nha Trang khai PHẦN I NGƯỜI NỘP bằng chính chủ hồ
+# sơ — người ủy quyền / người đứng Đơn đăng ký đất đai — không lấy bên được ủy quyền như mặc định. Mapper không biết
+# tài khoản nên router (Auto Fill) và pipeline_runner (trợ lý) gọi with_account_process_options để server tự đặt cờ;
+# cờ luôn bị ghi đè theo tài khoản, client không tự bật được cho phường khác. Chỉ thủ tục này (các thủ tục Khánh Hòa
+# dùng chung hàm của mapper này không nhận cờ).
+PROCEDURE_KEY = "dang-ky-dat-dai-lan-dau-khanh-hoa"
+OWNER_AS_APPLICANT_OPTION = "ownerAsApplicant"
+_WARD_PREFIXES = ("xa ", "phuong ", "thi tran ")
+# (tỉnh, phường) đã bỏ dấu + bỏ tiền tố, khớp ĐÚNG tên phường (Nam Nha Trang không kéo theo phường Nha Trang).
+_OWNER_AS_APPLICANT_WARDS = (
+    ("khanh hoa", "nam nha trang"),  # 2026-11-20
+)
+
+
+def is_owner_as_applicant_account(user: dict | None) -> bool:
+    if not user:
+        return False
+    tinh = _fold(user.get("tinh"))
+    xa = _fold(user.get("xa"))
+    for prefix in _WARD_PREFIXES:
+        if xa.startswith(prefix):
+            xa = xa[len(prefix):].strip()
+            break
+    return any(tinh_key in tinh and xa == xa_key for tinh_key, xa_key in _OWNER_AS_APPLICANT_WARDS)
+
+
+def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
+    """Trả bản sao options với cờ ownerAsApplicant do server quyết theo tài khoản."""
+    result = dict(options or {})
+    result.pop(OWNER_AS_APPLICANT_OPTION, None)
+    if procedure == PROCEDURE_KEY and is_owner_as_applicant_account(user):
+        result[OWNER_AS_APPLICANT_OPTION] = True
+    return result
+
+
+def owner_as_applicant(options: dict | None) -> bool:
+    return (options or {}).get(OWNER_AS_APPLICANT_OPTION) is True
 
 
 # Đơn Mẫu 19 mục 1 ghi chung nhiều người cùng sử dụng đất trên một dòng ("A SN: … – B SN: …", "b) <số A> - <số B>").
@@ -254,19 +295,27 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     if not owner_name:
         warnings.append("Thiếu tên chủ hồ sơ (người sử dụng đất đứng Đơn đăng ký đất đai).")
 
+    # Phường Nam Nha Trang (cờ ownerAsApplicant): Phần I chép đúng chủ hồ sơ như Phần II, bỏ bên được ủy quyền. Thiếu
+    # tên chủ hồ sơ thì giữ cách mặc định.
+    owner_applicant = owner_as_applicant(options) and bool(owner_name)
+    person_val = owner_val if owner_applicant else applicant_val
+
     # --- Phần I: người nộp ---
-    add("data[fullname]", applicant_name)
-    add("data[phoneNumber]", _phone(applicant_val("DienThoai")))
-    add("data[birthday]", _date(applicant_val("NgaySinh")))
-    add("data[email]", _text(applicant_val("Email")))
-    add("data[identityNumber]", _identity(applicant_val("SoDinhDanh")))
-    add("data[identityDate]", _date(applicant_val("NgayCap")))
-    applicant_issuer = _text(applicant_val("NoiCap"))
+    add("data[fullname]", owner_name if owner_applicant else applicant_name)
+    add("data[phoneNumber]", _phone(person_val("DienThoai")))
+    add("data[birthday]", _date(person_val("NgaySinh")))
+    add("data[email]", _text(person_val("Email")))
+    add("data[identityNumber]", _identity(person_val("SoDinhDanh")))
+    add("data[identityDate]", _date(person_val("NgayCap")))
+    applicant_issuer = _text(person_val("NoiCap"))
     add("data[identityAgency_text]", normalize_issuer(applicant_issuer) if applicant_issuer else None)
     # Tự nộp: địa chỉ CHỦ HỒ SƠ (đọc từ Đơn) đứng trước — NguoiNop_DiaChi hay bị LLM lấy từ CCCD/giấy tờ cũ.
-    applicant_area = _area(applicant_val("DiaChi")) if authorized else (
-        _area(values.get("ChuHoSo_DiaChi")) or _area(values.get("NguoiNop_DiaChi"))
-    )
+    if owner_applicant:
+        applicant_area = _area(owner_val("DiaChi"))
+    elif authorized:
+        applicant_area = _area(applicant_val("DiaChi"))
+    else:
+        applicant_area = _area(values.get("ChuHoSo_DiaChi")) or _area(values.get("NguoiNop_DiaChi"))
     add_person_area("data[province]", "data[village]", "data[address]", applicant_area)
 
     # --- Phần II: chủ hồ sơ ---
@@ -303,5 +352,5 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     # Ô Nội dung yêu cầu (Phần I) ghép sau khi đã có thửa đất; thứ tự trong `out` không ảnh hưởng điền.
     add("data[noidungyeucaugiaiquyet]", _noi_dung_yeu_cau(so_thua, so_to, detail, owner_name))
 
-    clear_blank_fields(out, seen, options, applicant_val("SoDinhDanh"))
+    clear_blank_fields(out, seen, options, person_val("SoDinhDanh"))
     return out, warnings

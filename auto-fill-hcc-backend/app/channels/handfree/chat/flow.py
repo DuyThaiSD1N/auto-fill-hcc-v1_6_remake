@@ -543,6 +543,28 @@ def _bca_same_page(proc: dict, page_context: dict | None) -> bool:
     return _bca_nth(proc) and ctx["bcaKeKhaiForm"] is True and ctx["attachmentTarget"]
 
 
+def _bca_nth_next_to_attach(conv: dict, proc: dict) -> bool:
+    """eForm Nth Bộ Công an có bảng Thành phần hồ sơ ở TRANG SAU (mẫu con dấu, hộ chiếu…): công dân bấm "Đính kèm giấy
+    tờ" ở trang kê khai thì trợ lý tự bấm "Đồng ý và tiếp tục" (lệnh lc_next, content/laichau/portal.js nhận mọi trang
+    host bocongan) rồi chờ trang đính kèm như cũ — user 20/11/2026 "giống các thủ tục tư pháp". Cần extension có engine
+    trang chọn trường hợp Bộ Công an (lai_chau.enabled); bản cũ giữ câu bảo công dân tự sang trang."""
+    return _bca_nth(proc) and not _same_page_attach(conv, proc) and lai_chau.enabled(conv, proc)
+
+
+def _bca_nth_next_reply(conv: dict, proc: dict) -> Reply | None:
+    """Bấm "Đồng ý và tiếp tục" hộ để sang trang đính kèm (xem _bca_nth_next_to_attach); None = không áp dụng. Cổng chặn
+    (ô bắt buộc trống, chưa chọn Hình thức nhận kết quả) → extension báo lc_step_report, lai_chau nói lời cổng + nút thử
+    lại; trạng thái vẫn chờ trang đính kèm nên công dân tự bấm trên trang cũng được."""
+    if not _bca_nth_next_to_attach(conv, proc):
+        return None
+    conv["state"] = "attaching"
+    conv["pipeline_status"] = "waiting_attachment_page"
+    conv["attachment_plan_started"] = False
+    r = Reply(*_fmt(vi.BCA_NTH_NEXT_TO_ATTACH))
+    r.actions = [{"type": "lc_next"}]
+    return r
+
+
 def _same_page_attach(conv: dict, proc: dict) -> bool:
     """Đính kèm CÙNG TRANG kê khai: không có trang "Thành phần hồ sơ" riêng để chờ — điền xong là lập kế hoạch và đính
     ngay trên trang này. Khai tĩnh samePageAttach (cổng 2 tab Bắc Ninh) hoặc eForm Nth Bộ Công an mà trang gần nhất báo
@@ -1031,6 +1053,12 @@ async def _continue_adjustment_on_attachment_page(
         return None
     if _eform_pending(conv, proc):
         # Tờ khai điện tử nằm ngay trong bảng Thành phần hồ sơ: đứng ở bước 3 vẫn là điền lại tờ khai.
+        return None
+    if proc.get("samePageAttach"):
+        # Form kê khai + bảng đính kèm cùng một trang (thường trú / tạm trú / điều chỉnh cư trú dancuquocgia, cổng 2 tab
+        # Bắc Ninh): trang LUÔN báo có bảng đính kèm nên không phải dấu hiệu công dân đã sang bước sau. Ảnh chạy thật
+        # 20/11 (1.010039): vừa mở "Điều chỉnh giấy tờ" thì page_status tự chốt phiên và đính lại khi công dân chưa kịp
+        # thêm / xoá tệp. Chỉ nút "Hoàn tất điều chỉnh…" mới chốt.
         return None
     if _bca_nth(proc) and _docs_page_context(page_context)["bcaKeKhaiForm"] is True:
         # Form kê khai Bộ Công an còn hiện (bảng đính kèm cùng trang): công dân chưa rời bước kê khai → vẫn điền lại.
@@ -4252,6 +4280,39 @@ def _refill_keeps_attach_ready(conv: dict, proc: dict | None) -> None:
         conv["refill_keeps_attach"] = True
 
 
+def refill_at_done(proc: dict | None) -> bool:
+    """Bước cuối (đã đính, sắp nộp) điền lại tờ khai được tại chỗ: form kê khai còn trên trang cùng bảng đính kèm (eForm Nth
+    Bộ Công an, thủ tục docsAdjustRefill). Thủ tục đính ở trang riêng thì không (lệnh điền lại ở bước này bị nuốt)."""
+    return _bca_nth(proc) or _docs_adjust_refills(proc)
+
+
+def _refill_chip() -> dict:
+    return {"label": "🔁 Điền lại thông tin", "send": "__action:refill"}
+
+
+def redo_chips(conv: dict, proc: dict | None) -> list[dict]:
+    """Nút làm lại của bước sau điền, đúng việc bước đó làm được: điền lại tờ khai / điều chỉnh giấy tờ / đính kèm lại.
+    Dùng khi công dân nói "làm lại" chưa rõ việc nào mà màn hình không còn nút làm lại (bước cuối chỉ còn Nộp hồ sơ)."""
+    state = conv.get("state")
+    if conv.get("submitted_completed") or state not in {"reviewing", "attaching", "done"}:
+        return []
+    if state != "done":
+        return [_refill_chip(), _supplement_documents_chip()]
+    chips = [_refill_chip()] if refill_at_done(proc) else []
+    chips.append(_supplement_documents_chip())
+    if conv.get("attach_done"):
+        chips.append(_reattach_chip())
+    return chips
+
+
+def _bca_done_redo_chips(conv: dict, proc: dict) -> list[dict]:
+    """Nút nhỏ cạnh Nộp hồ sơ khi đã đính (form + bảng cùng trang): điền lại / điều chỉnh giấy tờ / đính kèm lại vẫn còn
+    trên màn hình sau khi tích cam kết, không phải gõ lệnh."""
+    if conv.get("state") != "done" or not conv.get("attach_done") or not refill_at_done(proc):
+        return []
+    return redo_chips(conv, proc)
+
+
 def _reattach_chip() -> dict:
     return {"label": "📎 Đính kèm lại", "send": "__action:reattach"}
 
@@ -4298,7 +4359,34 @@ async def _handle_qr_waiting(conv: dict, intent: Intent) -> Reply:
     return r
 
 
+def _resend_docs_chip() -> dict:
+    return {"label": vi.OWNER_RESEND_DOCS_CTA, "send": "__action:resend_docs"}
+
+
+def _resend_docs(conv: dict) -> Reply:
+    """"📷 Gửi lại giấy tờ" sau lượt trích lỗi / bị chặn (giấy tờ của người khác chủ tài khoản VNeID): như nút cùng tên ở
+    bước chủ hồ sơ tư pháp (resend_owner_docs) — bỏ phiên giấy tờ cũ, về bước chọn cách gửi (Chụp bằng điện thoại / Scan
+    tại quầy) kèm danh sách giấy cần đưa. Trước đây nút này chỉ hiện lại QR của phiên cũ (user 20/11/2026: "gửi lại giấy
+    tờ thì phải có chọn như tư pháp"). Giữ tệp cũ để xoá bớt thì dùng "Điều chỉnh giấy tờ"."""
+    conv["upload_session_id"] = None
+    conv["doc_method"] = None
+    conv["supplementing_documents"] = False
+    conv["pipeline_status"] = ""
+    conv["pipeline_error"] = ""
+    conv["pipeline_blocked"] = {}
+    conv["fields"] = []
+    return _to_ask_doc_method(conv)
+
+
 async def _handle_collecting_docs(conv: dict, intent: Intent) -> Reply:
+    if conv.get("pipeline_status") == "error" and intent.kind == "action":
+        # Hai nút của câu báo lỗi / chặn lượt trích (_handle_filling, pipeline_error).
+        if intent.value == "resend_docs":
+            return _resend_docs(conv)
+        if intent.value == "add_documents":
+            target = conv.get("docs_target")
+            return await _start_documents_adjustment(
+                conv, target if target in _DOCUMENT_ADJUSTMENT_LABELS else "declaration")
     if intent.kind == "action" and intent.value == "pick_files_by_hand" and conv.get("doc_method") == "scan":
         r = Reply(*_fmt(vi.PICK_FILES_BY_HAND))
         r.chips = [{"label": "📁 Chọn thêm tệp từ máy", "send": "__action:pick_files_again", "solid": True}]
@@ -5202,13 +5290,14 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
             # Pipeline cố ý không điền (giấy tờ của người khác chủ tài khoản VNeID): nói rõ lý do, không bảo "chụp rõ hơn".
             r = Reply(*_fmt(vi.ACCOUNT_MISMATCH, account=blocked.get("accountName") or "chủ tài khoản",
                             document=blocked.get("documentName") or "người khác"))
-            r.chips = [{"label": "📱 Gửi lại giấy tờ", "send": "__action:reshow_qr", "solid": True},
+            # Như tư pháp (user 20/11/2026): "Gửi lại giấy tờ" về bước CHỌN cách gửi; "Điều chỉnh giấy tờ" xoá tệp sai,
+            # thêm tệp đúng trong cùng phiên; "Thử lại" sau khi đã đăng nhập đúng tài khoản chủ hồ sơ.
+            r.chips = [{**_resend_docs_chip(), "solid": True}, _supplement_documents_chip(),
                        {"label": "🔁 Thử lại", "send": "__event:docs_complete"}]
             conv["state"] = "collecting_docs"
             return r
         r = Reply(*_fmt(vi.PIPELINE_ERROR, error=conv.get("pipeline_error") or "không rõ"))
-        r.chips = [{"label": "🔁 Thử lại", "send": "__event:docs_complete", "solid": True},
-                   {"label": "📱 Chụp lại giấy tờ", "send": "__action:reshow_qr"}]
+        r.chips = [{"label": "🔁 Thử lại", "send": "__event:docs_complete", "solid": True}, _resend_docs_chip()]
         conv["state"] = "collecting_docs"  # quay lại nhận giấy tờ nếu muốn chụp lại
         return r
     if intent.kind == "action" and intent.value == "fill_report":
@@ -5277,6 +5366,9 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
             # eForm Nth Bộ Công an hỏi trước khi đính (askBeforeAttach) mà bảng Thành phần hồ sơ cùng trang: hỏi đính kèm,
             # nhắc nói "điền lại tờ khai" nếu form chưa đúng (user 19/11/2026).
             else vi.REVIEW_ATTACHMENT_SAME_PAGE_BCA if _bca_same_page(proc, conv.get("docs_page_context"))
+            # Bảng đính kèm ở trang sau: bấm "Đính kèm giấy tờ" là trợ lý tự sang trang rồi đính (user 20/11/2026).
+            else (vi.REVIEW_RESULT_METHOD_NEXT_BCA if result_hint else vi.REVIEW_ATTACHMENT_NEXT_BCA)
+            if _bca_nth_next_to_attach(conv, proc)
             else vi.REVIEW_RESULT_METHOD if result_hint
             else (vi.REVIEW_ATTACHMENT_SAME_PAGE if proc.get("samePageAttach") else vi.REVIEW_ATTACHMENT_ACTION)
         )
@@ -5593,7 +5685,7 @@ async def _handle_reviewing(conv: dict, intent: Intent) -> Reply:
         if conv.get("docs_target") == "declaration" and not same_page:
             conv["pipeline_status"] = "waiting_attachment_page"
             conv["attachment_plan_started"] = False
-            return Reply(*_fmt(vi.ATTACH_REQUEST_ON_DECLARATION))
+            return _bca_nth_next_reply(conv, proc) or Reply(*_fmt(vi.ATTACH_REQUEST_ON_DECLARATION))
         if not same_page and _wait_for_attachment_context(conv):
             conv["pipeline_status"] = "waiting_attachment_page"
             conv["attachment_plan_started"] = False
@@ -5636,9 +5728,16 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
         _renew_attach_action(conv, str(intent.payload.get("dispatch_id") or ""))
         return Reply()
     same_page = _same_page_attach(conv, get_procedure(conv.get("procedure_key") or "") or {})
-    if (intent.kind == "action" and intent.value == "request_attach"
+    if (intent.kind == "action" and intent.value in {"request_attach", "confirm_review"}
             and conv.get("docs_target") == "declaration" and not same_page):
-        return Reply(*_fmt(vi.ATTACH_REQUEST_ON_DECLARATION))
+        # Bấm lại "Đính kèm giấy tờ" khi còn ở trang kê khai (vd cổng vừa chặn vì ô trống): eForm Nth Bộ Công an thì bấm
+        # "Đồng ý và tiếp tục" lần nữa; nơi khác giữ như cũ (request_attach → câu bảo sang trang, confirm_review → xuống dưới).
+        if conv.get("pipeline_status") != "running":
+            nxt = _bca_nth_next_reply(conv, get_procedure(conv.get("procedure_key") or "") or {})
+            if nxt is not None:
+                return nxt
+        if intent.value == "request_attach":
+            return Reply(*_fmt(vi.ATTACH_REQUEST_ON_DECLARATION))
     if (intent.kind == "action" and intent.value == "request_attach"
             and (conv.get("docs_target") == "attachment" or same_page)):
         # Công dân đang đứng đúng trang: dùng plan đã lưu nếu có; nếu chưa có thì khởi động
@@ -6544,7 +6643,7 @@ def _commit_result(conv: dict, payload: dict) -> Reply:
         r.actions = [{"type": "chip_used", "send": _TICK_COMMIT_SEND}]
         if bca_flow:
             _bca_swap_saved_chips(conv, proc, ticked=True)
-            r.chips = [_bca_submit_chip()]
+            r.chips = [_bca_submit_chip(), *_bca_done_redo_chips(conv, proc)]
         return r
     r = Reply(*_fmt(vi.COMMIT_TICK_FAILED, commit=commit))
     r.chips = _commit_chip(conv, proc)
@@ -6579,10 +6678,10 @@ def _bca_commit_on_page(conv: dict, proc: dict, commit: str, *, checked: bool) -
     if checked:
         r = Reply(*_fmt(vi.BCA_COMMIT_TICKED_SELF, commit=commit))
         r.actions = [{"type": "chip_used", "send": _TICK_COMMIT_SEND}]
-        r.chips = [_bca_submit_chip()]
+        r.chips = [_bca_submit_chip(), *_bca_done_redo_chips(conv, proc)]
         return r
     r = Reply(*_fmt(vi.BCA_COMMIT_UNTICKED, commit=commit))
-    r.chips = _bca_commit_or_submit(conv, proc)
+    r.chips = [*_bca_commit_or_submit(conv, proc), *_bca_done_redo_chips(conv, proc)]
     return r
 
 

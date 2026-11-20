@@ -18,6 +18,9 @@ from app.pipelines.cai_chinh_dvc_moi.process.mapper import (
 from app.pipelines.cap_giay_phep_xay_dung.process.mapper import (
     with_account_process_options as with_gpxd_account_process_options,
 )
+from app.pipelines.dang_ky_dat_dai_lan_dau_khanh_hoa.process.mapper import (
+    with_account_process_options as with_dat_dai_lan_dau_khanh_hoa_account_process_options,
+)
 from app.pipelines.dang_ky_kinh_doanh.process.mapper import (
     with_account_process_options as with_hkd_account_process_options,
 )
@@ -157,6 +160,10 @@ async def process(body: ProcessReq, background: BackgroundTasks,
         )
         # Xã Nghĩa Hưng: giao/thuê/chuyển mục đích đất Ninh Bình lấy chủ hồ sơ đứng luôn phần người nộp.
         prepared.pipeline_options = with_giao_dat_ninh_binh_account_process_options(
+            prepared.pipeline_options, user, body.procedure
+        )
+        # Phường Nam Nha Trang: đăng ký đất đai lần đầu Khánh Hòa khai người nộp = chủ hồ sơ (người ủy quyền).
+        prepared.pipeline_options = with_dat_dai_lan_dau_khanh_hoa_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )
         # Tỉnh Khánh Hòa: xác định mức độ khuyết tật ghi sẵn ô Ghi chú bằng câu cố định.

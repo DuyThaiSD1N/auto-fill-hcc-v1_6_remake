@@ -31,7 +31,7 @@ from app.pipelines.cap_doi_the_can_cuoc.process.schema import (
     RESULT_POST,
     UI_COMP_BY_NAME,
 )
-from app.pipelines._shared.formatting import keep_portal_values
+from app.pipelines._shared.formatting import keep_portal_values, only_for_account
 
 PROCEDURE_KEY = "cap-doi-the-can-cuoc"
 # Xã + tỉnh của tài khoản quầy (server gắn ở app/process/router.py, client không tự gửi được).
@@ -267,8 +267,9 @@ def enrich(fields: list[dict], options: dict | None = None, *, reasons=REASONS, 
                                               "accountIdId": ACCOUNT_ID_ID, "people": people,
                                               "fallback": RELATION_REPRESENTATIVE}
     # SĐT / email Phần I (ô mở) là của NGƯỜI KÊ KHAI = chủ tài khoản: mục II DC02 ghi người kê khai thay → của người đó
-    # (mục II.5), chỉ điền khi tài khoản đúng là người khác; không thì của người cần cấp đổi, chỉ điền khi tài khoản chính
-    # là người đó (user 19/11: tài khoản khác người trên giấy thì không ghi SĐT / email người trên giấy vào Phần I).
+    # (mục II.5); không thì của người cần cấp đổi. Extension chỉ ghi khi tài khoản đúng là người đó (bcaAccountIs, cuối
+    # hàm; user 19/11 + 20/11: tài khoản khác người trên giấy thì không ghi SĐT / email người trên giấy vào Phần I).
+    # Cờ bcaOtherOnly / bcaSelfOnly giữ cho extension bản cũ chưa biết bcaAccountIs.
     contact = ("txtPHONE_NUMBER_NDN", "txtEMAIL_ADDRESS_NDN")
     if on_paper_rep:
         picked["txtPHONE_NUMBER_NDN"] = _phone(values.get("NguoiDaiDien_SoDienThoai"))
@@ -325,4 +326,7 @@ def enrich(fields: list[dict], options: dict | None = None, *, reasons=REASONS, 
         out.append(field)
     # Ô Phần I người kê khai = chủ tài khoản VNeID: cổng đổ sẵn thì giữ nguyên, trống mới điền theo giấy (user 20/11/2026).
     keep_portal_values(out, ('txtPHONE_NUMBER_NDN', 'txtEMAIL_ADDRESS_NDN'))
-    return out
+    # Và chỉ ghi khi tài khoản đúng là người có SĐT / email đó trên giấy — người ở mục II nếu giấy ghi, không thì người
+    # cần cấp (user 20/11/2026: tài khoản khác người ở mục II vẫn bị ghi SĐT / email mục II).
+    owner_name, owner_id = (rep_name, rep_id) if on_paper_rep else (subject_name, subject_id)
+    return only_for_account(out, contact, name=owner_name, id=owner_id)

@@ -134,6 +134,8 @@ def test_sdt_email_phan_i_giu_gia_tri_cong_do_san_tu_vneid():
     out = {f["name"]: f for f in _enrich(SELF)}
     for name in ("txtPHONE_NUMBER_NDN", "txtEMAIL_ADDRESS_NDN"):
         assert out[name]["keepPortalValue"] is True and out[name]["bcaSelfOnly"] is True, name
+        # Và chỉ ghi khi tài khoản đúng là người có SĐT / email đó trên giấy (extension so Phần I, 20/11).
+        assert out[name]["bcaAccountIs"] == out["radIsNCC"]["value"]["subject"], name
     # Ô của người cần cấp / người nhận kết quả không phải của tài khoản → điền theo giấy như cũ.
     for name in ("txtFULLNAME_NCC", "txtIDENTIFY_NUMBER_NCC", "txtPHONE_NUMBER_NN"):
         assert "keepPortalValue" not in out[name], name
@@ -154,7 +156,15 @@ def test_moi_thu_tuc_bo_cong_an_khai_o_chu_tai_khoan_giu_gia_tri_cong():
         "xac_nhan_thong_tin_ve_cu_tru": cu_tru, "tach_ho": cu_tru, "xoa_dang_ky_tam_tru": cu_tru,
         "cap_ho_chieu_pho_thong_o_trong_nuoc": nth, "trinh_bao_mat_ho_chieu_pho_thong_cap_xa": nth,
         "trinh_bao_mat_ho_chieu_pho_thong_cap_tinh": nth, "dang_ky_xe_lan_dau_san_xuat_lap_rap_trong_nuoc": nth,
-        "dang_ky_mau_con_dau": ("CongDan_tenCongDan",) + nth,
+        "dang_ky_xe_lan_dau_nhap_khau": nth,
+        # Sang tên xe: chỉ khi chủ xe tự nộp (khai hộ thì SĐT / email là của chủ xe trên giấy, không phải tài khoản).
+        "dang_ky_sang_ten_di_chuyen_xe_cap_tinh": nth,
+        # Thu hồi đăng ký, biển số xe: như sang tên (khai hộ thì giữ ở khối người làm thủ tục).
+        "thu_hoi_chung_nhan_dang_ky_bien_so_xe_cap_tinh": nth,
+        "thu_hoi_chung_nhan_dang_ky_bien_so_xe_cap_xa": nth,
+        "thu_hoi_chung_nhan_dang_ky_bien_so_xe_tai_cuc": nth,
+        # Mẫu con dấu: Họ và tên người nộp (mục 6) KHÔNG giữ giá trị cổng — phải khớp số giấy tờ điền theo giấy (20/11).
+        "dang_ky_mau_con_dau": nth,
         # Thị thực / thẻ tạm trú: khối CongDan_* là người nước ngoài; tài khoản là khối Thân nhân bảo lãnh.
         "cap_thi_thuc_cho_nguoi_nuoc_ngoai_tai_viet_nam": bao_lanh,
         "cap_the_tam_tru_cho_nguoi_nuoc_ngoai_tai_viet_nam": bao_lanh,

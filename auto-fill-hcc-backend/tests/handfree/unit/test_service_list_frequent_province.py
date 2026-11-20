@@ -98,8 +98,12 @@ def test_so_thu_tuc_moi_tinh_dung_bang_hoan_thien():
         # 20/11: +1 mọi tỉnh Bộ Công an trinh-bao-mat-ho-chieu-pho-thong-cap-tinh (1.001445) (_TAT_CA, mặc định).
         # 20/11: +1 mọi tỉnh Bộ Công an tach-ho (1.010038) (_TAT_CA, mặc định toàn quốc).
         # 20/11: +1 mọi tỉnh Bộ Công an xoa-dang-ky-tam-tru (1.010028) (_TAT_CA, mặc định toàn quốc).
-        "laichau": 144, "bacninh": 150, "lamdong": 138, "danang": 141, "quangninh": 145, "ninhbinh": 134,
-        "quangngai": 135, "laocai": 133, "quangtri": 135, "khanhhoa": 140, "tuyenquang": 135,
+        # 20/11: +1 mọi tỉnh Bộ Công an dang-ky-xe-lan-dau-nhap-khau (1.013066) (_TAT_CA, mặc định toàn quốc).
+        # 20/11: +1 mọi tỉnh Bộ Công an dang-ky-sang-ten-di-chuyen-xe-cap-tinh (2.000076) (_TAT_CA, mặc định toàn quốc).
+        # 20/11: +1 mọi tỉnh Bộ Công an thu-hoi-chung-nhan-dang-ky-bien-so-xe-cap-tinh (2.001485) (_TAT_CA, mặc định).
+        # 20/11: +2 mọi tỉnh Bộ Công an thu-hoi-chung-nhan-dang-ky-bien-so-xe-cap-xa (1.010919), …-tai-cuc (2.000311) (_TAT_CA, mặc định).
+        "laichau": 149, "bacninh": 155, "lamdong": 143, "danang": 146, "quangninh": 150, "ninhbinh": 139,
+        "quangngai": 140, "laocai": 138, "quangtri": 140, "khanhhoa": 145, "tuyenquang": 140,
     }
 
 

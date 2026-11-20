@@ -92,6 +92,18 @@ def test_so_dien_thoai_email_phan_i_theo_nguoi_khai_tren_giay():
     assert by["txtPHONE_NUMBER_NDN"] == "0987000222"
 
 
+def test_sdt_email_phan_i_chi_ghi_khi_tai_khoan_dung_la_nguoi_co_no_tren_giay():
+    # 20/11/2026: Phần I là của tài khoản đăng nhập — mỗi giá trị gắn người có nó trên giấy để extension so trước khi ghi.
+    out = _enrich({**HO_SO, "NguoiCanCap_SoDienThoai": "0912 000 111", "NguoiCanCap_Email": "Lan.Mau@Example.com"})
+    for name in ("txtPHONE_NUMBER_NDN", "txtEMAIL_ADDRESS_NDN"):
+        assert _field(out, name)["bcaAccountIs"] == {"name": "HOÀNG THỊ LAN", "id": "012312000001"}, name
+    # Cha khai thay có số riêng nhưng không có email → SĐT của cha, email lùi về người cần cấp: mỗi ô một chủ.
+    out = _enrich({**HO_SO, "NguoiCanCap_Email": "Lan.Mau@Example.com", "NguoiDaiDien_HoTen": "Hoàng Văn An",
+                   "NguoiDaiDien_QuanHe": "Cha", "NguoiDaiDien_SoDienThoai": "0987 000 222"})
+    assert _field(out, "txtPHONE_NUMBER_NDN")["bcaAccountIs"] == {"name": "HOÀNG VĂN AN"}
+    assert _field(out, "txtEMAIL_ADDRESS_NDN")["bcaAccountIs"] == {"name": "HOÀNG THỊ LAN", "id": "012312000001"}
+
+
 def test_so_dinh_danh_trung_cha_me_thi_bo_va_nop_cong_an_tinh():
     by = _by(_enrich({**HO_SO, "NguoiCanCap_SoDinhDanh": "012085000002"}))
     assert "txtIDENTIFY_NUMBER_NCC" not in by and by["radIsNCC"]["subject"] == {"name": "HOÀNG THỊ LAN"}

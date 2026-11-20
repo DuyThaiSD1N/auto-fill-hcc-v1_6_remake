@@ -91,5 +91,38 @@ assert.equal(bca.strong("cap-ho-chieu-pho-thong-o-trong-nuoc", textOnly), false)
 assert.equal(bca.detect({ ...bcaSignals, url: "https://dichvucong.gov.vn/p/home" }), "");
 assert.equal(bca.strong("cap-doi-the-can-cuoc", { ...bcaSignals, pageProcedureCodes: ["2.001195"] }), false);
 
+// Ba thủ tục thu hồi đăng ký xe (cấp tỉnh / cấp xã / tại Cục) cùng một form, cùng cụm chữ: có mã trên trang thì theo mã;
+// không có mã → hoà điểm thì giữ thủ tục đang chọn, chưa chọn gì thì lấy thủ tục đứng trước như cũ.
+const thuHoi = {};
+vm.runInNewContext(`
+  const detect = { urlScope: ["dichvucong.bocongan.gov.vn"], textIncludes: ["lý do thu hồi", "chủ xe mới"],
+                   headingDisabled: true, textPriority: true, codeOnPage: true };
+  const PROCEDURES = [
+    { key: "thu-hoi-cap-tinh", label: "Thu hồi … cấp tỉnh", detect },
+    { key: "thu-hoi-cap-xa", label: "Thu hồi … cấp xã", detect },
+    { key: "thu-hoi-tai-cuc", label: "Thu hồi … tại Cục", detect },
+  ];
+  const CODES = { "thu-hoi-cap-tinh": "2.001485", "thu-hoi-cap-xa": "1.010919", "thu-hoi-tai-cuc": "2.000311" };
+  function procedureCode(key) { return CODES[key] || ""; }
+  function normalizeProcedureSearch(value) {
+    return String(value || "").normalize("NFD").replace(/[\\u0300-\\u036f]/g, "")
+      .replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase();
+  }
+  function normDetect(value) { return normalizeProcedureSearch(value).replace(/\\s+/g, " ").trim(); }
+  let selectedKey = "";
+  function selectedProcedureConfig() { return PROCEDURES.find((p) => p.key === selectedKey) || null; }
+  ${source.slice(start, end)}
+  globalThis.detect = detectProcedureKeyFromSignals;
+  globalThis.select = (key) => { selectedKey = key; };
+`, thuHoi);
+const thuHoiText = { url: bcaUrl, bodyText: "Lý do thu hồi … THÔNG TIN CHÙ XE MỚI ( nếu có )", headings: [] };
+assert.equal(thuHoi.detect(thuHoiText), "thu-hoi-cap-tinh");
+thuHoi.select("thu-hoi-cap-xa");
+assert.equal(thuHoi.detect(thuHoiText), "thu-hoi-cap-xa");
+thuHoi.select("thu-hoi-tai-cuc");
+assert.equal(thuHoi.detect(thuHoiText), "thu-hoi-tai-cuc");
+// Mã in trên trang thắng lựa chọn đang có.
+assert.equal(thuHoi.detect({ ...thuHoiText, pageProcedureCodes: ["1.010919"] }), "thu-hoi-cap-xa");
+
 console.log("popup Lai Châu detection: scoped URL + exact procedure text passed");
 console.log("popup BCA detection: procedure code on page passed");

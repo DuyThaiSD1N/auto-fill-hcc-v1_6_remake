@@ -42,7 +42,7 @@ from app.pipelines.cap_the_can_cuoc_tu_du_14_tuoi.process.schema import (
     REASON_FIRST,
     UI_COMP_BY_NAME,
 )
-from app.pipelines._shared.formatting import keep_portal_values
+from app.pipelines._shared.formatting import keep_portal_values, only_for_account
 
 PROCEDURE_KEY = "cap-the-can-cuoc-tu-du-14-tuoi"
 # CMND thôi cấp từ 01/7/2021: sinh sau giữa năm 2007 thì đủ 14 tuổi khi đã hết cấp CMND → không thể "chuyển từ CMND".
@@ -102,14 +102,17 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
                                                   "fallback": RELATION_REPRESENTATIVE}
 
     # SĐT / email Phần I: của người kê khai thay nếu giấy ghi người đó, không thì của người cần cấp (mục 18–19 CC01).
-    on_paper_rep = bool(_name(values.get("NguoiDaiDien_HoTen")) or _identity(values.get("NguoiDaiDien_SoDinhDanh")))
-    phones = [_phone(values.get("NguoiDaiDien_SoDienThoai")), _phone(values.get("NguoiCanCap_SoDienThoai"))]
-    emails = [_email(values.get("NguoiDaiDien_Email")), _email(values.get("NguoiCanCap_Email"))]
+    # Mỗi giá trị đi kèm người có nó trên giấy: extension chỉ ghi khi tài khoản đăng nhập đúng là người đó (cuối hàm).
+    rep = (_name(values.get("NguoiDaiDien_HoTen")), _identity(values.get("NguoiDaiDien_SoDinhDanh")))
+    subject = (subject_name, subject_id)
+    on_paper_rep = bool(rep[0] or rep[1])
+    phones = [(_phone(values.get("NguoiDaiDien_SoDienThoai")), rep), (_phone(values.get("NguoiCanCap_SoDienThoai")), subject)]
+    emails = [(_email(values.get("NguoiDaiDien_Email")), rep), (_email(values.get("NguoiCanCap_Email")), subject)]
     if not on_paper_rep:
         phones.reverse()
         emails.reverse()
-    picked["txtPHONE_NUMBER_NDN"] = next((p for p in phones if p), None)
-    picked["txtEMAIL_ADDRESS_NDN"] = next((e for e in emails if e), None)
+    picked["txtPHONE_NUMBER_NDN"], phone_owner = next(((p, who) for p, who in phones if p), (None, (None, None)))
+    picked["txtEMAIL_ADDRESS_NDN"], email_owner = next(((e, who) for e, who in emails if e), (None, (None, None)))
 
     reason, reason_default = _reason(values)
     picked["cboLyDoCap"] = reason
@@ -147,4 +150,5 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         out.append(field)
     # Ô Phần I người kê khai = chủ tài khoản VNeID: cổng đổ sẵn thì giữ nguyên, trống mới điền theo giấy (user 20/11/2026).
     keep_portal_values(out, ('txtPHONE_NUMBER_NDN', 'txtEMAIL_ADDRESS_NDN'))
-    return out
+    out = only_for_account(out, ('txtPHONE_NUMBER_NDN',), name=phone_owner[0], id=phone_owner[1])
+    return only_for_account(out, ('txtEMAIL_ADDRESS_NDN',), name=email_owner[0], id=email_owner[1])

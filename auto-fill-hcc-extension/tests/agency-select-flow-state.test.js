@@ -67,4 +67,48 @@ assert.match(source, /const picks = wardPicks\(arm\.province, arm\.ward\);\s*for
 assert.match(source, /if \(done\(\) && !force\)/,
   "bấm lần lượt: chữ trên ô đúng chưa chắc đúng dòng, phải mở danh sách bấm lại");
 
+// Thủ tục BCA không có trang DVCQG (1.013066 đăng ký xe nhập khẩu…): link mở thẳng tthc?matt=58712, URL không
+// mang MaTTHC → chặng "bca" đọc mã ở mục "Mã thủ tục" trên trang để chỉ bấm "Nộp hồ sơ" đúng thủ tục.
+const bcaStart = source.indexOf("function bcaPageCode(");
+const bcaEnd = source.indexOf("\n\n  async function bcaStage(", bcaStart);
+assert.ok(bcaStart >= 0 && bcaEnd > bcaStart, "Không tách được bcaPageCode");
+const tthcItem = (title, detail) => ({
+  querySelector: (sel) => (sel === ".item-title" ? { textContent: title }
+    : sel === ".tthc-list-item-detail" ? { textContent: detail } : null),
+});
+let tthcItems = [];
+const bcaBox = {
+  URLSearchParams,
+  location: { search: "?matt=58712" },
+  document: { querySelectorAll: (sel) => (sel === ".tthc-list-item" ? tthcItems : []) },
+};
+vm.runInNewContext(`
+  ${source.slice(foldStart, foldEnd)}
+  ${source.slice(bcaStart, bcaEnd)}
+  globalThis.bcaPageCode = bcaPageCode;
+`, bcaBox);
+assert.equal(bcaBox.bcaPageCode(), "", "trang chưa dựng mục Mã thủ tục -> chưa có mã, giữ cờ");
+tthcItems = [tthcItem("Mã thủ tục", "\n   1.013066    "), tthcItem("Lĩnh vực", "Đăng ký, quản lý phương tiện")];
+assert.equal(bcaBox.bcaPageCode(), "1.013066");
+tthcItems = [tthcItem("Lĩnh vực", "1.999999"), tthcItem("Mã thủ tục", "2.000311")];
+assert.equal(bcaBox.bcaPageCode(), "2.000311", "chỉ lấy đúng mục Mã thủ tục");
+bcaBox.location = { search: "?matt=40852&MaTTHC=2.001428" };
+assert.equal(bcaBox.bcaPageCode(), "2.001428", "đi vòng từ DVCQG: mã trên URL vẫn được ưu tiên");
+assert.match(source, /const code = await waitFor\(bcaPageCode, \d+, \d+\) \|\| "";/,
+  "bcaStage phải chờ trang dựng mục Mã thủ tục (script chạy ở document_start)");
+
+// Popup: link bcaSubmit trỏ thẳng cổng Bộ Công an -> lên đạn luôn chặng "bca"; để trống stage thì agency-select.js
+// bên dichvucong.gov.vn bấm nhầm "Nộp hồ sơ" của trang DVCQG mở kế tiếp.
+const popup = fs.readFileSync(path.join(__dirname, "..", "popup.js"), "utf8");
+const opensStart = popup.indexOf("function opensOnBcaPortal(");
+const opensEnd = popup.indexOf("\n}\n", opensStart) + 2;
+assert.ok(opensStart >= 0 && opensEnd > opensStart, "Không tách được opensOnBcaPortal");
+const popupBox = { URL };
+vm.runInNewContext(`${popup.slice(opensStart, opensEnd)}\nglobalThis.opensOnBcaPortal = opensOnBcaPortal;`, popupBox);
+assert.equal(popupBox.opensOnBcaPortal({ url: "https://dichvucong.bocongan.gov.vn/bocongan/bothutuc/tthc?matt=58712" }), true);
+assert.equal(popupBox.opensOnBcaPortal({ url: "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf7-adfd-753a-8621-335a5395a571" }), false);
+assert.equal(popupBox.opensOnBcaPortal({ url: "" }), false);
+assert.match(popup, /\.\.\.\(link\.bcaSubmit && opensOnBcaPortal\(link\) \? \{ stage: "bca" \} : \{\}\),/,
+  "openKeKhaiPage phải lên đạn chặng bca cho link trỏ thẳng cổng Bộ Công an");
+
 console.log("agency select flow state: DVCQG detail route is not portal home");

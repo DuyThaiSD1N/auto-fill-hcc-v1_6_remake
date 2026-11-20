@@ -39,6 +39,9 @@ from app.pipelines.cai_chinh_dvc_moi.process.mapper import (
 from app.pipelines.cap_giay_phep_xay_dung.process.mapper import (
     with_account_process_options as with_gpxd_account_process_options,
 )
+from app.pipelines.dang_ky_dat_dai_lan_dau_khanh_hoa.process.mapper import (
+    with_account_process_options as with_dat_dai_lan_dau_khanh_hoa_account_process_options,
+)
 from app.pipelines.dang_ky_kinh_doanh.process.mapper import (
     with_account_process_options as with_hkd_account_process_options,
 )
@@ -416,6 +419,8 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
             options = with_khai_sinh_lien_thong_account_process_options(options, owner_user, procedure_key)
             options = with_tro_cap_nhan_cham_soc_account_process_options(options, owner_user, procedure_key)
             options = with_giao_dat_ninh_binh_account_process_options(options, owner_user, procedure_key)
+            # Phường Nam Nha Trang: đăng ký đất đai lần đầu Khánh Hòa khai người nộp = chủ hồ sơ (người ủy quyền).
+            options = with_dat_dai_lan_dau_khanh_hoa_account_process_options(options, owner_user, procedure_key)
             options = with_khuyet_tat_account_process_options(options, owner_user, procedure_key)
             # Cấp đổi căn cước: trợ lý không hỏi nơi → giấy không ghi cơ quan thì lấy xã/tỉnh tài khoản (tô vàng).
             options = with_cap_doi_the_can_cuoc_account_process_options(options, owner_user, procedure_key)
