@@ -3065,6 +3065,7 @@ STEP_LABELS = {
     "owner_filling": "Điền chủ hồ sơ",
     "owner_waiting_next": "Kiểm tra chủ hồ sơ",
     "choosing_attach_mode": "Cách đính kèm",
+    "wallet_reuse": "Dùng lại giấy tờ trên cổng",
     "filling": "Điền hồ sơ",
     "reviewing": "Rà soát",
     "attaching": "Đính kèm",
@@ -4087,3 +4088,61 @@ CN_DI_TIEP_HOI = {"md": "Công dân muốn **{label}** phải không ạ? Nói *
                   "tts": "Công dân muốn {label} phải không ạ? Công dân nói Có hoặc bấm nút để tôi làm, nói Không thì tôi giữ nguyên."}
 CN_QUAY_LAI_HOI = {"md": "Công dân muốn **{label}** phải không ạ? Nói **Có** hoặc bấm nút để tôi quay lại; **Không** thì tôi giữ nguyên.",
                    "tts": "Công dân muốn {label} phải không ạ? Công dân nói Có hoặc bấm nút để tôi quay lại, nói Không thì tôi giữ nguyên."}
+
+
+# ── Dùng lại giấy tờ trong Ví cá nhân của cổng (chat/wallet_reuse.py, chứng thực bản sao) ──
+# Chỉ bản tiếng Việt: wallet_reuse.enabled tắt ở chế độ tiếng Mông vì các câu này chưa có bản dịch.
+WALLET_CHECKING = {
+    "md": "🔎 Tôi xem nhanh **Ví cá nhân** trên cổng xem công dân có giấy tờ đã tải lên ở các hồ sơ trước không ạ…",
+    "tts": "Dạ, tôi xem nhanh ví cá nhân trên cổng, công dân chờ chút ạ.",
+}
+WALLET_ASK = {
+    "md": "📂 Ngoài giấy tờ vừa nhận, **Ví cá nhân** trên cổng còn giấy tờ công dân đã tải lên ở các hồ sơ trước"
+          "{more}.\n\n**Công dân có muốn chọn thêm giấy tờ nào trong đó không ạ?**",
+    "tts": "Dạ, ví cá nhân trên cổng còn giấy tờ công dân đã tải lên ở các hồ sơ trước. Công dân có muốn chọn thêm "
+           "không ạ?",
+}
+WALLET_ASK_MORE = " — tôi đọc **{count} tệp mới nhất**"
+WALLET_YES_LABEL = "📂 Có, chọn thêm từ Ví cá nhân"
+WALLET_NO_LABEL = "✅ Không, chỉ dùng giấy tờ vừa nhận"
+WALLET_FETCHING = {
+    "md": "📥 Tôi đang tải **{count} giấy tờ** đã chọn từ Ví cá nhân vào hồ sơ, công dân chờ chút ạ…",
+    "tts": "Dạ, tôi đang tải các giấy tờ đã chọn từ ví cá nhân, công dân chờ chút ạ.",
+}
+WALLET_LIST_READY = {
+    "md": "📂 Đây là **{docs} tệp mới nhất** trong Ví cá nhân (tên gốc trên cổng, mới nhất ở trên). Công dân **bấm vào "
+          "giấy cần dùng** hoặc nói số, ví dụ “chọn số 2 và 4”, rồi bấm **Dùng các giấy đã chọn** ạ.",
+    "tts": "Dạ, đây là các tệp mới nhất trong ví cá nhân. Công dân bấm chọn giấy cần dùng, hoặc nói số thứ tự, ví dụ "
+           "chọn số 2 và 4 ạ.",
+}
+WALLET_PICKED_VOICE = {
+    "md": "Đã chọn số **{numbers}**. Công dân nói “xong” hoặc bấm **Dùng các giấy đã chọn** để tôi đính kèm ạ.",
+    "tts": "Dạ, đã chọn số {numbers}. Công dân nói xong để tôi đính kèm ạ.",
+}
+WALLET_PICK_NONE_VOICE = {
+    "md": "Tôi chưa nghe ra số nào ạ. Công dân nói số thứ tự trong danh sách, ví dụ “chọn số 2 và 4”, hoặc “bỏ qua”.",
+    "tts": "Dạ, tôi chưa nghe ra số nào. Công dân nói số thứ tự, ví dụ chọn số 2 và 4, hoặc nói bỏ qua ạ.",
+}
+WALLET_IMPORTED = {
+    "md": "✓ Đã thêm **{count} giấy tờ** từ Ví cá nhân vào hồ sơ.",
+    "tts": "Dạ, tôi đã thêm {count} giấy tờ từ ví cá nhân.",
+}
+WALLET_UNAVAILABLE = {
+    "md": "⚠️ Tôi chưa đọc được Ví cá nhân trên cổng, tôi đính kèm giấy tờ vừa nhận ạ.",
+    "tts": "Dạ, tôi chưa đọc được ví cá nhân, tôi đính kèm giấy tờ vừa nhận ạ.",
+}
+WALLET_ONLY_LABEL = "📂 Chỉ chọn giấy tờ trong Ví cá nhân"
+WALLET_ONLY_BACK_LABEL = "↩️ Gửi giấy tờ cách khác"
+WALLET_ONLY_EMPTY = {
+    "md": "Ví cá nhân trên cổng chưa có giấy tờ nào công dân đã tải lên. Công dân gửi giấy tờ bằng một trong các cách "
+          "dưới đây ạ.",
+    "tts": "Dạ, ví cá nhân chưa có giấy tờ nào. Công dân gửi giấy tờ bằng một trong các cách dưới đây ạ.",
+}
+WALLET_ONLY_UNAVAILABLE = {
+    "md": "⚠️ Tôi chưa đọc được Ví cá nhân trên cổng. Công dân gửi giấy tờ bằng một trong các cách dưới đây ạ.",
+    "tts": "Dạ, tôi chưa đọc được ví cá nhân. Công dân gửi giấy tờ bằng một trong các cách dưới đây ạ.",
+}
+WALLET_ONLY_NONE_PICKED = {
+    "md": "Công dân chưa chọn giấy nào trong Ví cá nhân. Công dân gửi giấy tờ bằng một trong các cách dưới đây ạ.",
+    "tts": "Dạ, công dân chưa chọn giấy nào trong ví. Công dân gửi giấy tờ bằng một trong các cách dưới đây ạ.",
+}

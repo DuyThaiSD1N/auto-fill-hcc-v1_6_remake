@@ -1,0 +1,324 @@
+"""Dùng lại giấy tờ trong Ví cá nhân của cổng ở bước Thành phần hồ sơ (chat/wallet_reuse.py)."""
+from unittest.mock import AsyncMock
+
+import pytest
+
+from app.channels.handfree.chat import flow, pipeline_runner, store, tracing, wallet_reuse
+from app.channels.handfree.chat.intents import Intent
+from app.channels.handfree.documents import service as upload_service
+
+PROC = "chung-thuc-ban-sao"
+CAPS = {"supportsGuidedSteps": True, "supportsOwnerScan": True, "supportsPageBoundDocsComplete": True,
+        "supportsAttachmentContext": True, wallet_reuse.CAPABILITY: True}
+PAGE = {"wizardStep": 3, "attachmentTarget": True}
+ORIGIN = "https://apidvc.moj.gov.vn"
+ITEMS = [{"id": f"w{i}", "uri": f"{i:08x}-aaaa-bbbb-cccc-0123456789ab", "name": f"Scan_{i}.pdf",
+          "size": 1000 + i, "createdAt": f"2026-11-1{i}T10:00:00"} for i in range(3)]
+LISTED = {"ok": True, "items": ITEMS, "total": 3, "origin": ORIGIN}
+ONLY = "__action:wallet_only"
+
+
+@pytest.fixture(autouse=True)
+def _no_io(monkeypatch):
+    spawned = []
+    monkeypatch.setattr(pipeline_runner, "spawn", lambda coro: spawned.append(coro))
+    monkeypatch.setattr(pipeline_runner, "run_attach", lambda *a, **k: "run_attach")
+    monkeypatch.setattr(tracing, "set_report", AsyncMock())
+    monkeypatch.setattr(upload_service, "progress_of", AsyncMock(return_value={"files_count": 2}))
+    monkeypatch.setattr(wallet_reuse.up_store, "get", AsyncMock(return_value={"_id": "s1", "owner_user_id": "u1"}))
+    monkeypatch.setattr(wallet_reuse.up_store, "save", AsyncMock())
+    monkeypatch.setattr(wallet_reuse.up_store, "delete_session", AsyncMock())
+    return spawned
+
+
+def _conv(caps=CAPS, **extra) -> dict:
+    conv = store.new_conversation()
+    conv.update({"procedure_key": PROC, "state": "owner_waiting_next", "client_capabilities": dict(caps),
+                 "upload_session_id": "s1", "auth_user": {"id": "u1", wallet_reuse.SETTING: True},
+                 "attachment_preferences": {"attachMode": "merge"},
+                 "attachment_context": {"components": [{"name": "Bản chính"}]}})
+    conv.update(extra)
+    return conv
+
+
+def _types(reply):
+    return [a.get("type") for a in reply.actions]
+
+
+def _sends(reply):
+    return [c.get("send") for c in reply.chips]
+
+
+async def _arrive(conv):
+    return await flow.handle_turn(conv, Intent("event", "page_status", PAGE), PAGE)
+
+
+async def _listed(conv):
+    await _arrive(conv)
+    return await flow.handle_turn(conv, Intent("event", "wallet_list", LISTED))
+
+
+# ── Bật / tắt ──
+async def test_extension_cu_khong_khai_capability_thi_di_thang_dinh_kem():
+    conv = _conv(caps={k: v for k, v in CAPS.items() if k != wallet_reuse.CAPABILITY})
+    reply = await _arrive(conv)
+    assert "wallet_list" not in _types(reply)
+    assert conv["state"] == "attaching"
+
+
+async def test_tai_khoan_tat_cai_dat_thi_khong_hoi():
+    conv = _conv(auth_user={"id": "u1", wallet_reuse.SETTING: False})
+    await _arrive(conv)
+    assert conv["state"] == "attaching"
+
+
+async def test_che_do_tieng_mong_thi_khong_hoi():
+    conv = _conv(lang="hmong")
+    await _arrive(conv)
+    assert conv["state"] == "attaching"
+
+
+# ── Đọc danh sách, hỏi, hiện thẻ ngay ──
+async def test_toi_thanh_phan_ho_so_thi_doc_danh_sach_vi_truoc_khi_dinh():
+    conv = _conv()
+    reply = await _arrive(conv)
+    assert conv["state"] == wallet_reuse.STATE and conv["wallet_phase"] == "checking"
+    assert reply.actions == [{"type": "wallet_list", "limit": wallet_reuse.LIMIT}]
+    assert flow.build_progress(conv)["label"] == "Dùng lại giấy tờ trên cổng"
+
+
+async def test_page_status_trong_luc_cho_khong_lam_gi():
+    conv = _conv()
+    await _arrive(conv)
+    reply = await _arrive(conv)
+    assert reply.display_md == "" and conv["wallet_phase"] == "checking"
+
+
+async def test_vi_trong_thi_dinh_kem_luon_va_khong_hoi_lai(_no_io):
+    conv = _conv()
+    await _arrive(conv)
+    await flow.handle_turn(conv, Intent("event", "wallet_list", {"ok": True, "items": [], "origin": ORIGIN}))
+    assert conv["state"] == "attaching" and conv["wallet_reuse_done"] is True
+    assert "run_attach" in _no_io
+
+
+async def test_doc_vi_hong_thi_bao_roi_dinh_kem():
+    conv = _conv()
+    await _arrive(conv)
+    reply = await flow.handle_turn(conv, Intent("event", "wallet_list", {"ok": False, "error": "x"}))
+    assert "chưa đọc được Ví cá nhân" in reply.display_md
+    assert conv["state"] == "attaching"
+
+
+async def test_origin_khong_phai_cong_nha_nuoc_thi_khong_dung():
+    conv = _conv()
+    await _arrive(conv)
+    reply = await flow.handle_turn(conv, Intent("event", "wallet_list", {**LISTED, "origin": "https://evil.example.com"}))
+    assert not reply.cards and conv["state"] == "attaching"
+
+
+async def test_vi_co_giay_thi_hoi_va_bo_qua_thi_dinh_giay_vua_nhan():
+    conv = _conv()
+    reply = await _listed(conv)
+    assert _sends(reply) == ["__action:wallet_use", "__action:wallet_skip"]
+    await flow.handle_turn(conv, Intent("action", "wallet_skip", {}))
+    assert conv["state"] == "attaching" and "wallet_items" not in conv
+
+
+async def test_dong_y_thi_hien_the_ngay_khong_tai_khong_doc_noi_dung(_no_io):
+    conv = _conv()
+    await _listed(conv)
+    reply = await flow.handle_turn(conv, Intent("action", "wallet_use", {}))
+    assert reply.actions == [] and not _no_io, "chưa tải, chưa chạy nền gì"
+    card = reply.cards[0]
+    assert card["kind"] == "wallet_docs" and card["origin"] == ORIGIN
+    assert card["downloadPath"] == wallet_reuse.DOWNLOAD_PATH
+    assert [(e["no"], e["name"], e["size"], e["date"]) for e in card["entries"]] == [
+        (1, "Scan_0.pdf", 1000, "2026-11-10T10:00:00"), (2, "Scan_1.pdf", 1001, "2026-11-11T10:00:00"),
+        (3, "Scan_2.pdf", 1002, "2026-11-12T10:00:00")]
+    assert conv["wallet_phase"] == "choosing"
+    wallet_reuse.up_store.save.assert_not_awaited()
+
+
+# ── Chọn → chỉ tải giấy được chọn → chép sang hồ sơ ──
+async def _choosing():
+    conv = _conv()
+    await _listed(conv)
+    await flow.handle_turn(conv, Intent("action", "wallet_use", {}))
+    return conv
+
+
+async def test_chon_giay_thi_chi_tai_dung_giay_do_vao_phien_tam():
+    conv = await _choosing()
+    reply = await flow.handle_turn(conv, Intent("action", "wallet_pick", {"picked": [3, 1, 9, "x"]}))
+    read = next(a for a in reply.actions if a["type"] == "wallet_read")
+    assert [i["id"] for i in read["items"]] == ["w0", "w2"]
+    assert read["session_id"] == conv["wallet_session_id"] != "s1"
+    assert read["origin"] == ORIGIN and read["downloadPath"] == wallet_reuse.DOWNLOAD_PATH
+    assert conv["wallet_phase"] == "fetching"
+    saved = wallet_reuse.up_store.save.await_args.args[0]
+    assert saved["purpose"] == "wallet" and saved["manual_complete_only"] is True and saved["owner_user_id"] == "u1"
+
+
+async def test_tai_xong_thi_chep_vao_ho_so_roi_dinh(monkeypatch):
+    conv = await _choosing()
+    await flow.handle_turn(conv, Intent("action", "wallet_pick", {"picked": [1, 2]}))
+    staging = conv["wallet_session_id"]
+    imported = AsyncMock(return_value=2)
+    monkeypatch.setattr(wallet_reuse, "import_staged", imported)
+    files = [{"id": "w0", "fid": "f0.pdf"}, {"id": "w1", "fid": "f1.pdf"}]
+    reply = await flow.handle_turn(conv, Intent("event", "wallet_uploaded", {"ok": True, "files": files}))
+    assert imported.await_args.args[1] == {"f0.pdf": "w0", "f1.pdf": "w1"}
+    assert "Đã thêm **2 giấy tờ**" in reply.display_md
+    assert conv["state"] == "attaching" and "wallet_session_id" not in conv
+    wallet_reuse.up_store.delete_session.assert_awaited_with(staging)
+
+
+async def test_tai_hong_het_thi_bao_roi_dinh_giay_vua_nhan():
+    conv = await _choosing()
+    await flow.handle_turn(conv, Intent("action", "wallet_pick", {"picked": [1]}))
+    reply = await flow.handle_turn(conv, Intent("event", "wallet_uploaded", {"ok": False, "files": [], "failed": 1}))
+    assert "chưa đọc được Ví cá nhân" in reply.display_md and conv["state"] == "attaching"
+
+
+async def test_noi_so_thu_tu_de_chon_bo_va_xong():
+    conv = await _choosing()
+    reply = await flow.handle_turn(conv, Intent("action", "wallet_answer", {"text": "chọn số 2 và 3"}))
+    assert conv["wallet_picked"] == [2, 3] and "2, 3" in reply.display_md
+    assert [e["picked"] for e in reply.cards[0]["entries"]] == [False, True, True]
+    await flow.handle_turn(conv, Intent("action", "wallet_answer", {"text": "bỏ số 3"}))
+    assert conv["wallet_picked"] == [2]
+    reply = await flow.handle_turn(conv, Intent("action", "wallet_answer", {"text": "xong rồi"}))
+    read = next(a for a in reply.actions if a["type"] == "wallet_read")
+    assert [i["id"] for i in read["items"]] == ["w1"]
+
+
+async def test_chot_giay_to_ngay_o_buoc_thanh_phan_ho_so_cung_hoi_vi(monkeypatch):
+    monkeypatch.setattr(upload_service, "complete_session", AsyncMock())
+    monkeypatch.setattr(upload_service, "progress_of",
+                        AsyncMock(return_value={"files_count": 2, "received": 1, "total": 1}))
+    conv = _conv(state="collecting_docs", docs_target="attachment", doc_method="scan")
+    reply = await flow.handle_turn(conv, Intent("action", "docs_done", {}))
+    assert conv["state"] == wallet_reuse.STATE and _types(reply) == ["wallet_list"]
+    await flow.handle_turn(conv, Intent("event", "wallet_list", {"ok": True, "items": []}))
+    assert conv["state"] == "attaching" and conv["docs_target"] == "attachment"
+
+
+def test_danh_sach_vi_chi_nhan_ma_tep_hop_le_va_toi_da_20():
+    raw = [{"id": "a", "uri": "../etc/passwd"}, {"id": "b", "uri": "ok-1"}, {"id": "b", "uri": "ok-2"}]
+    raw += [{"id": f"x{i}", "uri": f"u{i}"} for i in range(30)]
+    items = wallet_reuse._clean_items(raw)
+    assert items[0]["uri"] == "ok-1" and len(items) == wallet_reuse.LIMIT
+    assert all(i["uri"] != "../etc/passwd" for i in items)
+
+
+async def test_chep_tep_tu_phien_tam_sang_phien_ho_so_giu_byte_ten_goc_va_mo_lai_phien_da_chot(monkeypatch, tmp_path):
+    monkeypatch.setattr(wallet_reuse.up_store.settings, "storage_dir", str(tmp_path))
+    for fid, data in (("f0.pdf", b"%PDF-a"), ("f1.pdf", b"%PDF-b")):
+        wallet_reuse.up_store.save_file_bytes("W1", fid, data)
+    wallet = {"_id": "W1", "files": [{"fid": f, "name": f, "type": "application/pdf"} for f in ("f0.pdf", "f1.pdf")]}
+    main = {"_id": "s1", "complete": True, "procedure_key": PROC, "files": [{"fid": "x", "name": "Scan_0.pdf"}],
+            "required_docs": [{"key": "khac", "sides": 1}]}
+    monkeypatch.setattr(wallet_reuse.up_store, "get", AsyncMock(side_effect=lambda sid: {"W1": wallet, "s1": main}[sid]))
+    calls = []
+    monkeypatch.setattr(wallet_reuse.up_store, "reopen_for_supplement", AsyncMock(side_effect=lambda s: calls.append("reopen")))
+    monkeypatch.setattr(wallet_reuse.up_store, "set_complete", AsyncMock(side_effect=lambda s, v: calls.append(("complete", v))))
+    appended = []
+
+    async def append(sid, metas, limit):
+        calls.append("append")
+        appended.extend(metas)
+        return {**main, "files": main["files"] + metas}
+    monkeypatch.setattr(wallet_reuse.up_store, "append_files_with_limit", append)
+    monkeypatch.setattr(wallet_reuse, "broadcast", AsyncMock())
+    conv = _conv(wallet_session_id="W1", wallet_items=ITEMS)
+    count = await wallet_reuse.import_staged(conv, {"f0.pdf": "w0", "f1.pdf": "w1"})
+    assert count == 2 and calls == ["reopen", "append", ("complete", True)]
+    assert [m["name"] for m in appended] == ["Scan_0-2.pdf", "Scan_1.pdf"], "tên gốc trong ví, không trùng tên đã có"
+    assert {m["doc_key"] for m in appended} == {"khac"}
+    datas = sorted((tmp_path / "upload_sessions" / "s1" / m["fid"]).read_bytes() for m in appended)
+    assert datas == [b"%PDF-a", b"%PDF-b"]
+    assert wallet_reuse.broadcast.await_args.args[1]["files_count"] == 3
+
+
+# ── Nút "Chỉ chọn giấy tờ trong Ví cá nhân" lúc nhận giấy tờ ở bước Thành phần hồ sơ ──
+def _ask_conv(**extra):
+    return _conv(**{"state": "guide_login", "owner_phase": False, **extra})
+
+
+async def test_hoi_cach_gui_giay_o_buoc_thanh_phan_ho_so_co_nut_chi_vi():
+    conv = _ask_conv()
+    reply = await flow.handle_turn(conv, Intent("event", "page_status", PAGE), PAGE)
+    assert conv["state"] == "ask_doc_method" and ONLY in _sends(reply)
+
+
+async def test_buoc_chu_ho_so_khong_co_nut_chi_vi():
+    assert ONLY not in _sends(flow._to_ask_doc_method(_ask_conv(owner_phase=True)))
+
+
+async def test_tat_cai_dat_thi_khong_co_nut_chi_vi():
+    conv = _ask_conv(auth_user={"id": "u1", wallet_reuse.SETTING: False})
+    reply = await flow.handle_turn(conv, Intent("event", "page_status", PAGE), PAGE)
+    assert ONLY not in _sends(reply)
+
+
+async def test_chon_scan_chua_co_tep_van_co_nut_chi_vi(monkeypatch):
+    monkeypatch.setattr(upload_service, "create_for_conversation", AsyncMock(return_value={"type": "show_qr"}))
+    monkeypatch.setattr(upload_service, "sync_for_conversation", AsyncMock())
+    monkeypatch.setattr(upload_service, "progress_of", AsyncMock(return_value={"files_count": 0}))
+    conv = _ask_conv(state="ask_doc_method")
+    assert ONLY in _sends(await flow._apply_doc_method(conv, "scan", reuse_session=False))
+    monkeypatch.setattr(upload_service, "progress_of", AsyncMock(return_value={"files_count": 2}))
+    assert ONLY not in _sends(await flow._apply_doc_method(conv, "scan", reuse_session=True))
+
+
+async def _only_start(monkeypatch, files_count=0):
+    monkeypatch.setattr(upload_service, "progress_of", AsyncMock(return_value={"files_count": files_count}))
+    conv = _ask_conv(state="collecting_docs", doc_method="scan")
+    reply = await flow.handle_turn(conv, Intent("action", "wallet_only", {}))
+    return conv, reply
+
+
+async def test_chi_vi_hien_the_luon_khong_hoi_lai(monkeypatch):
+    conv, reply = await _only_start(monkeypatch)
+    assert _types(reply) == ["wallet_list"] and conv["wallet_only"] is True
+    reply = await flow.handle_turn(conv, Intent("event", "wallet_list", LISTED))
+    assert reply.cards[0]["kind"] == "wallet_docs" and conv["wallet_phase"] == "choosing"
+    assert _sends(reply) == ["__action:wallet_skip"] and reply.chips[0]["label"] == "↩️ Gửi giấy tờ cách khác"
+
+
+async def test_chi_vi_ma_vi_trong_thi_ve_buoc_chon_cach_gui(monkeypatch):
+    conv, _ = await _only_start(monkeypatch)
+    reply = await flow.handle_turn(conv, Intent("event", "wallet_list", {"ok": True, "items": [], "origin": ORIGIN}))
+    assert conv["state"] == "ask_doc_method" and "chưa có giấy tờ nào" in reply.display_md
+    assert ONLY not in _sends(reply), "đã thử ví rồi thì không mời lại"
+
+
+async def test_chi_vi_khong_chon_gi_thi_ve_buoc_chon_cach_gui(monkeypatch):
+    conv, _ = await _only_start(monkeypatch)
+    await flow.handle_turn(conv, Intent("event", "wallet_list", LISTED))
+    reply = await flow.handle_turn(conv, Intent("action", "wallet_skip", {}))
+    assert conv["state"] == "ask_doc_method" and "chưa chọn giấy nào" in reply.display_md
+
+
+async def test_chi_vi_chon_giay_tai_xong_thi_dinh_kem(monkeypatch):
+    conv, _ = await _only_start(monkeypatch)
+    await flow.handle_turn(conv, Intent("event", "wallet_list", LISTED))
+    await flow.handle_turn(conv, Intent("action", "wallet_pick", {"picked": [1]}))
+    monkeypatch.setattr(wallet_reuse, "import_staged", AsyncMock(return_value=1))
+    reply = await flow.handle_turn(conv, Intent("event", "wallet_uploaded", {"ok": True,
+                                                                          "files": [{"id": "w0", "fid": "f0.pdf"}]}))
+    assert conv["state"] == "attaching" and "Đã thêm **1 giấy tờ**" in reply.display_md
+
+
+async def test_chi_vi_tai_hong_thi_ve_buoc_chon_cach_gui(monkeypatch):
+    conv, _ = await _only_start(monkeypatch)
+    await flow.handle_turn(conv, Intent("event", "wallet_list", LISTED))
+    await flow.handle_turn(conv, Intent("action", "wallet_pick", {"picked": [1]}))
+    reply = await flow.handle_turn(conv, Intent("event", "wallet_uploaded", {"ok": False, "files": []}))
+    assert conv["state"] == "ask_doc_method" and "chưa đọc được Ví cá nhân" in reply.display_md
+
+
+async def test_da_gui_tep_roi_bam_nut_chi_vi_thi_hoi_nhu_thuong(monkeypatch):
+    conv, _ = await _only_start(monkeypatch, files_count=3)
+    assert conv["wallet_only"] is False

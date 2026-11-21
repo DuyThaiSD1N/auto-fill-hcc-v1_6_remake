@@ -36,6 +36,7 @@ from app.channels.handfree.chat import split_submit
 from app.channels.handfree.chat import store as conv_store
 from app.channels.handfree.chat import tu_phap_moi as tpm
 from app.channels.handfree.chat import tu_phap_v2
+from app.channels.handfree.chat import wallet_reuse
 from app.channels.handfree.chat.intents import Intent, fold
 from app.locations.catalog import (
     PROVINCES,
@@ -1424,6 +1425,10 @@ async def _handle_turn_inner(
     alert_reply = portal_alert.handle(conv, intent)
     if alert_reply is not None:
         return alert_reply
+    if (intent.kind == "action" and intent.value == "wallet_only"
+            and conv.get("state") in ("ask_doc_method", "collecting_docs", "qr_waiting")
+            and wallet_reuse.only_offer(conv, current_proc)):
+        return await _wallet_only_start(conv)
     # Quay lại bước trước của wizard tư pháp: lệnh bấm Quay lại + kết quả kiểm tờ khai sau khi lùi về Kê khai.
     back_reply = step_back.handle(conv, current_proc, intent)
     if back_reply is not None:
@@ -3038,6 +3043,8 @@ def _to_ask_doc_method(conv: dict, intro: tuple[str, str] | None = None) -> Repl
     no_docs = hkd_tro_ly.no_docs_chip(conv, proc)
     if no_docs:
         r.chips = [no_docs]
+    if wallet_reuse.only_offer(conv, proc):
+        r.chips = [*r.chips, wallet_reuse.only_chip()]
     return _with_eform_preopen(conv, proc, r)
 
 
@@ -3814,7 +3821,7 @@ async def _apply_doc_method(conv: dict, method: str, *, reuse_session: bool) -> 
                   else await upload_service.create_for_conversation(conv))
         r = Reply(*_fmt(vi.QR_WAITING))
         r.actions = [action]
-        r.chips = [_switch_to_scan_chip()]
+        r.chips = [_switch_to_scan_chip(), *await _wallet_only_chips(conv)]
         return r
     if method == "scan":
         # Scan tại quầy = upload từ MÁY TÍNH — cùng phiên/classify/OCR/WS với QR, chỉ khác nguồn file.
@@ -3839,9 +3846,18 @@ async def _apply_doc_method(conv: dict, method: str, *, reuse_session: bool) -> 
             {"label": "📁 Chọn thêm tệp từ máy", "send": "__action:pick_files_again"},
             _switch_to_qr_chip(),
             _docs_done_chip(conv),
+            *await _wallet_only_chips(conv),
         ]
         return r
     return None
+
+
+async def _wallet_only_chips(conv: dict) -> list[dict]:
+    """Nút chỉ-ví sau khi đã chọn cách gửi: chỉ khi phiên CHƯA có tệp nào (đã gửi thì hỏi ví ở lúc chốt giấy tờ)."""
+    if not wallet_reuse.only_offer(conv, get_procedure(conv.get("procedure_key") or "") or {}):
+        return []
+    progress = await upload_service.progress_of(conv.get("upload_session_id") or "") or {}
+    return [] if int(progress.get("files_count") or 0) else [wallet_reuse.only_chip()]
 
 
 async def _handle_ask_doc_method(conv: dict, intent: Intent) -> Reply:
@@ -4008,6 +4024,9 @@ async def _docs_complete(conv: dict, page_context: dict | None = None) -> Reply:
     # (attachment_preferences.attachMode) thì áp luôn, KHÔNG hỏi giữa luồng; extension cũ
     # không gửi preference → vẫn hỏi + chip như trước để bản trên chợ không đổi hành vi.
     preset_split_note = False
+    if target == "attachment" and wallet_reuse.should_offer(conv, proc):
+        conv["docs_target"] = "attachment"
+        return wallet_reuse.start(conv)
     if target == "attachment":
         mode_question, preset_split_note = _attach_mode_gate(conv, proc, files_count)
         if mode_question is not None:
@@ -4090,6 +4109,38 @@ async def _docs_complete(conv: dict, page_context: dict | None = None) -> Reply:
                     sid=conv.get("upload_session_id", ""),
                     note=vi.ATTACH_MODE_PRESET_SPLIT if preset_split_note else None))
     return tu_phap_v2.attach_only_started(conv, proc, r)
+
+
+async def _wallet_resume(conv: dict) -> Reply:
+    """Xong bước Ví cá nhân → đi tiếp đúng luồng cũ: cổng gộp/tách rồi lập kế hoạch đính kèm."""
+    proc = get_procedure(conv.get("procedure_key") or "") or {}
+    progress = await upload_service.progress_of(conv.get("upload_session_id") or "") or {}
+    mode_question, _ = _attach_mode_gate(conv, proc, int(progress.get("files_count") or 0))
+    if mode_question is not None:
+        return mode_question
+    conv["owner_phase"] = False
+    conv["auto_attach_after_fill"] = False
+    conv["docs_target"] = "attachment"
+    conv["state"] = "attaching"
+    return await _handle_attaching(conv, Intent("action", "request_attach", {}))
+
+
+async def _wallet_back(conv: dict) -> Reply:
+    """Chế độ "chỉ chọn giấy tờ trong Ví cá nhân" không lấy được giấy nào → về bước chọn cách gửi giấy tờ."""
+    return _to_ask_doc_method(conv)
+
+
+async def _wallet_only_start(conv: dict) -> Reply:
+    """Nút "Chỉ chọn giấy tờ trong Ví cá nhân": đọc ví ngay, giấy chọn được vào phiên hồ sơ như tệp vừa gửi."""
+    if not conv.get("upload_session_id"):
+        await upload_service.create_for_conversation(conv)
+    progress = await upload_service.progress_of(conv.get("upload_session_id") or "") or {}
+    # Đã có tệp (công dân vừa gửi xong mới bấm nút cũ) → như lượt hỏi thường: có/không, đính cả giấy đã gửi.
+    return wallet_reuse.start(conv, only=not int(progress.get("files_count") or 0))
+
+
+async def _handle_wallet_reuse(conv: dict, intent: Intent) -> Reply:
+    return await wallet_reuse.handle(conv, intent, _wallet_resume, _wallet_back)
 
 
 async def _handle_choosing_attach_mode(conv: dict, intent: Intent) -> Reply:
@@ -5056,6 +5107,8 @@ async def _handle_owner_waiting_next(conv: dict, intent: Intent) -> Reply:
         # mất lựa chọn "mỗi tài liệu một hồ sơ riêng". Máy quầy đã đặt sẵn trong Cài đặt thì áp
         # luôn, không hỏi. Bỏ qua cờ báo-trước "sẽ tách": câu ATTACH_PLAN_READY_SPLIT ở bước
         # kế hoạch đã nói rõ, thêm ở đây là hai lần cùng một ý.
+        if wallet_reuse.should_offer(conv, proc):
+            return wallet_reuse.start(conv)
         progress = await upload_service.progress_of(conv.get("upload_session_id") or "") or {}
         mode_question, _ = _attach_mode_gate(conv, proc, int(progress.get("files_count") or 0))
         if mode_question is not None:
@@ -6696,6 +6749,7 @@ _HANDLERS = {
     "qr_waiting": _handle_qr_waiting,
     "collecting_docs": _handle_collecting_docs,
     "choosing_attach_mode": _handle_choosing_attach_mode,
+    wallet_reuse.STATE: _handle_wallet_reuse,
     "owner_filling": _handle_owner_filling,
     "owner_waiting_next": _handle_owner_waiting_next,
     "filling": _handle_filling,
@@ -6708,7 +6762,8 @@ _HANDLERS = {
 def build_progress(conv: dict) -> dict:
     state = conv.get("state", "greet")
     try:
-        step = vi.STEP_ORDER.index(state) + 1
+        # Bước Ví cá nhân nằm ngay trước đính kèm, không chen vào thứ tự chung (đổi tổng số bước của mọi thủ tục).
+        step = vi.STEP_ORDER.index("attaching" if state == wallet_reuse.STATE else state) + 1
     except ValueError:
         step = 1
     progress = {"step": step, "total": len(vi.STEP_ORDER), "label": vi.STEP_LABELS.get(state, "")}

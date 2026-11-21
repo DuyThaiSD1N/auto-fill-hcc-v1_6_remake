@@ -98,6 +98,7 @@ from app.pipelines.xac_nhan_tthn_dvc_moi.process.mapper import (
     with_account_process_options as with_tthn_account_process_options,
 )
 from app.pipelines.xac_nhan_tthn_dvc_moi.attach.nghia_hung import with_account_attach_options
+from app.pipelines._shared.area_remap import ward_hints
 from app.pipelines._shared.lao_cai_tach_giay_to import always_split, plan_with_split
 from app.pipelines._shared.locked_submitter import unlock_locked_submitter
 from app.pipelines._shared.lao_cai_tach_giay_to import with_account_attach_options as with_cam_duong_attach_options
@@ -463,22 +464,24 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
 
         t_pipe = time.monotonic()
         async with mon.span("pipeline", procedure=procedure_key):
-            if authorized and proc.get("mode") == "attach":
-                # Thủ tục chỉ đính kèm (vd hỗ trợ người cao tuổi): pipeline lõi chính là pipeline khối ủy quyền.
-                result = await _run_bac_ninh_authorized(pipeline, files_by_role, options, authorized)
-            elif authorized:
-                # Lượt đơn xong mới tới lượt ủy quyền: lượt sau trúng cache OCR và, với thủ tục hai lượt cùng
-                # prompt, dùng lại câu trả lời LLM (compact_agent llm_reuse) thay vì OCR/LLM trùng song song.
-                if rec is not None:
-                    rec.meta["purpose"] = "registration_form"
-                result = await pipeline(files_by_role, options)
-                extra = await asyncio.create_task(_run_bac_ninh_authorized_recorded(
-                    pipeline, files_by_role, options, authorized, conv_id, sid, procedure_key,
-                ))
-                result["fields"] = [*(result.get("fields") or []), *extra["fields"]]
-                result["errors"] = [*(result.get("errors") or []), *extra["errors"]]
-            else:
-                result = await pipeline(files_by_role, options)
+            # Xã quầy: gợi ý YẾU cho bước sửa chính tả xã của mapper (xem area_remap.ward_hints).
+            with ward_hints(options.get("counterWard")):
+                if authorized and proc.get("mode") == "attach":
+                    # Thủ tục chỉ đính kèm (vd hỗ trợ người cao tuổi): pipeline lõi chính là pipeline khối ủy quyền.
+                    result = await _run_bac_ninh_authorized(pipeline, files_by_role, options, authorized)
+                elif authorized:
+                    # Lượt đơn xong mới tới lượt ủy quyền: lượt sau trúng cache OCR và, với thủ tục hai lượt cùng
+                    # prompt, dùng lại câu trả lời LLM (compact_agent llm_reuse) thay vì OCR/LLM trùng song song.
+                    if rec is not None:
+                        rec.meta["purpose"] = "registration_form"
+                    result = await pipeline(files_by_role, options)
+                    extra = await asyncio.create_task(_run_bac_ninh_authorized_recorded(
+                        pipeline, files_by_role, options, authorized, conv_id, sid, procedure_key,
+                    ))
+                    result["fields"] = [*(result.get("fields") or []), *extra["fields"]]
+                    result["errors"] = [*(result.get("errors") or []), *extra["errors"]]
+                else:
+                    result = await pipeline(files_by_role, options)
             if rec is not None:
                 rec.close_gap("agent_end", "post.mapper")
         pipe_ms = int((time.monotonic() - t_pipe) * 1000)

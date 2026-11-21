@@ -15,6 +15,9 @@ DEFAULTS: dict[str, object] = {
     "renameAttachmentFiles": True,
     # Handfree: lấy người nộp theo tờ khai (bỏ so khớp tài khoản đăng nhập) → options.submitterMode của pipeline.
     "submitterFromDeclaration": False,
+    # Handfree, chứng thực bản sao: tới bước Thành phần hồ sơ thì hỏi công dân có dùng lại giấy tờ đã tải lên
+    # Ví cá nhân của cổng ở hồ sơ trước không. Tắt mặc định: đọc ví thêm một lượt OCR + LLM trên máy dùng chung.
+    "reuseWalletDocuments": False,
     # Handfree: tỉ lệ cỡ chữ của khung Trợ lý (extension phóng cả khung). Khoảng 0.9–1.3 do router chặn: nhỏ hơn thì
     # chữ phụ dưới 10px khó đọc, lớn hơn thì khung 400px còn chưa tới 310px, các khối rộng bị vỡ.
     "fontScale": 1.0,

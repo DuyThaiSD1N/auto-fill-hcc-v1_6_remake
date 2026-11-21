@@ -24,6 +24,7 @@ dòng ghi "Tự chọn" mà BA có giá trị mặc định thì điền mặc �
 import re
 import unicodedata
 
+from app.pipelines._shared.area_remap import ward_hints
 from app.pipelines._shared.ethnic_normalize import normalize_ethnic
 from app.pipelines.khai_tu.process import mapper as khai_tu_mapper
 from app.pipelines.khai_tu_lien_thong.process.schema import UI_COMP_BY_NAME
@@ -142,6 +143,25 @@ _QUAN_HE_NGUOC_THEO_GIOI = {
 }
 
 
+# "Kính gửi: (1) ỦY BAN NHÂN DÂN XÃ X" — phần sau chữ cấp xã cuối cùng của dòng.
+_RECEIVER_RE = re.compile(r"(?i)k[íi]nh\s*g[ửu]i\b(.*)")
+_WARD_MARK_RE = re.compile(r"(?i)\b(?:xã|phường|thị\s*trấn|đặc\s*khu)\s+")
+
+
+def _receiving_wards(ocr_text: str) -> list[str]:
+    """Tên xã nơi nhận hồ sơ trên dòng "Kính gửi" (các cụm 2–4 tiếng đầu, bước sửa chính tả chỉ nhận cụm là xã hiện
+    hành). Khai tử đăng ký ở xã nơi cư trú cuối cùng của người chết, nên tên xã ô cư trú đọc lệch thường là xã này."""
+    out = []
+    for line in str(ocr_text or "").splitlines():
+        found = _RECEIVER_RE.search(line)
+        marks = list(_WARD_MARK_RE.finditer(found.group(1))) if found else []
+        if not marks:
+            continue
+        words = found.group(1)[marks[-1].end():].split()
+        out.extend(" ".join(words[:size]) for size in (4, 3, 2) if len(words) >= size)
+    return out
+
+
 def _quan_he_nguoc(quan_he, gioi_tinh_nguoi_mat) -> str:
     """Trả nhãn trong danh mục của cổng; không chắc thì trả rỗng, KHÔNG đoán."""
     khoa = _fold(quan_he)
@@ -172,11 +192,13 @@ def enrich(
     values = {f["name"]: f["value"] for f in fields if f.get("value") not in (None, "", {}, [])}
     # Field "default" của mapper cũ là giá trị giữ chỗ cho biểu mẫu cũ ("NGƯỜI YÊU CẦU", địa chỉ chỉ
     # có quốc gia...), không phải dữ kiện giấy tờ.
-    legacy = {
-        item["name"]: item["value"]
-        for item in khai_tu_mapper.enrich(fields, options, reasoning_context=reasoning_context)
-        if not item.get("default")
-    }
+    # Xã nơi nhận hồ sơ ghi trên giấy: gợi ý MẠNH cho bước sửa chính tả xã (xem area_remap.ward_hints).
+    with ward_hints(*_receiving_wards(ocr_text), strong=True):
+        legacy = {
+            item["name"]: item["value"]
+            for item in khai_tu_mapper.enrich(fields, options, reasoning_context=reasoning_context)
+            if not item.get("default")
+        }
     out: list[dict] = []
 
     def add(name: str, value, default: bool = False, sao_tu: str = "") -> None:

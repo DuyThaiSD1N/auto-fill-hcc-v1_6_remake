@@ -5,7 +5,7 @@ import json
 
 from app.pipelines.ket_hon_nuoc_ngoai.attach import planner as khnn_attach
 from app.pipelines.ket_hon_nuoc_ngoai.process import mapper
-from app.pipelines.ket_hon_nuoc_ngoai.process.mapper import FOREIGN_DOC_TYPE
+from app.pipelines.ket_hon_nuoc_ngoai.process.mapper import FOREIGN_ID_CARD_DOC_TYPE
 from app.process.schemas import FileItem
 from app.services import ocr as ocr_service
 
@@ -42,12 +42,9 @@ def test_mapper_viet_va_nuoc_ngoai():
     assert out["NoiCuTru_BenNam"]["value"] == "1"
     assert out["NoiCuTru_BenNam_TrongNuoc"]["value"]["xa"] == "Hợp Thành"
 
-    # Bên nữ (nước ngoài): KHÔNG mặc định VN — loại "Giấy tờ khác...", radio cư trú "2".
-    assert out["LoaiGiayToDinhDanh_BenNu"]["value"] == FOREIGN_DOC_TYPE
-    # Ô tên giấy tờ trên form thật là TenGiayTo_* (x-select-area) — không phải NhapTenGiayTo.
-    assert out["TenGiayTo_BenNu"]["value"] == "Chứng minh thư"
-    assert out["TenGiayTo_BenNu"]["comp"] == "x-select-area"
-    assert "NhapTenGiayTo_BenNu" not in out
+    # Bên nữ (nước ngoài): KHÔNG mặc định VN — chứng minh thư nước ngoài → "Chứng minh nhân dân", radio cư trú "2".
+    assert out["LoaiGiayToDinhDanh_BenNu"]["value"] == FOREIGN_ID_CARD_DOC_TYPE
+    assert "TenGiayTo_BenNu" not in out and "NhapTenGiayTo_BenNu" not in out
     assert out["QuocTichBenNu"]["value"] == "Trung Quốc"
     assert out["NoiCapDD_BenNu"]["value"] == "Cục công an huyện Nguyên Dương"  # giữ nguyên, không chuẩn hoá VN
     assert out["NoiCuTru_BenNu"]["value"] == "2"

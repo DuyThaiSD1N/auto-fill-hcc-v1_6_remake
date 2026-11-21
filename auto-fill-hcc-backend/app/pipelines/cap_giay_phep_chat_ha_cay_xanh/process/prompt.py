@@ -22,7 +22,10 @@ HAI vai — tách RIÊNG:
 
 BẢNG KÊ CÂY XANH (BangKeCay) — MẢNG, mỗi cây 1 phần tử {loaiCay, viTri, chieuCao, duongKinh, moTa}. Trích
 ĐÚNG số dòng có trong bảng kê của Đơn Mẫu 01, GIỮ NGUYÊN đơn vị (m, cm). moTa = mô tả tình trạng cây
-(mục, nghiêng, khô, sâu bệnh...). Nếu bảng có nhiều cây → trả nhiều phần tử.
+(mục, nghiêng, khô, sâu bệnh...). Nếu bảng có nhiều cây → trả nhiều phần tử. Bảng chia nhóm (dòng I, II...
+chỉ có tên nhóm) → mỗi dòng cây của MỌI nhóm là 1 phần tử. chieuCao/duongKinh CHỈ lấy số trong ô cột 'Chiều
+cao'/'Đường kính' của chính dòng cây đó trong bảng kê của Đơn (không lấy từ bảng tổng hợp/phụ lục kèm theo,
+không lấy cột Số lượng), số trần thì thêm đơn vị theo tiêu đề cột; ô trống → để rỗng, không ước lượng.
 
 ĐỊA CHỈ chủ hồ sơ (ChuHoSo_DiaChi): MỘT chuỗi đầy đủ (số nhà, đường, phường, tỉnh) — cổng chỉ có 1 ô địa
 chỉ cho chủ hồ sơ (khác Phần I người nộp tách tỉnh/xã).

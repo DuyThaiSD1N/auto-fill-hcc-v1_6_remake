@@ -21,9 +21,14 @@ from app.pipelines._shared.compact_agent.issuer import (
 from app.pipelines.ket_hon_nuoc_ngoai.process.schema import UI_COMP_BY_NAME
 
 # Loại giấy tờ cho giấy tờ NƯỚC NGOÀI — PHẢI khớp ĐÚNG text option dropdown (ô có tìm kiếm, gõ
-# chuỗi lệch sẽ lọc ra 0 kết quả → không chọn được). Text option trên form: "Giấy tờ khác bao gồm
-# các giấy tờ có dán".
-FOREIGN_DOC_TYPE = "Giấy tờ khác bao gồm các giấy tờ có dán"
+# chuỗi lệch sẽ lọc ra 0 kết quả → không chọn được). Dropdown hiện có: Căn cước công dân, Chứng minh nhân
+# dân, Hộ chiếu, Thẻ căn cước, Giấy chứng nhận căn cước, Các loại giấy tờ tùy thân khác (option cũ "Giấy tờ
+# khác bao gồm các giấy tờ có dán" không còn: chưa lần nào chọn được). Thẻ căn cước / chứng minh thư nước
+# ngoài → "Chứng minh nhân dân"; giấy khác (thẻ cử tri...) → option "khác" + ô tên giấy tờ.
+FOREIGN_ID_CARD_DOC_TYPE = "Chứng minh nhân dân"
+FOREIGN_DOC_TYPE = "Các loại giấy tờ tùy thân khác"
+_FOREIGN_ID_CARD_HINTS = ("chung minh", "can cuoc", "identity card", "id card", "identification card", "居民身份证",
+                          "身份证")
 # Hộ chiếu nước ngoài có option RIÊNG trong dropdown → chọn thẳng, không qua "Giấy tờ khác..." (chọn
 # "Hộ chiếu" thì cổng không mở ô tên giấy tờ TenGiayTo_*).
 PASSPORT_DOC_TYPE = "Hộ chiếu"
@@ -49,6 +54,18 @@ def _is_vn(value) -> bool:
 
 
 _DAN_TOC_CANON = {"mong": "Mông", "hmong": "Mông (Hmông)"}
+# Quốc tịch Đài Loan: giấy ghi "Trung Hoa Dân Quốc" (Republic of China) hoặc dính chữ "Trung Quốc(Đài Loan)"; Mexico.
+# Giá trị = đúng chữ option danh mục quốc gia của cổng.
+_TAIWAN = "Trung Quốc (Đài Loan)"
+_MEXICO = "Mê-hi-cô (Mexican)"
+_NATIONALITY_FIX = {"trung hoa dan quoc": _TAIWAN, "republic of china": _TAIWAN, "trung quoc(dai loan)": _TAIWAN,
+                    "trung quoc (dai loan)": _TAIWAN, "dai loan": _TAIWAN, "taiwan": _TAIWAN,
+                    "mexico": _MEXICO, "mexican": _MEXICO, "mexicana": _MEXICO, "me-hi-co": _MEXICO}
+
+
+def _nationality(value) -> str:
+    fixed = _NATIONALITY_FIX.get(_fold(value))
+    return fixed or normalize_nationality(value, default="", exact_only=True)
 
 # Option cuối của dropdown dân tộc; chọn nó thì cổng mở ô nhập "Nhập dân tộc:" ngay bên cạnh.
 DAN_TOC_KHAC = "Khác"
@@ -225,10 +242,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
 
         # Giấy tờ / tờ khai ghi tên thường gọi ("Mỹ") còn danh mục quốc gia của cổng dùng tên chính thức
         # ("Hoa Kỳ") → không khớp option nào.
-        quoc_tich = normalize_nationality(values.get(f"{src}_QuocTich"), default="", exact_only=True)
+        quoc_tich = _nationality(values.get(f"{src}_QuocTich"))
         area = _area(values.get(f"{src}_NoiCuTru"))
         if area and area.get("quocGia"):
-            area["quocGia"] = normalize_nationality(area["quocGia"], default="", exact_only=True)
+            area["quocGia"] = _nationality(area["quocGia"])
         res_country = area.get("quocGia") if area else ""
         issuer_raw = values.get(f"{src}_NoiCap")
         vn_issuer = normalize_issuer(issuer_raw) in (ISSUER_BO_CONG_AN, ISSUER_CUC)
@@ -293,9 +310,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             doc_hint = _fold(ten_giay_to or values.get(f"ToKhai{side}_SoGiayTo"))
             if "ho chieu" in doc_hint or "passport" in doc_hint:
                 add(f"LoaiGiayToDinhDanh_{dst}", PASSPORT_DOC_TYPE)
-            else:
+            elif any(hint in doc_hint or hint in str(ten_giay_to or "") for hint in _FOREIGN_ID_CARD_HINTS):
+                add(f"LoaiGiayToDinhDanh_{dst}", FOREIGN_ID_CARD_DOC_TYPE)
+            elif ten_giay_to:
+                # Không đọc được tên giấy thì để trống loại giấy tờ: không đoán.
                 add(f"LoaiGiayToDinhDanh_{dst}", FOREIGN_DOC_TYPE)
-                add(f"TenGiayTo_{dst}", ten_giay_to or "Chứng minh thư")
+                add(f"TenGiayTo_{dst}", ten_giay_to)
             # Giữ NGUYÊN VĂN (không chuẩn hóa về cơ quan VN), nhưng chỉ khi đó thật sự là tên
             # một cơ quan. Đọc nhầm ra địa danh thì để TRỐNG cho người dùng gõ: ô đỏ còn hơn một
             # cái tên tỉnh nằm chình ình ở ô "Cơ quan cấp" mà người soát hồ sơ dễ cho qua.

@@ -56,8 +56,9 @@ FIELDS += [
 FIELDS += [
     {"name": "BangKeCay", "desc": "MẢNG các cây xanh đề nghị chặt hạ/dịch chuyển (bảng kê trong Đơn Mẫu "
         "01). Mỗi phần tử: {loaiCay, viTri, chieuCao, duongKinh, moTa}. loaiCay=tên loại cây; viTri=vị trí "
-        "cây; chieuCao (vd '12m'); duongKinh (vd '46cm'); moTa=mô tả tình trạng cây (vd 'Mục', 'nghiêng'). "
-        "Trích ĐÚNG số dòng có trong bảng kê, giữ nguyên đơn vị."},
+        "cây; chieuCao=số ở cột 'Chiều cao' CÙNG DÒNG, kèm đơn vị ghi ở tiêu đề cột (m); duongKinh=số ở cột "
+        "'Đường kính' CÙNG DÒNG, kèm đơn vị ở tiêu đề cột (cm); moTa=mô tả tình trạng cây. Ô trống / không đọc "
+        "được → để rỗng. Trích ĐÚNG số dòng có trong bảng kê, giữ nguyên đơn vị."},
 ]
 
 # --- Lý do & ký (Phần IV-V) ---

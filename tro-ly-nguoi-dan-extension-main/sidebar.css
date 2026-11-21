@@ -1825,3 +1825,39 @@ body.settings-mode .voice-panel { display: none; }
 .cap-nhat-phu { border: 1px solid var(--line); background: #fff; color: var(--ink); }
 .cap-nhat-chinh { border: 0; background: #d97706; color: #fff; }
 .cap-nhat-chinh:disabled { opacity: .7; cursor: default; }
+
+/* ── Thẻ giấy tờ trong Ví cá nhân (wallet_docs, chứng thực bản sao) ──
+   flex:none: khung chat .bot-b là cột flex cao cố định, thẻ overflow:hidden mà để co thì bị ép còn mỗi viền. */
+.wallet-card{align-self:stretch;flex:none;display:flex;flex-direction:column;background:#fff;border:1.5px solid var(--teal);border-radius:14px;overflow:hidden;box-shadow:var(--card-shadow)}
+.wallet-card.used{opacity:.72}
+.wallet-head{background:var(--teal);color:#fff;padding:10px 12px 9px}
+.wallet-title{display:flex;align-items:center;gap:8px;font-weight:800;font-size:13px}
+.wallet-count{margin-left:auto;background:#fff;color:var(--teal-d);font-size:11px;font-weight:800;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.wallet-sub{font-size:11px;color:rgba(255,255,255,.9);margin-top:3px;line-height:1.4}
+.wallet-tools{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--teal-soft);border-bottom:1px solid var(--line)}
+.wallet-all{padding:5px 10px;border-radius:9px;border:1px solid var(--line);background:#fff;font-size:12px;font-weight:700;color:var(--ink);cursor:pointer}
+.wallet-hint{margin-left:auto;font-size:11px;color:var(--muted);text-align:right}
+.wallet-list{max-height:min(46vh,420px);overflow-y:auto;overscroll-behavior:contain}
+.wallet-item{display:flex;align-items:center;gap:4px;padding-right:8px;border-left:4px solid transparent;border-bottom:1px solid #eef1f4}
+.wallet-item:last-child{border-bottom:0}
+.wallet-item.on{background:#eaf8ef;border-left-color:var(--teal)}
+.wallet-row{flex:1;min-width:0;display:grid;grid-template-columns:22px 26px 1fr;align-items:center;gap:9px;padding:9px 4px 9px 8px;text-align:left;background:none;border:0;cursor:pointer;font:inherit;color:inherit}
+.wallet-box{width:20px;height:20px;border-radius:6px;border:2px solid #aeb6c2;display:grid;place-items:center;font-size:12px;font-weight:900;color:transparent}
+.wallet-item.on .wallet-box{background:var(--teal);border-color:var(--teal);color:#fff}
+.wallet-no{width:26px;height:26px;border-radius:50%;background:#e6edf3;color:var(--navy);font-weight:800;font-size:13px;display:grid;place-items:center}
+.wallet-item.on .wallet-no{background:var(--teal-d);color:#fff}
+.wallet-txt{min-width:0;display:flex;flex-direction:column;gap:2px}
+.wallet-name{font-size:13px;font-weight:700;line-height:1.35;color:var(--ink);overflow-wrap:anywhere}
+.wallet-meta{font-size:11px;color:var(--muted)}
+.wallet-meta:empty{display:none}
+.wallet-tags{display:flex;flex-wrap:wrap;gap:4px}
+.wallet-tags:empty{display:none}
+.wallet-tag{font-style:normal;font-size:9.5px;font-weight:800;letter-spacing:.03em;padding:1px 7px;border-radius:999px}
+.wallet-tag.dup{background:#fff0e2;color:#b4501a}
+.wallet-tag.fix{background:#ecefff;color:#3a4cc0}
+.wallet-orig{font-size:10.5px;color:#8b95a7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wallet-eye{width:34px;height:34px;flex:none;border-radius:9px;border:0;background:#eef1f4;cursor:pointer;font-size:15px}
+.wallet-foot{padding:9px 10px 10px;border-top:1px solid var(--line)}
+.wallet-go{width:100%;padding:10px 12px;border-radius:11px;border:0;background:var(--teal);color:#fff;font-weight:800;font-size:13px;cursor:pointer}
+.wallet-go:disabled{background:#c9d3dc;cursor:default}
+.wallet-row:focus-visible,.wallet-eye:focus-visible,.wallet-all:focus-visible,.wallet-go:focus-visible{outline:3px solid var(--navy);outline-offset:2px;border-radius:10px}

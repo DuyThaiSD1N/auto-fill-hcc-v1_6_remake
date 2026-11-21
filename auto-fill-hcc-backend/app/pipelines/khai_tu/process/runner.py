@@ -227,12 +227,19 @@ def _requester_hint(options: dict) -> str:
     )
 
 
-async def extract(files_by_role: dict[str, list[dict]], options: dict) -> dict:
+async def extract(files_by_role: dict[str, list[dict]], options: dict, documents_out: list | None = None) -> dict:
     """OCR + agent trích compact facts khai tử, đã phân vai và bù từ tờ khai; CHƯA map sang UI.
 
     Tách khỏi `run` để biểu mẫu khác của cùng bộ giấy tờ (liên thông khai tử trên
     lienthong.dichvucong.gov.vn) dùng lại nguyên phần trích xuất, chỉ thay mapper.
+    ``documents_out``: nhận OCR từng tài liệu (điền đợt 2 cần, runner chung chỉ trả chuỗi đã nối).
     """
+
+    async def build_context(documents: list[dict], opts: dict) -> str:
+        if documents_out is not None:
+            documents_out.extend(documents)
+        return await reason.build_context(documents, opts)
+
     res = await runner.run(
         files_by_role,
         fields=FIELDS,
@@ -241,7 +248,7 @@ async def extract(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         aliases=ALIASES,
         extra_rules=_requester_hint(options) + EXTRA_RULES,
         options=options,
-        context_builder=reason.build_context,
+        context_builder=build_context,
         compact_field_fallback=_canonicalize_deceased_fields,
     )
     reasoning_context = res.get("reasoning_context") or ""

@@ -23,5 +23,5 @@ test("handler patchFields gọi bộ ghi Form.io; popup khai năng lực secondP
   assert.match(content, /const standardPatch = patch\.some\(\(f\) =>\s*String\(f\?\.comp \|\| ""\)\.startsWith\("dom-"\) \|\| String\(f\?\.name \|\| ""\)\.startsWith\("data\["\)\);/);
   assert.match(content, /formKind === "standard" \|\| \(formKind === "angular" && standardPatch\) \? H\.patchFormStandard/);
   assert.match(content, /fillFormStandard, patchFormStandard,/);
-  assert.match(read("popup.js"), /"secondPassFormio"\]/);
+  assert.match(read("popup.js"), /"secondPassFormio", "secondPassBacNinh"\]/);
 });

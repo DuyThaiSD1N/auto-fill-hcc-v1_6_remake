@@ -60,10 +60,22 @@ def test_thieu_ten_giay_to_thi_nhan_ho_chieu_theo_dong_giay_to_tren_to_khai():
     assert out["LoaiGiayToDinhDanh_BenNu"] == "Hộ chiếu"
 
 
-def test_giay_to_nuoc_ngoai_khac_van_chon_giay_to_khac_kem_ten():
+def test_the_can_cuoc_nuoc_ngoai_chon_chung_minh_nhan_dan():
     out = _values({**_NU_NUOC_NGOAI, "Nu_TenGiayTo": "Chứng minh thư"})
-    assert out["LoaiGiayToDinhDanh_BenNu"] == mapper.FOREIGN_DOC_TYPE
-    assert out["TenGiayTo_BenNu"] == "Chứng minh thư"
+    assert out["LoaiGiayToDinhDanh_BenNu"] == mapper.FOREIGN_ID_CARD_DOC_TYPE
+    assert "TenGiayTo_BenNu" not in out
+
+
+def test_giay_to_nuoc_ngoai_khac_chon_option_khac_kem_ten():
+    out = _values({**_NU_NUOC_NGOAI, "Nu_TenGiayTo": "Thẻ cử tri"})
+    assert out["LoaiGiayToDinhDanh_BenNu"] == mapper.FOREIGN_DOC_TYPE == "Các loại giấy tờ tùy thân khác"
+    assert out["TenGiayTo_BenNu"] == "Thẻ cử tri"
+
+
+def test_giay_to_nuoc_ngoai_khong_ro_ten_thi_bo_trong_loai():
+    values = {k: v for k, v in _NU_NUOC_NGOAI.items() if k != "Nu_TenGiayTo"}
+    out = _values(values)
+    assert "LoaiGiayToDinhDanh_BenNu" not in out and "TenGiayTo_BenNu" not in out
 
 
 def test_nguoi_nuoc_ngoai_dan_toc_chon_khac_va_ghi_nguyen_van_theo_to_khai():
@@ -73,6 +85,13 @@ def test_nguoi_nuoc_ngoai_dan_toc_chon_khac_va_ghi_nguyen_van_theo_to_khai():
     assert out["NhapDanTocBenNuKhac"] == "Hoa"
     names = list(out)
     assert names.index("NhapDanTocBenNuKhac") == names.index("DanTocBenNu") + 1
+
+
+def test_quoc_tich_dai_loan_va_mexico_theo_danh_muc_cong():
+    assert mapper._nationality("Trung Hoa Dân Quốc") == "Trung Quốc (Đài Loan)"
+    assert mapper._nationality("Trung Quốc(Đài Loan)") == "Trung Quốc (Đài Loan)"
+    assert mapper._nationality("Mexico") == "Mê-hi-cô (Mexican)"
+    assert mapper._nationality("Mỹ") == "Hoa Kỳ"
 
 
 def test_ten_nuoc_khong_co_trong_bang_giu_nguyen_khong_khop_mot_phan():

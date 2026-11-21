@@ -11,6 +11,7 @@ from typing import Any, Awaitable, Callable
 from app.config import settings
 from app.core.errors import AppError
 from app.monitor import recorder as mon
+from app.pipelines._shared.area_remap import ward_hints
 from app.pipelines._shared.formatting import normalize_ui_dates
 from app.pipelines._shared.locked_submitter import unlock_locked_submitter
 from app.process.schemas import ProcessReq
@@ -127,7 +128,9 @@ def prepare_process(
 
 async def execute_process(prepared: PreparedProcess) -> dict:
     async with mon.span("pipeline", procedure=prepared.procedure):
-        result = await prepared.pipeline(prepared.files_by_role, prepared.pipeline_options)
+        # Xã quầy (router gán theo tài khoản): gợi ý YẾU cho bước sửa chính tả xã của mapper (area_remap.ward_hints).
+        with ward_hints((prepared.pipeline_options or {}).get("counterWard")):
+            result = await prepared.pipeline(prepared.files_by_role, prepared.pipeline_options)
         rec = mon.current()
         if rec is not None:
             # Hậu xử lý riêng của package + mapper nằm trong 148 runner → đo bằng khoảng trống từ

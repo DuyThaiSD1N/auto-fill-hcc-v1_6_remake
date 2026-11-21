@@ -17,6 +17,7 @@ class AccountSettingsUpdate(BaseModel):
 
     renameAttachmentFiles: bool | None = None
     submitterFromDeclaration: bool | None = None
+    reuseWalletDocuments: bool | None = None
     fontScale: float | None = Field(default=None, ge=0.9, le=1.3)
     # Rỗng = về giọng mặc định. Tốc độ ép tiếp vào khoảng quản trị cho phép lúc đọc (ws_tts).
     ttsVoiceVi: str | None = Field(default=None, max_length=80, pattern=r"^[A-Za-z0-9._-]*$")

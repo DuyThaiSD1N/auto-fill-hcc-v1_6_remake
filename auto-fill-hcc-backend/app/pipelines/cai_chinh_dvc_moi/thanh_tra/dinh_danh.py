@@ -279,6 +279,34 @@ def _card_backs(unit: Unit, values: dict, case: Case) -> bool:
     return any(ok for ok, _ in signals(unit, values, case) if "MRZ" in _)
 
 
+def _name_words(value) -> list[str]:
+    return unicodedata.normalize("NFC", str(value or "")).upper().replace(",", " ").split()
+
+
+def _name_word_support(sources: dict, unit: Unit, case: Case, mine, theirs) -> tuple[int, int] | None:
+    """(nguồn của ``theirs``, nguồn của ``mine``) chỉ xét các CHỮ khác nhau giữa hai họ tên cùng số chữ: trang ghi các chữ
+    đó giống bên nào thì tính cho bên đó, dù chữ khác trên trang lệch dấu (OCR đọc "BÁ" thành "BÀ" trên thẻ không làm
+    mất nguồn của chữ đang tranh chấp). Hai tên khác số chữ → None (đếm nguyên tên như các ô khác)."""
+    a, b = _name_words(mine), _name_words(theirs)
+    if len(a) != len(b) or a == b:
+        return None
+    diff = [at for at, (x, y) in enumerate(zip(a, b)) if x != y]
+    pages_a: set[int] = set()
+    pages_b: set[int] = set()
+    for entries in sources.values():
+        for page_no, finding in entries:
+            words = _name_words(finding.values.get(unit.fields[0].name))
+            if len(words) != len(a):
+                continue
+            if all(words[at] == a[at] for at in diff):
+                pages_a.add(page_no)
+            elif all(words[at] == b[at] for at in diff):
+                pages_b.add(page_no)
+    name = unit.fields[0].name
+    return (len(pages_b) + _card_backs(unit, {name: theirs}, case),
+            len(pages_a) + _card_backs(unit, {name: mine}, case))
+
+
 async def find(inspector: Inspector, case: Case, title: str) -> list[Finding]:
     """Agent chính đọc gộp cả hồ sơ nên hay bám một nguồn. Ở đây mỗi trang được đọc RIÊNG (lượt đọc không thấy
     trang khác), rồi MÃ đếm số nguồn cùng ghi một giá trị: giá trị có nhiều nguồn hơn giá trị lượt trích mới
@@ -321,8 +349,15 @@ async def _cross_check(inspector: Inspector, case: Case, title: str) -> list[Fin
         current = {spec.name: case.values.get(spec.name) for spec in unit.fields}
         current_support = support(_unit_key(unit, current), current)
         runner_up = support(ranked[1], sources[ranked[1]][0][1].values) if len(ranked) > 1 else 0
+        what = "giá trị"
+        if unit.key == "ho_ten":
+            by_word = _name_word_support(sources, unit, case, current.get(unit.fields[0].name),
+                                         finding.values.get(unit.fields[0].name))
+            if by_word:
+                best_support, current_support = by_word
+                runner_up, what = 0, "các chữ đang tranh chấp"
         backed = best_support >= _MIN_SUPPORT and best_support > max(current_support, runner_up)
-        evidence = (f"{best_support} nguồn độc lập (trang đọc riêng / vùng MRZ) cùng ghi giá trị của B; giá trị của A có "
+        evidence = (f"{best_support} nguồn độc lập (trang đọc riêng / vùng MRZ) cùng ghi {what} của B; {what} của A có "
                     f"{current_support} nguồn",)
         out.append(replace(finding, backed=backed, evidence=evidence))
     return out

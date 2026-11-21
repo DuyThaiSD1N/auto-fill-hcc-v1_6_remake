@@ -34,9 +34,11 @@ Khoa tuy chon:
 
 from __future__ import annotations
 
+import contextvars
 import json
 import re
 import unicodedata
+from contextlib import contextmanager
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
@@ -1192,6 +1194,62 @@ def _correct_area_cached(tinh: str, xa: str) -> tuple[str, str, tuple[str, ...]]
     return tinh, xa, tuple(changed)
 
 
+# Xa goi y cua luot xu ly cho buoc sua chinh ta xa. Hai muc:
+# - YEU: xa cua tai khoan quay (nguoi dan nop o quay xa nao thuong o chinh xa do). Chi dung khi ten doc duoc khong
+#   gan ten xa co that nao (le ra o xa trong); KHONG de len ket qua sua chinh ta: nguoi o xa khac van nop o quay nay
+#   ("Bình chính" la xa cu Bình Chánh lech 1 chu, khong phai xa quay Bình Minh).
+# - MANH: xa noi nhan ho so ghi tren chinh giay ("Kinh gui: UBND xa ..."), thu tuc tu doc. Duoc de len xa cu gan
+#   nhat lech chu ("Bình Lương": xa cu Bình Dương lech 1 chu, xa nhan ho so Bình Chương lech 2), tru khi ten doc chi
+#   lech DAU voi mot ten co that ("Đinh Cương" la Đình Cương).
+_WARD_HINTS: contextvars.ContextVar[tuple[tuple[str, bool], ...]] = contextvars.ContextVar(
+    "area_remap_ward_hints", default=())
+_HINT_LABEL_RE = re.compile(r"^\s*(?:hcc|tt\s*hcc|ubnd|uỷ ban nhân dân|ủy ban nhân dân)\s+", re.IGNORECASE)
+_HINT_LIMIT = 2
+
+
+@contextmanager
+def ward_hints(*names: object, strong: bool = False):
+    """Trong khoi with, buoc sua chinh ta xa (correct_area) dung cac xa nay lam goi y (muc YEU / MANH, xem tren). Ten
+    dang "HCC Xã X", "Xã X - Tỉnh Y" deu nhan; ten khong phai xa hien hanh cua tinh dang sua thi bi bo qua luc dung."""
+    clean = []
+    for name in names:
+        text = re.sub(r"^p\.\s*", "Phường ", _HINT_LABEL_RE.sub("", str(name or "").strip()), flags=re.IGNORECASE)
+        text = re.split(r"\s*[-–,]\s*|\s+tỉnh\s+", text, flags=re.IGNORECASE)[0].strip()
+        if text:
+            clean.append((text, strong))
+    token = _WARD_HINTS.set(_WARD_HINTS.get() + tuple(clean))
+    try:
+        yield
+    finally:
+        _WARD_HINTS.reset(token)
+
+
+def _hinted_ward(tinh: str, xa: str, corrected: str) -> Optional[str]:
+    """Xa goi y (ten hien hanh day du) khi ten xa doc duoc KHONG co that trong tinh va lech toi 2 chu voi dung mot
+    xa goi y cua tinh do; con lai None. ``corrected``: ten _closest_ward() da chon ("" khi khong chon duoc) -- co ten
+    thi chi goi y MANH, va khong khi ten do chi lech dau. Ten ngan, "Thôn ..." hay lech chu so thi khong."""
+    hints = [name for name, strong in _WARD_HINTS.get() if strong or not corrected]
+    if not hints or not tinh or not xa or not _province_known(tinh) or _ward_exists(tinh, xa):
+        return None
+    key = _compact(xa)
+    if len(key) < _WARD_FIX_MIN_LEN or _VILLAGE_PREFIX_RE.match(_fold(xa)):
+        return None
+    variants = {key, _compact_labeled(xa)}
+    if corrected and variants & {_compact(corrected), _compact_labeled(corrected)}:
+        return None
+    found = set()
+    for hint in hints:
+        ward = canonical_ward(tinh, hint)
+        if not ward or not is_current_area(tinh, ward):
+            continue
+        targets = {_compact(ward), _compact(ward.split(" - ")[0]), _compact_labeled(ward)}
+        if any(re.findall(r"\d+", t) != re.findall(r"\d+", key) for t in targets):
+            continue
+        if min(_edit_distance(v, t, _HINT_LIMIT) for v in variants for t in targets) <= _HINT_LIMIT:
+            found.add(ward)
+    return found.pop() if len(found) == 1 else None
+
+
 def correct_area(tinh: object, xa: object) -> tuple[str, str, tuple[str, ...]]:
     """Sua loi chinh ta OCR o ten tinh va ten xa -> (tinh, xa, cac truong da sua).
 
@@ -1206,6 +1264,10 @@ def correct_area(tinh: object, xa: object) -> tuple[str, str, tuple[str, ...]]:
     default de extension to vang cho can bo soat lai.
     """
     new_tinh, new_xa, changed = _correct_area_cached(str(tinh or "").strip(), str(xa or "").strip())
+    hinted = _hinted_ward(new_tinh if "tinh" in changed else str(tinh or "").strip(), str(xa or "").strip(),
+                          new_xa if "xa" in changed else "")
+    if hinted:
+        new_xa, changed = hinted, tuple(dict.fromkeys((*changed, "xa")))
     return (
         new_tinh if "tinh" in changed else str(tinh or ""),
         new_xa if "xa" in changed else str(xa or ""),

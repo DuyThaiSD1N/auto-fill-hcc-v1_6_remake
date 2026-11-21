@@ -366,6 +366,18 @@ async function cookieStoreIdForTab(tabId) {
 }
 
 const CITIZEN_HOME_URL = "https://dichvucong.gov.vn/";
+// Lệnh tới tab cổng và lệnh xóa dữ liệu trang không có hạn chờ của Chrome: một tab treo (không
+// trả lời) là cả lượt dọn đứng im, sidebar không bao giờ điều hướng về DVCQG.
+const CITIZEN_TAB_MESSAGE_TIMEOUT_MS = 3000;
+const CITIZEN_STORAGE_TIMEOUT_MS = 10000;
+
+function withCitizenTimeout(promise, ms) {
+  let timer;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("timeout")), ms); }),
+  ]).finally(() => clearTimeout(timer));
+}
 
 async function clearCitizenDvcCookies(tabId) {
   const scope = await citizenLogoutScope();
@@ -383,10 +395,14 @@ async function clearCitizenDvcCookies(tabId) {
       const host = citizenGovHost(tab?.url);
       if (!Number.isInteger(id) || id <= 0 || !inCitizenDomains(host, scope.domains)) continue;
       try {
-        await chrome.tabs.sendMessage(id, { action: "clearCitizenPortalSessionStorage", localStorage: true });
+        await withCitizenTimeout(
+          chrome.tabs.sendMessage(id, { action: "clearCitizenPortalSessionStorage", localStorage: true }),
+          CITIZEN_TAB_MESSAGE_TIMEOUT_MS,
+        );
         clearedTabs += 1;
       } catch (_) {
-        // Tab có thể chưa nạp content script; cookie và dữ liệu origin vẫn được dọn bên dưới.
+        // Tab có thể chưa nạp content script hoặc không trả lời; cookie và dữ liệu origin vẫn
+        // được dọn bên dưới.
       }
       if (id !== Number(tabId) && scope.hosts.includes(host)) {
         try { await chrome.tabs.update(id, { url: CITIZEN_HOME_URL }); } catch (_) { failedTabs += 1; }
@@ -475,21 +491,23 @@ async function clearCitizenDvcCookies(tabId) {
   let storageCleared = false;
   let storageError = "";
   try {
-    await chrome.browsingData.remove(
+    await withCitizenTimeout(chrome.browsingData.remove(
       { origins: [...origins] },
       { localStorage: true, indexedDB: true },
-    );
+    ), CITIZEN_STORAGE_TIMEOUT_MS);
     storageCleared = true;
   } catch (error) {
     storageError = error?.message || String(error);
   }
 
-  // Đã dọn xong lượt này → hồ sơ sau bắt đầu lại từ DVCQG.
-  await mutateCitizenVisits((map) => { for (const host of Object.keys(map)) delete map[host]; });
+  const ok = failedQueries === 0 && failed === 0 && storageCleared && failedTabs === 0;
+  // Đã dọn sạch lượt này → hồ sơ sau bắt đầu lại từ DVCQG. Chưa sạch thì giữ danh sách cổng
+  // để sidebar thử lại vẫn dọn đủ các cổng công dân đã đi qua.
+  if (ok) await mutateCitizenVisits((map) => { for (const host of Object.keys(map)) delete map[host]; });
 
   // Chỉ trả số lượng; không đưa tên hay giá trị cookie nhạy cảm về sidebar/log.
   return {
-    ok: failedQueries === 0 && failed === 0 && storageCleared && failedTabs === 0,
+    ok,
     scopes: scope.domains.length,
     found: unique.size,
     removed,

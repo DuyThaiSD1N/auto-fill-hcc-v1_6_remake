@@ -17,7 +17,7 @@ FIELDS: list[dict] = [
              'thẻ Căn cước mới "BỘ CÔNG AN" → "Bộ Công an". Giấy tờ nước ngoài lấy nguyên cơ quan cấp '
              '(vd "Cục công an huyện Nguyên Dương"). '
              'RIÊNG HỘ CHIẾU có HAI dòng rất dễ lẫn: "Nơi cấp"/"Place of issue" chỉ là TỈNH/THÀNH (vd "Giang Tô") — TUYỆT ĐỐI KHÔNG lấy dòng đó; phải lấy dòng "Cơ quan có thẩm quyền cấp hộ chiếu"/"Authority"/"签发机关" (vd "Cục Quản lý Di dân Quốc gia nước Cộng hòa Nhân dân Trung Hoa").'},
-    {"name": "Nam_DanToc", "desc": "Dân tộc BÊN NAM nếu giấy tờ/tờ khai có ghi (đối chiếu đúng người). Không có thì để trống."},
+    {"name": "Nam_DanToc", "desc": "Dân tộc BÊN NAM nếu giấy tờ/tờ khai có ghi (đối chiếu đúng người). Không có thì để trống. Giấy tiếng Trung ghi chữ Hán (dòng 民族) → ghi tên âm Hán Việt bằng chữ Việt, không chép chữ Hán."},
     {"name": "Nam_QuocTich", "desc": "Quốc tịch BÊN NAM — BẮT BUỘC đọc, KỂ CẢ nước ngoài (vd 'Trung Quốc', 'Hàn Quốc'). Giấy tờ nước ngoài → quốc tịch nước đó. KHÔNG mặc định 'Việt Nam'."},
     {"name": "Nam_TenGiayTo", "desc": "TÊN loại giấy tờ tùy thân bên nam KHI là giấy tờ NƯỚC NGOÀI (đọc theo tiêu đề, vd 'Chứng minh thư' cho thẻ 居民身份证 Trung Quốc, 'Hộ chiếu'). Giấy tờ Việt Nam thì bỏ trống."},
     {"name": "Nam_NoiCuTru",
@@ -46,7 +46,7 @@ FIELDS: list[dict] = [
              'KHÔNG hỏi địa danh (VN: "Bộ Công an"/"Cục Cảnh sát quản lý hành chính về trật tự xã '
              'hội"; nước ngoài lấy nguyên cơ quan cấp). '
              'RIÊNG HỘ CHIẾU có HAI dòng rất dễ lẫn: "Nơi cấp"/"Place of issue" chỉ là TỈNH/THÀNH (vd "Giang Tô") — TUYỆT ĐỐI KHÔNG lấy dòng đó; phải lấy dòng "Cơ quan có thẩm quyền cấp hộ chiếu"/"Authority"/"签发机关" (vd "Cục Quản lý Di dân Quốc gia nước Cộng hòa Nhân dân Trung Hoa").'},
-    {"name": "Nu_DanToc", "desc": "Dân tộc BÊN NỮ nếu giấy tờ/tờ khai có ghi. Không có thì để trống."},
+    {"name": "Nu_DanToc", "desc": "Dân tộc BÊN NỮ nếu giấy tờ/tờ khai có ghi. Không có thì để trống. Giấy tiếng Trung ghi chữ Hán (dòng 民族) → ghi tên âm Hán Việt bằng chữ Việt, không chép chữ Hán."},
     {"name": "Nu_QuocTich", "desc": "Quốc tịch BÊN NỮ — BẮT BUỘC đọc, KỂ CẢ nước ngoài. KHÔNG mặc định 'Việt Nam'."},
     {"name": "Nu_TenGiayTo", "desc": "TÊN loại giấy tờ tùy thân bên nữ KHI là giấy tờ NƯỚC NGOÀI (vd 'Chứng minh thư', 'Hộ chiếu'). Giấy tờ Việt Nam thì bỏ trống."},
     {"name": "Nu_NoiCuTru",

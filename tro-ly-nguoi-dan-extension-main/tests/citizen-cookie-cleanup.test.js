@@ -51,7 +51,7 @@ test("quyền RỘNG ở manifest không được nới phạm vi XÓA cookie", 
   assert.doesNotMatch(fixed, /tiengnoi\.vn|vnekyc\.vn/);
 });
 
-function createBackgroundRuntime({ getPartitionKey, breakPartitionQuery = false } = {}) {
+function createBackgroundRuntime({ getPartitionKey, breakPartitionQuery = false, hangTabIds = [] } = {}) {
   const listeners = [];
   const queries = [];
   const removals = [];
@@ -134,7 +134,10 @@ function createBackgroundRuntime({ getPartitionKey, breakPartitionQuery = false 
           { id: 99, url: "https://dichvucongnganhtuphap.moj.gov.vn/nop-ho-so/1" },
         ];
       },
-      async sendMessage(tabId, message) { contentMessages.push({ tabId, message }); },
+      async sendMessage(tabId, message) {
+        contentMessages.push({ tabId, message });
+        if (hangTabIds.includes(tabId)) await new Promise(() => {});
+      },
       async update(tabId, props) { tabUpdates.push({ tabId, props }); },
       async create() {}, async get() {}, async reload() {}, async remove() {},
     },
@@ -267,6 +270,19 @@ test("một lượt quét cookie hỏng KHÔNG được kéo sập cả việc d
   // 4 cookie công dân không phân vùng trong phạm vi; cookie phân vùng mất theo lượt quét hỏng.
   assert.equal(result.removed, 4, "vẫn phải xóa được cookie không phân vùng");
   assert.equal(result.storageCleared, true, "localStorage/indexedDB vẫn phải được dọn");
+  assert.ok(Object.keys(runtime.store.tlnd_citizen_visited_hosts).length > 0,
+    "chưa sạch thì giữ danh sách cổng đã đi qua để lượt thử lại dọn đủ");
+});
+
+test("một tab cổng không trả lời KHÔNG được làm treo cả lượt dọn phiên", async () => {
+  // Ca thật: sau khi bấm đăng xuất, sidebar về màn bắt đầu nhưng trang vẫn đứng ở cổng Bộ Tư pháp
+  // còn nguyên đăng nhập — lệnh tới tab cổng không có hạn chờ nên cả chuỗi xóa + điều hướng đứng im.
+  const runtime = createBackgroundRuntime({ hangTabIds: [88] });
+  await runtime.visitAll();
+  const result = await runtime.dispatch({ action: "clearCitizenDvcCookies" });
+  assert.equal(result.removed, 5, "cookie công dân vẫn phải được xóa");
+  assert.equal(result.storageCleared, true);
+  assert.equal(result.clearedTabs, 1, "chỉ tab trả lời mới tính là đã dọn trong trang");
 });
 
 test("sidebar chỉ xóa cookie khi tự kết thúc một hồ sơ đã nộp thành công", () => {
@@ -312,4 +328,19 @@ test("content chỉ xóa sessionStorage của cổng khi nhận lệnh kết th�
   assert.match(content, /__tlnd: "citizenPortalVisit"/);
   assert.match(content, /sessionStorage\.setItem\(SS_OPEN_KEY, panelState\)/);
   assert.doesNotMatch(content, /reloadAfterCitizenLogout/);
+});
+
+test("sidebar thử dọn phiên nhiều lần, hết lượt vẫn đưa trang về DVCQG", () => {
+  const start = sidebar.indexOf("async function clearCitizenSessionAndGoHome()");
+  const end = sidebar.indexOf("// Một đường dọn phiên dùng chung", start);
+  const body = sidebar.slice(start, end);
+  assert.match(sidebar, /const CITIZEN_CLEANUP_ATTEMPTS = 3;/);
+  assert.match(body, /for \(let attempt = 1; attempt <= CITIZEN_CLEANUP_ATTEMPTS[\s\S]*?resolveWithin\(\s*sendToBackground\(\{ action: "clearCitizenDvcCookies"[\s\S]*?CITIZEN_CLEANUP_TIMEOUT_MS[\s\S]*?if \(cookieCleanup\?\.ok\) break;/);
+  // Điều hướng nằm SAU vòng thử và không phụ thuộc kết quả dọn.
+  const loopEnd = body.indexOf("if (!cookieCleanup?.ok) {\n      setStatus");
+  const nav = body.indexOf('sendToContent({ action: "navigate", url: DVC_HOME_URL })');
+  assert.ok(loopEnd > 0 && nav > loopEnd, "điều hướng phải chạy sau khi hết lượt thử");
+  assert.doesNotMatch(body.slice(loopEnd, nav), /return;/, "dọn hỏng không được bỏ qua điều hướng");
+  assert.match(body.slice(nav), /chrome\.tabs\.update\(Number\(TAB_ID\), \{ url: DVC_HOME_URL \}\)/,
+    "trang không trả lời lệnh navigate thì đổi URL tab từ phía extension");
 });

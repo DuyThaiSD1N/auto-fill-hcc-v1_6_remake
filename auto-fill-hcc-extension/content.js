@@ -1755,12 +1755,14 @@
       const patch = Array.isArray(msg.fields) ? msg.fields : [];
       const base = Array.isArray(msg.baseFields) ? msg.baseFields : [];
       const known = new Set(base.map((f) => f?.name));
-      // Form SurveyJS, form cũ (x-*), form Angular và form Form.io (data[...]) mỗi bên một bộ ghi lại ô; nền tảng khác
+      // Form SurveyJS, form cũ (x-*), form Bắc Ninh (Liferay), form Angular và form Form.io (data[...]) mỗi bên một bộ
+      // ghi lại ô; nền tảng khác
       // chưa có thì bỏ qua bản vá. Cổng Form.io bọc trong khung Angular (Bộ Y tế…) bị nhận là "angular" — ô data[...] / dom-*
       // vẫn đi bộ ghi Form.io, như lượt điền đầu (forceStandard của fillFields).
       const standardPatch = patch.some((f) =>
         String(f?.comp || "").startsWith("dom-") || String(f?.name || "").startsWith("data["));
       const patcher = formKind === "surveyjs" ? H.patchFormSurveyJs
+        : formKind === "bacninh" ? H.patchFormBacNinh
         : formKind === "legacy" ? H.patchFormLegacy
           : formKind === "standard" || (formKind === "angular" && standardPatch) ? H.patchFormStandard
             : formKind === "angular" ? H.patchFormAngular : null;

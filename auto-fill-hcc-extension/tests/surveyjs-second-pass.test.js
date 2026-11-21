@@ -164,7 +164,7 @@ test("lượt ghi đợt 2 không xoá dấu màu, không cuộn, và hoãn ản
   const content = read("content.js");
   assert.match(content, /if \(msg\.action === "patchFields"\) \{[\s\S]*?H\.formSnapshot\?\.track\?\.\(msg\.formSnapshot,[\s\S]*?sendResponse\(res\);/);
   const popup = read("popup.js");
-  assert.match(popup, /if \(cfg\.secondPass && !page\) \{\s*options\.fillSupports = \["secondPass", "secondPassLegacy", "secondPassAngular", "secondPassArea", "secondPassFormio"\];/);
+  assert.match(popup, /if \(cfg\.secondPass && !page\) \{\s*options\.fillSupports = \["secondPass", "secondPassLegacy", "secondPassAngular", "secondPassArea", "secondPassFormio", "secondPassBacNinh"\];/);
   assert.match(popup, /deferSnapshot: secondPass,/);
   assert.match(content, /if \(!res\?\.error && !msg\.deferSnapshot\) H\.formSnapshot\?\.track\?\./);
   assert.match(popup, /if \(secondPass && !fillRes\?\.error\) await applySecondPass\(requestId, allFields, formSnapshot\);/);

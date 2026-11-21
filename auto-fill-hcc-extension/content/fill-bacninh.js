@@ -804,7 +804,38 @@
     return el ? String(el.value || "").trim() : null;
   }
 
+  // ---- Điền đợt 2 (bản vá của lớp soát chạy nền): mỗi ô kèm "from" = giá trị lượt đầu. Chỉ ghi ô cán bộ CHƯA sửa —
+  // giá trị đang hiện vẫn là "from" (ô lượt đầu bỏ trống thì ô còn trống) — rồi ghi bằng đúng bộ điền của lượt đầu.
+  function bnShownText(value) {
+    return fold(Array.isArray(value) ? value.join(" ") : value);
+  }
+
+  async function patchFormBacNinh(fields) {
+    const result = { filled: 0, skipped: [] };
+    const todo = [];
+    for (const f of Array.isArray(fields) ? fields : []) {
+      if (!f || !f.name || f.value == null || f.value === "") continue;
+      const shown = readBacNinhField(f);
+      if (shown == null) {
+        result.skipped.push({ name: f.name, reason: "not-found" });
+        continue;
+      }
+      const isNew = f.from == null || f.from === "";
+      if (bnShownText(shown) !== (isNew ? "" : bnShownText(f.from))) {
+        result.skipped.push({ name: f.name, reason: "changed" });
+        continue;
+      }
+      todo.push(f);
+    }
+    if (!todo.length) return result;
+    const res = await fillFormBacNinh(todo);
+    result.filled = (res && res.filled) || 0;
+    for (const name of (res && res.unmatched) || []) result.skipped.push({ name, reason: "not-filled" });
+    return result;
+  }
+
   Object.assign(H, {
+    patchFormBacNinh,
     readBacNinhField,
     isBacNinhForm,
     isBacNinhAccountForm,

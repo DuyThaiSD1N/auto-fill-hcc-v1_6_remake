@@ -655,6 +655,61 @@ async function closeDocumentWalletDialogs() {
   await waitFor(() => !findLatestDialogByText("Danh sách tài liệu điện tử"), 3000, 100);
 }
 
+// ── Dùng lại giấy tờ trong Ví cá nhân (BE: chat/wallet_reuse.py, action wallet_list) ──
+// API danh sách của ví chỉ trả cho token đăng nhập của cổng — extension không đọc token: mở hộp thoại ví của dòng hồ
+// sơ để TRANG tự gọi, moj-upload-watch-main.js (MAIN world) chuyển phần dữ liệu trả về qua sự kiện dưới. Mỗi trang 10
+// tệp, mới nhất trước → bấm "Sau" tới khi đủ số cần.
+const WALLET_LIST_EVENT = "__HCC_MOJ_WALLET_LIST__";
+
+// Nút "Close" mặc định của Radix trong hộp thoại này bị ẩn và bấm không đóng → bấm nút X ở tiêu đề trước.
+async function closeWalletListDialog() {
+  for (const dialog of findDialogsByText(WALLET_DIALOG_TITLE).filter(isVisible)) {
+    Array.from(dialog.querySelectorAll("button")).filter((b) => isVisible(b) && b.querySelector("svg.lucide-x"))
+      .forEach((b) => b.click());
+  }
+  if (await waitFor(() => !findLatestDialogByText(WALLET_DIALOG_TITLE), 1500, 100)) return;
+  await closeDocumentWalletDialogs();
+}
+
+async function listWalletDocuments(limit) {
+  const want = Math.max(1, Math.min(Number(limit) || 20, 50));
+  const pages = new Map();
+  let origin = "";
+  let total = 0;
+  const onList = (event) => {
+    try {
+      const data = JSON.parse(event.detail || "{}");
+      if (!data || !Array.isArray(data.items)) return;
+      pages.set(Number(data.page) || 1, data.items);
+      origin = data.origin || origin;
+      total = Number(data.total) || total;
+    } catch (_) { /* sự kiện lạ */ }
+  };
+  const collected = () => Array.from(pages.values()).reduce((n, items) => n + items.length, 0);
+  document.addEventListener(WALLET_LIST_EVENT, onList);
+  try {
+    const row = findCopyCertificationAttachmentRow();
+    if (!row) return { ok: false, error: "attachment-row-not-found" };
+    const opened = await openDocumentWalletForRow(row, {});
+    if (opened?.error) return { ok: false, error: opened.code || "wallet-modal-not-opened" };
+    if (!(await waitFor(() => pages.has(1), 8000, 150))) return { ok: false, error: "wallet-list-timeout" };
+    let page = 1;
+    while (collected() < want && collected() < total) {
+      const next = Array.from(opened.dialog.querySelectorAll("button"))
+        .find((b) => isVisible(b) && !b.disabled && foldedNodeText(b) === "sau");
+      if (!next) break;
+      next.click();
+      page += 1;
+      if (!(await waitFor(() => pages.has(page), 6000, 150))) break;
+    }
+    const items = Array.from(pages.keys()).sort((a, b) => a - b).flatMap((p) => pages.get(p)).slice(0, want);
+    return { ok: true, origin, total, items };
+  } finally {
+    document.removeEventListener(WALLET_LIST_EVENT, onList);
+    await closeWalletListDialog();
+  }
+}
+
 function findComponentNameInput(root) {
   const controls = Array.from(root.querySelectorAll("input:not([type='hidden']):not([type='file']), textarea"))
     .filter((el) => isVisible(el) && !el.disabled && el.getAttribute("name") !== "documentName");
@@ -3380,6 +3435,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (!files.length) { sendResponse({ error: "Không có file nào để đính kèm." }); return; }
     withNativeFilePickerBlocked(() => attachFilesToRequiredCopyCertification(files)).then(sendResponse);
     return true;
+  }
+  if (msg?.action === "listWalletDocuments") {
+    // Chỉ frame có dòng hồ sơ chứng thực trả lời (all_frames).
+    if (!findCopyCertificationAttachmentRow()) return;
+    listWalletDocuments(msg.limit)
+      .then(sendResponse)
+      .catch((e) => sendResponse({ ok: false, error: String(e?.message || e).slice(0, 200) }));
+    return true; // async
   }
 });
 

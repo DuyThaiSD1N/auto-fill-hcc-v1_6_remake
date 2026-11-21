@@ -20,6 +20,7 @@ from app.channels.handfree.chat import access, field_review, flow, hkd_tro_ly, i
 from app.channels.handfree.chat.hkd_tro_ly import to_khai as hkd_to_khai
 from app.channels.handfree.procedure_registry import get_procedure
 from app.procedures.registry import get_procedure as get_core_procedure
+from app.account_settings import service as account_settings
 from app.archive.config import archive_settings
 from app.config import settings
 from app.core.deps import require_auth
@@ -259,6 +260,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         "supportsSecondPassAngular": raw.get("supportsSecondPassAngular") is True,
         # Bản biết ghi lại ô đợt 2 trên form Form.io (data[...]): thủ tục form Form.io chỉ chạy lớp soát khi có cờ này.
         "supportsSecondPassFormio": raw.get("supportsSecondPassFormio") is True,
+        # Ghi lại được ô đợt 2 trên form Liferay cổng Bắc Ninh (content/fill-bacninh.js::patchFormBacNinh). Thủ tục cổng
+        # Bắc Ninh (registry khai secondPass "bacninh") chỉ chạy lớp soát khi có cờ này.
+        "supportsSecondPassBacNinh": raw.get("supportsSecondPassBacNinh") is True,
         # Bản biết ghi lại ô địa chỉ gộp (SurveyJS, dò theo nhãn) ở đợt 2. Thiếu cờ → bản vá bỏ ô địa chỉ.
         "supportsSecondPassArea": raw.get("supportsSecondPassArea") is True,
         # Watcher báo trạng thái khối người yêu cầu trên tờ khai (page_context.taiKhoan): "cho" = tờ khai đã hiện mà
@@ -359,6 +363,8 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         "supportsLizCommitSelf": raw.get("supportsLizCommitSelf") is True,
         # Báo kết quả đính kèm theo từng tệp + vẽ thẻ attach_files (chat/attach_files.py).
         "supportsAttachFileReport": raw.get("supportsAttachFileReport") is True,
+        # Dùng lại giấy tờ trong Ví cá nhân của cổng ở bước Thành phần hồ sơ (chat/wallet_reuse.py).
+        flow.wallet_reuse.CAPABILITY: raw.get(flow.wallet_reuse.CAPABILITY) is True,
         # Wizard tư pháp: bấm nút Quay lại của cổng (guided_click_back), kiểm tờ khai khi lùi về Kê khai
         # (step_back_scan) — chat/step_back.py.
         step_back.CAPABILITY: raw.get(step_back.CAPABILITY) is True,
@@ -476,6 +482,8 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
         "xa": str(user.get("xa") or ""),
         # Cấp tài khoản (HCC tỉnh/xã…) — chọn nộp Sở hay UBND xã cho thủ tục khai agencyLevelByAccount.
         "role": str(user.get("role") or ""),
+        # Cài đặt "Dùng lại giấy tờ trong Ví cá nhân" của tài khoản — flow cần ở cả chỗ dựng nút (đồng bộ).
+        flow.wallet_reuse.SETTING: account_settings.resolve(user).get(flow.wallet_reuse.SETTING) is True,
     }
 
     # Giữ mỏ neo người yêu cầu trong conversation để lượt "Đã đưa đủ" chạy nền vẫn nhận được
@@ -569,6 +577,9 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
         # Cùng lối với vòng bổ sung tờ khai, cho các ô còn trống ở bước Thông tin chủ hồ sơ.
         if intent is None and owner_review.asking(conv) and message and not message.startswith("__"):
             intent = intents.Intent("action", "owner_review_answer", {"text": message})
+        # Đang chọn giấy tờ trong Ví cá nhân: câu nói số thứ tự ("chọn số 2 và 4", "bỏ số 3", "xong").
+        if intent is None and flow.wallet_reuse.choosing(conv) and message and not message.startswith("__"):
+            intent = intents.Intent("action", "wallet_answer", {"text": message})
         # Cổng Bắc Ninh đang hỏi cơ quan tiếp nhận: câu gõ/nói dò trên cả danh sách cơ quan đọc từ trang (thẻ chỉ gợi
         # ý vài dòng); không khớp rõ thì đi bộ phân loại chung như thường.
         if intent is None and flow.bac_ninh.agency_asking(conv) and message and not message.startswith("__"):

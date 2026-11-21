@@ -63,6 +63,8 @@
   let renameAttachmentFiles = true;
   // "Lấy người nộp theo tờ khai" — chỉ BE dùng (đọc từ tài khoản khi chạy pipeline), extension chỉ bật/tắt.
   let submitterFromDeclaration = false;
+  // "Dùng lại giấy tờ trong Ví cá nhân" (chứng thực bản sao) — BE đọc từ tài khoản lúc tới bước Thành phần hồ sơ.
+  let reuseWalletDocuments = false;
   let accountSettingsLoaded = false;
   // Cỡ chữ theo tài khoản: phóng CẢ khung bằng zoom (bố cục tự co theo bề rộng còn lại, như phóng to trang).
   // 0.9–1.3 (BE chặn cùng khoảng): nhỏ hơn thì chữ phụ 10.5px còn dưới 10px; lớn hơn thì khung 400px chỉ còn
@@ -193,6 +195,9 @@
     // Ghi lại được ô đợt 2 trên form Form.io (data[...], content/fill-core.js::patchFormStandard). Thủ tục form Form.io
     // chỉ chạy lớp soát khi có cờ này.
     supportsSecondPassFormio: true,
+    // Ghi lại được ô đợt 2 trên form Liferay cổng Bắc Ninh (content/fill-bacninh.js::patchFormBacNinh). Thủ tục cổng Bắc
+    // Ninh chỉ chạy lớp soát khi có cờ này.
+    supportsSecondPassBacNinh: true,
     // Ghi lại được ô địa chỉ gộp SurveyJS ở đợt 2 (content/surveyjs-main.js::patchValues → setArea). Thiếu cờ → bản vá
     // của BE bỏ ô địa chỉ.
     supportsSecondPassArea: true,
@@ -305,6 +310,8 @@
     // Báo kết quả đính kèm theo từng tệp (attach_report.files: tên gốc, tên đổi, hồ sơ số mấy, nhóm lý do) và vẽ thẻ
     // attach_files (nút xem tệp đã đính, khung tệp lỗi, bảng danh sách). Thiếu cờ → BE giữ câu báo cũ.
     supportsAttachFileReport: true,
+    // Bước Thành phần hồ sơ chứng thực bản sao: đọc Ví cá nhân của cổng (wallet_list / wallet_read, thẻ wallet_docs).
+    supportsWalletReuse: true,
     // Wizard tư pháp: bấm nút "Quay lại" của cổng (guided_click_back) và đếm lại ô tờ khai khi lùi về Kê khai
     // (step_back_scan) để BE điền lại / mời bổ sung. Thiếu cờ → BE không theo khi trang lùi bước.
     supportsStepBack: true,
@@ -521,7 +528,7 @@
     "fillFields", "patchFields", "fillOwnerFields", "selectAgency", "fillAgencyByPlan", "confirmInfoModal", "fillMaeAgency",
     "pickProvinceRow", "bcaTthcSubmit", "bcaNthSubmit",
     "fieldReviewNext", "guidedClickNext", "guidedSubmit", "selectResultMethod", "attachAuthorizationFile",
-    "attachFilesByPlan", "declarationPreview", "declarationConfirm", "navigate", "fillBcaAgency", "tickCommitBox", "bcaSubmit",
+    "attachFilesByPlan", "listWalletDocuments", "declarationPreview", "declarationConfirm", "navigate", "fillBcaAgency", "tickCommitBox", "bcaSubmit",
     "prepareBusinessRegistration", "startBusinessRegistration", "bnShowTab", "bnAgency", "bnResult", "bnSubmit", "bnAccountSave",
   ]);
   let pageWorkInFlight = 0;
@@ -1665,6 +1672,251 @@
     })}`, "system");
   }
 
+  // ── Ví cá nhân của cổng (chứng thực bản sao; BE chat/wallet_reuse.py) ──
+  // wallet_list: content mở hộp thoại ví để TRANG tự gọi API danh sách (cần token của cổng), trả tên + mã tệp.
+  async function runWalletList(a) {
+    setStatus("🔎 Đang xem Ví cá nhân trên cổng…");
+    let res = null;
+    try {
+      res = await sendToContent({ action: "listWalletDocuments", limit: a.limit });
+    } catch (e) {
+      res = { ok: false, error: String(e?.message || e) };
+    }
+    setStatus("");
+    await ask(`__event:wallet_list:${JSON.stringify({
+      ok: !!res?.ok,
+      origin: String(res?.origin || ""),
+      total: Number(res?.total) || 0,
+      items: res?.ok && Array.isArray(res.items) ? res.items : [],
+      error: res?.error || (res ? "" : "trang chưa có dòng hồ sơ để mở ví"),
+    })}`, "system");
+  }
+
+  const WALLET_EXT_BY_TYPE = { "application/pdf": ".pdf", "image/jpeg": ".jpg", "image/png": ".png" };
+  function walletFileName(item, type) {
+    const name = String(item?.name || "tai-lieu").replace(/[\\/:*?"<>|]+/g, " ").trim() || "tai-lieu";
+    return /\.[a-z0-9]{2,5}$/i.test(name) ? name : name + (WALLET_EXT_BY_TYPE[type] || ".pdf");
+  }
+
+  // wallet_read: tải từng tệp (đường tải của cổng không cần token) rồi gửi vào phiên TẠM của ví — không phải phiên
+  // giấy tờ hồ sơ, để giấy công dân chưa chọn không lẫn vào hồ sơ. Từng tệp một: một tệp hỏng không kéo cả lượt.
+  async function runWalletRead(a) {
+    const sid = String(a.session_id || "");
+    const origin = String(a.origin || "");
+    const path = String(a.downloadPath || "");
+    const items = Array.isArray(a.items) ? a.items : [];
+    const usable = !!sid && /^https:\/\/[a-z0-9.-]+\.gov\.vn$/i.test(origin) && path.startsWith("/") && path.includes("{uri}");
+    const files = [];
+    let failed = 0;
+    for (const [index, item] of items.entries()) {
+      if (!usable) { failed = items.length; break; }
+      setStatus(`📥 Đang tải giấy tờ trong Ví cá nhân ${index + 1}/${items.length}…`);
+      try {
+        const res = await fetch(origin + path.replace("{uri}", encodeURIComponent(String(item?.uri || ""))),
+          { credentials: "omit" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const blob = await res.blob();
+        const type = blob.type || "application/pdf";
+        const name = walletFileName(item, type);
+        const fd = new FormData();
+        fd.append("files", new File([blob], name, { type }), name);
+        const up = await uploadSessionFetch(`${BASE_URL}/api/v1/upload-sessions/${encodeURIComponent(sid)}/files`,
+          { method: "POST", body: fd, timeoutMs: UPLOAD_TIMEOUT_MS });
+        const data = await up.json().catch(() => null);
+        if (!up.ok) throw new Error(data?.detail || `HTTP ${up.status}`);
+        const fid = data?.accepted?.[0]?.fid;
+        if (fid) files.push({ id: String(item?.id || ""), fid });
+        else failed += 1;
+      } catch (e) {
+        failed += 1;
+        console.warn("[TLND] Không tải được tệp trong Ví cá nhân:", e);
+      }
+    }
+    setStatus("");
+    await ask(`__event:wallet_uploaded:${JSON.stringify({ ok: files.length > 0, files, failed })}`, "system");
+  }
+
+  async function previewWalletFile(sid, fid) {
+    try {
+      const res = await uploadSessionFetch(
+        `${BASE_URL}/api/v1/upload-sessions/${encodeURIComponent(sid)}/files/${encodeURIComponent(fid)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const url = URL.createObjectURL(await res.blob());
+      window.open(url, "_blank", "noopener");
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (e) {
+      console.warn("[TLND] Không mở được tệp xem trước:", e);
+      setStatus("⚠️ Chưa mở được tệp để xem, công dân thử lại ạ.", true);
+    }
+  }
+
+  // Xem tệp trong ví thẳng từ cổng (đường tải không cần token) — thẻ chưa tải tệp nào về máy chủ.
+  const WALLET_ORIGIN_RE = /^https:\/\/[a-z0-9.-]+\.gov\.vn$/i;
+  async function previewWalletRemote(origin, path, uri) {
+    try {
+      if (!WALLET_ORIGIN_RE.test(origin) || !path.startsWith("/") || !path.includes("{uri}")) throw new Error("bad url");
+      const res = await fetch(origin + path.replace("{uri}", encodeURIComponent(uri)), { credentials: "omit" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const url = URL.createObjectURL(await res.blob());
+      window.open(url, "_blank", "noopener");
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (e) {
+      console.warn("[TLND] Không mở được tệp trong Ví cá nhân:", e);
+      setStatus("⚠️ Chưa mở được tệp để xem, công dân thử lại ạ.", true);
+    }
+  }
+
+  function walletSizeText(bytes) {
+    const n = Number(bytes) || 0;
+    if (!n) return "";
+    return n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(2)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
+  }
+
+  // Thẻ wallet_docs: danh sách đánh số giấy tờ đọc được từ ví. Tick chọn ngay trên thẻ (không hỏi BE từng lần);
+  // nói số thì BE vẽ lại thẻ mới với lựa chọn đã cập nhật → thẻ cũ khoá lại.
+  function renderWalletDocs(card) {
+    document.querySelectorAll(".wallet-card").forEach((el) => {
+      el.classList.add("used");
+      el.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+    });
+    const entries = Array.isArray(card.entries) ? card.entries : [];
+    const picked = new Set(entries.filter((e) => e.picked).map((e) => Number(e.no)));
+    const stats = card.stats || {};
+    const wrap = document.createElement("div");
+    wrap.className = "wallet-card";
+    const head = document.createElement("div");
+    head.className = "wallet-head";
+    const title = document.createElement("div");
+    title.className = "wallet-title";
+    title.textContent = "📂 Giấy tờ trong Ví cá nhân";
+    const count = document.createElement("span");
+    count.className = "wallet-count";
+    count.textContent = `${entries.length} giấy tờ`;
+    title.appendChild(count);
+    const sub = document.createElement("div");
+    sub.className = "wallet-sub";
+    sub.textContent = [
+      card.origin ? "Tên gốc trên Cổng" : `Đọc ${Number(stats.read) || 0} tệp`,
+      stats.merged ? `gộp ${stats.merged} trang lẻ` : "",
+      stats.duplicates ? `bỏ ${stats.duplicates} bản trùng` : "",
+      stats.blank ? `bỏ ${stats.blank} tệp trắng` : "",
+      stats.renamed ? `đặt lại ${stats.renamed} tên` : "",
+    ].filter(Boolean).join(" · ") + " · mới nhất ở trên";
+    head.append(title, sub);
+
+    const list = document.createElement("div");
+    list.className = "wallet-list";
+    const go = document.createElement("button");
+    go.type = "button";
+    go.className = "wallet-go";
+    const all = document.createElement("button");
+    all.type = "button";
+    all.className = "wallet-all";
+    const refresh = () => {
+      list.querySelectorAll(".wallet-item").forEach((row) => {
+        const on = picked.has(Number(row.dataset.no));
+        row.classList.toggle("on", on);
+        row.querySelector(".wallet-row")?.setAttribute("aria-checked", on ? "true" : "false");
+      });
+      go.textContent = picked.size ? `Dùng ${picked.size} giấy đã chọn` : "Chưa chọn giấy nào";
+      go.disabled = !picked.size || wrap.classList.contains("used");
+      all.textContent = picked.size === entries.length ? "Bỏ chọn tất cả" : "Chọn tất cả";
+    };
+    for (const entry of entries) {
+      const no = Number(entry.no);
+      const item = document.createElement("div");
+      item.className = "wallet-item";
+      item.dataset.no = String(no);
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "wallet-row";
+      row.setAttribute("role", "checkbox");
+      const box = document.createElement("span");
+      box.className = "wallet-box";
+      box.textContent = "✓";
+      const num = document.createElement("span");
+      num.className = "wallet-no";
+      num.textContent = String(no);
+      const txt = document.createElement("span");
+      txt.className = "wallet-txt";
+      const name = document.createElement("span");
+      name.className = "wallet-name";
+      name.textContent = String(entry.name || "");
+      const meta = document.createElement("span");
+      meta.className = "wallet-meta";
+      const files = Array.isArray(entry.files) ? entry.files : [];
+      meta.textContent = [
+        entry.date ? String(entry.date).slice(0, 10).split("-").reverse().join("/") : "",
+        walletSizeText(entry.size),
+        files.length > 1 ? `gộp ${files.length} tệp` : "",
+      ].filter(Boolean).join(" · ");
+      const tags = document.createElement("span");
+      tags.className = "wallet-tags";
+      if (entry.inDossier) tags.insertAdjacentHTML("beforeend", '<i class="wallet-tag dup">ĐÃ CÓ TRONG HỒ SƠ</i>');
+      if (entry.renamed) tags.insertAdjacentHTML("beforeend", '<i class="wallet-tag fix">ĐẶT LẠI TÊN</i>');
+      txt.append(name, tags, meta);
+      if (entry.renamed && files.length) {
+        const orig = document.createElement("span");
+        orig.className = "wallet-orig";
+        orig.textContent = `Gốc: ${files[0]}${files.length > 1 ? ` +${files.length - 1} tệp` : ""}`;
+        orig.title = files.join(", ");
+        txt.appendChild(orig);
+      }
+      row.append(box, num, txt);
+      row.addEventListener("click", () => {
+        if (wrap.classList.contains("used")) return;
+        markActivity();
+        if (picked.has(no)) picked.delete(no); else picked.add(no);
+        refresh();
+      });
+      item.appendChild(row);
+      const fid = Array.isArray(entry.fids) ? entry.fids[0] : "";
+      const remote = !!(entry.uri && card.origin && card.downloadPath);
+      if (remote || (fid && card.session_id)) {
+        const eye = document.createElement("button");
+        eye.type = "button";
+        eye.className = "wallet-eye";
+        eye.title = "Xem giấy tờ";
+        eye.setAttribute("aria-label", `Xem giấy tờ số ${no}`);
+        eye.textContent = "👁";
+        eye.addEventListener("click", () => {
+          markActivity();
+          if (remote) void previewWalletRemote(String(card.origin), String(card.downloadPath), String(entry.uri));
+          else void previewWalletFile(card.session_id, fid);
+        });
+        item.appendChild(eye);
+      }
+      list.appendChild(item);
+    }
+    all.addEventListener("click", () => {
+      if (wrap.classList.contains("used")) return;
+      if (picked.size === entries.length) picked.clear();
+      else entries.forEach((e) => picked.add(Number(e.no)));
+      refresh();
+    });
+    go.addEventListener("click", () => {
+      if (!picked.size || wrap.classList.contains("used")) return;
+      const label = go.textContent;
+      wrap.classList.add("used");
+      wrap.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+      addUserText(label);
+      ask(`${card.pickSend || "__action:wallet_pick"}:${JSON.stringify({ picked: [...picked].sort((x, y) => x - y) })}`,
+        "chip", label);
+    });
+    const tools = document.createElement("div");
+    tools.className = "wallet-tools";
+    const hint = document.createElement("span");
+    hint.className = "wallet-hint";
+    hint.textContent = "Bấm để chọn · nói “chọn số 2 và 4”";
+    tools.append(all, hint);
+    const foot = document.createElement("div");
+    foot.className = "wallet-foot";
+    foot.appendChild(go);
+    wrap.append(head, tools, list, foot);
+    refresh();
+    addNode(wrap);
+  }
+
   // Bước chủ hồ sơ: tick "Lưu thông tin mới sửa đổi vào Thông tin định danh" + Xác nhận hộp thoại ghi đè, rồi báo BE.
   async function runSaveOwnerProfile() {
     setStatus("💾 Đang lưu vào Thông tin định danh…");
@@ -2269,6 +2521,7 @@
     if (card.kind === "phone_form") return;
     if (card.kind === "consent_form") return renderConsentForm(card);
     if (card.kind === "rating") return renderRatingCard(card);
+    if (card.kind === "wallet_docs") return renderWalletDocs(card);
     console.warn("[TLND] card chưa hỗ trợ:", card.kind);
   }
 
@@ -5832,6 +6085,10 @@
         setTimeout(() => { void runBnSubmit(); }, 0);
       } else if (a.type === "attach_authorization_doc") {
         setTimeout(() => { void runAttachAuthorizationDoc(a); }, 0);
+      } else if (a.type === "wallet_list") {
+        setTimeout(() => { void runWalletList(a); }, 0);
+      } else if (a.type === "wallet_read") {
+        setTimeout(() => { void runWalletRead(a); }, 0);
       } else if (a.type === "save_owner_profile") {
         setTimeout(() => { void runSaveOwnerProfile(); }, 0);
       } else if (a.type === "fill_owner_fields" && Array.isArray(a.fields)) {
@@ -6186,15 +6443,33 @@
     startIdleTracking(activityAt);
   }
 
+  // Mỗi lượt dọn có hạn chờ: background hoặc một tab cổng không trả lời thì lượt đó coi như hỏng
+  // để còn thử lại và còn điều hướng — chờ mãi là trang đứng nguyên đăng nhập của công dân.
+  const CITIZEN_CLEANUP_ATTEMPTS = 3;
+  const CITIZEN_CLEANUP_TIMEOUT_MS = 20000;
+  const CITIZEN_NAVIGATE_TIMEOUT_MS = 3000;
+  function resolveWithin(promise, ms) {
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => resolve(null), ms);
+      promise.then((value) => { clearTimeout(timer); resolve(value); }, () => { clearTimeout(timer); resolve(null); });
+    });
+  }
+
   // Xóa phiên đăng nhập của công dân rồi đưa trang về DVCQG cho lượt tiếp theo.
   // Tách khỏi returnToStart và gọi trong finally: đây là việc KHÔNG được phép lỡ — lỡ một lần
   // là công dân sau ngồi vào máy còn nguyên đăng nhập của người trước. Trước đây khối này nằm
   // CUỐI một try…finally không có catch, nên bất kỳ bước dọn nào ở trên ném lỗi là nó bị bỏ
   // qua hoàn toàn, không một dòng cảnh báo.
   async function clearCitizenSessionAndGoHome() {
-    const cookieCleanup = await sendToBackground({ action: "clearCitizenDvcCookies", tabId: TAB_ID });
-    if (!cookieCleanup?.ok) {
-      console.warn("[TLND] Chưa xóa hết phiên công dân", {
+    let cookieCleanup = null;
+    for (let attempt = 1; attempt <= CITIZEN_CLEANUP_ATTEMPTS; attempt += 1) {
+      cookieCleanup = await resolveWithin(
+        sendToBackground({ action: "clearCitizenDvcCookies", tabId: TAB_ID }),
+        CITIZEN_CLEANUP_TIMEOUT_MS,
+      );
+      if (cookieCleanup?.ok) break;
+      console.warn(`[TLND] Chưa xóa hết phiên công dân (lần ${attempt}/${CITIZEN_CLEANUP_ATTEMPTS})`, {
+        timedOut: !cookieCleanup,
         found: Number(cookieCleanup?.found) || 0,
         removed: Number(cookieCleanup?.removed) || 0,
         failed: Number(cookieCleanup?.failed) || 0,
@@ -6203,6 +6478,9 @@
         storageError: cookieCleanup?.storageError || "",
         failedTabs: Number(cookieCleanup?.failedTabs) || 0,
       });
+      if (attempt < CITIZEN_CLEANUP_ATTEMPTS) await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+    if (!cookieCleanup?.ok) {
       setStatus("⚠️ Chưa xóa hết phiên đăng nhập DVC/VNeID/Bộ Tư pháp. Cán bộ vui lòng kiểm tra trước khi tiếp nhận công dân tiếp theo.", true);
     } else {
       console.log(
@@ -6210,10 +6488,21 @@
         + `${Number(cookieCleanup.clearedTabs) || 0} tab công dân.`,
       );
     }
-    // Dọn xong phiên công dân rồi mới điều hướng CHÍNH tab đang làm thủ tục. Action
-    // navigate đã phản hồi trước khi location.assign nên không làm đóng message channel.
-    const navigation = await sendToContent({ action: "navigate", url: DVC_HOME_URL });
-    if (!navigation?.ok) {
+    // Dọn xong (hoặc đã hết lượt thử) mới điều hướng CHÍNH tab đang làm thủ tục — dọn hỏng vẫn
+    // phải rời trang cổng đang hiện thông tin công dân. Action navigate đã phản hồi trước khi
+    // location.assign nên không làm đóng message channel.
+    const navigation = await resolveWithin(
+      sendToContent({ action: "navigate", url: DVC_HOME_URL }),
+      CITIZEN_NAVIGATE_TIMEOUT_MS,
+    );
+    if (navigation?.ok) return;
+    // Content script của trang không trả lời (trang treo, chưa nạp, bản cũ còn sót) → đổi URL tab
+    // từ phía extension.
+    const tabNav = await resolveWithin(
+      chrome.tabs.update(Number(TAB_ID), { url: DVC_HOME_URL }).then(() => true),
+      CITIZEN_NAVIGATE_TIMEOUT_MS,
+    );
+    if (!tabNav) {
       console.warn("[TLND] Không thể tự trở về trang chủ DVCQG", navigation);
       setStatus("⚠️ Không thể tự trở về trang chủ Dịch vụ công Quốc gia. Công dân vui lòng mở trang chủ giúp tôi ạ.", true);
     }
@@ -7251,6 +7540,7 @@
   const $preferScanSwitch = document.getElementById("prefer-scan-switch");
   const $renameFilesSwitch = document.getElementById("rename-files-switch");
   const $submitterDeclarationSwitch = document.getElementById("submitter-declaration-switch");
+  const $walletReuseSwitch = document.getElementById("wallet-reuse-switch");
   const $fontScaleRange = document.getElementById("font-scale-range");
   const $fontScaleValue = document.getElementById("font-scale-value");
   const $fontScaleSample = document.getElementById("font-scale-sample");
@@ -7409,6 +7699,13 @@
     $submitterDeclarationSwitch.disabled = !accountSettingsLoaded;
   }
 
+  function renderWalletReuseSetting() {
+    if (!$walletReuseSwitch) return;
+    $walletReuseSwitch.classList.toggle("on", reuseWalletDocuments);
+    $walletReuseSwitch.setAttribute("aria-checked", reuseWalletDocuments ? "true" : "false");
+    $walletReuseSwitch.disabled = !accountSettingsLoaded;
+  }
+
   function renderFontScaleSetting() {
     if (!$fontScaleRange) return;
     const percent = Math.round((fontScalePending ?? fontScale) * 100);
@@ -7426,6 +7723,7 @@
   function renderAccountSettings() {
     renderRenameFilesSetting();
     renderSubmitterDeclarationSetting();
+    renderWalletReuseSetting();
     renderFontScaleSetting();
     renderVoiceSettings();
   }
@@ -7434,6 +7732,8 @@
     renameAttachmentFiles = settings?.renameAttachmentFiles !== false;
     // BE cũ chưa có khoá này → coi như tắt (người nộp theo tài khoản, hành vi cũ).
     submitterFromDeclaration = settings?.submitterFromDeclaration === true;
+    // BE cũ chưa có khoá này → tắt (không hỏi Ví cá nhân, hành vi cũ).
+    reuseWalletDocuments = settings?.reuseWalletDocuments === true;
     // BE cũ chưa có khoá này → 100%.
     applyFontScale(settings?.fontScale ?? 1);
     applyVoiceSettings(settings);
@@ -7447,7 +7747,8 @@
     });
   }
 
-  const ACCOUNT_STATUS_IDS = ["rename-files-status", "submitter-declaration-status", "font-scale-status", "voice-status"];
+  const ACCOUNT_STATUS_IDS = ["rename-files-status", "submitter-declaration-status", "wallet-reuse-status",
+    "font-scale-status", "voice-status"];
 
   // BE lỗi → giữ bản sao đang có trong storage (content vẫn đọc được), chỉ khoá công tắc và nói rõ lý do kèm
   // Thử lại — công tắc mờ không chữ thì cán bộ tưởng hỏng.
@@ -7472,6 +7773,7 @@
   function forgetAccountSettings() {
     renameAttachmentFiles = true;
     submitterFromDeclaration = false;
+    reuseWalletDocuments = false;
     applyFontScale(1);
     applyVoiceSettings({});
     accountSettingsLoaded = false;
@@ -7670,6 +7972,10 @@
   $submitterDeclarationSwitch?.addEventListener("click", () => {
     markActivity();
     void saveAccountSetting({ submitterFromDeclaration: !submitterFromDeclaration }, "submitter-declaration-status");
+  });
+  $walletReuseSwitch?.addEventListener("click", () => {
+    markActivity();
+    void saveAccountSetting({ reuseWalletDocuments: !reuseWalletDocuments }, "wallet-reuse-status");
   });
   // Kéo: chỉ đổi chữ mẫu + %. Thả tay (change): lưu theo tài khoản, lưu xong cả khung phóng theo.
   $fontScaleRange?.addEventListener("input", () => showFontScalePreview(Number($fontScaleRange.value) || 100));

@@ -1370,6 +1370,8 @@ PROCEDURES: list[dict] = [
         "detect": {"textIncludes": ["kết hôn có yếu tố nước ngoài"], "textPriority": True},
         "label": "Thủ tục đăng ký kết hôn có yếu tố nước ngoài",
         "mode": "agent",
+        # Điền đợt 2 trên FORM CŨ (eForm x-*): chỉ chạy khi extension khai fillSupports có "secondPassLegacy".
+        "secondPass": "legacy",
         "hasAttachmentStep": True,
         # Client cũ hoặc không gửi option luôn giữ nguyên file; chỉ boolean True mới tách theo trang.
         "supportsSplitDocuments": True,
@@ -1807,6 +1809,9 @@ PROCEDURES: list[dict] = [
         # giấy báo tử, bản sao. Người yêu cầu do cổng đổ từ VNeID; chủ hộ và mai táng phí để cán bộ
         # chọn (nhánh "Hưởng theo luật BHXH" BA đã bỏ ngày 2026-09-14).
         "mode": "agent",
+        # Điền đợt 2 (app/second_pass) trên form ANGULAR của cổng liên thông: thanh tra tên xã nơi cư trú / nơi chết.
+        # Chỉ chạy khi extension khai fillSupports có "secondPassAngular"; bản khác bỏ qua khoá này.
+        "secondPass": "angular",
         "hasAttachmentStep": True,
         "roles": [],
         "useDangKyBy": False,

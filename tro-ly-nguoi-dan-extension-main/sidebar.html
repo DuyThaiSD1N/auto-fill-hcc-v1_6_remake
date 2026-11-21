@@ -169,6 +169,27 @@
           </div>
           <p class="settings-row-status" id="attach-mode-status" role="status" aria-live="polite"></p>
         </div>
+
+        <!-- Dùng lại giấy tờ trong Ví cá nhân: cài đặt THEO TÀI KHOẢN (/api/v1/account/settings) — BE đọc khi tới bước
+             Thành phần hồ sơ (chat/wallet_reuse.py). Khoá tới khi đọc được giá trị từ BE như các công tắc tài khoản khác. -->
+        <div class="settings-row">
+          <div class="settings-row-main">
+            <div class="settings-copy">
+              <label id="wallet-reuse-label" for="wallet-reuse-switch">Dùng lại giấy tờ trong Ví cá nhân</label><span
+                class="settings-chip">Tài khoản</span>
+              <p id="wallet-reuse-description">
+                Chứng thực bản sao: tới bước Thành phần hồ sơ, trợ lý đọc 20 tệp mới nhất công dân đã tải lên Cổng ở
+                hồ sơ trước, đặt tên và gộp trang để công dân chọn thêm.
+              </p>
+            </div>
+            <button id="wallet-reuse-switch" class="settings-switch" type="button" role="switch"
+              aria-checked="false" aria-labelledby="wallet-reuse-label"
+              aria-describedby="wallet-reuse-description" disabled>
+              <span class="settings-switch-knob"></span>
+            </button>
+          </div>
+          <p class="settings-row-status" id="wallet-reuse-status" role="status" aria-live="polite"></p>
+        </div>
       </div>
       <p class="settings-group-note">Thay đổi áp dụng từ lần đính kèm tiếp theo.</p>
 

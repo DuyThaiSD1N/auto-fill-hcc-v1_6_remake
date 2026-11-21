@@ -5673,8 +5673,9 @@ ocrBtn.addEventListener("click", async () => {
     // "secondPassAngular": ghi lại được ô trên form Angular (cổng liên thông).
     // "secondPassArea": ghi lại được ô địa chỉ gộp SurveyJS (dò ô con theo nhãn).
     // "secondPassFormio": ghi lại được ô trên form Form.io (data[...], content.js::patchFormStandard).
+    // "secondPassBacNinh": ghi lại được ô trên form Liferay cổng Bắc Ninh (content/fill-bacninh.js::patchFormBacNinh).
     if (cfg.secondPass && !page) {
-      options.fillSupports = ["secondPass", "secondPassLegacy", "secondPassAngular", "secondPassArea", "secondPassFormio"];
+      options.fillSupports = ["secondPass", "secondPassLegacy", "secondPassAngular", "secondPassArea", "secondPassFormio", "secondPassBacNinh"];
     }
     const res = await api.process({ procedure: cfg.key, options, files: payloadFiles });
     console.log("[BE]", { extracted: res.extracted, stats: res.stats });

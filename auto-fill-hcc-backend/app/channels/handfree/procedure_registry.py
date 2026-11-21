@@ -5053,6 +5053,10 @@ PROCEDURES: list[dict] = [
              "sides": 1, "optional": True, "repeatable": True},
             {"key": "cccd_nguoi_nop", "name": "Căn cước công dân của người nộp thay (nếu có)",
              "icon": "🪪", "sides": 2, "optional": True, "repeatable": True},
+            # Catch-all: giấy giới thiệu / giấy tờ kèm theo không có ô riêng → route_to_slot xếp vào đây thay vì
+            # "chưa nhận ra loại"; attach planner đính chung dòng Đơn.
+            {"key": "khac", "name": "Các giấy tờ khác (nếu có)", "icon": "📎", "sides": 1,
+             "optional": True, "repeatable": True},
         ],
         "uploadHint": (
             "Giấy tờ cần tải lên (của CHỦ HỒ SƠ — người/tổ chức đề nghị cấp phép):\n"
@@ -5062,6 +5066,7 @@ PROCEDURES: list[dict] = [
             "3. Ảnh chụp hiện trạng cây xanh cần chặt hạ, dịch chuyển.\n"
             "4. Nếu có: giấy chứng nhận quyền sử dụng đất.\n"
             "5. Nếu người khác nộp thay: thêm căn cước của người nộp.\n"
+            "6. Nếu có: các giấy tờ khác (giấy giới thiệu, giấy tờ kèm theo).\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
             "Trợ lý điền Phần I (người nộp), Phần II (chủ hồ sơ + nội dung đơn), bảng kê cây xanh (nhiều "
             "dòng), lý do và thông tin ký.\n"

@@ -37,6 +37,9 @@ def capability(procedure: dict | None) -> str:
     # Form Angular (cổng liên thông): bản extension phải biết ghi lại ô trên form Angular.
     if kind == "angular":
         return "secondPassAngular"
+    # Form Liferay cổng Bắc Ninh: bản extension phải biết ghi lại ô trên form Bắc Ninh.
+    if kind == "bacninh":
+        return "secondPassBacNinh"
     # Form Form.io (data[...], cổng Bộ Y tế…): bản extension phải biết ghi lại ô trên form Form.io.
     return "secondPassFormio" if kind == "formio" else "secondPass"
 

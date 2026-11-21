@@ -109,6 +109,22 @@ def blank_ward(value, mapped: dict | None) -> tuple[str, tuple[str, ...]] | None
     return area_remap.canonical_province(tinh) or tinh, wards
 
 
+def guessed_ward(value, mapped: dict | None) -> tuple[str, tuple[str, ...], str] | None:
+    """(tỉnh, danh sách xã, xã mã đoán) khi ô xã CÓ giá trị trên cổng nhưng chỉ nhờ bước sửa chính tả của mapper: tên
+    lượt trích đọc không ra xã hiện hành nào nếu không sửa, sửa thì ra xã gần chữ nhất — có thể là xã khác ("Bình Lương"
+    đọc lệch từ "Bình Chương" bị sửa thành xã cũ "Bình Dương")."""
+    if not isinstance(value, dict) or not isinstance(mapped, dict) or "chet" in fold(value.get("diaChi")):
+        return None
+    tinh, xa = str(mapped.get("tinh") or ""), str(mapped.get("xa") or "")
+    wards = wards_of(tinh)
+    if not wards or not xa or not str(value.get("xa") or "").strip() or not area_remap.is_current_area(tinh, xa):
+        return None
+    plain = area_remap.remap_area(dict(value), correct_spelling=False) or {}
+    if plain.get("xa") and area_remap.is_current_area(plain.get("tinh"), plain.get("xa")):
+        return None
+    return area_remap.canonical_province(tinh) or tinh, wards, xa
+
+
 def _listed(answer: str, wards: tuple[str, ...]) -> str:
     key = _bare(answer)
     return next((ward for ward in wards if key and _bare(ward) == key), "")
@@ -131,14 +147,16 @@ def _counter(options: dict, province: str) -> str:
 
 
 async def _ask(slot: Slot, value: dict, province: str, wards: tuple[str, ...], documents: list[dict],
-               options: dict, title: str) -> tuple[str, str, str]:
+               options: dict, title: str, guess: str = "") -> tuple[str, str, str]:
     """(xã trong danh sách, dòng căn cứ, lý do) do LLM chọn; ("", "", "") khi không chọn / không qua kiểm."""
     counter = _counter(options, province)
     docs = "\n\n".join(f"<giay ten=\"{d.get('name') or ''}\">\n{str(d.get('text') or '')[:_DOC_CHARS]}\n</giay>"
                        for d in documents)
     user = (f"Ô cần sửa: {slot.label_text}\nLượt trích đọc được: tỉnh \"{province}\", xã \"{value.get('xa') or ''}\", "
             f"chi tiết \"{value.get('diaChi') or ''}\"\n"
-            f"Tài khoản quầy: {f'{counter}, tỉnh {province}' if counter else 'không rõ'}\n\n"
+            + (f"Ô xã trên cổng KHÔNG trống: mã sửa chính tả đã chọn xã gần chữ nhất \"{guess}\" — có thể là xã khác bị "
+               f"chọn nhầm. Chọn lại theo giấy; giấy đúng là xã đó thì trả đúng tên đó.\n" if guess else "")
+            + f"Tài khoản quầy: {f'{counter}, tỉnh {province}' if counter else 'không rõ'}\n\n"
             f"<danh_sach_xa_hien_hanh tinh=\"{province}\">\n" + "\n".join(wards) + "\n</danh_sach_xa_hien_hanh>\n\n"
             + docs)
     try:
@@ -302,28 +320,33 @@ def _named_elsewhere(read: str, by_key: dict[str, str], documents: list[dict]) -
 
 
 async def fixes(values: dict, slots: dict[str, Slot], documents: list[dict], options: dict, *, title: str,
-                mapped: Callable[[str, dict], dict | None]) -> dict[str, dict]:
-    """{field: {"value", "quote", "doc", "by", "why"}} cho các địa chỉ có ô xã sẽ trống mà sửa được. ``mapped(tên ô, giá
-    trị)`` = địa chỉ đó sau mapper của thủ tục; ``title`` = tên thủ tục nói với model."""
+                mapped: Callable[[str, dict], dict | None], guessed: bool = False) -> dict[str, dict]:
+    """{field: {"value", "quote", "doc", "by", "why", "guess"}} cho các địa chỉ có ô xã sẽ trống mà sửa được. ``mapped(tên
+    ô, giá trị)`` = địa chỉ đó sau mapper của thủ tục; ``title`` = tên thủ tục nói với model. ``guessed``: soát cả ô xã
+    chỉ có giá trị nhờ bước sửa chính tả (guessed_ward) — "guess" là xã mã đã đoán, kết quả trùng xã đó thì bỏ."""
     asks = []
     for name, slot in slots.items():
         value = values.get(name)
-        blank = blank_ward(value, mapped(name, value) if isinstance(value, dict) else None)
+        area = mapped(name, value) if isinstance(value, dict) else None
+        blank = blank_ward(value, area)
         if blank:
-            asks.append((name, slot, value, *blank))
+            asks.append((name, slot, value, *blank, ""))
+        elif guessed and (found := guessed_ward(value, area)):
+            asks.append((name, slot, value, *found))
     if not asks:
         return {}
-    answers = await asyncio.gather(*(_ask(slot, value, province, wards, documents, options, title)
-                                     for _, slot, value, province, wards in asks))
+    answers = await asyncio.gather(*(_ask(slot, value, province, wards, documents, options, title, guess)
+                                     for _, slot, value, province, wards, guess in asks))
     out = {}
-    for (name, slot, value, province, wards), (ward, line, why) in zip(asks, answers):
+    for (name, slot, value, province, wards, guess), (ward, line, why) in zip(asks, answers):
         by = "llm"
         if not ward:
             ward, line = rule_ward(slot, value, province, wards, documents)
             by, why = "ma", "dòng địa chỉ của chính ô ghi tên xã hiện hành / tên đọc chỉ lệch dấu một xã của tỉnh"
-        if not ward:
+        if not ward or (guess and _bare(ward) == _bare(guess)):
             continue
         doc = next((index for index, d in enumerate(documents, start=1)
                     if quote_in_documents(line, [d])), 0)
-        out[name] = {"value": {**value, "tinh": province, "xa": ward}, "quote": line, "doc": doc, "by": by, "why": why}
+        out[name] = {"value": {**value, "tinh": province, "xa": ward}, "quote": line, "doc": doc, "by": by, "why": why,
+                     "guess": guess}
     return out

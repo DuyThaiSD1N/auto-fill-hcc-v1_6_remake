@@ -20,13 +20,14 @@ test("4 nhóm theo đúng thứ tự: nhận giấy → đính kèm → điền 
   assert.ok(order.every((pos, i) => pos > 0 && (i === 0 || pos > order[i - 1])));
 });
 
-test("chỉ bốn mục lưu theo tài khoản mang nhãn Tài khoản", () => {
+test("chỉ năm mục lưu theo tài khoản mang nhãn Tài khoản", () => {
   const chips = [...screen.matchAll(/class="settings-chip">Tài khoản</g)];
-  assert.equal(chips.length, 4);
+  assert.equal(chips.length, 5);
   assert.match(screen, /id="voice-label"[^>]*>[^<]*<\/label><span\s+class="settings-chip">Tài khoản/);
   assert.match(screen, /id="font-scale-label"[^>]*>[^<]*<\/label><span\s+class="settings-chip">Tài khoản/);
   assert.match(screen, /id="rename-files-label"[^>]*>[^<]*<\/label><span\s+class="settings-chip">Tài khoản/);
   assert.match(screen, /id="submitter-declaration-label"[^>]*>[^<]*<\/label><span\s+class="settings-chip">Tài khoản/);
+  assert.match(screen, /id="wallet-reuse-label"[^>]*>[^<]*<\/label><span\s+class="settings-chip">Tài khoản/);
 });
 
 test("nút chọn không dùng emoji (hiển thị khác nhau giữa các máy quầy)", () => {
