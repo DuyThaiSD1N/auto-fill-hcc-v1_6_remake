@@ -32,6 +32,8 @@ from app.pipelines.dinh_chinh_gcn_da_cap_bac_ninh.attach import plan as dinh_chi
 from app.pipelines.dinh_chinh_gcn_da_cap_bac_ninh.process import run as dinh_chinh_gcn_da_cap_bac_ninh_process
 from app.pipelines.cap_lai_giay_chung_nhan_do_bi_mat_bac_ninh.attach import plan as cap_lai_gcn_do_bi_mat_bac_ninh_attach
 from app.pipelines.cap_lai_giay_chung_nhan_do_bi_mat_bac_ninh.process import run as cap_lai_gcn_do_bi_mat_bac_ninh_process
+from app.pipelines.dang_ky_bien_dong_doi_ten_nguoi_su_dung_dat_bac_ninh.attach import plan as dkbd_doi_ten_bac_ninh_attach
+from app.pipelines.dang_ky_bien_dong_doi_ten_nguoi_su_dung_dat_bac_ninh.process import run as dkbd_doi_ten_bac_ninh_process
 from app.pipelines.dang_ky_dat_dai_lan_dau_lam_dong.attach import plan as dang_ky_dat_dai_lan_dau_lam_dong_attach
 from app.pipelines.dang_ky_dat_dai_lan_dau_lam_dong.process import run as dang_ky_dat_dai_lan_dau_lam_dong_process
 from app.pipelines.chuyen_muc_dich_su_dung_dat_lam_dong.attach import plan as chuyen_muc_dich_su_dung_dat_lam_dong_attach
@@ -5620,6 +5622,47 @@ PROCEDURES: list[dict] = [
             "(TP-H05.000040) để trống vì GCN đã mất; mảnh trích đo → TP-H05.000045; giấy lẻ khác → 'File đính kèm khác'.\n"
             "Để user tự làm: cơ quan tiếp nhận (chọn đúng Chi nhánh VPĐKĐĐ nơi có đất), hình thức nhận kết quả, ngày "
             "khai hồ sơ."
+        ),
+    },
+    {
+        "key": "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-bac-ninh",
+        # Mã TTHC 1.115460, key TRÙNG ke_khai_links ("Bắc Ninh - …", provinceOnlyAgency + selectSo: tích Sở). Cổng
+        # dichvucong.bacninh.gov.vn (Liferay + select2, engine fill-bacninh.js), trang nộp 4 tab cùng trang. Thân đơn Mẫu
+        # 18 khớp class eform-element-<Key> (crawl DOM 21/11/2026, trùng bộ khoá 1.115465); lượt purpose="authorized_person"
+        # điền khối doiTuongKhac* = chủ hồ sơ. urlScope khoá host: Quảng Ninh (1.115837) / Lào Cai (1.013833) có bản
+        # riêng cùng tên. Chưa chạy thử trên cổng thật.
+        "detect": {
+            "urlScope": ["dichvucong.bacninh.gov.vn"],
+            "urlIncludes": ["maThuTucHanhChinh=1.115460"],
+        },
+        "label": (
+            "[Tỉnh Bắc Ninh] Đăng ký biến động đối với trường hợp đổi tên hoặc thay đổi thông tin về người sử dụng đất, "
+            "chủ sở hữu tài sản gắn liền với đất hoặc thay đổi số hiệu hoặc địa chỉ của thửa đất; thay đổi hạn chế quyền "
+            "sử dụng đất, quyền sở hữu tài sản gắn liền với đất hoặc có thay đổi quyền đối với thửa đất liền kề; giảm "
+            "diện tích thửa đất do sạt lở tự nhiên"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        # Cài đặt "Tách giấy tờ": tệp scan chung cả bộ → mỗi giấy một mục (cắt trang) vào đúng dòng TP-H05; tắt → đính
+        # NGUYÊN tệp vào mọi dòng có giấy tương ứng.
+        "supportsSplitDocuments": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể scan CHUNG một tệp, Đơn Mẫu 18 đứng đầu):\n"
+            "1. Đơn đăng ký biến động đất đai (Mẫu số 18) đã kê khai, ký — nguồn chính điền đơn.\n"
+            "2. Giấy chứng nhận quyền sử dụng đất đã cấp (bản gốc).\n"
+            "3. Giấy tờ chứng minh việc thay đổi thông tin (giấy xác nhận thông tin cư trú, xác nhận số CMND cũ, quyết "
+            "định thay đổi họ tên, trích lục hộ tịch…); tổ chức: văn bản cho phép đổi tên.\n"
+            "4. Căn cước công dân của người sử dụng đất; nếu nộp thay: văn bản ủy quyền; nếu có: văn bản thay đổi quyền "
+            "của người có quyền lợi liên quan, mảnh trích đo bản đồ địa chính.\n"
+            "Điền đơn: Kính gửi, Tên, Giấy tờ nhân thân, Địa chỉ, Điện thoại, II. Nội dung biến động (kèm số vào sổ / số "
+            "phát hành GCN đã cấp), mục IV, V + người nhận kết quả. Nút \"Điền thông tin người ủy quyền\": khối "
+            "doiTuongKhac* = chủ hồ sơ.\n"
+            "Đính kèm: Đơn → TP-H05.000026, giấy chứng minh thay đổi → TP-H05.000049, GCN → TP-H05.000040, văn bản cho "
+            "phép đổi tên → TP-H05.000050, ủy quyền → TP-H05.000046, thay đổi quyền liên quan → TP-H05.000051, trích đo "
+            "→ TP-H05.000045; CCCD / giấy khác → 'File đính kèm khác'.\n"
+            "Để user tự làm: cơ quan tiếp nhận, hình thức nhận kết quả, ngày khai hồ sơ."
         ),
     },
     {
@@ -12000,6 +12043,7 @@ _PIPELINE = {
     "giao-dat-cho-thue-dat-lai-chau": giao_dat_cho_thue_dat_lai_chau_process,
     "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau": cap_lai_giay_chung_nhan_do_bi_mat_lai_chau_process,
     "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh": cap_lai_gcn_do_bi_mat_bac_ninh_process,
+    "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-bac-ninh": dkbd_doi_ten_bac_ninh_process,
     "dieu-chinh-huu-tri-xa-hoi": dieu_chinh_huu_tri_xa_hoi_process,
     "mai-tang-dan-cong-hoa-tuyen": mai_tang_dan_cong_process,
     "xac-dinh-muc-do-khuyet-tat": khuyet_tat_process,
@@ -12302,6 +12346,7 @@ _ATTACH_PIPELINE = {
     "giao-dat-cho-thue-dat-lai-chau": giao_dat_cho_thue_dat_lai_chau_attach,
     "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau": cap_lai_giay_chung_nhan_do_bi_mat_lai_chau_attach,
     "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh": cap_lai_gcn_do_bi_mat_bac_ninh_attach,
+    "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-bac-ninh": dkbd_doi_ten_bac_ninh_attach,
     "mai-tang-dan-cong-hoa-tuyen": mai_tang_dan_cong_attach,
     "dieu-chinh-huu-tri-xa-hoi": dieu_chinh_huu_tri_xa_hoi_attach,
     "khai-sinh-dang-ky-thuong": khai_sinh_dvc_moi_attach,

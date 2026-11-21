@@ -3,6 +3,13 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.28.27",
+    date: "21/11/2026",
+    items: [
+      "Thêm thủ tục Bắc Ninh \"Đăng ký biến động đối với trường hợp đổi tên hoặc thay đổi thông tin về người sử dụng đất…\" (1.115460): điền Đơn đăng ký biến động Mẫu số 18, khối thông tin người ủy quyền (chủ hồ sơ), đính kèm vào đúng thành phần hồ sơ, có tách giấy tờ khi đính kèm.",
+    ],
+  },
+  {
     version: "1.28.26",
     date: "20/11/2026",
     items: [

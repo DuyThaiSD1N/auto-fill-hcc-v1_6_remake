@@ -102,7 +102,8 @@ def test_so_thu_tuc_moi_tinh_dung_bang_hoan_thien():
         # 20/11: +1 mọi tỉnh Bộ Công an dang-ky-sang-ten-di-chuyen-xe-cap-tinh (2.000076) (_TAT_CA, mặc định toàn quốc).
         # 20/11: +1 mọi tỉnh Bộ Công an thu-hoi-chung-nhan-dang-ky-bien-so-xe-cap-tinh (2.001485) (_TAT_CA, mặc định).
         # 20/11: +2 mọi tỉnh Bộ Công an thu-hoi-chung-nhan-dang-ky-bien-so-xe-cap-xa (1.010919), …-tai-cuc (2.000311) (_TAT_CA, mặc định).
-        "laichau": 149, "bacninh": 155, "lamdong": 143, "danang": 146, "quangninh": 150, "ninhbinh": 139,
+        # 21/11: +1 Bắc Ninh dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-bac-ninh (1.115460, {"bacninh"}).
+        "laichau": 149, "bacninh": 156, "lamdong": 143, "danang": 146, "quangninh": 150, "ninhbinh": 139,
         "quangngai": 140, "laocai": 138, "quangtri": 140, "khanhhoa": 145, "tuyenquang": 140,
     }
 

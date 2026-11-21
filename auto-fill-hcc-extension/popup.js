@@ -199,6 +199,12 @@ const BAC_NINH_AUTHORIZED_PERSON_CONFIG = new Map([
     sourceLabel: "người ủy quyền (chủ hồ sơ)",
     missingFilesMessage: "Chưa có Đơn Mẫu 18 hoặc CCCD để đọc thông tin chủ hồ sơ.",
   }],
+  // 1.115460 — Đăng ký biến động do đổi tên / thay đổi thông tin người SDĐ: khối điền = chủ hồ sơ, như 1.115465.
+  ["dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-bac-ninh", {
+    subjectOption: "Cá nhân khác là Công dân Việt Nam",
+    sourceLabel: "người ủy quyền (chủ hồ sơ)",
+    missingFilesMessage: "Chưa có Đơn Mẫu 18 hoặc CCCD để đọc thông tin chủ hồ sơ.",
+  }],
   // 1.011442 — Đăng ký thay đổi BPBĐ: khối điền = bên cấp Giấy giới thiệu (thường ngân hàng → "Doanh nghiệp");
   // BE đọc ra loại khác (Tổ chức / Cá nhân) thì trả authorizedSubject và nút dùng loại đó.
   ["dang-ky-thay-doi-bien-phap-bao-dam-bac-ninh", {
@@ -212,6 +218,7 @@ const BAC_NINH_THREE_STEP_PROCEDURES = new Set([
   "dang-ky-bien-dong-dat-dai-bac-ninh",
   "dang-ky-bien-dong-thoa-thuan-bac-ninh",
   "dang-ky-thay-doi-bien-phap-bao-dam-bac-ninh",
+  "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-bac-ninh",
 ]);
 const currentBacNinhAuthorizedPersonConfig = () =>
   BAC_NINH_AUTHORIZED_PERSON_CONFIG.get(currentConfig()?.key) || null;

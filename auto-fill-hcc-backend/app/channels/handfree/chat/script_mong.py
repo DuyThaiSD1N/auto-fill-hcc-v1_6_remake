@@ -423,6 +423,8 @@ PROCEDURE_HMONG = {
     "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau": "Muab daim ntawv av dua tshiab vim ploj (Lai Châu)",
     # BẢN NHÁP chờ anh Dư soát — chép y câu thẻ cấp lại GCN bị mất Lai Châu, chỉ đổi tên tỉnh, không thêm từ mới.
     "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh": "Muab daim ntawv av dua tshiab vim ploj (Bắc Ninh)",
+    # BẢN NHÁP chờ anh Dư soát — chép y câu thẻ đổi tên Quảng Ninh, chỉ đổi tên tỉnh, không thêm từ mới.
+    "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-bac-ninh": "Cuv npe hloov npe tus tswv daim av (Bắc Ninh)",
 }
 
 # Nhãn card "Nơi làm thủ tục" (mockup: Qhov chaw ua ntaub ntawv / Xeev / Zos / Tus neeg ua).

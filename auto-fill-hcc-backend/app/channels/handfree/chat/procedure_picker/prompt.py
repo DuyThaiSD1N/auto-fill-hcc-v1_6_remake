@@ -839,6 +839,14 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "mất sổ đỏ", "làm lại sổ đỏ bị mất", "cấp lại giấy chứng nhận quyền sử dụng đất bị mất",
         "đánh mất sổ hồng muốn xin cấp lại", "sổ đỏ bị thất lạc đã trình báo", "cấp lại sổ đỏ ở bắc ninh",
     ],
+    # Bắc Ninh (provinceOnly) 1.115460: sổ đỏ CÒN, ghi đúng lúc cấp, nay người sử dụng đất ĐỔI tên / đổi CMND sang CCCD /
+    # đổi địa chỉ, hoặc thửa đổi số hiệu, địa chỉ, bị sạt lở giảm diện tích → đăng ký biến động ghi thông tin mới. KHÁC
+    # đính chính (sổ ghi SAI ngay từ lúc cấp), cấp đổi (sổ rách nát / đổi sang mẫu mới) và chuyển nhượng (đổi chủ).
+    "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-bac-ninh": [
+        "đổi số chứng minh thư trên sổ đỏ sang căn cước", "cập nhật căn cước mới vào sổ đỏ", "đổi tên trên sổ đỏ",
+        "sổ đỏ vẫn ghi địa chỉ cũ muốn cập nhật địa chỉ mới", "đất bị sạt lở mất một phần muốn đăng ký giảm diện tích",
+        "thay đổi thông tin người sử dụng đất ở bắc ninh",
+    ],
 }
 
 

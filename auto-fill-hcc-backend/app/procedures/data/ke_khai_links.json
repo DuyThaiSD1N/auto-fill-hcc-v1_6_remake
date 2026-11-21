@@ -1692,6 +1692,16 @@
       "autoConfirm": true
     },
     {
+      "key": "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-bac-ninh",
+      "code": "1.115460",
+      "label": "Bắc Ninh - Đăng ký biến động đối với trường hợp đổi tên hoặc thay đổi thông tin về người sử dụng đất, chủ sở hữu tài sản gắn liền với đất hoặc thay đổi số hiệu hoặc địa chỉ của thửa đất; thay đổi hạn chế quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất hoặc có thay đổi quyền đối với thửa đất liền kề; giảm diện tích thửa đất do sạt lở tự nhiên",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f1265-6c0c-7534-9a35-96a09faa018c",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
       "key": "dang-ky-bien-phap-bao-dam-qsdd",
       "code": "1.011441",
       "label": "[Đà Nẵng] Đăng ký biện pháp bảo đảm bằng quyền sử dụng đất, tài sản gắn liền với đất",

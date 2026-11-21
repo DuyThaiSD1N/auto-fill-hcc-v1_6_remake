@@ -5909,6 +5909,67 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-bac-ninh",
+        "provinceOnly": ["bacninh"],  # đặc thù Bắc Ninh: chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.115460, cổng dichvucong.bacninh.gov.vn (Liferay eForm Mẫu 18, 4 tab cùng trang). ke_khai_links tích Sở
+        # (provinceOnlyAgency + selectSo) → DVCQG chọn Tỉnh Bắc Ninh + gạt "Sở", bấm thẻ đầu (agencySoFirst) như 1.011442.
+        # Khối ủy quyền = chủ hồ sơ (pipeline lượt purpose="authorized_person"), như 1.115465. Key TRÙNG lõi. Detect y hệt
+        # lõi; KHÔNG textIncludes vì tên trùng thẻ Quảng Ninh / Lào Cai. Chưa chạy cổng thật.
+        "detect": {
+            "urlScope": ["dichvucong.bacninh.gov.vn"],
+            "urlIncludes": ["maThuTucHanhChinh=1.115460"],
+            "headingDisabled": True,
+        },
+        "label": (
+            "Đăng ký biến động đối với trường hợp đổi tên hoặc thay đổi thông tin về người sử dụng đất, chủ sở hữu tài "
+            "sản gắn liền với đất hoặc thay đổi số hiệu hoặc địa chỉ của thửa đất; thay đổi hạn chế quyền sử dụng đất, "
+            "quyền sở hữu tài sản gắn liền với đất hoặc có thay đổi quyền đối với thửa đất liền kề; giảm diện tích thửa "
+            "đất do sạt lở tự nhiên"
+        ),
+        "shortLabel": "Đăng ký biến động do đổi tên hoặc thay đổi thông tin về người sử dụng đất",
+        "subtitle": "Mã 1.115460 · Đổi tên, đổi số giấy tờ, địa chỉ người sử dụng đất hoặc thông tin thửa đất tại Bắc Ninh",
+        "icon": "✏️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f1265-6c0c-7534-9a35-96a09faa018c",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyProvince": "Bắc Ninh",
+        "agencyDeptLabel": "Văn phòng Đăng ký đất đai Bắc Ninh",
+        "samePageAttach": True,
+        "hasAttachmentStep": True,
+        # Planner lõi có nhánh tách theo trang (splitDocuments) → tệp scan chung thành từng giấy riêng.
+        "supportsSplitDocuments": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai (Mẫu số 18) — đã kê khai, ký; có thể scan chung "
+             "mọi giấy tờ vào một file", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận quyền sử dụng đất đã cấp (bản gốc)",
+             "icon": "📜", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "giay_to_thay_doi", "name": "Giấy tờ chứng minh thay đổi thông tin (xác nhận cư trú, xác nhận số "
+             "CMND cũ, quyết định đổi tên…)", "icon": "📑", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người sử dụng đất",
+             "icon": "🪪", "sides": 2, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Văn bản ủy quyền, mảnh trích đo hoặc giấy tờ khác",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        # Khối "Thông tin trong trường hợp được ủy quyền" = chủ hồ sơ (người đứng Đơn), loại "Cá nhân khác là Công dân
+        # Việt Nam" — pipeline lượt purpose="authorized_person".
+        "bacNinhAuthorizedPerson": _BN_AUTHORIZED_PERSON,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể scan chung một file, Đơn Mẫu 18 đứng đầu):\n"
+            "1. Đơn đăng ký biến động đất đai (Mẫu số 18) đã kê khai, ký — nguồn chính điền đơn.\n"
+            "2. Giấy chứng nhận quyền sử dụng đất đã cấp.\n"
+            "3. Giấy tờ chứng minh việc thay đổi thông tin (giấy xác nhận thông tin cư trú, xác nhận số CMND cũ, "
+            "quyết định thay đổi họ tên…).\n"
+            "4. Căn cước công dân của người sử dụng đất; nếu nộp thay: văn bản ủy quyền; nếu có: mảnh trích đo.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
         "key": "dang-ky-bien-dong-thoa-thuan-bac-ninh",
         "provinceOnly": ["bacninh"],  # đặc thù Bắc Ninh: chỉ account tỉnh này thấy + gọi được
         # Cổng dichvucong.bacninh.gov.vn (Liferay eForm Mẫu 18) — cùng nền 2 tab CÙNG TRANG với
@@ -11700,6 +11761,8 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "giao-dat-cho-thue-dat-lai-chau": _TAT_CA,  # STT 178
     "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau": _TAT_CA,  # STT 50
     "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh": frozenset({"bacninh"}),  # STT 50; 12/11/2026 người dùng mở cho Bắc Ninh
+    # 1.115460 (21/11/2026): thủ tục riêng Bắc Ninh ("Bắc Ninh - …"), chưa có trong bảng theo dõi → mở cho Bắc Ninh.
+    "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-bac-ninh": frozenset({"bacninh"}),
     "dang-ky-dat-dai-lan-dau-khanh-hoa": _TAT_CA,  # STT 44 + STT 229 (mã 1.013978)
     "giao-thue-chuyen-muc-dich-dat-khanh-hoa": _TAT_CA,
     "cap-doi-gcn-khanh-hoa": _TAT_CA,  # STT 93
