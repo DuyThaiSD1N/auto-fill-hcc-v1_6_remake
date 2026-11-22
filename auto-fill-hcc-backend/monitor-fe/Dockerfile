@@ -11,6 +11,8 @@ RUN npm run build
 FROM nginx:1.27-alpine
 
 ENV BACKEND_URL=http://app:8000
+# Phải có giá trị mặc định: nginx template thiếu biến là container không lên.
+ENV AGENT_URL=http://host.docker.internal:12009
 
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html

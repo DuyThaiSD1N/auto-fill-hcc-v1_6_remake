@@ -20,6 +20,7 @@ from pydantic import BaseModel, Field
 
 import claude_runner
 import evidence
+import lab
 import remote
 import replay
 import workspace
@@ -152,6 +153,8 @@ def health() -> dict:
         "server": SERVER_MODE, "git": bool(GIT_REMOTE) or (USE_WORKSPACE and WORKSPACE_PUSH),
         "workspace": USE_WORKSPACE, "workspaceOwner": workspace.owner() if USE_WORKSPACE else None,
         "publish": remote.publishing() if PUBLISH_WEB else None,
+        # Web Monitor chỉ hiện nhóm menu Auto test khi dịch vụ có API lab (bản cũ không có khoá này).
+        "lab": True,
     }
 
 
@@ -334,6 +337,91 @@ def revert_job(job_id: str, _: dict = Depends(require_operator)) -> dict:
         fix["reverting"] = True
     service.tasks.put(("revert", job_id))
     return job.view()
+
+
+# ---- Auto test trong web Monitor (12007): tái hiện lượt, nội dung đã điền, bộ ca test, lần chạy (agents/lab.py) ----
+
+def _lab_request_id(request_id: str) -> str:
+    request_id = request_id.strip()
+    if not _REQUEST_ID.match(request_id):
+        raise HTTPException(400, "Mã req không hợp lệ")
+    return request_id
+
+
+def _lab(call, *args, status: int = 404):
+    try:
+        return call(*args)
+    except lab.LabError as reason:
+        raise HTTPException(status, str(reason)) from reason
+
+
+@app.get("/agent-api/lab/runs/{request_id}")
+def lab_run(request_id: str, user: dict = Depends(require_operator)) -> dict:
+    request_id = _lab_request_id(request_id)
+    view = _lab(lab.run_view, request_id)
+    lab.audit(user, "tái hiện lượt", request_id)
+    return view
+
+
+@app.get("/agent-api/lab/runs/{request_id}/raw")
+def lab_raw(request_id: str, user: dict = Depends(require_operator)) -> dict:
+    request_id = _lab_request_id(request_id)
+    bundle = _lab(lab.raw_bundle, request_id)
+    lab.audit(user, "xem / tải gói ghi thô", request_id)
+    return bundle
+
+
+@app.get("/agent-api/lab/recent")
+def lab_recent(edited: bool = True, limit: int = 40, _: dict = Depends(require_operator)) -> dict:
+    return _lab(lab.recent, edited, max(1, min(limit, 200)), status=503)
+
+
+class LabCase(BaseModel):
+    requestId: str
+
+
+@app.post("/agent-api/lab/cases")
+def lab_create_case(body: LabCase, user: dict = Depends(require_operator)) -> dict:
+    return _lab(lab.create_case, _lab_request_id(body.requestId), user, status=422)
+
+
+@app.delete("/agent-api/lab/cases/{case_id}")
+def lab_delete_case(case_id: str, user: dict = Depends(require_operator)) -> dict:
+    if not re.match(r"^[A-Z]{1,4}-\d{4}$", case_id):
+        raise HTTPException(400, "Chỉ xoá được ca tạo từ lượt thật")
+    _lab(lab.delete_case, case_id, user)
+    return {"ok": True}
+
+
+@app.get("/agent-api/lab/suites")
+def lab_suites(_: dict = Depends(require_operator)) -> dict:
+    return lab.suites()
+
+
+class LabSuiteRun(BaseModel):
+    suite: str = Field(min_length=3, max_length=200)
+    target: Literal["dev", "release"] = "dev"
+    caseIds: list[str] | None = Field(None, max_length=500)
+
+
+@app.post("/agent-api/lab/suite-runs")
+def lab_start_run(body: LabSuiteRun, user: dict = Depends(require_operator)) -> dict:
+    return _lab(lambda: lab.runner.start(body.suite, body.target, body.caseIds, user, service.busy), status=409)
+
+
+@app.get("/agent-api/lab/suite-runs")
+def lab_runs(_: dict = Depends(require_operator)) -> dict:
+    return {"runs": lab.list_runs(), "current": lab.runner.current}
+
+
+@app.get("/agent-api/lab/suite-runs/{no}")
+def lab_run_detail(no: int, _: dict = Depends(require_operator)) -> dict:
+    return _lab(lab.get_run, no)
+
+
+@app.get("/agent-api/lab/config")
+def lab_config(_: dict = Depends(require_operator)) -> dict:
+    return lab.config_view()
 
 
 def port_taken(host: str, port: int) -> bool:

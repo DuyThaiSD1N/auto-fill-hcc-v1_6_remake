@@ -48,6 +48,17 @@ def _is_ssh(pid: int) -> bool:
         return False
 
 
+def _ssh_pids(pids: set[int]) -> set[int]:
+    """PID nào trong ``pids`` vẫn là ssh. Windows: một lần tasklist cho mọi ssh.exe — đường hầm web nối lại mỗi 10 giây
+    nên file PID có thể dài hàng trăm dòng; gọi tasklist từng PID (826 PID) từng làm dịch vụ mất ~20 phút mới lên (22/11/2026)."""
+    if sys.platform != "win32":
+        return {pid for pid in pids if _is_ssh(pid)}
+    out = subprocess.run(["tasklist", "/FI", "IMAGENAME eq ssh.exe", "/FO", "CSV", "/NH"], capture_output=True, text=True).stdout
+    running = {int(cols[1]) for cols in (line.split('","') for line in (out or "").splitlines())
+               if len(cols) > 1 and cols[0].strip('"').lower() == "ssh.exe" and cols[1].isdigit()}
+    return pids & running
+
+
 def cleanup_orphans() -> int:
     """Tắt các đường hầm ssh mồ côi của lần chạy trước. Trả số tiến trình đã tắt."""
     try:
@@ -55,13 +66,12 @@ def cleanup_orphans() -> int:
     except OSError:
         return 0
     killed = 0
-    for pid in pids:
-        if _is_ssh(pid):
-            if sys.platform == "win32":
-                subprocess.run(["taskkill", "/PID", str(pid), "/F"], capture_output=True)
-            else:
-                os.kill(pid, signal.SIGTERM)
-            killed += 1
+    for pid in _ssh_pids(pids):
+        if sys.platform == "win32":
+            subprocess.run(["taskkill", "/PID", str(pid), "/F"], capture_output=True)
+        else:
+            os.kill(pid, signal.SIGTERM)
+        killed += 1
     _PID_FILE.unlink(missing_ok=True)
     return killed
 

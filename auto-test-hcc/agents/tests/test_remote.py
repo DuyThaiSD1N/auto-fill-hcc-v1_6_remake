@@ -212,13 +212,27 @@ def test_kho_khong_co_req_thi_bao_ro(monkeypatch):
 def test_don_duong_ham_mo_coi_chi_tat_dung_ssh(monkeypatch, tmp_path):
     monkeypatch.setattr(remote, "_PID_FILE", tmp_path / "pids.txt")
     (tmp_path / "pids.txt").write_text("111\n222\n", encoding="utf-8")
-    monkeypatch.setattr(remote, "_is_ssh", lambda pid: pid == 111)  # 222 đã thành tiến trình khác: không đụng
+    monkeypatch.setattr(remote, "_ssh_pids", lambda pids: {p for p in pids if p == 111})  # 222 đã thành tiến trình khác
     killed = []
     monkeypatch.setattr(remote.subprocess, "run", lambda cmd, **k: killed.append(cmd))
     monkeypatch.setattr(remote.os, "kill", lambda pid, sig: killed.append(pid))
     assert remote.cleanup_orphans() == 1
     assert len(killed) == 1 and ("111" in killed[0] if isinstance(killed[0], list) else killed[0] == 111)
     assert not (tmp_path / "pids.txt").exists()
+
+
+def test_windows_mot_lan_tasklist_cho_moi_ssh(monkeypatch):
+    monkeypatch.setattr(remote.sys, "platform", "win32")
+    calls = []
+
+    def run(cmd, **kwargs):
+        calls.append(cmd)
+        lines = ['"ssh.exe","111","Console","6","9,000 K"', '"ssh.exe","333","Console","6","9,000 K"']
+        return type("R", (), {"stdout": "\n".join(lines) + "\n"})()
+
+    monkeypatch.setattr(remote.subprocess, "run", run)
+    assert remote._ssh_pids(set(range(100, 1000))) == {111, 333}
+    assert len(calls) == 1
 
 
 ARCHIVED_ATTACH = {

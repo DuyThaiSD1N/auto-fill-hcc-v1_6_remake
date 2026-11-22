@@ -153,12 +153,17 @@ def run_case(case: dict) -> dict:
     if response.status_code != 200:
         result.update(ok=False, error=f"HTTP {response.status_code}: {response.text[:400]}")
         return result
+    scoring = _scoring()
     run = {"status": "ok", "response": {"fields": response.json().get("fields") or []}}
-    evaluation = _scoring().evaluate(case.get("checks") or [], [run])
-    failed = [{"field": r["check"].get("field"), "op": r["check"].get("op"), "expected": r["check"].get("expected"),
-               "actual": r["cells"][0]["value"]} for r in evaluation["rows"] if not r["cells"][0]["ok"]]
+    evaluation = scoring.evaluate(case.get("checks") or [], [run])
+    rows = [{"field": r["check"].get("field"), "op": r["check"].get("op"), "expected": r["check"].get("expected"),
+             "actual": r["cells"][0]["value"], "ok": r["cells"][0]["ok"]} for r in evaluation["rows"]]
+    failed = [{k: r[k] for k in ("field", "op", "expected", "actual")} for r in rows if not r["ok"]]
+    # Trường có giá trị mà ca không có đáp án: bản đang thử điền thêm ô lúc ghi chưa có → người kiểm tra duyệt.
+    checked = {str(r["field"]) for r in rows}
+    extra = [k for k, v in scoring.actual_values(run).items() if v and k not in checked]
     # Gọi LLM nhiều hơn lúc ghi = không phát lại được đúng lượt đã ghi, kể cả khi tiêu chí tình cờ vẫn đạt.
-    result.update(ok=evaluation["allPass"] and not replayer.extra, failed=failed)
+    result.update(ok=evaluation["allPass"] and not replayer.extra, failed=failed, rows=rows, extraFields=extra)
     if replayer.extra:
         result["error"] = f"code gọi LLM nhiều hơn lúc ghi ({', '.join(replayer.extra)}): ghi lại ca này"
     elif failed:

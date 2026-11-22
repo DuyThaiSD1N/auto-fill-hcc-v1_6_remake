@@ -121,6 +121,11 @@ async function request<T>(path: string, init: RequestInit = {}, retry = true): P
   return response.json() as Promise<T>;
 }
 
+/** Gọi API cùng origin bằng phiên Monitor (dịch vụ agent /agent-api/ dùng chung token super_admin). */
+export function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+  return request<T>(path, init);
+}
+
 export async function loginMonitor(username: string, password: string): Promise<MonitorUser> {
   const response = await fetch(`${BASE}/auth/login`, {
     method: "POST",

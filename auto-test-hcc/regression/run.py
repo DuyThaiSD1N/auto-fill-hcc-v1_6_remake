@@ -11,6 +11,7 @@ import argparse
 import json
 import os
 import sys
+import time
 import traceback
 from pathlib import Path
 
@@ -51,11 +52,13 @@ def main() -> int:
     results = []
     for path in _cases(args.cases):
         case = json.loads(path.read_text(encoding="utf-8"))
+        started = time.perf_counter()
         try:
             result = harness.run_case(case)
         except Exception as reason:  # noqa: BLE001 — một ca hỏng không được làm dừng cả bộ
             result = {"id": case.get("id"), "ok": False, "error": f"{type(reason).__name__}: {reason}",
                       "trace": traceback.format_exc()[-1500:]}
+        result["ms"] = int((time.perf_counter() - started) * 1000)
         result["file"] = path.name
         result.setdefault("id", path.stem)
         results.append(result)

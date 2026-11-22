@@ -106,7 +106,7 @@ Script build image, `docker save` rồi `scp` sang đích. Sau đó phải vào 
 
 ## Web Agent tự sửa (auto-test-hcc, cổng 12008)
 
-Tách riêng khỏi backend theo yêu cầu người dùng, mã nằm ở `auto-test-hcc/`, ĐỪNG đưa lại vào `monitor-fe`. Compose riêng, nối vào
+Tách riêng khỏi backend theo yêu cầu người dùng, mã nằm ở `auto-test-hcc/`, ĐỪNG đưa web Agent tự sửa (ca / job) lại vào `monitor-fe`. Compose riêng, nối vào
 mạng `autofill_hcc_net`, nên `docker compose` của phần này dùng `-f auto-test-hcc/compose.yml` chứ không phải `compose.prod.yml`.
 Người sửa code đọc `auto-test-hcc/README.md`, đội tester đọc `auto-test-hcc/KE-HOACH.md`, team F19 cài máy mới theo `auto-test-hcc/HUONG-DAN-F19.md`.
 
@@ -119,6 +119,12 @@ Người sửa code đọc `auto-test-hcc/README.md`, đội tester đọc `auto
 - Chạy trên cổng thật: người dùng chỉ đăng nhập VNeID, bot tự vào thủ tục qua panel như Auto Fill, tự xác nhận, tải lại trang và điền
   5 lần, chấm trên giá trị đọc từ form. Bot KHÔNG được nộp hồ sơ: không gỡ lớp chặn nộp trong `agents/browser.py`, không thêm cờ tắt.
 - Tab "Thêm thủ tục mới" (`agents/devjob.py`) đã gỡ ngày 2026-11-09 theo yêu cầu người dùng; web chỉ còn job sửa lỗi một ca.
+- Bộ công cụ Auto test trong Monitor 12007 (người dùng chọn ngày 22/11/2026): nhóm menu "Auto test" gồm 5 màn ở
+  `monitor-fe/src/autotest/` (Tái hiện lượt, Nội dung đã điền, Bộ ca test, Lần chạy, Cấu hình ghi). Giao diện gọi `/agent-api/lab/*`
+  của dịch vụ 12009 qua nginx Monitor (`AGENT_URL`); logic nằm ở `auto-test-hcc/agents/lab.py`, không thêm gì vào `app/`. Dịch vụ
+  không chạy (server production) thì nhóm menu tự ẩn. Ca test dựng từ lượt thật (ẩn danh) để ở `auto-test-hcc/runs/_lab` (gitignore),
+  khác `regression/cases` (ca của Agent tự sửa, phải luôn đạt). Đợt 2 chưa làm: extension ghi nhật ký thao tác, HTML eform từng bản,
+  bật / tắt cấu hình ghi theo đơn vị.
 - Req của trolysoao (người dùng chốt lại 17/11/2026): Agent tự sửa CHẠY TRÊN MÁY LOCAL, chỉ đọc req của server `nlp@<ip-trolysoao>`
   qua SSH (khoá bị giới hạn: đường hầm tới Mongo 12004 + `deploy/read-uploads.sh`, tài khoản Mongo `autotest_ro` role read), xem
   mục A của `auto-test-hcc/HUONG-DAN-SERVER.md`. Backend thử vẫn là Docker local 12005. KHÔNG chạy `deploy_to_server.sh` cho việc

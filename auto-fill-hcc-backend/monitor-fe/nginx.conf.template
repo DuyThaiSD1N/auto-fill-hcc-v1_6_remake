@@ -34,6 +34,17 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
+    # Auto test: dịch vụ agent (auto-test-hcc/agents/server.py) chạy trên máy host của người phát triển, ngoài mạng compose.
+    # Server production không chạy dịch vụ này → 502 → web tự ẩn nhóm menu Auto test.
+    location /agent-api/ {
+        set $agent "${AGENT_URL}";
+        proxy_pass $agent$request_uri;
+        proxy_set_header Host $host;
+        proxy_set_header Authorization $http_authorization;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 300s;
+    }
+
     location /assets/ {
         expires 30d;
         add_header Cache-Control "public, immutable";

@@ -89,6 +89,10 @@ services:
     image: autofill-hcc-monitor-fe:latest
     environment:
       - BACKEND_URL=${BACKEND_URL:-http://app:8000}
+      # Auto test: dịch vụ agent auto-test-hcc trên máy host (không chạy thì web tự ẩn nhóm menu Auto test).
+      - AGENT_URL=${AGENT_URL:-http://host.docker.internal:12009}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "12007:12007"
     depends_on:

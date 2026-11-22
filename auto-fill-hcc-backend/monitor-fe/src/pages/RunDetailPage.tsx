@@ -14,6 +14,7 @@ import { useAsync, useFacets } from "../hooks";
 import { navigate, onLinkClick, useLocation } from "../router";
 import type { RunDetail } from "../types";
 import { dossierHref } from "./DossiersPage";
+import { useLabAvailable } from "../autotest/api";
 
 type Tab = "stages" | "raw";
 
@@ -63,6 +64,7 @@ function RunView({ run, requestId }: { run: RunDetail; requestId: string }) {
     navigate(`${loc.path}?${q.toString()}`, { replace: true });
   };
   const [selected, setSelected] = useState<number | null>(() => defaultSpan(flat));
+  const lab = useLabAvailable();
 
   const meta = (steps?.meta ?? {}) as Record<string, string | number | undefined>;
   const procedure = trace?.procedure ?? (meta.procedure as string | undefined);
@@ -99,6 +101,18 @@ function RunView({ run, requestId }: { run: RunDetail; requestId: string }) {
           </div>
         </div>
         <div className="run-head__actions">
+          {lab ? (
+            <>
+              <a className="btn btn--sm" href={`/autotest/replay/${encodeURIComponent(requestId)}`}
+                 onClick={(e) => onLinkClick(e, `/autotest/replay/${encodeURIComponent(requestId)}`)}>
+                <Icon name="play" size={14} /> Tái hiện lượt
+              </a>
+              <a className="btn btn--sm" href={`/autotest/fill/${encodeURIComponent(requestId)}`}
+                 onClick={(e) => onLinkClick(e, `/autotest/fill/${encodeURIComponent(requestId)}`)}>
+                <Icon name="document" size={14} /> Nội dung đã điền
+              </a>
+            </>
+          ) : null}
           <CopyButton text={requestId} label="Sao chép mã" />
           {dossierId ? (
             <a className="btn btn--sm" href={dossierHref(dossierId)} onClick={(e) => onLinkClick(e, dossierHref(dossierId))}>

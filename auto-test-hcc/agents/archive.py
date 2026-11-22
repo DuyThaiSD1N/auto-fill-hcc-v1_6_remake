@@ -80,6 +80,38 @@ def get_run(request_id: str) -> dict | None:
     return response.json() if response is not None else None
 
 
+def list_records(**params) -> dict:
+    """Danh sách bản ghi của kho (mới nhất trước). Lọc được: type (request | conversation | upload_session), userId,
+    procedure, kind, dateFrom, dateTo (YYYY-MM-DD giờ VN), q, page, pageSize. Hàng ``request`` có ``edited`` = số ô
+    người dùng sửa trên form (từ ảnh chụp form)."""
+    query = str(httpx.QueryParams({k: v for k, v in params.items() if v not in (None, "")}))
+    response = _get(f"/api/records?{query}")
+    return response.json() if response is not None else {"items": [], "total": 0}
+
+
+def get_record(record_id: str) -> dict | None:
+    """Một bản ghi: {meta, bundle, versions}. Bản ghi hội thoại có bundle.doc = document conversations lúc lưu."""
+    response = _get(f"/api/records/{record_id}")
+    return response.json() if response is not None else None
+
+
+def find_conversation(conversation_id: str, user_id: str | None, day: str | None) -> dict | None:
+    """Document hội thoại handfree (bundle.doc) của ``conversation_id``. API kho không lọc theo mã hội thoại nên lọc theo
+    tài khoản + ngày rồi so mã; không có tài khoản thì không dò (quét cả kho quá chậm)."""
+    if not conversation_id or not user_id:
+        return None
+    for page in (1, 2, 3):
+        res = list_records(type="conversation", userId=user_id, dateFrom=day, dateTo=day, pageSize=100, page=page)
+        items = res.get("items") or []
+        for item in items:
+            if item.get("conversationId") == conversation_id or item.get("key") == conversation_id:
+                record = get_record(item["id"]) or {}
+                return (record.get("bundle") or {}).get("doc")
+        if len(items) < 100:
+            return None
+    return None
+
+
 def download(bundle_id: str, sha256: str, target: Path) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
     if _get(f"/api/records/{bundle_id}/files/{sha256}", stream_to=target) is None or not target.is_file():

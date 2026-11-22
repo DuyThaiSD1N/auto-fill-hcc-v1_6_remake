@@ -2,6 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import { getFacets, getTrace, MONITOR_AUTH_EXPIRED_EVENT, monitorSession, validateMonitorSession } from "./api";
 import Layout from "./components/Layout";
 import { ErrorNotice, PageLoading } from "./components/Status";
+import ConfigPage from "./autotest/ConfigPage";
+import LabRunPage from "./autotest/LabRunPage";
+import { LabRunResultPage, LabRunsPage } from "./autotest/LabRunsPages";
+import PickerPage from "./autotest/PickerPage";
+import SuitesPage from "./autotest/SuitesPage";
 import { FacetsContext } from "./hooks";
 import DashboardPage from "./pages/DashboardPage";
 import DossierDetailPage from "./pages/DossierDetailPage";
@@ -64,6 +69,17 @@ function Routes() {
   if (path === "/dossiers") return <DossiersPage />;
   if ((params = match("/dossiers/:id", path))) return <DossierDetailPage key={params.id} id={params.id} />;
   if ((params = match("/traces/:id", path))) return <LegacyTrace id={params.id} />;
+  if (path === "/autotest" || path === "/autotest/replay") return <PickerPage target="replay" />;
+  if (path === "/autotest/fill") return <PickerPage target="fill" />;
+  if ((params = match("/autotest/replay/:id", path))) {
+    const tab = query.get("tab");
+    return <LabRunPage key={params.id} requestId={params.id} view={tab === "files" || tab === "raw" ? tab : "flow"} />;
+  }
+  if ((params = match("/autotest/fill/:id", path))) return <LabRunPage key={params.id} requestId={params.id} view="fill" />;
+  if (path === "/autotest/suites") return <SuitesPage />;
+  if (path === "/autotest/runs") return <LabRunsPage />;
+  if ((params = match("/autotest/runs/:no", path)) && /^\d+$/.test(params.no)) return <LabRunResultPage key={params.no} no={Number(params.no)} />;
+  if (path === "/autotest/config") return <ConfigPage />;
   return <ErrorNotice message="Không có trang này." />;
 }
 

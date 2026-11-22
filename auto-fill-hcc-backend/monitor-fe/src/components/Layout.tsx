@@ -2,12 +2,23 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { navigate, onLinkClick, useLocation } from "../router";
 import { GROUPS } from "../stages";
 import type { MonitorUser } from "../types";
+import { useLabAvailable } from "../autotest/api";
+import "../autotest/autotest.css";
 import Icon from "./Icon";
 
 const NAV = [
   { to: "/", label: "Tổng quan", icon: "gauge" as const, match: (p: string) => p === "/" },
   { to: "/runs", label: "Lượt xử lý", icon: "list" as const, match: (p: string) => p.startsWith("/runs") || p.startsWith("/traces") },
   { to: "/dossiers", label: "Hồ sơ", icon: "folder" as const, match: (p: string) => p.startsWith("/dossiers") },
+];
+
+// Auto test (dịch vụ agent auto-test-hcc trên máy host): chỉ hiện khi dịch vụ chạy, server production không có.
+const LAB_NAV = [
+  { to: "/autotest/replay", label: "Tái hiện lượt", icon: "play" as const, match: (p: string) => p.startsWith("/autotest/replay") },
+  { to: "/autotest/fill", label: "Nội dung đã điền", icon: "document" as const, match: (p: string) => p.startsWith("/autotest/fill") },
+  { to: "/autotest/suites", label: "Bộ ca test", icon: "flask" as const, match: (p: string) => p.startsWith("/autotest/suites") },
+  { to: "/autotest/runs", label: "Lần chạy", icon: "clock" as const, match: (p: string) => p.startsWith("/autotest/runs") },
+  { to: "/autotest/config", label: "Cấu hình ghi", icon: "shield" as const, match: (p: string) => p.startsWith("/autotest/config") },
 ];
 
 const THEME_KEY = "hcc_monitor_theme";
@@ -57,6 +68,7 @@ export default function Layout({ user, onLogout, children }: { user: MonitorUser
   const loc = useLocation();
   const { dark, toggle } = useTheme();
   const [navOpen, setNavOpen] = useState(false);
+  const lab = useLabAvailable();
   useEffect(() => setNavOpen(false), [loc.path]);
 
   return (
@@ -73,6 +85,17 @@ export default function Layout({ user, onLogout, children }: { user: MonitorUser
               <Icon name={item.icon} size={16} /> {item.label}
             </a>
           ))}
+          {lab || loc.path.startsWith("/autotest") ? (
+            <>
+              <div className="nav__group">Auto test <span className="nav__new">MỚI</span></div>
+              {LAB_NAV.map((item) => (
+                <a key={item.to} href={item.to} aria-current={item.match(loc.path) ? "page" : undefined}
+                   onClick={(e) => onLinkClick(e, item.to)}>
+                  <Icon name={item.icon} size={16} /> {item.label}
+                </a>
+              ))}
+            </>
+          ) : null}
         </nav>
         <div className="legend" aria-label="Chú giải màu công đoạn">
           <h3>Công đoạn</h3>

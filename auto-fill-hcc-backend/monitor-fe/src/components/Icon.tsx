@@ -24,7 +24,11 @@ export type IconName =
   | "menu"
   | "x"
   | "alert"
-  | "clock";
+  | "clock"
+  | "play"
+  | "pause"
+  | "download"
+  | "flask";
 
 interface Props extends SVGProps<SVGSVGElement> {
   name: IconName;
@@ -70,6 +74,10 @@ export default function Icon({ name, size = 18, ...props }: Props) {
     x: <path d="M6 6l12 12M18 6 6 18" />,
     alert: <><path d="M12 9v4M12 17h.01" /><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" /></>,
     clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
+    play: <path d="M7 4.5v15l12-7.5Z" />,
+    pause: <path d="M8 5v14M16 5v14" />,
+    download: <><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M4 20h16" /></>,
+    flask: <><path d="M9 3h6" /><path d="M10 3v6L4.6 18.2A2 2 0 0 0 6.3 21h11.4a2 2 0 0 0 1.7-2.8L14 9V3" /><path d="M7.5 14h9" /></>,
   };
 
   return <svg {...common} {...props}>{paths[name]}</svg>;
