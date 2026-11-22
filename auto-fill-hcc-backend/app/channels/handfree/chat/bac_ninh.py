@@ -29,6 +29,7 @@ import json
 import logging
 import re
 from collections import Counter
+from urllib.parse import urlsplit
 
 from app.channels.handfree.chat import field_review
 from app.channels.handfree.chat import script_vi as vi
@@ -948,6 +949,32 @@ def _done_reply(conv: dict, proc: dict | None, intent):
     if _needs_point(proc, res):
         return _result_reply(proc, res, _say(vi.BN_POINT_ASK))
     return _result_reply(proc, res, _say(vi.BN_RESULT_SUMMARY, label=selected["label"]))
+
+
+_HOME_REOPEN_MAX = 2
+_BN_HOST = "dichvucong.bacninh.gov.vn"
+# Trang của cổng Bắc Ninh mà luồng đang ở / đang chờ: eform nộp hồ sơ, trang tài khoản VNeID, đăng nhập.
+_BN_STAY_MARKS = ("eform", "vneidsso", "login", "sso")
+
+
+def account_home_reply(conv: dict, proc: dict | None, url: str):
+    """Lưu tài khoản xong cổng Bắc Ninh đưa về TRANG CHỦ chứ không mở lại tờ khai đang dở → mở lại link kê khai của
+    thủ tục (im lặng: trang thủ tục mở ra thì watcher báo, luồng đi tiếp như thường). Giới hạn số lần như trang chủ
+    cổng liên thông: lỗi phiên đăng nhập thì cổng lại đẩy về trang chủ, không được lặp mãi."""
+    st = conv.get("bac_ninh") or {}
+    if not enabled(conv, proc) or not st.get("account_saved") or conv.get("state") != "guide_login":
+        return None
+    parts = urlsplit(url or "")
+    if parts.hostname != _BN_HOST or any(m in f"{parts.path}?{parts.query}".lower() for m in _BN_STAY_MARKS):
+        return None
+    target = str((proc or {}).get("keKhaiUrl") or "")
+    count = int(st.get("home_reopen") or 0)
+    if not target or count >= _HOME_REOPEN_MAX:
+        return None
+    st["home_reopen"] = count + 1
+    r = _reply()
+    r.actions = [{"type": "navigate", "url": target}]
+    return r
 
 
 def _account_report(conv: dict, proc: dict | None, payload: dict):

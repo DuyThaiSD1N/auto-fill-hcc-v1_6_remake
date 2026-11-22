@@ -47,6 +47,13 @@ trên giấy do cơ quan hộ tịch cấp (trích lục, giấy khai sinh, gi�
 Hai tên khác hẳn nhau, khác loại đơn vị, hoặc dòng của B là địa chỉ của nơi khác (khác xã) → KHONG_DU_CAN_CU.
 </ten_thon_to>
 
+<ten_duong>
+Nơi cư trú ghi số nhà + tên đường. Mã đã kiểm: B là tên đường in trên CCCD mang ĐÚNG số định danh của chính người đó,
+ngay sau CÙNG số nhà với A, chỉ lệch nhẹ (dấu, một hai chữ cái) với tên đường OCR đọc trên tờ khai viết tay → chọn B:
+chữ in trên thẻ đứng trên chữ viết tay bị OCR đọc lệch. Giữ số nhà, tỉnh, xã của A. Hai tên khác hẳn nhau, khác số
+nhà, hoặc thẻ là của người khác → KHONG_DU_CAN_CU.
+</ten_duong>
+
 <noi_sinh_que_quan>
 Nơi sinh / quê quán của người được khai sinh. Mã đã kiểm: mọi dòng cùng nhãn ("Nơi sinh" / "Quê quán") ghi ĐÚNG tên
 xã hiện tại của A (tính cả dòng trên tờ khai đăng ký khai sinh không ghi xã) đều chỉ ra một tên thôn / tổ dân phố là B; chi
@@ -220,6 +227,71 @@ def declared_detail_finding(name: str, value, documents: list[dict]) -> Finding 
                              f"ghi xã); chi tiết của A {'bỏ trống' if not detail else 'không có trên dòng nào như thế'}",))
 
 
+# Nơi cư trú ghi "số nhà + tên đường" (không có thôn / tổ): tên đường viết tay trên tờ khai bị OCR đọc lệch một hai chữ
+# cái ("Bình" → "Đình"). CCCD của CHÍNH người đó (khớp số định danh) in cùng số nhà kèm tên đường → theo bản in.
+_ID_BY_RESIDENCE = {"Requester_ResidenceDomestic": "Requester_IdNumber", "Mother_ResidenceDomestic": "Mother_IdNumber",
+                    "Father_ResidenceDomestic": "Father_IdNumber"}
+_STREET_RE = re.compile(r"(?i)^\s*(?:số\s+(?:nhà\s+)?)?(\d+[0-9a-z]*(?:/\d+[0-9a-z]*)*)\s+(?:đường\s+)?([^\d,;()\n]+?)\s*$")
+_CARD_MARKERS = ("can cuoc", "citizen identity", "identity card", "idvnm")
+_RESIDENCE_LABEL_RE = re.compile(r"(?i)(?:nơi\s+thường\s+trú|nơi\s+cư\s+trú|place\s+of\s+residence)[^:]*:")
+
+
+def _card_pages(documents: list[dict], id_number: str) -> list[tuple[int, list[str]]]:
+    """(số tài liệu, các dòng in) của các trang thẻ CCCD / căn cước mang đúng số định danh."""
+    out = []
+    for index, document in enumerate(documents, start=1):
+        pages: dict[int, list[str]] = {}
+        for page, line, handwritten in declaration_lines(document):
+            if not handwritten:
+                pages.setdefault(page, []).append(line)
+        for lines in pages.values():
+            text = " ".join(lines)
+            if any(marker in fold(text) for marker in _CARD_MARKERS) and id_number in re.sub(r"\D", "", text):
+                out.append((index, lines))
+    return out
+
+
+def street_finding(name: str, value, documents: list[dict], values: dict) -> Finding | None:
+    if name not in _ID_BY_RESIDENCE or not isinstance(value, dict):
+        return None
+    id_number = re.sub(r"\D", "", str(values.get(_ID_BY_RESIDENCE[name]) or ""))
+    detail = str(value.get("diaChi") or "")
+    if len(id_number) != 12 or units_in(detail):
+        return None
+    head = detail.split(",", 1)[0]
+    match = _STREET_RE.match(head)
+    if not match or len(match.group(2).split()) < 2:
+        return None
+    house, ours = match.group(1), " ".join(match.group(2).split())
+    candidates: dict[str, dict] = {}
+    for doc, lines in _card_pages(documents, id_number):
+        text = " ".join(lines)
+        label = _RESIDENCE_LABEL_RE.search(text)
+        if not label:
+            continue
+        after = text[label.end():]
+        found = re.search(rf"(?<![\d/]){re.escape(house)}\s+((?:\S+\s+){{{len(ours.split()) - 1}}}[^\s,;]+)", after)
+        if not found:
+            continue
+        theirs = found.group(1).strip(" ,;.")
+        if _spell(theirs) == _spell(ours):
+            return None  # thẻ in đúng tên đường của lượt trích
+        if _edit(fold(theirs), fold(ours)) > _MAX_LETTER_SLIP:
+            continue
+        quote = next((line for line in lines if house in line), lines[0])
+        candidates.setdefault(_spell(theirs), {"name": theirs, "quote": quote, "doc": doc})
+    if len(candidates) != 1:
+        return None
+    best = next(iter(candidates.values()))
+    fixed = detail.replace(ours, best["name"], 1)
+    if fixed == detail:
+        return None
+    return Finding(INSPECTOR, _UNIT_BY_NAME[name], {name: {**value, "diaChi": fixed}}, best["quote"], best["doc"],
+                   "CCCD của chính người đó in cùng số nhà", _OWNER_BY_NAME[name], backed=True,
+                   evidence=(f"CCCD mang đúng số định danh của người này in số nhà {house} kèm tên đường lệch nhẹ "
+                             f"(dấu, một hai chữ cái) so với chữ OCR đọc trên tờ khai viết tay",))
+
+
 def _ward_evidence(fix: dict, before) -> str:
     read = str((before or {}).get("xa") or "") if isinstance(before, dict) else ""
     return (f"ô xã của A ({f'“{read}”' if read else 'bỏ trống'}) không có trong danh mục hiện hành nên trên cổng sẽ TRỐNG; "
@@ -237,7 +309,7 @@ async def find(inspector: Inspector, case: Case, title: str) -> list[Finding]:
         # Tên thôn / tổ soát trên địa chỉ đã sửa xã: một vụ cho cả địa chỉ, không để hai đề xuất ghi đè nhau.
         value = fix["value"] if fix else case.values.get(name)
         finding = declared_detail_finding(name, value, case.documents) or address_finding(
-            name, value, case.documents, lines)
+            name, value, case.documents, lines) or street_finding(name, value, case.documents, case.values)
         if finding and fix:
             finding = replace(finding, evidence=(*finding.evidence, _ward_evidence(fix, case.values.get(name))))
         elif fix:

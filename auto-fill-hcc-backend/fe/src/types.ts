@@ -304,9 +304,21 @@ export interface DossierListItem {
   rating?: Rating | null;         // đánh giá trải nghiệm (CẢ hai kênh); null = chưa/không có
 }
 
+// Nhật ký cuối hồ sơ (dossiers.events): đánh giá rút gọn, lựa chọn đăng xuất, kết quả xóa phiên từng cổng.
+export interface DossierEvent {
+  type: "rating" | "logout_choice" | "logout_timeout" | "logout_manual" | "logout_result";
+  at: string | null;
+  level?: number | null;
+  levelLabel?: string;
+  skipped?: boolean;
+  choice?: "dang_xuat" | "lam_ho_so_khac";
+  portals?: { host: string; found: number; removed: number; left: number; ok: boolean }[];
+}
+
 export interface DossierDetail extends DossierListItem {
   submitEvents: SubmitEvent[];
   traces: TraceListItem[];
+  events?: DossierEvent[];
 }
 
 export interface DossierListResp {

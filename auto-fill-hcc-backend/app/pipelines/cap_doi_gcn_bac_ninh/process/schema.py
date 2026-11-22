@@ -42,8 +42,11 @@ FIELDS: list[dict] = [
         "Chỉ chữ số. Bỏ nếu đơn để trống."},
     {"name": "Don_Email", "desc": "Hộp thư điện tử ghi trên Đơn Mẫu 18. Bỏ nếu đơn để trống."},
     {"name": "Don_ThanhVienHo",
-     "desc": 'Mục V(1) "Thành viên hộ gia đình" của Đơn Mẫu 18 — chép NGUYÊN VĂN họ tên người dân viết '
-             '(nhiều người thì giữ nguyên cách liệt kê). Bỏ nếu trống.'},
+     "desc": 'Mục V(1) "Thành viên hộ gia đình" của Đơn Mẫu 18 — chép họ tên người dân viết (nhiều người '
+             'thì giữ nguyên cách liệt kê). Mục này thường viết tay nên OCR hay đọc sai chữ/dấu: tên nào cùng '
+             'họ + chữ đệm và chỉ lệch vài chữ cái/dấu so với một người có trong giấy in của hồ sơ (CCCD, dòng '
+             '"Tên" mục a của Đơn, Bảng 18a, bản cam kết) thì viết theo giấy in đó; không khớp ai thì giữ nguyên '
+             'như Đơn. Bỏ nếu trống.'},
     {"name": "Don_TinhTrangTranhChap",
      "desc": 'Mục V(2) "Tình trạng tranh chấp đất đai" — chép NGUYÊN VĂN (vd "không"). Bỏ nếu trống.'},
     {"name": "Don_ThayDoiRanhGioi",

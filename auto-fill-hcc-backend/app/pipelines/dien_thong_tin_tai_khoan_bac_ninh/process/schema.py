@@ -25,10 +25,13 @@ FIELDS: list[dict] = [
              'hội"; thẻ căn cước mới ghi "BỘ CÔNG AN" → "Bộ Công an". Bỏ nếu không có (mapper tự mặc định).'},
     {"name": "QueQuan",
      "desc": "Quê quán chủ tài khoản — CHUỖI một dòng đúng như mục 'Quê quán' trên CCCD (vd 'Xã …, huyện …, "
-             "tỉnh …'). KHÔNG nhầm với nơi thường trú. Bỏ nếu không có."},
+             "tỉnh …'). KHÔNG nhầm với nơi thường trú; 'Nơi đăng ký khai sinh' không phải quê quán. Bỏ nếu không có."},
     {"name": "ThuongTru",
      "desc": "Nơi thường trú chủ tài khoản — OBJECT {quocGia,tinh,xa,chiTietDuoiXa}. Lấy ở mục 'Nơi thường trú' của "
-             "CCCD (mặt sau) hoặc dòng thường trú trong tờ khai. Giữ đủ số nhà/thôn/xóm + phường/xã + tỉnh. "
+             "CCCD (mặt sau; thẻ căn cước mới ghi 'Nơi cư trú') hoặc dòng thường trú trong tờ khai. Giữ đủ số "
+             "nhà/thôn/xóm + phường/xã + tỉnh; phần cuối dòng là tỉnh, phần ngay trước là phường/xã. "
+             "'Nơi cư trú' của thẻ mới chỉ 2 cấp: '<Phường P>, <Tỉnh T>' → xa='<Phường P>', tinh='<Tỉnh T>' (P có "
+             "thể trùng tên một tỉnh cũ — vẫn là xa, KHÔNG phải tinh). "
              "Dùng cho dropdown Tỉnh/Xã + ô địa chỉ chi tiết."},
     {"name": "DiaChiHienTai",
      "desc": "Nơi ở HIỆN TẠI — OBJECT {quocGia,tinh,xa,chiTietDuoiXa}. CHỈ điền khi giấy tờ ghi RÕ mục 'Nơi ở hiện "

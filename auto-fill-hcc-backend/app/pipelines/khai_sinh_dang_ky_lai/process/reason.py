@@ -1001,8 +1001,37 @@ def _authorized_person(documents: list[dict]) -> dict | None:
         ):
             person = _authorized_person_from_lines(_authorized_block_lines(text, header_re, end_re))
             if person["name"] or person["id"]:
-                return {**person, "source": document.get("name") or "(không tên)"}
+                return {**_with_own_card(person, documents), "source": document.get("name") or "(không tên)"}
     return None
+
+
+def _with_own_card(person: dict, documents: list[dict]) -> dict:
+    """Số thẻ IN trên CCCD của chính người được ủy quyền thắng số gõ/viết trên giấy ủy quyền.
+
+    Giấy ủy quyền do người dân tự gõ hay sai một chữ số; mapper lại ghim mục người yêu cầu theo khối
+    ủy quyền nên số sai đè lên số thẻ đã đọc đúng. Chỉ nhận thẻ trùng họ tên + năm sinh.
+    """
+    year = _year_of(person.get("birth"))
+    if not year or not person.get("name"):
+        return person
+    card = next(
+        (
+            known for known in _people_from_documents(documents)
+            if known.get("is_identity")
+            and len(known.get("id") or "") == 12
+            and known.get("year") == year
+            and _names_align(known.get("name"), person["name"])
+        ),
+        None,
+    )
+    if not card:
+        return person
+    return {
+        **person,
+        "id": card["id"],
+        "issue_date": card.get("issue_date") or person.get("issue_date") or "",
+        "issue_place": card.get("issue_place") or person.get("issue_place") or "",
+    }
 
 
 def _render_authorized(documents: list[dict]) -> str:

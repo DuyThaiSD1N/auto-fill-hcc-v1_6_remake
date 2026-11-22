@@ -23,6 +23,7 @@ from pymongo.errors import DuplicateKeyError
 
 from app.archive.config import archive_settings
 from app.db.mongo import get_db
+from app.dossiers.rating_card import level_label
 
 # Auto Fill: khóa hồ sơ sống theo tab tới lúc nộp / đổi thủ tục / phiên mới / đóng tab — không có hạn. Tab nằm chờ
 # (cổng treo, công dân về) rồi làm tiếp trên chính tab đó thì lượt mới dồn vào khóa cũ và "thời gian làm" cộng cả quãng
@@ -262,11 +263,18 @@ async def save_rating(
     query: dict = {"_id": dossier_id}
     if owner_user_id:
         query["user_id"] = owner_user_id
+    update: dict = {"$set": {"rating": rating, "updated_at": _now()}}
+    # Nhật ký rút gọn: chỉ mức (hoặc bỏ qua), và chỉ khi khác lần chấm trước — bước 2 gửi lại cùng mức kèm lý do
+    # không thành sự kiện mới. Lý do / ý kiến đã nằm trong `rating`.
+    event = {"type": "rating", "level": level, "skipped": bool(skipped), "at": rating["at"]}
     try:
-        await get_db().dossiers.update_one(
-            query,
-            {"$set": {"rating": rating, "updated_at": _now()}},
-        )
+        doc = await get_db().dossiers.find_one(query, {"rating": 1})
+        if doc is None:
+            return
+        old = doc.get("rating") or {}
+        if not old or old.get("level") != level or bool(old.get("skipped")) != bool(skipped):
+            update["$push"] = {"events": event}
+        await get_db().dossiers.update_one(query, update)
     except Exception:  # noqa: BLE001 — đánh giá không được phép làm hỏng luồng đăng xuất
         return
 
@@ -286,6 +294,26 @@ async def mark_closed(dossier_id: str, reason: str = "") -> None:
             {"$set": {"closed_at": _now(), "close_reason": reason or "", "updated_at": _now()}},
         )
     except Exception:  # noqa: BLE001
+        return
+
+
+EVENT_TYPES = ("logout_choice", "logout_timeout", "logout_manual", "logout_result")
+
+
+async def add_event(dossier_id: str, event_type: str, data: dict | None = None, *,
+                    owner_user_id: str | None = None) -> None:
+    """Ghi một sự kiện vào nhật ký hồ sơ (`events`, chỉ thêm). Chỉ ghi cho hồ sơ ĐÃ có document; không chứa định
+    danh công dân — loại sự kiện, lựa chọn, số đếm, tên miền cổng."""
+    if not dossier_id or event_type not in EVENT_TYPES:
+        return
+    query: dict = {"_id": dossier_id}
+    if owner_user_id:
+        query["user_id"] = owner_user_id
+    try:
+        await get_db().dossiers.update_one(
+            query, {"$push": {"events": {"type": event_type, **(data or {}), "at": _now()}}},
+        )
+    except Exception:  # noqa: BLE001 — nhật ký không được làm hỏng luồng đăng xuất
         return
 
 
@@ -544,6 +572,16 @@ async def search_dossiers(
     return {"items": [_serialize(d) for d in docs], "total": total}
 
 
+def _serialize_event(e: dict) -> dict:
+    out = {**{k: v for k, v in e.items() if k != "at"}, "at": _iso(e.get("at"))}
+    if e.get("type") == "rating":
+        out["levelLabel"] = level_label(e.get("level"))
+    return out
+
+
 async def get_dossier(dossier_id: str) -> dict | None:
     doc = await get_db().dossiers.find_one({"_id": dossier_id})
-    return _serialize(doc) if doc else None
+    if not doc:
+        return None
+    # Nhật ký sự kiện chỉ trả ở trang chi tiết, không trả trong danh sách.
+    return {**_serialize(doc), "events": [_serialize_event(e) for e in doc.get("events") or [] if isinstance(e, dict)]}

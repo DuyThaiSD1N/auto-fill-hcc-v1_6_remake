@@ -1,4 +1,5 @@
-"""Thành lập HKD: Qwen đọc ảnh chỉ chạy khi OCR + LLM có dấu hiệu hỏng, và chỉ thay đúng trường hỏng. Dữ liệu giả."""
+"""Thành lập HKD: Qwen đọc ảnh chạy song song với OCR + LLM, chỉ dùng khi OCR + LLM có dấu hiệu hỏng và chỉ thay đúng
+trường hỏng. Dữ liệu giả."""
 
 import asyncio
 
@@ -31,6 +32,13 @@ def test_dau_hieu_hong():
     assert vision.broken_fields(dict(_GOOD), _LOOP) == {"NganhNghe_DanhSach"}
 
 
+def test_ma_nganh_cut_chu_so_la_hong_du_con_ma_hop_le():
+    rows = [{"ma": "4659", "ten": "A", "chinh": True}, {"ma": "471", "ten": "B"}, {"ma": "", "ten": "C"}]
+    assert vision.broken_fields(dict(_GOOD, NganhNghe_DanhSach=rows)) == {"NganhNghe_DanhSach"}
+    rows = [{"ma": "4659", "ten": "A", "chinh": True}, {"ma": "", "ten": "C"}]
+    assert vision.broken_fields(dict(_GOOD, NganhNghe_DanhSach=rows)) == set()
+
+
 def test_patch_chi_thay_truong_hong_va_gia_tri_hop_le():
     fields = _fields(ChuHo_SoDinhDanh="00108300001", NguoiNop_SoDinhDanh="00108300001", Von_SoTien=None)
     data = {"so_dinh_danh": "001083000099", "dien_thoai": "0999999999", "von": "60.000.000",
@@ -61,10 +69,18 @@ def test_patch_bang_nganh_chi_thay_khi_nhieu_ma_hon():
 
 def _run(monkeypatch, fields, vision_data, calls):
     async def fake_compact(_files_by_role, **_kw):
+        await asyncio.sleep(0.01)  # OCR + LLM mất thời gian: lượt đọc ảnh phải bắt đầu trong lúc này
+        calls.append("compact_done")
         return {"fields": fields, "errors": [], "ocr_text": ""}
 
     async def fake_vision(_files):
-        calls.append(1)
+        calls.append("vision_start")
+        try:
+            await asyncio.sleep(0.02)
+        except asyncio.CancelledError:
+            calls.append("vision_cancelled")
+            raise
+        calls.append("vision_done")
         return vision_data
 
     monkeypatch.setattr(runner.runner, "run", fake_compact)
@@ -72,16 +88,24 @@ def _run(monkeypatch, fields, vision_data, calls):
     return asyncio.run(runner.run({"doc": []}, {}))
 
 
-def test_runner_khong_goi_doc_anh_khi_ho_so_on(monkeypatch):
+def test_runner_doc_anh_song_song_ho_so_on_thi_huy(monkeypatch):
     calls = []
-    _run(monkeypatch, _fields(), {}, calls)
-    assert calls == []
+    res = _run(monkeypatch, _fields(), {"so_dinh_danh": "001083000099"}, calls)
+    assert calls == ["vision_start", "compact_done", "vision_cancelled"]
+    assert "visionPatched" not in res.get("extracted", {})
+
+
+def test_runner_ho_so_hong_cho_doc_anh_roi_thay(monkeypatch):
+    calls = []
+    res = _run(monkeypatch, _fields(ChuHo_SoDinhDanh="00108300001"), {"so_dinh_danh": "001083000099"}, calls)
+    assert calls == ["vision_start", "compact_done", "vision_done"]
+    assert res["extracted"]["visionPatched"][0] == "ChuHo_SoDinhDanh"
 
 
 def test_runner_doc_anh_khong_cuu_duoc_thi_canh_bao(monkeypatch):
     calls = []
     res = _run(monkeypatch, _fields(ChuHo_SoDinhDanh="00108300001"), {"so_dinh_danh": ""}, calls)
-    assert calls == [1]
+    assert "vision_done" in calls
     assert any("không đủ 12 số" in e for e in res.get("errors", []))
 
 

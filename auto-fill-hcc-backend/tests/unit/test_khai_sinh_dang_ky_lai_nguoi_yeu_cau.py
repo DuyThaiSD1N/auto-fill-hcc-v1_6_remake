@@ -663,3 +663,37 @@ def test_reason_khong_to_khai_khong_tai_khoan_khong_tu_suy_ra_khac():
     assert reason._validated_relation(raw("bản thân"), sections, False, ("", ""))[0] == "bản thân"
     # Có mốc tài khoản mà không trùng người được đăng ký lại → vẫn là "khác" như cũ.
     assert reason._validated_relation(raw("bản thân"), sections, False, ("LÊ VĂN BÌNH", "001056000002"))[0] == "khác"
+
+
+# Giấy ủy quyền do dân tự gõ hay sai một chữ số; CCCD của chính bên được ủy quyền nộp kèm thì số in trên thẻ thắng.
+_GIAY_UY_QUYEN_SO_GO_SAI = """GIẤY ỦY QUYỀN
+I. Người ủy quyền:
+Họ và tên: Nguyễn Thị Hoa, sinh ngày 10/02/1985
+II. Người được ủy quyền:
+Họ và tên: Lê Văn Bình, sinh ngày 20/08/1982
+Số CMND/ số căn cước công dân/ số hộ chiếu: 001082000002 Cấp ngày: 26/08/2021
+III. Nội dung ủy quyền:
+Nộp hồ sơ và nhận kết quả.
+"""
+_THE_BEN_DUOC_UY_QUYEN = """CĂN CƯỚC CÔNG DÂN
+Citizen Identity Card
+Số / No.: 001082000003
+Họ và tên / Full name:
+LÊ VĂN BÌNH
+Ngày sinh / Date of birth: 20/08/1982
+Giới tính / Sex: Nam Quốc tịch / Nationality: Việt Nam
+"""
+
+
+def test_so_tren_the_cccd_cua_ben_duoc_uy_quyen_thang_so_go_tren_giay_uy_quyen():
+    docs = [{"name": "uy_quyen.pdf", "text": _GIAY_UY_QUYEN_SO_GO_SAI},
+            {"name": "cccd.pdf", "text": _THE_BEN_DUOC_UY_QUYEN}]
+    person = reason._authorized_person(docs)
+    assert (person["name"], person["id"], person["issue_date"]) == ("Lê Văn Bình", "001082000003", "26/08/2021")
+
+
+def test_the_cccd_nguoi_khac_khong_doi_so_ben_duoc_uy_quyen():
+    the_nguoi_khac = _THE_BEN_DUOC_UY_QUYEN.replace("LÊ VĂN BÌNH", "TRẦN VĂN AN")
+    docs = [{"name": "uy_quyen.pdf", "text": _GIAY_UY_QUYEN_SO_GO_SAI},
+            {"name": "cccd.pdf", "text": the_nguoi_khac}]
+    assert reason._authorized_person(docs)["id"] == "001082000002"

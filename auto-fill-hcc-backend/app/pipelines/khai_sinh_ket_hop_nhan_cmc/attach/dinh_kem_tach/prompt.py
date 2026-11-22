@@ -32,8 +32,12 @@ chúng thành từng giấy tờ và phân loại từng giấy để xếp vào
 - birth_declaration: tờ khai đăng ký khai sinh bản giấy.
 - recognition_declaration: tờ khai đăng ký nhận cha, mẹ, con bản giấy. Tờ khai luôn có câu "Tôi cam đoan…" ở cuối —
   vẫn là tờ khai, KHÔNG phải witness_commitment.
-- identity: CCCD / CMND / căn cước / hộ chiếu / giấy tờ tùy thân, kể cả MẶT SAU thẻ (chỉ có "Đặc điểm nhận dạng",
-  vân tay, "CỤC TRƯỞNG CỤC CẢNH SÁT", dòng MRZ "IDVNM...").
+- identity: CCCD / CMND / căn cước / hộ chiếu Việt Nam / giấy tờ tùy thân của công dân Việt Nam, kể cả MẶT SAU thẻ
+  (chỉ có "Đặc điểm nhận dạng", vân tay, "CỤC TRƯỞNG CỤC CẢNH SÁT", dòng MRZ "IDVNM...").
+- foreign_passport: hộ chiếu hoặc giấy tờ có giá trị thay hộ chiếu của NGƯỜI NƯỚC NGOÀI (nước cấp / quốc tịch không
+  phải Việt Nam, kể cả bản dịch của hộ chiếu đó).
+- nationality_agreement: văn bản thỏa thuận của cha, mẹ về việc lựa chọn quốc tịch (và quê quán) cho con, kể cả xác
+  nhận của cơ quan nước ngoài về quốc tịch của trẻ.
 - marital_status_evidence: giấy chứng tử, trích lục khai tử, bản án / quyết định ly hôn hoặc giấy tờ chứng minh tình
   trạng hôn nhân.
 - witness_commitment: văn bản cam đoan của các bên về mối quan hệ cha, mẹ, con, có người làm chứng.
@@ -44,7 +48,7 @@ chúng thành từng giấy tờ và phân loại từng giấy để xếp vào
 
 <document_name_rules>
 documentName: tên giấy theo TIÊU ĐỀ in trên giấy (vd "Kết quả xét nghiệm ADN", "Giấy chứng sinh", "Bản án ly hôn",
-"Căn cước công dân"); giấy không có tiêu đề thì gọi đúng loại giấy. Tối đa 50 ký tự, không ngoặc, không dấu chấm,
+"Căn cước công dân", "Hộ chiếu"); giấy không có tiêu đề thì gọi đúng loại giấy, không gọi hộ chiếu là căn cước công dân. Tối đa 50 ký tự, không ngoặc, không dấu chấm,
 không đuôi tệp; không dùng tên file, không ghi chung chung "Tài liệu khác". Không xác định được → "".
 </document_name_rules>
 

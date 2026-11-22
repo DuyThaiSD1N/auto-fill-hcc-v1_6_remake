@@ -19,6 +19,9 @@ Mỗi file đầu vào phải được giữ nguyên, không chia theo trang hay
    nhiều người trong cùng file vẫn trả một kết quả với documentName "Căn cước công dân" và subjectName rỗng.
 5. Nếu file chứa nhiều loại giấy tờ khác nhau thì dùng other và đặt documentName theo
    quy tắc tên file hỗn hợp. Vẫn chỉ trả một kết quả cho cả file, không tách riêng từng giấy tờ.
+   "Hỗn hợp" = có ÍT NHẤT HAI tài liệu độc lập mang tiêu đề khác nhau. File chỉ có MỘT giấy tờ (kể cả giấy
+   lạ không thuộc allowed_types: quyết định ly hôn, giấy phép lái xe, thông báo cư trú, ảnh chụp màn hình
+   ứng dụng...) KHÔNG phải hỗn hợp: documentName là tiêu đề của chính giấy đó.
 6. Mặt sau CCCD là identity khi có MRZ IDVNM, hoặc có nhóm tín hiệu đủ mạnh gồm đặc điểm
    nhận dạng/vân tay/cơ quan cấp kèm số định danh 12 chữ số. Một cụm "đặc điểm nhận dạng"
    đơn lẻ hoặc OCR rác không đủ để kết luận identity.
@@ -33,6 +36,13 @@ Mỗi file đầu vào phải được giữ nguyên, không chia theo trang hay
 12. Với file hỗn hợp (type other chứa nhiều tài liệu), trả thêm containsTypes là danh sách type (theo
     allowed_types, trừ other) của từng tài liệu độc lập thực sự có trong file. Giấy tờ chỉ được nhắc
     trong Tờ khai/Bản cam đoan không tính. Kết quả khác không cần containsTypes.
+13. Giấy tờ hai mặt KHÔNG phải CCCD/căn cước/CMND (giấy phép lái xe, thẻ, giấy chứng nhận in hai mặt...) hay bị
+    quét thành HAI file: một file là mặt có tiêu đề + họ tên, file kia chỉ có phần in tiếp của cùng tờ giấy (bảng
+    hạng xe, ghi chú, số sê-ri, không có tiêu đề / họ tên). Khi đó CẢ HAI file trả thêm otherSide = fileIndex của
+    file chứa mặt còn lại, và cùng documentName (tên của giấy đó). Chỉ ghi otherSide khi hai file rõ ràng là hai
+    mặt của CÙNG MỘT tờ giấy; hai giấy khác nhau, hoặc CCCD/căn cước/CMND (backend tự ghép) thì không ghi.
+    Trước khi trả JSON, rà lại các file other: file nào chỉ có phần in tiếp không tiêu đề thì tìm file mặt có tiêu
+    đề của cùng loại giấy trong danh sách để ghép otherSide.
 </critical_rules>
 
 <file_index_binding_rules>
@@ -68,13 +78,16 @@ Mỗi file đầu vào phải được giữ nguyên, không chia theo trang hay
   nội dung; subjectName chỉ chứa họ tên, không kèm nhãn hoặc số định danh.
 - marriage_declaration: "Tờ khai đăng ký kết hôn".
 - commitment: "Bản cam đoan".
-- other một giấy tờ: dùng đúng tiêu đề cụ thể đọc được.
+- other một giấy tờ: dùng đúng tiêu đề cụ thể đọc được. TUYỆT ĐỐI không dùng tên hồ sơ hỗn hợp cho file chỉ
+  có một giấy tờ.
+- Ảnh chụp màn hình điện thoại / ứng dụng: documentName là dòng tiêu đề của màn hình (dòng tên trang ở đầu, thường
+  đứng sau mũi tên quay lại, dưới dòng giờ / sóng / pin), không gọi chung "Ảnh chụp màn hình".
 - File chỉ có Tờ khai đăng ký kết hôn dùng "Tờ khai đăng ký kết hôn".
 - File chỉ có Bản cam đoan dùng "Bản cam đoan".
 - File có Tờ khai và một Bản cam đoan độc lập dùng "Tờ khai và bản cam đoan".
 - File có Tờ khai cùng bất kỳ tài liệu có nghĩa nào khác ngoài Bản cam đoan dùng
   "Hồ sơ đăng ký kết hôn".
-- File không có Tờ khai nhưng chứa nhiều loại giấy tờ hỗ trợ khác nhau dùng "Giấy tờ đăng ký kết hôn".
+- File không có Tờ khai nhưng chứa từ HAI loại giấy tờ hỗ trợ khác nhau trở lên dùng "Giấy tờ đăng ký kết hôn".
 - File không nhận diện được tài liệu cụ thể dùng "Tài liệu đính kèm".
 - Khi file chứa nhiều tài liệu, không lấy tiêu đề của riêng một tài liệu con làm documentName.
 - Một tài liệu nhiều trang vẫn dùng tên chính xác của tài liệu, không dùng tên hồ sơ hỗn hợp.
@@ -86,6 +99,8 @@ Mỗi file đầu vào phải được giữ nguyên, không chia theo trang hay
 {"documents":[{"fileIndex":0,"type":"identity","documentName":"Căn cước công dân","subjectName":"HỌ TÊN"}]}
 File hỗn hợp:
 {"documents":[{"fileIndex":0,"type":"other","documentName":"Hồ sơ đăng ký kết hôn","subjectName":"","containsTypes":["marriage_declaration","identity"]}]}
+Hai mặt của một giấy nằm ở hai file:
+{"documents":[{"fileIndex":0,"type":"other","documentName":"Tên giấy","subjectName":"","otherSide":1},{"fileIndex":1,"type":"other","documentName":"Tên giấy","subjectName":"","otherSide":0}]}
 </output_contract>
 """.strip()
 

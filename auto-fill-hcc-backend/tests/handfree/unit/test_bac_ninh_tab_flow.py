@@ -504,6 +504,32 @@ async def test_luu_tai_khoan_loi_thi_moi_bo_sung_luu_duoc_thi_cho_trang_thu_tuc(
     assert conv["state"] == "reviewing" and conv["bac_ninh"]["phase"] == "account"
 
 
+async def test_luu_tai_khoan_xong_cong_ve_trang_chu_thi_mo_lai_link_ke_khai():
+    """Lưu tài khoản xong cổng Bắc Ninh đưa về trang chủ → mở lại link kê khai của thủ tục (im lặng), có giới hạn số
+    lần; đang ở eform / trang tài khoản / đăng nhập hoặc chưa lưu tài khoản thì không mở."""
+    url = _proc()["keKhaiUrl"]
+    home = {"formKind": "", "bnTab": 0}
+
+    async def page(conv, at):
+        return await flow.handle_turn(conv, Intent("event", "page_status", home), client_url=at)
+
+    conv = _conv("guide_login", bac_ninh={"account_saved": True}, milestones=["bn_account_intro"])
+    for _ in range(bac_ninh._HOME_REOPEN_MAX):
+        r = await page(conv, "https://dichvucong.bacninh.gov.vn/web/guest/trang-chu")
+        assert r.actions == [{"type": "navigate", "url": url}] and not r.display_md
+    r = await page(conv, "https://dichvucong.bacninh.gov.vn/")
+    assert {"type": "navigate", "url": url} not in r.actions
+
+    for at in ("https://dichvucong.bacninh.gov.vn/web/guest/eform?p_p_id=org_bn_hoso_noptructuyen",
+               "https://dichvucong.bacninh.gov.vn/vneidsso"):
+        conv = _conv("guide_login", bac_ninh={"account_saved": True}, milestones=["bn_account_intro"])
+        r = await page(conv, at)
+        assert {"type": "navigate", "url": url} not in r.actions
+    conv = _conv("guide_login", milestones=["bn_account_intro"])
+    r = await page(conv, "https://dichvucong.bacninh.gov.vn/")
+    assert {"type": "navigate", "url": url} not in r.actions
+
+
 async def test_sang_trang_thu_tuc_sau_tai_khoan_dien_luon_khong_xin_giay_to_lai(_no_io):
     conv = _conv("guide_login", bac_ninh={"account_saved": True}, milestones=["bn_account_intro"])
     await _arrive_page(conv)

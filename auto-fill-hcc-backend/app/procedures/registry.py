@@ -1231,6 +1231,9 @@ PROCEDURES: list[dict] = [
         "hasAttachmentStep": True,
         # Client cũ hoặc không gửi option luôn giữ nguyên file; chỉ boolean True mới tách theo trang.
         "supportsSplitDocuments": True,
+        # Điền đợt 2 (app/second_pass) trên FORM CŨ (eForm x-*): chỉ chạy khi extension khai fillSupports có
+        # "secondPassLegacy" (bản biết ghi lại ô trên form cũ). Bản khác bỏ qua khoá này.
+        "secondPass": "legacy",
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (

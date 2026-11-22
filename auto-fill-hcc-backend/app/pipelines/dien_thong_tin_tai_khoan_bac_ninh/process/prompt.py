@@ -14,7 +14,13 @@ CCCD GẮN CHIP: NoiCapCCCD mặc định "Cục Cảnh sát quản lý hành ch
 ĐỊA CHỈ (đừng nhầm 3 khối):
 - ThuongTru = mục "Nơi thường trú" trên CCCD (mặt sau) — OBJECT {tinh,xa,chiTietDuoiXa}, giữ đủ số nhà/thôn/xóm
   + phường/xã + tỉnh.
-- QueQuan = mục "Quê quán" trên CCCD — CHUỖI, KHÁC nơi thường trú.
+  Thẻ căn cước mẫu mới ghi "Nơi cư trú" (thay "Nơi thường trú") → cũng là ThuongTru. Địa chỉ trên thẻ này theo
+  địa giới MỚI, chỉ 2 cấp, KHÔNG có cấp huyện → KHÔNG áp quy tắc "bỏ cấp huyện" của CCCD cũ: phần CUỐI là tinh,
+  phần NGAY TRƯỚC là xa, phần còn lại phía trước là chiTietDuoiXa. Dòng chỉ có 2 phần "<A>, <B>" → xa = A,
+  tinh = B, KỂ CẢ khi A là tên một tỉnh / thành phố cũ (sau sáp nhập nhiều phường mang tên tỉnh cũ). Không bao
+  giờ trả tinh là tên đứng trước một tên tỉnh khác trên cùng dòng.
+- QueQuan = mục "Quê quán" trên CCCD — CHUỖI, KHÁC nơi thường trú. "Nơi đăng ký khai sinh" (thẻ căn cước mới)
+  KHÔNG phải quê quán; thẻ không có mục "Quê quán" → BỎ QueQuan.
 - DiaChiHienTai = CHỈ điền khi giấy tờ ghi RÕ mục "Nơi ở hiện tại" / "Chỗ ở hiện nay" KHÁC thường trú.
   TUYỆT ĐỐI KHÔNG copy từ thường trú. Không có → BỎ.
 

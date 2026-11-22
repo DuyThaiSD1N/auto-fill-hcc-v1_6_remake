@@ -225,6 +225,15 @@ async def test_bam_nop_them_khi_state_attaching_van_chay(mock_save):
     assert conv["submitted_logout_decision"] == "continue"
 
 
+async def test_lua_chon_sau_khi_nop_ghi_vao_nhat_ky_ho_so(mock_save, monkeypatch):
+    add_event = AsyncMock()
+    monkeypatch.setattr(flow.dossiers_repo, "add_event", add_event)
+    for action, choice in (("logout_citizen", "dang_xuat"), ("continue_dossiers", "lam_ho_so_khac")):
+        conv = {"_id": "c-ev", "state": "done", "client_capabilities": {"supportsRating": True}}
+        await flow.handle_turn(conv, Intent("action", action))
+        add_event.assert_awaited_with("c-ev", "logout_choice", {"choice": choice})
+
+
 def test_nhan_dien_giong_noi_dang_xuat_khi_dang_cho_chon():
     # Rảnh tay gửi giọng nói dạng text tự do → phải bắt tất định (LLM hay trả unknown).
     from app.channels.handfree.chat.intents import resolve_logout_choice as R

@@ -55,8 +55,10 @@ async def _segment_all(pages_by_file: dict[int, list[str]]) -> list[dict]:
     return [d for d in documents if isinstance(d, dict)]
 
 
-# Loại giấy đi vào DÒNG CỐ ĐỊNH của bảng (STT3 giấy chứng sinh, STT4 xác nhận quan hệ, STT5 cam đoan).
-_FIXED_ROW_TYPES = {"birth_proof", "relationship_proof", "witness_commitment"}
+# Loại giấy đi vào DÒNG CỐ ĐỊNH của bảng (giấy chứng sinh, xác nhận quan hệ, cam đoan, thỏa thuận quốc tịch, hộ chiếu
+# người nước ngoài).
+_FIXED_ROW_TYPES = {"birth_proof", "relationship_proof", "witness_commitment", "nationality_agreement",
+                    "foreign_passport"}
 
 
 def _merge_fixed_rows(documents: list[dict]) -> list[dict]:

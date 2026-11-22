@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getDossier } from "../api";
-import type { DossierDetail } from "../types";
+import type { DossierDetail, DossierEvent } from "../types";
 import { fmtDateTime, fmtDuration } from "../format";
 import { goToTrace } from "../nav";
 import { RatingDetail } from "../rating";
@@ -9,7 +9,7 @@ import { RatingDetail } from "../rating";
 // thời gian. Khác drawer trace (một LƯỢT gọi API) — đây là cả vòng đời hồ sơ.
 type Entry =
   | { at: string; kind: "trace"; traceId: string; label: string; note: string }
-  | { at: string; kind: "start" | "submit" | "close"; label: string; note: string };
+  | { at: string; kind: "start" | "submit" | "close" | "event"; label: string; note: string };
 
 // Lý do phiên kết thúc mà KHÔNG qua đường nộp (dossiers.close_reason).
 const CLOSE_REASON: Record<string, string> = {
@@ -20,6 +20,39 @@ const CLOSE_REASON: Record<string, string> = {
   new_procedure: "đổi sang thủ tục khác",
   "procedure-change": "đổi sang thủ tục khác",
 };
+
+// Tên cổng dễ đọc cho kết quả xóa phiên; cổng khác giữ nguyên tên miền.
+const PORTAL_NAME: Record<string, string> = {
+  "dichvucong.gov.vn": "DVC quốc gia",
+  "dancuquocgia.gov.vn": "VNeID",
+  "bacninh.gov.vn": "DVC Bắc Ninh",
+};
+
+function portalName(host: string): string {
+  const key = Object.keys(PORTAL_NAME).find((k) => host === k || host.endsWith(`.${k}`));
+  return key ? PORTAL_NAME[key] : host;
+}
+
+function eventEntry(e: DossierEvent): Entry | null {
+  if (!e.at) return null;
+  switch (e.type) {
+    case "rating":
+      return { at: e.at, kind: "event", label: "Đánh giá",
+               note: e.skipped ? "bỏ qua" : e.levelLabel || (e.level ? `mức ${e.level}` : "") };
+    case "logout_choice":
+      return { at: e.at, kind: "event", label: "Chọn sau khi nộp",
+               note: e.choice === "dang_xuat" ? "đăng xuất" : "làm hồ sơ khác" };
+    case "logout_timeout":
+      return { at: e.at, kind: "event", label: "Tự đăng xuất", note: "sau 2 phút không chọn" };
+    case "logout_manual":
+      return { at: e.at, kind: "event", label: "Công dân tự đăng xuất", note: "trên cổng, trong lúc chờ" };
+    case "logout_result":
+      return { at: e.at, kind: "event", label: "Xóa phiên đăng nhập",
+               note: (e.portals || []).map((p) => `${portalName(p.host)}: ${p.ok ? "thành công" : `còn ${p.left} cookie`}`).join(" · ") || "không có cổng nào" };
+    default:
+      return null;
+  }
+}
 
 function buildTimeline(d: DossierDetail): Entry[] {
   const entries: Entry[] = [
@@ -42,6 +75,10 @@ function buildTimeline(d: DossierDetail): Entry[] {
       note: e.ref ? `mã ${e.ref}` : e.host || "",
     })),
   ];
+  for (const e of d.events || []) {
+    const entry = eventEntry(e);
+    if (entry) entries.push(entry);
+  }
   if (d.closedAt) {
     entries.push({
       at: d.closedAt,

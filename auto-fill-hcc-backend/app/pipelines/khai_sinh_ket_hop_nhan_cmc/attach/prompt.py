@@ -20,7 +20,9 @@ Với từng file, đọc tên file và OCR để xác định:
 - birth_proof: giấy chứng sinh hoặc giấy tờ thay thế chứng minh việc sinh.
 - birth_declaration: tờ khai đăng ký khai sinh bản giấy.
 - recognition_declaration: tờ khai đăng ký nhận cha, mẹ, con bản giấy.
-- identity: CCCD, căn cước, CMND, hộ chiếu hoặc giấy tờ tùy thân. Bao gồm CẢ MẶT SAU thẻ CCCD/căn cước (chỉ có 'Đặc điểm nhận dạng', vân tay, 'CỤC TRƯỞNG CỤC CẢNH SÁT', dòng MRZ 'IDVNM...', KHÔNG có tiêu đề 'Căn cước công dân') — VẪN là identity.
+- identity: CCCD, căn cước, CMND, hộ chiếu Việt Nam hoặc giấy tờ tùy thân của công dân Việt Nam. Bao gồm CẢ MẶT SAU thẻ CCCD/căn cước (chỉ có 'Đặc điểm nhận dạng', vân tay, 'CỤC TRƯỞNG CỤC CẢNH SÁT', dòng MRZ 'IDVNM...', KHÔNG có tiêu đề 'Căn cước công dân') — VẪN là identity.
+- foreign_passport: hộ chiếu hoặc giấy tờ có giá trị thay hộ chiếu của NGƯỜI NƯỚC NGOÀI (nước cấp / quốc tịch không phải Việt Nam, kể cả bản dịch của hộ chiếu đó).
+- nationality_agreement: văn bản thỏa thuận của cha, mẹ về việc lựa chọn quốc tịch (và quê quán) cho con, kể cả xác nhận của cơ quan nước ngoài về quốc tịch của trẻ.
 - marital_status_evidence: giấy chứng tử, trích lục khai tử, bản án/quyết định ly hôn hoặc giấy tờ chứng minh tình trạng hôn nhân.
 - witness_commitment: văn bản cam đoan quan hệ cha, mẹ, con có người làm chứng.
 - authorization: văn bản hoặc giấy ủy quyền.
@@ -40,6 +42,8 @@ Với từng file, đọc tên file và OCR để xác định:
 2. Tờ khai giấy vẫn là birth_declaration hoặc recognition_declaration; không coi là eForm online. Tờ khai NHẮC tới giấy
    chứng sinh, kết quả ADN hay CCCD (vd "kèm theo giấy chứng sinh số…") vẫn là tờ khai, không phải giấy được nhắc.
 3. Mỗi file chỉ trả một kết quả, giữ nguyên index đầu vào.
+4. identity / foreign_passport: documentName theo đúng loại giấy đọc được ("Căn cước công dân", "Chứng minh nhân dân",
+   "Hộ chiếu"...), không gọi hộ chiếu là căn cước công dân.
 </routing_rules>
 
 <output_contract>

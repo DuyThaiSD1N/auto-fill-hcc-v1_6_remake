@@ -1,7 +1,8 @@
 """Phân loại theo nguyên file cho thủ tục đăng ký kết hôn.
 
 Nhánh này cố ý không sinh ``sourceSegments``: một PDF hỗn hợp vẫn là một tài liệu đính kèm.
-Ngoại lệ duy nhất là các file rời chứa hai mặt CCCD cùng người được gộp bằng ``sourceFileIndexes``.
+Ngoại lệ: các file rời chứa hai mặt CCCD cùng người, và hai mặt của giấy hai mặt khác (giấy phép lái xe...) LLM chỉ ra
+bằng ``otherSide``, được gộp bằng ``sourceFileIndexes``.
 """
 
 import re
@@ -187,7 +188,10 @@ def _validated_classifications(raw_items: list[dict], file_count: int) -> dict[i
         if file_index is None or not 0 <= file_index < file_count or file_index in result:
             continue
         raw_contains = raw.get("containsTypes")
+        other_side = _coerce_int(raw.get("otherSide"))
         result[file_index] = {
+            "otherSide": other_side if other_side is not None and other_side != file_index and 0 <= other_side < file_count
+            else None,
             "type": _canonical_type(raw.get("type")),
             "documentName": str(raw.get("documentName") or raw.get("title") or "").strip(),
             "subjectName": _clean_subject_name(raw.get("subjectName")),
@@ -196,6 +200,48 @@ def _validated_classifications(raw_items: list[dict], file_count: int) -> dict[i
             ] if isinstance(raw_contains, list) else [],
         }
     return result
+
+
+def _merge_two_sided(attachments: list[dict], classified: list[dict], llm_by_index: dict[int, dict],
+                     ocr_text_by_index: dict[int, str]) -> list[dict]:
+    """Giấy hai mặt (không phải CCCD) quét thành hai file, LLM chỉ ra file mặt còn lại bằng ``otherSide`` → một tài liệu
+    gộp hai mặt qua ``sourceFileIndexes`` (cơ chế gộp extension đã có cho CCCD hai mặt). Chỉ ghép hai file cùng loại
+    "other", chỉ về nhau (hoặc file kia không chỉ ai); mỗi file nằm trong tối đa một cặp.
+    Thứ tự trang: file mang tiêu đề giấy (tên tài liệu) trên OCR đứng trước; không phân định được thì theo fileIndex."""
+    type_by_index = {item["fileIndex"]: item["type"] for item in classified}
+    pairs: dict[int, int] = {}
+    used: set[int] = set()
+    for index in sorted(llm_by_index):
+        other = llm_by_index[index].get("otherSide")
+        if other is None or index in used or other in used:
+            continue
+        if type_by_index.get(index) != "other" or type_by_index.get(other) != "other":
+            continue
+        if (llm_by_index.get(other) or {}).get("otherSide") not in (index, None):
+            continue
+        first, second = sorted((index, other))
+        pairs[first] = second
+        used.update((first, second))
+    if not pairs:
+        return attachments
+    dropped = set(pairs.values())
+    out = []
+    for item in attachments:
+        index = item.get("fileIndex")
+        if index in dropped:
+            continue
+        if index in pairs:
+            order = [index, pairs[index]]
+            title = _fold(re.sub(r"\s+\d+$", "", str(item.get("documentName") or "")))
+            if title and title not in _fold(ocr_text_by_index.get(index)) and title in _fold(
+                    ocr_text_by_index.get(pairs[index])):
+                order.reverse()
+            item = {**item, "fileIndex": order[0], "sourceFileIndexes": order}
+        out.append(item)
+    for item in classified:
+        if item["fileIndex"] in dropped:
+            item["otherSide"] = next(first for first, second in pairs.items() if second == item["fileIndex"])
+    return out
 
 
 async def plan_ket_hon_attachments_without_split(
@@ -302,6 +348,7 @@ async def plan_ket_hon_attachments_without_split(
         classified_item.update({"target": "existing", "componentIndex": slot[0]})
 
     ocr_text_by_index = {item["fileIndex"]: item["ocrText"] for item in documents}
+    attachments = _merge_two_sided(attachments, classified, classified_by_index, ocr_text_by_index)
     attachments = merge_identity_attachments(attachments, ocr_text_by_index, identity_indexes)
     # Tên được đánh lại SAU KHI gộp: lấy tên đọc được ở bất kỳ mặt nào của cùng người. Component
     # có sẵn vẫn giữ nguyên tên DOM; chỉ documentName/component mới dùng "CCCD HỌ TÊN".

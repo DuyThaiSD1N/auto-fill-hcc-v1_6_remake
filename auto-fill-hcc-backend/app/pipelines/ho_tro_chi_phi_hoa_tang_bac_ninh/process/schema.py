@@ -16,7 +16,7 @@ FIELDS: list[dict] = [
     {"name": "KhaiTu_NgayCap", "desc": "Ngày cấp giấy báo tử/trích lục khai tử, dd/mm/yyyy; không lấy ngày đăng ký khai tử nếu khác."},
     {"name": "HoaTang_ThoiGian", "desc": "Thời gian hỏa táng ghi trong Đơn/Hợp đồng, giữ đủ giờ phút và ngày nếu có."},
     {"name": "HoaTang_DiaDiem", "desc": "Tên và/hoặc địa chỉ cơ sở thực hiện hỏa táng."},
-    {"name": "NguoiDungRa_HoTen", "desc": "Họ tên CHỦ HỘ/NGƯỜI ĐẠI DIỆN đứng ra thực hiện hỏa táng tại mục II của Đơn; không lấy người chết."},
+    {"name": "NguoiDungRa_HoTen", "desc": "Họ tên CHỦ HỘ/NGƯỜI ĐẠI DIỆN đứng ra thực hiện hỏa táng ở mục II của Đơn (có CCCD cùng số thì theo chữ in trên CCCD); không lấy người chết."},
     {"name": "NguoiDungRa_NgaySinh", "desc": "Ngày sinh người đứng ra hỏa táng, dd/mm/yyyy."},
     {"name": "NguoiDungRa_SoDinhDanh", "desc": "Số CCCD/định danh của người đứng ra hỏa táng, chỉ giữ chữ số."},
     {"name": "NguoiDungRa_NgayCap", "desc": "Ngày cấp CCCD của người đứng ra hỏa táng, dd/mm/yyyy."},

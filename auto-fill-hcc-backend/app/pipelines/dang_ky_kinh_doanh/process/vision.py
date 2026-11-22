@@ -1,8 +1,8 @@
-"""Lượt DỰ PHÒNG: Qwen đọc thẳng ẢNH Giấy đề nghị đăng ký hộ kinh doanh → JSON số định danh, điện thoại, vốn, bảng ngành.
+"""Lượt ĐỌC ẢNH (chạy song song, chỉ dùng khi OCR + LLM hỏng): Qwen đọc thẳng ẢNH Giấy đề nghị đăng ký hộ kinh doanh → JSON số định danh, điện thoại, vốn, bảng ngành.
 
 Đo trên 20 hồ sơ thật: OCR Vintern đọc tổng thể đúng hơn (nhất là dấu tên và ngày sinh) nhưng khi hỏng thì hỏng kiểu DỄ
 PHÁT HIỆN — số định danh 11/13 số, điện thoại 9 số, bảng ngành vỡ thành chuỗi lặp, mất vốn. Qwen đọc bảng/dãy số dài tốt
-hơn nhưng khi sai là nhầm chữ số mà vẫn đúng độ dài (khó phát hiện). Vì vậy chỉ gọi lượt này khi kết quả OCR + LLM có
+hơn nhưng khi sai là nhầm chữ số mà vẫn đúng độ dài (khó phát hiện). Vì vậy chỉ DÙNG kết quả lượt này khi OCR + LLM có
 dấu hiệu hỏng, và chỉ thay ĐÚNG trường hỏng bằng giá trị qua được kiểm tra định dạng.
 """
 
@@ -87,7 +87,9 @@ def broken_fields(values: dict, ocr_text: str = "") -> set[str]:
     phone = _digits(values.get("ChuHo_DienThoai"))
     if phone and len(phone) != 10:
         broken.add("ChuHo_DienThoai")
-    if not _codes(_rows(values.get("NganhNghe_DanhSach"))):
+    rows = _rows(values.get("NganhNghe_DanhSach"))
+    # Không còn mã hợp lệ, hoặc có dòng mang mã bị cụt / thừa chữ số (OCR rơi chữ số: mapper bỏ cả dòng).
+    if not _codes(rows) or any(len(_digits(r.get("ma"))) not in (0, 4) for r in rows):
         broken.add("NganhNghe_DanhSach")
     if not _digits(values.get("Von_SoTien")):
         broken.add("Von_SoTien")

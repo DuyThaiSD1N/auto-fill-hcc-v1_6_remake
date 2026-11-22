@@ -22,6 +22,9 @@ _OCR_TYPES = {"image/jpeg", "image/png", "image/jpg", "application/pdf"}
 _BIRTH_ROW = "+ Giấy chứng sinh; trường hợp không có giấy chứng sinh thì nộp văn bản của người làm chứng xác nhận về việc sinh"
 _RELATIONSHIP_ROW = "+ Văn bản của cơ quan y tế, cơ quan giám định hoặc cơ quan khác có thẩm quyền xác nhận quan hệ cha con, quan hệ mẹ con."
 _WITNESS_ROW = "+ Trường hợp không có văn bản nêu trên thì các bên nhận cha, mẹ, con lập văn bản cam đoan về mối quan hệ cha, mẹ, con, có ít nhất hai người làm chứng về mối quan hệ cha, mẹ, con."
+# Đoạn nguyên văn của dòng trên cổng: extension khớp dòng bằng chuỗi con đã bỏ dấu.
+_NATIONALITY_ROW = "văn bản thỏa thuận của cha, mẹ về việc lựa chọn quốc tịch cho con"
+_FOREIGN_PASSPORT_ROW = "người nước ngoài phải nộp bản sao hộ chiếu hoặc giấy tờ có giá trị thay hộ chiếu"
 
 _ALLOWED_LLM_TYPES = {
     "relationship_proof",
@@ -29,6 +32,8 @@ _ALLOWED_LLM_TYPES = {
     "birth_declaration",
     "recognition_declaration",
     "identity",
+    "foreign_passport",
+    "nationality_agreement",
     "marital_status_evidence",
     "witness_commitment",
     "authorization",
@@ -75,6 +80,10 @@ def _label(doc_type: str, text: str) -> str:
         return "Giấy chứng sinh"
     if doc_type == "identity":
         return "Căn cước công dân"
+    if doc_type == "foreign_passport":
+        return "Hộ chiếu"
+    if doc_type == "nationality_agreement":
+        return "Văn bản thỏa thuận lựa chọn quốc tịch cho con"
     if doc_type == "marital_status_evidence":
         return "Quyết định ly hôn" if "ly hon" in value else "Giấy chứng tử"
     if doc_type == "birth_declaration":
@@ -189,8 +198,10 @@ def build_plan_items(
         if doc_type == "identity":
             identity_indexes.add(index)
         label = _label(doc_type, classification_text)
-        if llm_result and doc_type in {"other", "marital_status_evidence"}:
-            # Giấy thêm thành phần mới: tên theo tiêu đề LLM đọc được (bản án / quyết định ly hôn, giấy chứng tử…).
+        if llm_result and doc_type in {"other", "marital_status_evidence", "identity", "foreign_passport",
+                                       "nationality_agreement"}:
+            # Tên theo tiêu đề LLM đọc được (bản án / quyết định ly hôn, giấy chứng tử, hộ chiếu…): nhãn chốt sẵn
+            # theo loại từng gọi hộ chiếu là "Căn cước công dân".
             label = _specific_llm_name(llm_result.get("documentName")) or label
         if not label:
             # LLM lỗi/không trả tên: giữ tên file, tuyệt đối không sinh nhãn tài liệu chung.
@@ -203,6 +214,10 @@ def build_plan_items(
             target, component_index, component_name = "existing", 4, _RELATIONSHIP_ROW
         elif doc_type == "witness_commitment":
             target, component_index, component_name = "existing", 5, _WITNESS_ROW
+        elif doc_type == "nationality_agreement":
+            target, component_index, component_name = "existing", None, _NATIONALITY_ROW
+        elif doc_type == "foreign_passport":
+            target, component_index, component_name = "existing", None, _FOREIGN_PASSPORT_ROW
         else:
             target, component_index = "new", None
             component_name = normalize_document_name(label, _filename_fallback(name, index))

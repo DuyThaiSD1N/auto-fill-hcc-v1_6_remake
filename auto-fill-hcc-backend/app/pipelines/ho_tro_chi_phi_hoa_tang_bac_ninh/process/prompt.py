@@ -13,7 +13,12 @@ UyQuyen_CoBienBan chỉ được trả true khi OCR thực sự có Biên bản/
 
 Ưu tiên nguồn:
 - Người chết: CCCD đúng người nếu có; sau đó Trích lục khai tử, Đơn và Hợp đồng để đối chiếu.
-- Người đứng ra hỏa táng: CCCD đúng người và mục II của Đơn; Biên bản ủy quyền/Hợp đồng/Hóa đơn chỉ đối chiếu.
+- Người đứng ra hỏa táng: mục II của Đơn xác định NGƯỜI (theo số CCCD ghi ở mục II); Biên bản ủy quyền/Hợp
+  đồng/Hóa đơn chỉ đối chiếu. Đơn thường viết tay nên OCR hay đọc sai chữ/dấu/số: nếu hồ sơ có CCCD in sẵn mang
+  CÙNG số định danh với mục II thì NguoiDungRa_HoTen, NguoiDungRa_NgayCap, NguoiDungRa_NoiCap lấy theo CCCD đó
+  (kể cả khi Đơn ghi khác). NguoiDungRa_NgaySinh: lấy theo CCCD đó; ngày sinh mặt trước lệch với dòng mã máy
+  đọc mặt sau (dòng thứ hai bắt đầu bằng 6 số năm-tháng-ngày sinh YYMMDD) thì theo dòng mã máy đọc. Không có
+  CCCD cùng số → lấy theo mục II của Đơn. Địa chỉ, số điện thoại, tài khoản vẫn lấy theo Đơn.
 - Người ủy quyền: Biên bản/Văn bản ủy quyền; CCCD đúng họ tên và số định danh chỉ dùng bổ sung.
 Nếu người đứng ra hỏa táng và bên ủy quyền có cùng họ tên + CCCD thì vẫn trả ở hai nhóm tương ứng;
 mapper sẽ định tuyến theo nút người dùng bấm. Không bịa email, ngày sinh, giới tính, ngày cấp, nơi cấp hay số

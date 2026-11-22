@@ -1,5 +1,7 @@
 """Run one of the two eForms using an explicit DOM-derived form variant."""
 
+import copy
+
 from app.pipelines._shared.compact_agent import runner
 from app.pipelines.khai_sinh_ket_hop_nhan_cmc.process import mapper
 from app.pipelines.khai_sinh_ket_hop_nhan_cmc.process.prompt import EXTRA_RULES
@@ -33,6 +35,14 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
             "stats": {"ocr_latency_ms": 0, "llm_latency_ms": 0, "total_latency_ms": 0},
         }
 
+    # Điền đợt 2 cần OCR từng tài liệu và field TRƯỚC mapper — runner chung chỉ trả chuỗi OCR đã nối.
+    second_pass = bool((options or {}).get("_secondPass"))
+    read: dict = {}
+
+    def keep_documents(raw_fields, documents: list[dict]):
+        read["documents"] = documents
+        return raw_fields
+
     result = await runner.run(
         files_by_role,
         fields=FIELDS,
@@ -42,11 +52,19 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         extra_rules=EXTRA_RULES,
         options=options,
         max_tokens=2400,
+        compact_field_fallback=keep_documents,
     )
     source_fields = result["fields"]
     warning = mapper.child_name_warning(source_fields)
     if warning:
         result.setdefault("errors", []).append(warning)
+    raw_fields = copy.deepcopy(source_fields) if second_pass else []
     result["fields"] = mapper.enrich(source_fields, variant, options)
     result.setdefault("extracted", {})["formVariant"] = variant
+    if raw_fields and read.get("documents"):
+        from app.pipelines.khai_sinh_ket_hop_nhan_cmc.thanh_tra import dot_hai
+
+        # Nơi gọi pipeline lấy khoá này ra khỏi kết quả rồi chạy ở nền sau khi đã trả lượt điền đầu.
+        result["_second_pass"] = lambda base_fields: dot_hai.patch(read["documents"], raw_fields, base_fields,
+                                                                   options, variant)
     return result

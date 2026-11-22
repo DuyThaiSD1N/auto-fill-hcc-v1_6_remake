@@ -1,5 +1,8 @@
 """Compact agent pipeline for household business registration."""
 
+import asyncio
+import contextlib
+
 from app.pipelines._shared.compact_agent import runner
 from app.pipelines.dang_ky_kinh_doanh.process import mapper, vision
 from app.pipelines.dang_ky_kinh_doanh.process.prompt import EXTRA_RULES
@@ -64,24 +67,35 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
 
 
 async def _from_files(files_by_role: dict[str, list[dict]]) -> dict:
-    res = await runner.run(
-        files_by_role,
-        fields=FIELDS,
-        allowed=ALLOWED,
-        comp_by_name=COMPACT_COMP_BY_NAME,
-        aliases=ALIASES,
-        extra_rules=EXTRA_RULES,
-    )
+    # Qwen đọc ảnh chạy SONG SONG với OCR + LLM: hồ sơ đọc hỏng không phải chờ thêm một lượt nối tiếp; hồ sơ đọc ổn
+    # thì hủy lượt ảnh ngay khi biết, không chờ.
+    vision_task = asyncio.create_task(vision.read_application(runner.flatten(files_by_role)))
+    try:
+        res = await runner.run(
+            files_by_role,
+            fields=FIELDS,
+            allowed=ALLOWED,
+            comp_by_name=COMPACT_COMP_BY_NAME,
+            aliases=ALIASES,
+            extra_rules=EXTRA_RULES,
+        )
+    except BaseException:
+        vision_task.cancel()
+        raise
     compact = res["fields"]
     # Đơn bỏ trống tỉnh/xã của trụ sở / địa chỉ thuế → LLM hay lấy tỉnh/xã CCCD; đối chiếu lại với OCR.
     fixed = mapper.fix_addresses_from_ocr(compact, res.get("ocr_text") or "")
     if fixed:
         res.setdefault("extracted", {})["addressFixed"] = fixed
-    # OCR đọc hỏng (số định danh/điện thoại sai độ dài, bảng ngành vỡ, mất vốn) → Qwen đọc ảnh dự phòng, chỉ thay
-    # trường hỏng. Hồ sơ đọc ổn không gọi thêm.
+    # OCR đọc hỏng (số định danh/điện thoại sai độ dài, bảng ngành vỡ / mã cụt, mất vốn) → lấy kết quả Qwen đọc ảnh,
+    # chỉ thay trường hỏng.
     broken = vision.broken_fields({f.get("name"): f.get("value") for f in compact}, res.get("ocr_text") or "")
-    if broken:
-        data = await vision.read_application(runner.flatten(files_by_role))
+    if not broken:
+        vision_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await vision_task
+    else:
+        data = await vision_task
         if data:
             patched = vision.patch(compact, broken, data)
             res.setdefault("extracted", {})["visionPatched"] = patched

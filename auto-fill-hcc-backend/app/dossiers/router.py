@@ -45,6 +45,35 @@ class RatingReq(BaseModel):
     skipped: bool = False
 
 
+class LogoutPortal(BaseModel):
+    host: str = Field(min_length=1, max_length=200)
+    found: int = Field(default=0, ge=0, le=1000)
+    removed: int = Field(default=0, ge=0, le=1000)
+    left: int = Field(default=0, ge=0, le=1000)
+
+
+class DossierEventReq(BaseModel):
+    dossierId: str = Field(min_length=1, max_length=64)
+    type: Literal["logout_timeout", "logout_manual", "logout_result"]
+    portals: list[LogoutPortal] = Field(default_factory=list, max_length=20)
+
+
+@router.post("/event")
+async def dossier_event(body: DossierEventReq, user: dict = Depends(require_auth)):
+    """Sự kiện cuối hồ sơ do extension handfree báo: hết 2 phút tự đăng xuất, công dân tự đăng xuất trên cổng, kết quả
+    xóa phiên từng cổng. Đi HTTP chứ không qua chat vì lúc xóa phiên conversation đã bị xóa. Chỉ ghi vào hồ sơ của
+    chính tài khoản gửi."""
+    data: dict = {}
+    if body.type == "logout_result":
+        data["portals"] = [
+            {"host": p.host.strip().lower(), "found": p.found, "removed": p.removed, "left": p.left,
+             "ok": p.left == 0 and p.removed == p.found}
+            for p in body.portals
+        ]
+    await dossiers_repo.add_event(body.dossierId, body.type, data, owner_user_id=str(user.get("id") or ""))
+    return {"ok": True}
+
+
 @router.post("/rating")
 async def save_rating(body: RatingReq, user: dict = Depends(require_auth)):
     """Phiếu đánh giá trải nghiệm từ extension Auto Fill.

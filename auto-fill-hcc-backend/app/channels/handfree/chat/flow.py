@@ -1421,6 +1421,9 @@ async def _handle_turn_inner(
         doi_ma = _doi_ma_thu_tuc_reply(conv, current_proc, client_url)
         if doi_ma is not None:
             return doi_ma
+        bn_home = bac_ninh.account_home_reply(conv, current_proc, client_url)
+        if bn_home is not None:
+            return bn_home
     # Lời cổng nháy ở toast khi công dân tự bấm trên cổng: nói lại, không đổi bước.
     alert_reply = portal_alert.handle(conv, intent)
     if alert_reply is not None:
@@ -1703,12 +1706,14 @@ async def _handle_turn_inner(
     # chưa nhận rõ yêu cầu". Đặt ở đây để bấm được ở MỌI state.
     if intent.kind == "action" and intent.value == "logout_citizen":
         conv["submitted_logout_decision"] = "logout"
+        await dossiers_repo.add_event(str(conv["_id"]), "logout_choice", {"choice": "dang_xuat"})
         r = Reply()
         r.actions = [{"type": "logout_citizen"}]
         return r
 
     if intent.kind == "action" and intent.value == "continue_dossiers":
         conv["submitted_logout_decision"] = "continue"
+        await dossiers_repo.add_event(str(conv["_id"]), "logout_choice", {"choice": "lam_ho_so_khac"})
         r = Reply()
         r.actions = [{"type": "continue_dossiers"}]
         return r
