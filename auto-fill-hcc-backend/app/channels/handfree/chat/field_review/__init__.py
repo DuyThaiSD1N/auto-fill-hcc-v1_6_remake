@@ -32,7 +32,8 @@ nhãn của cổng). Đủ ô bắt buộc thì nút đi tiếp là "Đính kèm
 eForm Nth cổng DVC Bộ Công an (dichvucong.bocongan.gov.vn: hộ chiếu, mẫu con dấu, thị thực, thẻ tạm trú — form + bảng Thành
 phần hồ sơ thường cùng trang) dùng chung bộ đọc content/bca/field-review.js → cần cờ supportsBcaNthReview. Không có Xem
 trước; nút đi tiếp là "Đồng ý và tiếp tục" (lệnh lc_next, chat/lai_chau.py), chỉ hiện khi đủ ô bắt buộc (user 19/11/2026).
-Chế độ tiếng Mông giữ luồng cũ: nhãn ô lấy nguyên văn tiếng Việt trên tờ khai.
+Chế độ tiếng Mông chỉ bật cho thủ tục khai HMONG + HMONG_LABELS (nhãn ô / tên phần tiếng Mông theo tên ô, registry.py):
+câu có bản Mông cùng tên trong script_mong, câu trả lời dịch sang tiếng Việt (hmong_translate) trước khi hiểu.
 """
 import json
 import re
@@ -184,7 +185,8 @@ def active(conv: dict, proc: dict | None) -> bool:
         # Tờ khai có khối lồng (khối mẹ / cha nuôi): bản đọc eForm cũ tách khối như khối địa chỉ → hỏi sai ô.
         and (not (config(proc) or {}).get("nested") or caps.get(NESTED_CAPABILITY) is True
              or (config(proc) or {}).get("nestedOptional") is True)
-        and (conv.get("lang") or "vi") != "hmong"
+        # Chế độ Mông chỉ bật cho thủ tục đã có nhãn ô tiếng Mông (HMONG trong cấu hình thủ tục).
+        and ((conv.get("lang") or "vi") != "hmong" or (config(proc) or {}).get("hmong") is True)
     )
 
 
@@ -262,8 +264,85 @@ def _bca_commit_rule(proc: dict | None) -> dict:
     return {"commitId": commit_id, "commitLabel": label} if commit_id or label else {}
 
 
+class _Bi(tuple):
+    """Giá trị chèn vào câu có hai bản (tiếng Việt, tiếng Mông): câu ghép (đầu câu hỏi, nhãn ô, câu phụ) chèn bản Việt vào
+    khối Việt và bản Mông vào khối Mông — chèn một bản cho cả hai là giọng Mông đọc chữ Việt."""
+
+    def __new__(cls, vi_text, hmong_text=None):
+        return super().__new__(cls, (vi_text, vi_text if hmong_text is None else hmong_text))
+
+
+def _hmong_turn() -> bool:
+    from app.channels.handfree.chat import flow
+
+    return flow._TURN_LANG.get() == "hmong"
+
+
+def _twin(tpl: dict) -> dict | None:
+    from app.channels.handfree.chat import flow
+
+    return flow._hmong_twin(tpl)
+
+
+def _side(kw: dict, index: int) -> dict:
+    return {k: (v[index] if isinstance(v, _Bi) else v) for k, v in kw.items()}
+
+
 def _say(tpl: dict, **kw) -> tuple[str, str]:
-    return tpl["md"].format(**kw), tpl["tts"].format(**kw)
+    """(markdown, lời đọc) của một câu. Lượt tiếng Mông + câu có bản Mông: khối Việt rồi dòng Mông in nghiêng, lời đọc
+    tiếng Mông (như flow._fmt)."""
+    md, tts = tpl["md"].format(**_side(kw, 0)), tpl["tts"].format(**_side(kw, 0))
+    twin = _twin(tpl) if _hmong_turn() else None
+    if not twin:
+        return md, tts
+    from app.channels.handfree.chat import flow
+
+    hmong_kw = _side(kw, 1)
+    hmong_md = str(twin.get("md") or "").format(**hmong_kw).strip()
+    flow._TURN_HMONG_TTS.set(True)
+    return (f"{md}\n\n*{hmong_md}*" if md else f"*{hmong_md}*") if hmong_md else md, twin["tts"].format(**hmong_kw)
+
+
+def _part(tpl: dict, **kw) -> tuple[_Bi, _Bi]:
+    """Câu con chèn vào câu khác → (md, tts) mỗi thứ hai bản; câu cha dựng khối Mông bằng bản Mông."""
+    vi_kw = _side(kw, 0)
+    md, tts = tpl["md"].format(**vi_kw), tpl["tts"].format(**vi_kw)
+    twin = _twin(tpl) if _hmong_turn() else None
+    if not twin:
+        return _Bi(md), _Bi(tts)
+    hmong_kw = _side(kw, 1)
+    return _Bi(md, str(twin.get("md") or "").format(**hmong_kw)), _Bi(tts, twin["tts"].format(**hmong_kw))
+
+
+def _word(name: str, **kw) -> _Bi:
+    """Chuỗi ngắn (không phải câu md/tts) của script_vi kèm bản cùng tên trong script_mong."""
+    from app.channels.handfree.chat import script_mong as mong
+
+    text = getattr(vi, name).format(**kw)
+    hmong = getattr(mong, name, None) if _hmong_turn() else None
+    return _Bi(text, hmong.format(**kw) if isinstance(hmong, str) else text)
+
+
+def _hmong_names(proc: dict | None, field: dict) -> None:
+    """Nhãn ô / tên phần tiếng Mông theo tên ô (cấu hình thủ tục HMONG_LABELS). Ô không có trong bảng: lời đọc Mông gọi
+    chung "ô này" (khối hiển thị vẫn có nhãn Việt nguyên văn trên tờ khai)."""
+    from app.channels.handfree.chat import script_mong as mong
+
+    label, part = ((config(proc) or {}).get("hmongLabels") or {}).get(field.get("name") or "") or ("", "")
+    field["label_hm"] = label or mong.FR_FIELD_GENERIC
+    field["where_hm"] = part
+
+
+def _label_bi(field: dict) -> _Bi:
+    from app.channels.handfree.chat import script_mong as mong
+
+    return _Bi(_tts(field.get("label") or ""), field.get("label_hm") or mong.FR_FIELD_GENERIC)
+
+
+def _option_bi(option: str) -> _Bi:
+    from app.channels.handfree.chat import script_mong as mong
+
+    return _Bi(_tts(option), mong.FR_OPTION_HMONG.get(option, ""))
 
 
 def _count(value) -> int:
@@ -394,7 +473,7 @@ def _ready(proc: dict | None, st: dict, conv: dict | None = None) -> tuple[str, 
                     optional_md=vi.FLOW2_OPTIONAL_LEFT.format(optional=optional) if optional else "",
                     optional_tts=vi.FLOW2_OPTIONAL_LEFT_TTS.format(optional=optional) if optional else "")
     label = str((guided_steps.default_result_method(proc) or {}).get("label") or "")
-    done = vi.FLOW2_DONE_FILLED if st.get("attach_failed") else vi.FLOW2_DONE_ATTACHED
+    done = _word("FLOW2_DONE_FILLED" if st.get("attach_failed") else "FLOW2_DONE_ATTACHED")
     if liz(proc) and liz_commit_self(conv, proc):
         if st.get("liz_commit_ok"):
             if st.get("liz_result_step"):
@@ -700,8 +779,12 @@ def _next_action(proc: dict | None, st: dict, apply: dict | None = None, focus: 
 # extension cũ không biết khoá này thì bỏ qua): bỏ qua cam như ô trống không bắt buộc, sửa ô trước xanh dương,
 # dừng đỏ nhạt, tải lại danh sách xã xanh dương đặc vì là việc chính khi cổng chưa nạp danh sách.
 def _choice_chip(option: str) -> dict:
-    return {"label": option, "send": "__action:field_review_pick:" + json.dumps({"value": option}, ensure_ascii=False),
+    chip = {"label": option, "send": "__action:field_review_pick:" + json.dumps({"value": option}, ensure_ascii=False),
             "solid": True}
+    hmong = _option_bi(option)[1] if _hmong_turn() else ""
+    if hmong:
+        chip["labelHmong"] = hmong  # công dân đọc nhãn Mông trên nút → lớp dịch khớp về đúng lựa chọn
+    return chip
 
 
 def _country_field(field: dict) -> bool:
@@ -742,7 +825,7 @@ def _ask_reply(st: dict, lead: tuple[str, str] = ("", ""), back: bool = False):
 
     field = st["current"]
     first = st.pop("intro", False)
-    word = vi.FR_LEAD_FIRST if first else vi.FR_LEAD_NEXT
+    word = _word("FR_LEAD_FIRST" if first else "FR_LEAD_NEXT")
     current = vi.FR_CURRENT_MD.format(value=field["value"]) if field.get("value") else ""
     options = field.get("options") or []
     # "Tiếp theo đến phần …" chỉ ở ô đầu của mỗi phần; các ô sau cùng phần chỉ "Tiếp theo đến ô …".
@@ -750,13 +833,16 @@ def _ask_reply(st: dict, lead: tuple[str, str] = ("", ""), back: bool = False):
     st["asked_where"] = field["where"]
     if back:
         head = vi.FR_HEAD_BACK
+    elif _hmong_turn() and not field.get("where_hm"):
+        head = vi.FR_HEAD_NO_PART  # chưa có tên Mông của phần: lời đọc Mông chỉ nêu ô
     else:
         head = vi.FR_HEAD if field["where"] and not same_part else vi.FR_HEAD_NO_PART
-    head_md, head_tts = _say(head, lead=word, where=field["where"], where_tts=_tts(field["where"]),
-                             label_tts=_tts(field["label"]))
+    label_tts = _label_bi(field)
+    head_md, head_tts = _part(head, lead=word, where=field["where"],
+                              where_tts=_Bi(_tts(field["where"]), field.get("where_hm") or ""), label_tts=label_tts)
     where_md = vi.FR_WHERE_MD.format(where=field["where"]) if field["where"] else ""
-    kw = dict(where_md=where_md, label=field["label"], current_md=current,
-              head_md=head_md, head_tts=head_tts, label_tts=_tts(field["label"]))
+    kw = dict(where_md=_Bi(where_md, ""), label=field["label"], current_md=_Bi(current, ""),
+              head_md=head_md, head_tts=head_tts, label_tts=label_tts)
     if field.get("province"):
         r = Reply(*_say(vi.FR_ASK_WARDS_FAILED, province=field["province"], province_tts=_tts(field["province"]),
                         **kw))
@@ -764,19 +850,26 @@ def _ask_reply(st: dict, lead: tuple[str, str] = ("", ""), back: bool = False):
         r.chips = _chips(st)
         return r
     if _few_short_choices(options):
-        ask_md, ask_tts = _say(vi.FR_ASK_CHOICES, choices_md=" · ".join(f"**{o}**" for o in options),
-                               choices_tts=" hoặc ".join(_tts(o) for o in options), **kw)
+        named = [_option_bi(o) for o in options]
+        # Lựa chọn chưa có tên Mông: lời đọc Mông không liệt kê tên Việt, chỉ mời chọn một nút (FR_CHOICES_ANY).
+        from app.channels.handfree.chat import script_mong as mong
+
+        choices_hm = " los yog ".join(n[1] for n in named) if all(n[1] for n in named) else mong.FR_CHOICES_ANY
+        extra_md, extra_tts = [_Bi(""), _Bi("")], [_Bi(""), _Bi("")]
         if field.get("copy_choice"):
-            hint_md, hint_tts = _say(vi.FR_COPY_COUNT_HINT)
-            ask_md, ask_tts = ask_md + hint_md, ask_tts + hint_tts
+            extra_md[0], extra_tts[0] = _part(vi.FR_COPY_COUNT_HINT)
         if field.get("other"):
             option = field["other"]["option"]
-            hint_md, hint_tts = _say(vi.FR_OTHER_TEXT_HINT, option=option, option_tts=_tts(option))
-            ask_md, ask_tts = ask_md + hint_md, ask_tts + hint_tts
+            extra_md[1], extra_tts[1] = _part(vi.FR_OTHER_TEXT_HINT, option=option, option_tts=_option_bi(option))
+        ask_md, ask_tts = _say(vi.FR_ASK_CHOICES, choices_md=" · ".join(f"**{o}**" for o in options),
+                               choices_tts=_Bi(" hoặc ".join(n[0] for n in named), choices_hm),
+                               extra_md=_Bi(extra_md[0][0] + extra_md[1][0], extra_md[0][1] + extra_md[1][1]),
+                               extra_tts=_Bi(extra_tts[0][0] + extra_tts[1][0], extra_tts[0][1] + extra_tts[1][1]),
+                               **kw)
     elif options and _country_field(field):
         ask_md, ask_tts = _say(vi.FR_ASK_COUNTRY, **kw)
     else:
-        how_md, how_tts = ("", "") if st.get("told_how") else _say(vi.FR_ASK_HOW)
+        how_md, how_tts = (_Bi(""), _Bi("")) if st.get("told_how") else _part(vi.FR_ASK_HOW)
         st["told_how"] = True
         ask_md, ask_tts = _say(vi.FR_ASK, how_md=how_md, how_tts=how_tts, **kw)
     r = Reply(ask_md, ask_tts)
@@ -795,8 +888,13 @@ def _finish_reply(conv: dict, proc: dict | None, *, stopped: bool, lead: tuple[s
     if flow_v2(conv, proc):
         keep = [dict(c) for c in st.get("chips") or []]
         if stats["required"]:
-            lead_md, lead_tts = vi.FLOW2_REVIEW_STOP_LEAD if stopped else vi.FLOW2_REVIEW_DONE_LEAD
-            r = Reply(*_say(vi.FLOW2_REVIEW_MISSING, required=stats["required"], lead_md=lead_md, lead_tts=lead_tts))
+            from app.channels.handfree.chat import script_mong as mong
+
+            name = "FLOW2_REVIEW_STOP_LEAD" if stopped else "FLOW2_REVIEW_DONE_LEAD"
+            lead_vi = getattr(vi, name)
+            lead_hm = getattr(mong, name, lead_vi) if _hmong_turn() else lead_vi
+            r = Reply(*_say(vi.FLOW2_REVIEW_MISSING, required=stats["required"], lead_md=_Bi(lead_vi[0], lead_hm[0]),
+                            lead_tts=_Bi(lead_vi[1], lead_hm[1])))
             r.chips = next_chips(conv, proc, keep)
         else:
             md, tts = _ready(proc, st, conv)
@@ -804,12 +902,12 @@ def _finish_reply(conv: dict, proc: dict | None, *, stopped: bool, lead: tuple[s
             r.chips = next_chips(conv, proc, keep)
         r.actions = [{"type": "field_review_stop"}]
         return _with_lead(r, lead)
-    missing = vi.FR_MISSING_NOTE.format(count=stats["required"]) if stats["required"] else ""
+    missing = _word("FR_MISSING_NOTE", count=stats["required"]) if stats["required"] else _Bi("")
     if single_page(proc):
         template = vi.FR_STOPPED_SINGLE_PAGE if stopped else vi.FR_DONE_SINGLE_PAGE
     else:
         template = vi.FR_STOPPED if stopped else vi.FR_DONE
-    r = Reply(*_say(template, missing_note=missing))
+    r = Reply(*_say(template, missing_note=missing, required_note=missing))
     r.actions = [{"type": "field_review_stop"}]
     _with_lead(r, lead)
     # Bỏ qua bớt ô → còn ô trống: cho bổ sung lại một vòng mới (danh sách bỏ qua làm lại từ đầu).
@@ -822,25 +920,28 @@ def _finish_reply(conv: dict, proc: dict | None, *, stopped: bool, lead: tuple[s
 
 def _outcome_lead(st: dict, applied) -> tuple[str, str]:
     if st.pop("back_label", ""):
-        label = (st.get("last") or {}).get("label") or ""
-        return _say(vi.FR_BACK, label=label, label_tts=_tts(label))
+        last = st.get("last") or {}
+        label = last.get("label") or ""
+        return _say(vi.FR_BACK, label=label, label_tts=_label_bi(last))
     pending = st.pop("pending", None) or {}
     if isinstance(applied, dict) and pending:
         label, where = pending.get("label") or "", pending.get("where") or ""
         if applied.get("ok") is True:
-            st["last"] = {"key": pending.get("key"), "label": label}
+            st["last"] = {"key": pending.get("key"), "label": label, "label_hm": pending.get("label_hm") or ""}
             return _say(vi.FR_APPLIED if where else vi.FR_APPLIED_NO_PART, label=label, where=where, value=pending.get("value") or "",
-                        label_tts=_tts(label), where_tts=_tts(where))
+                        label_tts=_label_bi(pending), where_tts=_tts(where))
         if pending.get("copy_quantity"):
             # Đã chọn Có, chỉ số lượng điền hỏng: không đưa ô số lượng vào danh sách bỏ qua để lượt sau hỏi lại ô đó.
             return _say(vi.FR_COPY_COUNT_FAILED, label=label, choice=pending.get("choice") or "",
-                        label_tts=_tts(label))
+                        label_tts=_label_bi(pending))
         # Điền hỏng: extension đã tự bỏ ô này khỏi lượt tìm kế tiếp; ghi vào danh sách bỏ qua để các
         # lượt sau cũng không hỏi lại một ô điền không được.
         st.setdefault("skip", []).append(pending.get("key"))
-        return _say(vi.FR_APPLY_FAILED, label=label, label_tts=_tts(label))
+        return _say(vi.FR_APPLY_FAILED, label=label, label_tts=_label_bi(pending))
     skipped = st.pop("skipped_label", "")
-    return _say(vi.FR_SKIPPED, label=skipped, label_tts=_tts(skipped)) if skipped else ("", "")
+    skipped_hm = st.pop("skipped_label_hm", "")
+    return (_say(vi.FR_SKIPPED, label=skipped, label_tts=_label_bi({"label": skipped, "label_hm": skipped_hm}))
+            if skipped else ("", ""))
 
 
 def _skip_current(proc: dict | None, st: dict):
@@ -849,6 +950,7 @@ def _skip_current(proc: dict | None, st: dict):
     field = st.get("current") or {}
     st.setdefault("skip", []).append(field.get("key"))
     st["skipped_label"] = field.get("label") or ""
+    st["skipped_label_hm"] = field.get("label_hm") or ""
     st["current"] = None
     r = Reply()
     r.actions = [_next_action(proc, st)]
@@ -938,7 +1040,17 @@ async def _answer(conv: dict, proc: dict | None, st: dict, text: str):
         if handled is not None:
             return handled
     field = st["current"]
+    if (conv.get("lang") or "vi") == "hmong":
+        # Chế độ Mông: câu trả lời dịch sang tiếng Việt (giữ nguyên tên riêng, số, ngày) rồi mới đưa bộ hiểu câu trả lời.
+        from app.channels.handfree.chat import hmong_translate
+
+        text = await hmong_translate.understood_text(conv, text, field=field)
     answer = await agent.interpret(text, field, _visited_before(st))
+    if (conv.get("lang") or "vi") == "hmong" and answer.action in {"value", "unclear"} and answer.value:
+        # Chế độ Mông: số điện thoại nghe thiếu số thì đắp cho đủ 10 số hợp lệ, không hỏi lại (agent.pad_phone).
+        padded = agent.pad_phone(answer.value, agent.id_lengths(field))
+        if padded:
+            answer = agent.Answer("value", padded)
     if answer.action == "command":
         rerouted = await _reroute(conv, proc, st, text)
         if rerouted is not None:
@@ -948,7 +1060,7 @@ async def _answer(conv: dict, proc: dict | None, st: dict, text: str):
     if answer.action == "stop":
         return _finish_reply(conv, proc, stopped=True)
     if answer.action == "proceed" and flow_v2(conv, proc):
-        return _proceed(conv, proc, st)
+        return await named_next_button(conv, proc, st, text) or _proceed(conv, proc, st)
     if answer.action == "repeat":
         return _ask_reply(st)
     if answer.action == "back":
@@ -958,12 +1070,13 @@ async def _answer(conv: dict, proc: dict | None, st: dict, text: str):
     if answer.action != "value":
         lengths = agent.id_lengths(field)
         if lengths and answer.value:
-            need = "10" if lengths == agent.PHONE_LENGTHS else " hoặc ".join(str(n) for n in lengths)
+            need_vi = "10" if lengths == agent.PHONE_LENGTHS else " hoặc ".join(str(n) for n in lengths)
+            need = _Bi(need_vi, need_vi.replace(" hoặc ", " los yog "))
             if agent.phone_format_wrong(answer.value, lengths):
-                r = Reply(*_say(vi.FR_PHONE_FORMAT, label=field["label"], label_tts=_tts(field["label"]),
+                r = Reply(*_say(vi.FR_PHONE_FORMAT, label=field["label"], label_tts=_label_bi(field),
                                 heard=answer.value))
             else:
-                r = Reply(*_say(vi.FR_DIGITS_SHORT, label=field["label"], label_tts=_tts(field["label"]),
+                r = Reply(*_say(vi.FR_DIGITS_SHORT, label=field["label"], label_tts=_label_bi(field),
                                 count=len(answer.value), heard=answer.value, need=need))
             r.actions = [{"type": "listen_after_tts"}]
             r.chips = _chips(st)
@@ -973,7 +1086,7 @@ async def _answer(conv: dict, proc: dict | None, st: dict, text: str):
                     else vi.FR_YEAR_HINT if field.get("year_only") else vi.FR_DATE_HINT)
         else:
             hint = vi.FR_OPTION_HINT if field["options"] else ""
-        r = Reply(*_say(vi.FR_UNCLEAR, label=field["label"], hint=hint, label_tts=_tts(field["label"])))
+        r = Reply(*_say(vi.FR_UNCLEAR, label=field["label"], hint=hint, label_tts=_label_bi(field)))
         r.actions = [{"type": "listen_after_tts"}]
         r.chips = _chips(st)
         return r
@@ -990,9 +1103,9 @@ def _proceed(conv: dict, proc: dict | None, st: dict):
     if required:
         field = st["current"]
         step_md = (vi.LT_PROCEED_STEP if lien_thong(proc) else vi.BXD_PROCEED_STEP if bxd(proc) else
-                   vi.FR_PROCEED_STEP_LEGACY if legacy_wizard(proc) else vi.FR_PROCEED_STEP_SINGLE)
+                   vi.FR_PROCEED_STEP_LEGACY if legacy_wizard(proc) else _word("FR_PROCEED_STEP_SINGLE"))
         r = Reply(*_say(vi.FR_PROCEED_BLOCKED, required=required, step_md=step_md,
-                        label=field["label"], label_tts=_tts(field["label"])))
+                        label=field["label"], label_tts=_label_bi(field)))
         r.actions = [{"type": "listen_after_tts"}]
         r.chips = _chips(st)
         return r
@@ -1013,6 +1126,27 @@ def _proceed(conv: dict, proc: dict | None, st: dict):
     return r
 
 
+async def named_next_button(conv: dict, proc: dict | None, st: dict, text: str):
+    """Trang một trang đã hết ô bắt buộc: bước sau chính là các nút kết luận đang hiện cạnh câu hỏi (chọn hình thức
+    nhận kết quả / lưu và nộp). Câu "đi bước sau" gọi đúng một nút đó thì dừng hỏi và giao nút cho flow làm luôn — nộp
+    vẫn qua câu hỏi xác nhận bằng lời ở flow — thay vì đọc lại kết luận rồi bắt công dân nói lại. None = để _proceed."""
+    from app.channels.handfree.chat.flow import Reply
+
+    if (not text or (st.get("stats") or {}).get("required") or legacy_wizard(proc)
+            or lien_thong(proc) or bxd(proc) or bac_ninh(proc)):
+        return None
+    if not await reroute(conv, text):
+        return None
+    own = take_reroute()
+    if own is None or (own.kind == "action" and own.value in _IN_LOOP):
+        return None   # "tiếp tục" mà bộ phân loại ra Bỏ qua / Dừng của vòng hỏi → giữ cách đi bước sau như cũ
+    _REROUTE.set(own)
+    st.update(running=False, current=None)
+    r = Reply()
+    r.actions = [{"type": "field_review_stop"}]
+    return r
+
+
 def _apply(proc: dict | None, st: dict, field: dict, value: str, quantity: str = "", other: str = ""):
     from app.channels.handfree.chat.flow import Reply
 
@@ -1022,7 +1156,8 @@ def _apply(proc: dict | None, st: dict, field: dict, value: str, quantity: str =
         # Ô ghi chữ cạnh "Khác" chỉ hiện sau khi tích và không có tên riêng: extension tích xong rồi điền luôn bằng engine.
         apply["extra"] = [{"name": field["other"]["name"], "comp": "raw", "value": other}]
         shown = vi.FR_OTHER_VALUE.format(choice=value, text=other)
-    st["pending"] = {"key": field["key"], "label": field["label"], "where": field["where"], "value": shown}
+    st["pending"] = {"key": field["key"], "label": field["label"], "label_hm": field.get("label_hm") or "",
+                     "where": field["where"], "value": shown}
     st.setdefault("history", []).append({"key": field["key"], "value": value})
     st["current"] = None
     focus = ""
@@ -1129,6 +1264,8 @@ async def handle(conv: dict, proc: dict | None, intent):
     field = _field(payload.get("field"), _no_section(proc), _copy_pair(proc), strip_numbers=_bac_ninh_portal(proc))
     if field is not None and bxd(proc):
         field["mobile_only"] = True  # cổng iGate các bộ không nhận số máy bàn
+    if field is not None:
+        _hmong_names(proc, field)
     other = _other_text(conv, proc).get(field["name"]) if field is not None else None
     if other and other[0] in field["options"]:
         field["other"] = {"option": other[0], "name": other[1]}
@@ -1145,7 +1282,8 @@ async def handle(conv: dict, proc: dict | None, intent):
         return _finish_reply(conv, proc, stopped=False, lead=lead)
     st["current"] = field
     visited = [v for v in st.get("visited") or [] if v.get("key") != field["key"]]
-    st["visited"] = [*visited, {"key": field["key"], "label": field["label"], "where": field["where"]}]
+    st["visited"] = [*visited, {"key": field["key"], "label": field["label"], "label_hm": field.get("label_hm") or "",
+                                "where": field["where"]}]
     phase = _optional_phase(conv, proc, st, field)
     r = _ask_reply(st, ("", ""), back=back)
     return _with_lead(r, lead, phase)

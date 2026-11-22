@@ -395,7 +395,7 @@ async def answer(conv: dict, proc: dict | None, st: dict, text: str):
     if kind == "dung":
         return fr._finish_reply(conv, proc, stopped=True)
     if kind == "sang_buoc_sau":
-        return _proceed(conv, proc, st)
+        return await fr.named_next_button(conv, proc, st, text) or _proceed(conv, proc, st)
     if kind == "lenh_khac":
         rerouted = await fr._reroute(conv, proc, st, text)
         if rerouted is not None:

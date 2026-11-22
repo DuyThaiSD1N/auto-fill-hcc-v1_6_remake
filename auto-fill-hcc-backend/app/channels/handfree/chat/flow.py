@@ -362,6 +362,15 @@ def _hmong_twin(tpl: dict) -> dict | None:
     return twin if isinstance(twin, dict) and twin.get("tts") else None
 
 
+def _hmong_procedure_name(label) -> str:
+    """Tên thủ tục tiếng Việt (shortLabel / label) → tên Mông trong PROCEDURE_HMONG; không có thì giữ nguyên."""
+    text = str(label or "")
+    for proc in public_list():
+        if text in (proc.get("shortLabel"), proc.get("label")):
+            return mong.PROCEDURE_HMONG.get(proc["key"]) or text
+    return text
+
+
 def _fmt(tpl: dict, *, note: dict | None = None, **kw) -> tuple[str, str]:
     """Dựng (markdown, lời đọc) cho MỘT lượt, kèm câu phụ tuỳ chọn.
 
@@ -378,13 +387,15 @@ def _fmt(tpl: dict, *, note: dict | None = None, **kw) -> tuple[str, str]:
     twin = _hmong_twin(tpl)
     if not twin:
         return md + note_md, tts + note_tts  # chưa có bản dịch → hiển thị + đọc tiếng Việt
-    # Song ngữ như mockup: giữ nguyên đoạn Việt, thêm dòng Mông in nghiêng bên dưới.
-    hmong_md = str(twin.get("md") or "").format(**kw).strip()
-    hmong_tts = twin["tts"].format(**kw)
+    # Song ngữ như mockup: giữ nguyên đoạn Việt, thêm dòng Mông in nghiêng bên dưới. Tên thủ tục trong dòng Mông theo
+    # tên Mông (PROCEDURE_HMONG) — tên Việt chèn giữa câu là giọng Mông đọc xen tiếng Việt.
+    hmong_kw = {**kw, "procedure": _hmong_procedure_name(kw["procedure"])} if "procedure" in kw else kw
+    hmong_md = str(twin.get("md") or "").format(**hmong_kw).strip()
+    hmong_tts = twin["tts"].format(**hmong_kw)
     note_twin = _hmong_twin(note) if note else None
     if note_twin:
-        hmong_md = (hmong_md + str(note_twin.get("md") or "").format(**kw)).strip()
-        hmong_tts += note_twin["tts"].format(**kw)
+        hmong_md = (hmong_md + str(note_twin.get("md") or "").format(**hmong_kw)).strip()
+        hmong_tts += note_twin["tts"].format(**hmong_kw)
     # Câu phụ CHƯA có bản Mông: vẫn hiện ở khối Việt để không mất thông tin, nhưng TUYỆT ĐỐI
     # không nối vào lời đọc — thà nói ít hơn là nói thứ công dân không nghe ra.
     md = (md + note_md).strip()
@@ -1099,6 +1110,16 @@ def first_greet(conv: dict) -> Reply:
     return reply
 
 
+def _with_turn_lang(conv: dict, reply: Reply) -> Reply:
+    """Lượt trả về sớm (câu hỏi xác nhận bằng lời) vẫn phải gắn giọng đọc + nhãn Mông như cuối handle_turn: thiếu thì
+    lời Mông bị đọc bằng giọng Việt."""
+    if _TURN_HMONG_TTS.get() and reply.tts_text:
+        reply.tts_lang = "hmong"
+    if (conv.get("lang") or "vi") == "hmong":
+        _localize_reply_labels(reply)
+    return reply
+
+
 async def handle_turn(
     conv: dict,
     intent: Intent,
@@ -1124,25 +1145,25 @@ async def handle_turn(
         # gán vào nút này (từng gặp: "không" → chọn nút nộp duy nhất trên màn hình → nộp luôn) → hỏi xác nhận lại.
         voice_send = voice_send.removesuffix(_VOICE_CONFIRMED)
     if voice_send in _VOICE_CONFIRM_SENDS:
-        return _voice_submit_confirm(conv, voice_send)
+        return _with_turn_lang(conv, _voice_submit_confirm(conv, voice_send))
     # Nút làm lại / xoá việc đã làm chọn bằng lời (bảng chính sách): hỏi xác nhận như nút nộp.
     if voice_send and cn_policy.confirm_needed(conv, voice_send):
-        return cn_policy.voice_confirm(conv, voice_send)
+        return _with_turn_lang(conv, cn_policy.voice_confirm(conv, voice_send))
     if isinstance(pending_submit, dict) and intent.kind in {"confirm", "deny"}:
         chip = dict(pending_submit.get("chip") or {})
         if intent.kind == "deny":
             if pending_submit.get("kind") == "lam_lai":
-                return cn_policy.keep_reply(conv, pending_submit)
+                return _with_turn_lang(conv, cn_policy.keep_reply(conv, pending_submit))
             r = Reply(*_fmt(vi.VOICE_SUBMIT_CANCELLED, label=_chip_name(chip)))
             r.chips = [chip]
-            return r
+            return _with_turn_lang(conv, r)
         send = str(pending_submit.get("send") or "")
         voice_send = send + _VOICE_CONFIRMED
         intent = Intent("action", send.removeprefix("__action:"), {"voiceConfirmed": True})
     elif (intent.kind == "action" and (intent.payload or {}).get("_voice") and not intent.payload.get("voiceConfirmed")
             and cn_policy.confirm_needed(conv, f"__action:{intent.value}")):
         # Lệnh của bước (không qua nút) ra từ lời nói, vd "điền lại đi" → refill.
-        return cn_policy.voice_confirm(conv, f"__action:{intent.value}")
+        return _with_turn_lang(conv, cn_policy.voice_confirm(conv, f"__action:{intent.value}"))
     if intent.kind == "action" and intent.value == "cn_giu_nguyen":
         return cn_policy.keep_reply(conv, pending_submit if isinstance(pending_submit, dict) else None)
     if intent.kind == "event" and intent.value == "pipeline_resync":
@@ -1189,8 +1210,8 @@ _VOICE_BLOCKED_SENDS = {
     "__action:delete_data", "__action:pick_files_again", "__event:sso_success", "__action:finish_procedure",
 }
 # Nộp hồ sơ không rút lại được: chọn bằng lời thì hỏi xác nhận một lần (tạp âm / nói nhầm không nộp luôn). Nút xác
-# nhận mang payload riêng nên lượt xác nhận (nói "có" hoặc bấm) chạy thẳng. Chế độ Mông vẫn chỉ bấm tay (câu xác
-# nhận chưa có bản dịch).
+# nhận mang payload riêng nên lượt xác nhận (nói "có" hoặc bấm) chạy thẳng. Chế độ Mông cũng vậy (câu xác nhận có bản
+# Mông — VOICE_SUBMIT_CONFIRM / VOICE_SUBMIT_CANCELLED).
 _VOICE_CONFIRM_SENDS = {"__action:guided_submit", "__action:tpm_submit", lien_thong.SUBMIT_SEND, bxd.SUBMIT_SEND,
                         bac_ninh.SUBMIT_SEND, hkd_tro_ly.SUBMIT_SEND, "__action:bca_submit"}
 _VOICE_CONFIRMED = ':{"voiceConfirmed":true}'
@@ -1228,7 +1249,9 @@ def _card_voice_items(card: dict) -> list[dict]:
             {"label": vi.VOICE_CONSENT_DECLINE, "send": "__action:consent_decline"},
         ]
     if kind == "doc_options":
-        return [{"label": vi.VOICE_DOC_OPTION[o], "send": f'__action:doc_method:{{"value":"{o}"}}'}
+        hmong_titles = card.get("hmong") or {}
+        return [{"label": vi.VOICE_DOC_OPTION[o], "send": f'__action:doc_method:{{"value":"{o}"}}',
+                 **({"labelHmong": hmong_titles[o]["title"]} if (hmong_titles.get(o) or {}).get("title") else {})}
                 for o in card.get("options") or [] if o in vi.VOICE_DOC_OPTION]
     if kind == "result_methods":
         return [{"label": str(o.get("label") or ""), "desc": str(o.get("desc") or ""),
@@ -1264,10 +1287,9 @@ def update_voice_options(conv: dict, reply: Reply) -> None:
     """
     items = []
     asking_confirm = False
-    hmong = (conv.get("lang") or "vi") == "hmong"
     for chip in reply.chips:
         send = str((chip or {}).get("send") or "")
-        if not send or send in _VOICE_BLOCKED_SENDS or (hmong and send in _VOICE_CONFIRM_SENDS):
+        if not send or send in _VOICE_BLOCKED_SENDS:
             continue
         # Nút nộp của câu hỏi xác nhận: trả lời bằng lời là "có" / "không" (confirm / deny ở handle_turn), không phải
         # chọn nút — để nó trong danh sách thì "không" bị gán thành chọn nút nộp duy nhất trên màn hình.
@@ -1275,6 +1297,9 @@ def update_voice_options(conv: dict, reply: Reply) -> None:
             asking_confirm = True
             continue
         item = {"label": str(chip.get("label") or ""), "send": send, "chip": dict(chip)}
+        if chip.get("labelHmong"):
+            # Chế độ Mông: công dân đọc nhãn Mông in trên nút — lớp dịch (hmong_translate) cần cặp nhãn Việt – Mông.
+            item["labelHmong"] = str(chip["labelHmong"])
         if chip.get("desc"):
             item["desc"] = str(chip["desc"])  # mô tả cho bộ phân loại câu nói, không hiện trên nút
         if chip.get("phase"):
@@ -1421,6 +1446,9 @@ async def _handle_turn_inner(
         doi_ma = _doi_ma_thu_tuc_reply(conv, current_proc, client_url)
         if doi_ma is not None:
             return doi_ma
+        bn_left = bac_ninh.account_left_reply(conv, current_proc, intent.payload, client_url)
+        if bn_left is not None:
+            return bn_left
         bn_home = bac_ninh.account_home_reply(conv, current_proc, client_url)
         if bn_home is not None:
             return bn_home
@@ -1444,7 +1472,13 @@ async def _handle_turn_inner(
             return review_reply
         # Đang hỏi ô mà công dân ra lệnh khác của bước ("điều chỉnh giấy tờ"…): vòng hỏi đã dừng → chạy lệnh đó
         # luôn trong lượt này, kèm lệnh tắt tô ô của vòng hỏi.
-        if rerouted.kind == "action" and cn_policy.confirm_needed(conv, f"__action:{rerouted.value}"):
+        # Lệnh chuyển từ vòng hỏi luôn ra từ câu nói, không phải cú bấm → nộp hồ sơ phải qua câu hỏi xác nhận như nút
+        # nộp chọn bằng lời ở đầu handle_turn (nhánh này đi thẳng _handle_turn_inner, không qua chỗ kiểm đó).
+        reroute_send = str((rerouted.payload or {}).get("_voice_button") or f"__action:{rerouted.value}")
+        reroute_send = reroute_send.removesuffix(_VOICE_CONFIRMED)
+        if rerouted.kind == "action" and reroute_send in _VOICE_CONFIRM_SENDS:
+            r = _voice_submit_confirm(conv, reroute_send)
+        elif rerouted.kind == "action" and cn_policy.confirm_needed(conv, f"__action:{rerouted.value}"):
             r = cn_policy.voice_confirm(conv, f"__action:{rerouted.value}")
         else:
             r = await cn_policy.intercept(conv, rerouted, client_page_context)
@@ -5831,6 +5865,14 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
         if replan is not None:
             return replan
         plan = conv.get("attach_plan") or []
+        if not plan and conv.get("attach_errors") and not conv.get("attach_plan_stt1_virtual"):
+            # Planner cố ý không xếp tệp nào và đã ghi lý do (vd trích lục chế độ chỉ giấy ủy quyền): không phát lệnh đính
+            # rỗng — extension sẽ báo "không có file", chồng thêm hai câu lỗi lên câu lý do. Nói một câu, mở đường sửa giấy.
+            _clear_documents_adjustment(conv)
+            conv["state"] = "done"
+            r = Reply(*_fmt(vi.ATTACH_PLAN_EMPTY, skipped_note=attach_skipped_note(conv)))
+            r.chips = [_supplement_documents_chip()]
+            return r
         plan_list = "\n".join(_attachment_plan_line(p) for p in plan[:10]) or "- (không có mục nào)"
         if conv.get("attach_mode") == "split" and conv.get("procedure_key") == "chung-thuc-chu-ky":
             dossier_count = sum(1 for item in plan if not _is_signature_identity_plan_item(item))

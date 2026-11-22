@@ -193,3 +193,25 @@ def test_tieng_viet_khong_bi_anh_huong():
     # Bằng ĐÚNG hai chuỗi Việt nối nhau đã chứng minh không có khối Mông nào chen vào.
     assert md == vi.SCAN_PICK["md"] + vi.SCAN_AUTO_RUN_NOTE["md"]
     assert tts == vi.SCAN_PICK["tts"] + vi.SCAN_AUTO_RUN_NOTE["tts"]
+
+
+_VI_DAU = re.compile(r"[ăâêôơưđĂÂÊÔƠƯĐáàảãạấầẩẫậắằẳẵặéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ]")
+
+
+def test_loi_doc_mong_khong_chen_chu_viet():
+    """Lời ĐỌC (tts) tiếng Mông không được chèn tên nút / tên bước tiếng Việt ("nias Đồng ý", "Thành phần hồ sơ"…) — giọng
+    Mông đọc xen tiếng Việt. Chữ hiển thị (md) vẫn giữ tên Việt để công dân nhìn đúng nút trên cổng."""
+    offenders = [name for name in dir(mong) if isinstance(getattr(mong, name), dict)
+                 and isinstance(getattr(mong, name).get("tts"), str) and _VI_DAU.search(getattr(mong, name)["tts"])]
+    assert not offenders, "lời đọc Mông có chữ Việt: " + ", ".join(offenders)
+
+
+def test_ten_thu_tuc_trong_loi_mong_theo_ten_mong():
+    token = flow._TURN_LANG.set("hmong")
+    try:
+        md, tts = flow._fmt(vi.CONFIRM_PROCEDURE_WITH_LOCATION, procedure="Bản sao Trích lục hộ tịch, Giấy khai sinh",
+                            place="Phường Đoàn Kết", subject="cho bản thân", subject_tts="cho bản thân")
+    finally:
+        flow._TURN_LANG.reset(token)
+    assert "Daim ntawv theej ntawv xeeb yug" in tts and "Trích lục" not in tts
+    assert "Bản sao Trích lục hộ tịch, Giấy khai sinh" in md, "khối Việt vẫn giữ tên Việt"

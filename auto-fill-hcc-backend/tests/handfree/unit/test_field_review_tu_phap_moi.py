@@ -257,7 +257,9 @@ def test_o_ngay_dang_chu_bo_goi_y_dinh_dang_va_nhan_thang_nam():
 # ── Cấp bản sao trích lục hộ tịch (form mới) ──
 
 def test_cau_hinh_trich_luc_khong_hoi_kinh_gui_tai_va_ngay_lap_to_khai():
-    assert field_review.registry.get("trich-luc-ks") == {
+    config = dict(field_review.registry.get("trich-luc-ks"))
+    assert config.pop("hmong") is True and config.pop("hmongLabels"), "vòng hỏi chế độ Mông (test_field_review_hmong.py)"
+    assert config == {
         "required": (), "noSection": (),
         "noAsk": ("citizenField27", "citizenField37", "citizenField50", "citizenField52", "citizenField53"),
         "zeroIsEmpty": (), "textDates": ("citizenNDK_NgaySinh",),
@@ -299,3 +301,46 @@ def test_lenh_dien_khai_sinh_cai_chinh_kem_quy_tac_o(key):
     cfg = field_review.registry.get(key)
     assert rules["noAsk"] == list(cfg["noAsk"]) and rules["lookup"] == list(cfg["lookup"])
     assert field_review.active(conv, flow.get_procedure(key))
+
+
+# ── Giữa vòng hỏi ô không bắt buộc, công dân nói tên nút kết luận ("lưu và nộp hồ sơ") ──
+
+async def _answer_proceed(monkeypatch, routed: Intent):
+    from app.channels.handfree.chat import intents
+    from app.channels.handfree.chat.field_review import agent
+
+    monkeypatch.setattr(pipeline_runner, "spawn", lambda coro: None)
+    monkeypatch.setattr(tracing, "set_report", AsyncMock())
+    stats = {"filled": 20, "optional": 2, "required": 0}
+    conv = _conv("done", {**CAPS, field_review.FLOW_V2_CAPABILITY: True}, attach_done=True, result_method="counter",
+                 field_review={"chips": [], "stats": field_review._stats(stats)})
+    await _turn(conv, "action", "field_review_start")
+    await _turn(conv, "event", "field_review_focus", {"field": _field(required=False), "stats": stats})
+    assert field_review.asking(conv)
+    monkeypatch.setattr(agent, "interpret", AsyncMock(return_value=agent.Answer("proceed")))
+    monkeypatch.setattr(intents, "resolve", AsyncMock(return_value=routed))
+    return conv, await _turn(conv, "action", "field_review_answer", {"text": "Lưu và nộp hồ sơ"})
+
+
+async def test_noi_nop_giua_vong_hoi_thi_hoi_xac_nhan_nop_ngay_khong_doc_lai_ket_luan(monkeypatch):
+    routed = Intent("action", "tpm_submit", {"_voice_button": "__action:tpm_submit"})
+    conv, reply = await _answer_proceed(monkeypatch, routed)
+    assert not field_review.asking(conv)
+    assert reply.actions[0] == {"type": "field_review_stop"}
+    assert "chắc chắn **nộp hồ sơ**" in reply.display_md
+    assert _sends(reply) == ['__action:tpm_submit:{"voiceConfirmed":true}']
+    assert not any(a.get("type") == "guided_submit" for a in reply.actions), "lời nói không được nộp thẳng"
+    assert conv["voice_submit_confirm"]["send"] == "__action:tpm_submit"
+
+
+async def test_lenh_nop_chuyen_tu_vong_hoi_khong_kem_dau_nut_van_hoi_xac_nhan(monkeypatch):
+    conv, reply = await _answer_proceed(monkeypatch, Intent("action", "tpm_submit", {}))
+    assert not any(a.get("type") == "guided_submit" for a in reply.actions)
+    assert conv["voice_submit_confirm"]["send"] == "__action:tpm_submit"
+
+
+async def test_di_buoc_sau_ma_bo_phan_loai_ra_nut_cua_vong_hoi_thi_doc_ket_luan_nhu_cu(monkeypatch):
+    conv, reply = await _answer_proceed(monkeypatch, Intent("action", "field_review_skip", {}))
+    assert not field_review.asking(conv)
+    assert "Chọn hình thức nhận kết quả" in reply.display_md
+    assert "voice_submit_confirm" not in conv

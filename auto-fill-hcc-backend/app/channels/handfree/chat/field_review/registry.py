@@ -11,7 +11,8 @@ hoạt tra cứu CSDL của cổng: điền xong chờ cổng đổ dữ liệu 
 nằm trong danh sách hỏi: công dân nói một giá trị ngoài các lựa chọn thì tích "Khác" rồi ghi đúng lời đó vào ô đi kèm),
 ``NESTED`` (tên khối x-select-area chứa thông tin một người — ô con không có thẻ x-* riêng: extension tách từng ô con,
 ô chọn không tên mang khóa "<khối>#<nhãn>"; cần extension có cờ supportsFieldReviewNested, trừ khi khai thêm
-``NESTED_OPTIONAL = True``: bản đọc cũ coi cả khối là một ô vẫn dùng được).
+``NESTED_OPTIONAL = True``: bản đọc cũ coi cả khối là một ô vẫn dùng được), ``HMONG`` + ``HMONG_LABELS`` (bật vòng hỏi ở
+chế độ tiếng Mông; {tên ô: (nhãn Mông, tên phần Mông)} cho lời đọc).
 Vòng bổ sung bản 2 (``FIELD_REVIEW_V2 = True``) thêm ``VOCABULARY`` (cách người dân gọi các phần) và ``GROUPS`` (cụm ô hỏi
 liền nhau, hỏi gộp một câu; khối địa chỉ tự là một cụm).
 Thủ tục không có file này thì không bật vòng bổ sung. Lỗi cấu hình hoặc trùng key được phát hiện ngay lúc khởi động.
@@ -94,6 +95,20 @@ def _discover() -> dict[str, dict]:
             raise RuntimeError(f"{module_name}.GROUPS có ô nằm trong hai cụm")
         if groups:
             config["groups"] = tuple((title.strip(), tuple(members)) for title, members in groups)
+        # Chế độ tiếng Mông: HMONG = True bật vòng hỏi ở chế độ Mông; HMONG_LABELS = {tên ô: (nhãn Mông, tên phần Mông)}
+        # cho lời đọc Mông (nhãn trên tờ khai là tiếng Việt).
+        hmong = getattr(module, "HMONG", False)
+        hmong_labels = getattr(module, "HMONG_LABELS", {})
+        if not isinstance(hmong, bool) or not isinstance(hmong_labels, dict) or not all(
+            isinstance(k, str) and k.strip() and isinstance(v, (list, tuple)) and len(v) == 2
+            and isinstance(v[0], str) and v[0].strip() and isinstance(v[1], str) for k, v in hmong_labels.items()
+        ):
+            raise RuntimeError(f"{module_name}.HMONG phải là True/False, HMONG_LABELS là {{tên ô: (nhãn, phần)}}")
+        if hmong:
+            if not hmong_labels:
+                raise RuntimeError(f"{module_name}.HMONG = True cần HMONG_LABELS")
+            config["hmong"] = True
+            config["hmongLabels"] = {k: (v[0].strip(), v[1].strip()) for k, v in hmong_labels.items()}
         for raw_key in procedure_keys:
             procedure_key = str(raw_key or "").strip()
             if not procedure_key:

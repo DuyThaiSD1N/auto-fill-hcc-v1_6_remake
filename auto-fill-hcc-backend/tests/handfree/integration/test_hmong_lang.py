@@ -253,3 +253,17 @@ def test_chat_request_nhan_preferred_lang():
     assert req.preferred_lang == "hmong"
     assert ChatRequest(message="").preferred_lang is None
 
+
+
+async def test_voice_config_cau_sidebar_tu_doc_co_ban_mong(monkeypatch):
+    import re
+
+    from app.channels.handfree.voice.router import voice_config
+
+    monkeypatch.setattr(settings, "asr_grpc_uri_hmong", "103.253.20.28:9113")
+    cfg = await voice_config(user={})
+    assert set(cfg["localSpeech"]) == {"vi", "hmong"}
+    assert set(cfg["localSpeech"]["hmong"]) == set(cfg["localSpeech"]["vi"]) == {"attachRetry", "filesReceived"}
+    vi_dau = re.compile(r"[ăâêôơưđáàảãạấầẩẫậắằẳẵặéèẻẽẹếềểễệíìỉĩịóòỏõọốồổỗộớờởỡợúùủũụứừửữựýỳỷỹỵ]", re.I)
+    assert not any(vi_dau.search(text) for text in cfg["localSpeech"]["hmong"].values())
+    assert "{count}" in cfg["localSpeech"]["hmong"]["filesReceived"]

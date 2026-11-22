@@ -2,6 +2,7 @@
 
 from app.pipelines._shared.formatting import normalize_ui_dates
 from app.pipelines._shared.thanh_tra import ban_va
+from app.pipelines._shared.thanh_tra import sdt_nguoi_nop
 
 from ..process import mapper, reason
 from . import dia_chi_ghep, dinh_danh, giay_to, noi_dung, review
@@ -10,6 +11,7 @@ _RELATION = "citizenQuanhevsngcaichinhhotich1"
 _AREA = "citizenNDKNoiCuTru_TrongNuoc"
 # (thanh tra soát cụm, các ô của cụm). Radio "Trong Nước" đi cùng ô địa chỉ: các ô địa chỉ chỉ hiện sau khi chọn.
 _CLUSTERS = (
+    (sdt_nguoi_nop.INSPECTOR.key, ("citizenPhone",)),
     (dinh_danh.INSPECTOR.key, ("citizenNDKHoTen", "citizenNDKSodinhdanh", "citizenNDK_NgaySinh",
                                "citizenNDKLoaiGiaytotuythan", "citizenNDKSogiaytotuythan",
                                "citizenNDKNgaycapgiaytotuythan", "citizenNDKCoquancap", "citizenNDKGioitinh",

@@ -221,6 +221,16 @@ def _loai_dang_ky(values: dict, context: str) -> str:
     return _DANG_KY_DUNG_HAN if (date.today() - born).days <= _HAN_DANG_KY_NGAY else _DANG_KY_QUA_HAN
 
 
+def _submitter_phone(value, context: str) -> str:
+    """Số điện thoại người nộp đọc từ giấy: chỉ khi người nộp có trong hồ sơ và số đúng dạng di động/cố định VN."""
+    if _fold(labeled_value(section(context, "nguoi_nop"), "Có trong hồ sơ")) != "co":
+        return ""
+    digits = _digits(value)
+    if digits.startswith("84") and len(digits) in (11, 12):
+        digits = "0" + digits[2:]
+    return digits if re.fullmatch(r"0\d{9,10}", digits) else ""
+
+
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
     values = {f.get("name"): f.get("value") for f in fields or [] if isinstance(f, dict)}
     options = options or {}
@@ -249,6 +259,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         if area_field:
             area_field["radio"] = radio
 
+    # Ô SĐT là ô duy nhất người nộp tự điền trong khối người nộp (khối khóa theo tài khoản).
+    add("citizenPhone", _submitter_phone(values.get("NguoiNop_SoDienThoai"), context))
     # Quan hệ + loại khai sinh chốt TRƯỚC: cổng ẩn/hiện khối cha mẹ theo hai ô này.
     relation, relation_detail, guessed, warning = _relation(values, context, options)
     if warning:

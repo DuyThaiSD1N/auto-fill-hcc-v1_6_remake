@@ -2,15 +2,16 @@
 Chạy ở nền sau lượt điền đầu, kết quả thành các ô điền đợt 2 (dot_hai.py, app/second_pass)."""
 
 from app.pipelines._shared.thanh_tra import engine
+from app.pipelines._shared.thanh_tra import sdt_nguoi_nop
 from app.pipelines._shared.thanh_tra.ho_so import Case, Result
 
 from ..process import mapper
 from . import dia_chi_ghep, ho_tich, nhan_than
 
 TITLE = "cấp bản sao trích lục hộ tịch / bản sao giấy khai sinh"
-INSPECTORS = (nhan_than.INSPECTOR, ho_tich.INSPECTOR, dia_chi_ghep.INSPECTOR)
+INSPECTORS = (nhan_than.INSPECTOR, ho_tich.INSPECTOR, dia_chi_ghep.INSPECTOR, sdt_nguoi_nop.INSPECTOR)
 # Giấy hộ tịch đã đăng ký không có trong tài khoản nên soát ở mọi hồ sơ.
-INSPECTORS_ALWAYS = (ho_tich.INSPECTOR,)
+INSPECTORS_ALWAYS = (ho_tich.INSPECTOR, sdt_nguoi_nop.INSPECTOR)
 # Chỉ soát khi người nộp KHÔNG phải người được cấp: "Bản thân" thì khối người được cấp lấy theo tài khoản.
 INSPECTORS_FOR_OTHERS = (nhan_than.INSPECTOR, dia_chi_ghep.INSPECTOR)
 

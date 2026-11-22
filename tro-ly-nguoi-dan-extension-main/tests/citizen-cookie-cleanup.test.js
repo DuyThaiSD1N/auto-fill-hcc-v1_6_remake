@@ -106,6 +106,11 @@ function createBackgroundRuntime({ getPartitionKey, breakPartitionQuery = false,
       },
       async remove(details) {
         removals.push(details);
+        // Xóa thật khỏi kho giả để lượt quét lại sau khi xóa thấy đúng số cookie còn lại.
+        const host = new URL(details.url).hostname;
+        const index = availableCookies.findIndex((cookie) => cookie.name === details.name
+          && (host === cookie.domain.replace(/^\./, "") || host.endsWith(cookie.domain.replace(/^\./, ""))));
+        if (index >= 0) availableCookies.splice(index, 1);
         return { name: details.name };
       },
     },
@@ -200,11 +205,18 @@ test("background chỉ xóa phiên ở cổng công dân đã đi qua (kể cả
 
   const result = await runtime.dispatch({ action: "clearCitizenDvcCookies" });
   // scopes = số miền đơn vị: dichvucong.gov.vn, dancuquocgia.gov.vn, moh.gov.vn.
-  assert.deepEqual(JSON.parse(JSON.stringify(result)), {
+  const { portals, ...summary } = JSON.parse(JSON.stringify(result));
+  assert.deepEqual(summary, {
     ok: true, scopes: 3, found: 5, removed: 5, failed: 0, failedQueries: 0,
     storageCleared: true, storageError: "", clearedTabs: 2, failedTabs: 0,
   });
-  assert.equal(runtime.queries.length, 2, "quét cookie thường và partition hiện tại");
+  // Nhật ký hồ sơ: kết quả theo từng cổng (chỉ tên miền + số đếm), quét lại sau khi xóa.
+  assert.deepEqual(portals, [
+    { host: "dichvucong.gov.vn", found: 2, removed: 2, left: 0 },
+    { host: "dancuquocgia.gov.vn", found: 1, removed: 1, left: 0 },
+    { host: "moh.gov.vn", found: 2, removed: 2, left: 0 },
+  ]);
+  assert.equal(runtime.queries.length, 4, "quét cookie thường + partition hiện tại, rồi quét lại cả hai sau khi xóa");
   assert.ok(runtime.queries.every((query) => query.storeId === "0"));
   assert.ok(runtime.removals.every((details) => details.storeId === "0"));
   const removed = runtime.removals.map((details) => details.name).sort();
@@ -286,7 +298,7 @@ test("một tab cổng không trả lời KHÔNG được làm treo cả lượt
 });
 
 test("sidebar chỉ xóa cookie khi tự kết thúc một hồ sơ đã nộp thành công", () => {
-  const start = sidebar.indexOf("async function clearCitizenSessionAndGoHome()");
+  const start = sidebar.indexOf("async function clearCitizenSessionAndGoHome(");
   const end = sidebar.indexOf("// 🔄 Trò chuyện mới", start);
   const returnFlow = sidebar.slice(start, end);
   assert.ok(start > 0, "phải có hàm dọn phiên công dân tách riêng");
@@ -310,11 +322,11 @@ test("một bước dọn hỏng KHÔNG được làm lỡ việc xóa phiên c�
   assert.match(body, /\} catch \(error\) \{[\s\S]{0,400}?Lỗi khi kết thúc phiên/);
   assert.match(
     body,
-    /\} finally \{[\s\S]{0,600}?if \(reason === "completed"\)[\s\S]{0,200}?await clearCitizenSessionAndGoHome\(\)/,
+    /\} finally \{[\s\S]{0,600}?if \(reason === "completed"\)[\s\S]{0,200}?await clearCitizenSessionAndGoHome\(endedDossierId\)/,
     "việc xóa phiên công dân phải nằm trong finally",
   );
   assert.ok(
-    body.indexOf("await clearCitizenSessionAndGoHome()") < body.indexOf("endingSession = false"),
+    body.indexOf("await clearCitizenSessionAndGoHome(endedDossierId)") < body.indexOf("endingSession = false"),
     "phải dọn xong mới mở khóa cho lượt kết thúc phiên tiếp theo",
   );
 });
@@ -331,7 +343,7 @@ test("content chỉ xóa sessionStorage của cổng khi nhận lệnh kết th�
 });
 
 test("sidebar thử dọn phiên nhiều lần, hết lượt vẫn đưa trang về DVCQG", () => {
-  const start = sidebar.indexOf("async function clearCitizenSessionAndGoHome()");
+  const start = sidebar.indexOf("async function clearCitizenSessionAndGoHome(");
   const end = sidebar.indexOf("// Một đường dọn phiên dùng chung", start);
   const body = sidebar.slice(start, end);
   assert.match(sidebar, /const CITIZEN_CLEANUP_ATTEMPTS = 3;/);

@@ -49,6 +49,9 @@ FIELDS: list[dict] = [
      "desc": "Dòng 'Quan hệ với người được khai sinh' trên tờ khai, chép đúng chữ (vd 'Mẹ', 'Bà nội', 'Chính tôi')."},
     {"name": "SoLuongBanSao",
      "desc": "Số bản sao trích lục đề nghị cấp: số nguyên; tờ khai đánh dấu KHÔNG đề nghị → 0; không ghi → bỏ."},
+    {"name": "NguoiNop_SoDienThoai",
+     "desc": "Số điện thoại của NGƯỜI NỘP (khối <nguoi_nop>) ghi trên giấy tờ, chỉ khi số ghi cạnh tên / chữ ký của "
+             "CHÍNH người đó. Không lấy số của người khác, cơ quan, cán bộ xác nhận. Không có → bỏ."},
 ]
 
 ALLOWED = {f["name"] for f in FIELDS}
@@ -63,6 +66,7 @@ for _name in ("Con_NoiSinh", "Con_QueQuan", "Me_NoiCuTru", "Cha_NoiCuTru"):
 # Ô SurveyJS: name = phần trước hậu tố "__<số>" của data-name (extension khớp theo tiền tố). Ngày cấp của mẹ/cha
 # có "__" ở giữa tên ("citizenNgaythangnamcap__me") — vẫn là tiền tố nên không lẫn hai người.
 UI_COMP_BY_NAME = {
+    "citizenPhone": "sjs-text",                        # SĐT người nộp: ô duy nhất mở trong khối người nộp
     "citizenQuanhevoinguoiduockhaisinh": "sjs-radio",   # Khác / Cha / Mẹ
     "citizenField62": "sjs-text",                       # Quan hệ khác
     # Người được đăng ký khai sinh

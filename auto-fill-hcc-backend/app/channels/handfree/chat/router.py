@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
 from app.channels.handfree.chat import access, field_review, flow, hkd_tro_ly, intents, owner_review, resume, step_back, store
+from app.channels.handfree.chat import hmong_translate
 from app.channels.handfree.chat.hkd_tro_ly import to_khai as hkd_to_khai
 from app.channels.handfree.procedure_registry import get_procedure
 from app.procedures.registry import get_procedure as get_core_procedure
@@ -588,14 +589,20 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
                 intent = intents.Intent("action", "bn_agency_pick", {"value": picked})
         if message.startswith("__"):
             flow.clear_voice_options_if_pressed(conv, message)
+        # Chế độ tiếng Mông: dịch câu tự do sang tiếng Việt trước khi hiểu câu (chat/hmong_translate.py). Đặt SAU các
+        # nhánh trả lời ô tờ khai / cơ quan ở trên — họ tên, địa chỉ phải giữ nguyên chữ công dân nói.
+        understood = message
+        if (intent is None and message and not message.startswith("__")
+                and (conv.get("lang") or "vi") == "hmong"):
+            understood = await hmong_translate.understood_text(conv, message)
         # Câu nói về chuyển bước trên wizard ("bước tiếp theo" ở Thành phần hồ sơ, "gửi hồ sơ" ở bước nhận
         # kết quả) → lệnh tất định TRƯỚC bộ phân loại LLM (LLM từng hiểu là đổi thủ tục → reset hồ sơ).
         if intent is None and message and not message.startswith("__"):
             intent = flow.next_step_by_voice(
-                conv, message, req.client_context.page_context if req.client_context else None,
+                conv, understood, req.client_context.page_context if req.client_context else None,
             )
         if intent is None:
-            intent = await intents.resolve(message, conv.get("state", "greet"), conv)
+            intent = await intents.resolve(understood, conv.get("state", "greet"), conv)
             if (intent.payload or {}).get("cach_noi"):
                 logger.info("[cach_noi] %s state=%s nhan=%s chac=%s llm=%s ms=%s → %s:%s", conv["_id"], conv.get("state"),
                             intent.payload.get("cach_noi"), intent.payload.get("do_chac"), intent.payload.get("llm_calls"),

@@ -1588,12 +1588,18 @@
     { pattern: /URLFld$/i, id: "ctl00_C_OWN_PCtl_PERSCtl_URLFld" },
   ];
 
-  function applyOwnerFromDossier(fields, keepMissing = false) {
+  // Nhân thân cổng đã đổ bằng nút "Sao chép" (khớp CSDLQG về dân cư) — không ghi đè bằng chữ trên đơn.
+  const OWNER_IDENTITY_RE = /FULL_NAMEFld$|GENDER_IDFld$|DATE_OF_BIRTHFld$|PERS_DOC_NOFld$/i;
+
+  function applyOwnerFromDossier(fields, keepMissing = false, fromAccount = false) {
     for (const { pattern, id, radioName } of OWNER_PERSON_FIELDS) {
+      if (fromAccount && OWNER_IDENTITY_RE.test(id || radioName)) continue;
       const source = fields.find((f) => pattern.test(f.name || ""));
       // Nhân thân vừa sao chép từ tài khoản (__copyAccount): chỉ ghi ô BE có gửi, không xoá ô còn lại.
       if (keepMissing && !source) continue;
       const value = source ? String(source.value ?? "") : "";
+      // Liên hệ đơn không ghi thì giữ bản vừa sao chép từ tài khoản.
+      if (fromAccount && !value.trim()) continue;
       if (radioName) { setGenderRadio(radioName, value); continue; }
       const el = document.getElementById(id);
       if (!el) continue;
@@ -1606,13 +1612,81 @@
     }
   }
 
+  const ownerFieldValue = (fields, pattern) =>
+    String((fields.find((f) => pattern.test(f.name || "")) || {}).value ?? "");
+  const onlyDigits = (value) => String(value || "").replace(/\D/g, "");
+
+  /** Họ tên chủ hộ trên đơn trùng tên tài khoản đang đăng nhập (góc trên mọi trang HkdOnline). */
+  function ownerMatchesAccount(fields) {
+    const account = foldBusinessPageText(document.getElementById("ctl00_LV2_LblFullNameValue")?.textContent || "");
+    const owner = foldBusinessPageText(ownerFieldValue(fields, /FULL_NAMEFld$/i));
+    return !!account && account === owner;
+  }
+
+  /** Nút Sao chép đã đổ xong nhân thân tài khoản vào khối chủ hộ. */
+  function ownerCopiedFromAccount() {
+    const account = foldBusinessPageText(document.getElementById("ctl00_LV2_LblFullNameValue")?.textContent || "");
+    return !!account
+      && foldBusinessPageText(readPersonControlRaw("ctl00_C_OWN_PCtl_PERSCtl_FULL_NAMEFld")) === account
+      && !!onlyDigits(readPersonControlRaw("ctl00_C_OWN_PCtl_PERSCtl_PERS_DOC_NOFld"));
+  }
+
+  /** Trùng tên nhưng khác người: ngày sinh / số định danh đủ 12 số trên đơn khác dữ liệu vừa sao chép.
+   *  Số định danh sai độ dài (viết thừa/thiếu số) không dùng để so. */
+  function copiedOwnerConflicts(fields) {
+    const dob = onlyDigits(ownerFieldValue(fields, /DATE_OF_BIRTHFld$/i));
+    const formDob = onlyDigits(readPersonControlRaw("ctl00_C_OWN_PCtl_PERSCtl_DATE_OF_BIRTHFld"));
+    if (dob.length === 8 && formDob && dob !== formDob) return true;
+    const id = onlyDigits(ownerFieldValue(fields, /PERS_DOC_NOFld$/i));
+    const formId = onlyDigits(readPersonControlRaw("ctl00_C_OWN_PCtl_PERSCtl_PERS_DOC_NOFld"));
+    return id.length === 12 && !!formId && id !== formId;
+  }
+
   /**
-   * Trang "Thông tin về chủ hộ kinh doanh" — điền THẲNG từ giấy đề nghị, KHÔNG bấm
-   * "Sao chép thông tin đăng ký tài khoản".
+   * Chủ hộ trên đơn là người đang đăng nhập → bấm "Sao chép thông tin đăng ký tài khoản" của khối chủ hộ.
+   * Trả "wait" khi còn chờ postback/AJAX của nút (nhịp kế điền tiếp), true = nhân thân lấy từ tài khoản.
+   */
+  async function copyOwnerFromAccount(st, fields) {
+    if (st.ownerSource === undefined) {
+      st.ownerSource = ownerMatchesAccount(fields) ? "account" : "dossier";
+      await setFillAllState(st);
+    }
+    if (st.ownerSource !== "account") return false;
+    if (!st.ownerCopied) {
+      // Luôn bấm ít nhất một lần: ô có thể đang giữ tên đúng nhưng số định danh sai từ lần lưu trước.
+      if ((st.ownerCopyTries || 0) === 0 || !ownerCopiedFromAccount()) {
+        const copyBtn = document.querySelector('[name="ctl00$C$OWN_PCtl$btnIS_SIGNER"]');
+        if (!copyBtn || (st.ownerCopyTries || 0) >= 3) {
+          st.ownerSource = "dossier";
+          await setFillAllState(st);
+          return false;
+        }
+        st.ownerCopyTries = (st.ownerCopyTries || 0) + 1;
+        await setFillAllState(st); // persist TRƯỚC: nút có thể postback cả trang
+        console.log("[FillAll] chủ hộ trùng tài khoản — bấm Sao chép thông tin đăng ký tài khoản");
+        try { copyBtn.click(); } catch (e) { /* ignore */ }
+        await waitForPanelSettle("ctl00_C_OWN_PCtl_PERSCtl_FULL_NAMEFld", 7000);
+        if (!ownerCopiedFromAccount()) {
+          setTimeout(stepFillAll, 500);
+          return "wait";
+        }
+      }
+      st.ownerCopied = true;
+      if (copiedOwnerConflicts(fields)) {
+        console.warn("[FillAll] chủ hộ trùng tên tài khoản nhưng khác ngày sinh/số định danh → điền theo đơn");
+        st.ownerSource = "dossier";
+      }
+      await setFillAllState(st);
+    }
+    return st.ownerSource === "account";
+  }
+
+  /**
+   * Trang "Thông tin về chủ hộ kinh doanh" — mặc định điền THẲNG từ giấy đề nghị.
    *
-   * Chủ hộ là người trên GIẤY ĐỀ NGHỊ, không phải người đang đăng nhập cổng. Nút sao chép đổ nhân
-   * thân + liên hệ của tài khoản vào khối này rồi lại phải ghi đè ngược: thừa một vòng AJAX, và
-   * ghi đè hụt ô nào là hồ sơ mang dữ liệu sai người ở ô đó.
+   * Chủ hộ là người trên GIẤY ĐỀ NGHỊ, không mặc định là người đang đăng nhập cổng. Chỉ khi họ tên
+   * chủ hộ trùng tên tài khoản (hoặc trợ lý gửi __copyAccount) mới bấm "Sao chép thông tin đăng ký
+   * tài khoản": nhân thân tài khoản đã khớp CSDLQG về dân cư, đúng hơn chữ viết tay.
    */
   async function handleOwnerPage(st) {
     ensureConfirmOverride();
@@ -1646,8 +1720,12 @@
       }
     }
 
+    // 1c. Hồ sơ có giấy đề nghị: chủ hộ trùng tài khoản đăng nhập → nhân thân lấy bằng nút Sao chép.
+    const fromAccount = copyAccount ? false : await copyOwnerFromAccount(st, fields);
+    if (fromAccount === "wait") return;
+
     // 2. Nhân thân + liên hệ chủ hộ theo đơn.
-    applyOwnerFromDossier(fields, copyAccount);
+    applyOwnerFromDossier(fields, copyAccount, fromAccount);
 
     // 3. Địa chỉ cá nhân của chủ hộ: cascade quốc gia → tỉnh → xã → số nhà.
     const address = fields.filter((f) => cfg.addrMatch.test(f.name || ""));
@@ -1656,7 +1734,7 @@
     // 4. Mỗi postback của cascade địa chỉ đều render lại khối nhân thân → ghi lại ngay trước khi Lưu,
     //    sau khi form đã yên (máy yếu: postback cuối của cascade có thể chưa về).
     await waitBusinessFormQuiet();
-    applyOwnerFromDossier(fields, copyAccount);
+    applyOwnerFromDossier(fields, copyAccount, fromAccount);
 
     const saveBtn = findBusinessSaveButton();
     if (!saveBtn || saveBtn.disabled) return void advanceFillAll(st);

@@ -15,6 +15,16 @@ SNAPSHOT = (Path(__file__).resolve().parents[3] / "html mới" / "trích lụcc"
 ACCOUNT = {"applicantFullname": "NGUYEN VAN A", "applicantIdentityNumber": "001090000001"}
 
 
+@pytest.fixture(autouse=True)
+def _che_do_thuong(monkeypatch):
+    # Test ở đây mô tả chế độ thường; chế độ demo (che_do_demo.BAT) có bộ test riêng.
+    from app.pipelines.trich_luc_dvc_moi import che_do_demo
+    monkeypatch.setattr(che_do_demo, "BAT", False)
+    # Test ở đây khoá logic của biểu mẫu đủ ô (giới tính, dân tộc, nơi cư trú) — logic giữ lại phòng cổng thêm lại;
+    # biểu mẫu hiện hành đã gỡ các ô đó, có bộ test riêng (test_trich_luc_bieu_mau_hien_hanh.py).
+    monkeypatch.setattr(mapper, "UI_REMOVED_BY_PORTAL", frozenset())
+
+
 def _fold(value: str) -> str:
     text = unicodedata.normalize("NFD", value).replace("Đ", "D").replace("đ", "d")
     return re.sub(r"\s+", " ", "".join(c for c in text if unicodedata.category(c) != "Mn")).lower()
@@ -73,7 +83,10 @@ def test_detect_phrases_and_ui_keys_exist_in_snapshot():
         assert _fold(phrase) in body
     data_names = set(re.findall(r'data-name="([A-Za-z0-9_]+?)__\d+"', html))
     # Ô "Quan hệ khác" và bốn ô địa chỉ người được cấp chỉ render theo điều kiện → không có trong snapshot.
-    conditional = {"citizenField8", "citizenField21", "citizenNDK_TinhThanh", "citizenNDK_PhuongXa", "citizenField38"}
+    # "citizenPhone" (SĐT khối người nộp): cổng thêm sau ngày chụp snapshot này, có trong snapshot TTHN mới hơn.
+    # "citizenHotenCha" / "citizenHotenMe": cổng thêm sau ngày chụp snapshot này.
+    conditional = {"citizenField8", "citizenField21", "citizenNDK_TinhThanh", "citizenNDK_PhuongXa", "citizenField38",
+                   "citizenPhone", "citizenHotenCha", "citizenHotenMe"}
     for name in set(UI_COMP_BY_NAME) - conditional:
         assert name in data_names, name
 
@@ -304,7 +317,10 @@ def test_chi_co_the_nguoi_nop_la_ban_than_to_vang_va_giu_thong_tin_the():
     out, _ = _enrich(other, _context_khong_xac_dinh_nguoi_duoc_cap())
     by = {f["name"]: f for f in out}
     assert by["citizenQuanhe"]["value"] == "Khác"
-    assert not [n for n in by if n.startswith("citizenNDK_") or n in ("citizenField13", "citizenField32")]
+    # Loại cư trú "Thường trú" là mặc định (viền vàng), không phải dữ liệu đọc từ thẻ người khác.
+    assert not [n for n in by if (n.startswith("citizenNDK_") and n != "citizenNDK_LoaiCuTru")
+                or n in ("citizenField13", "citizenField32")]
+    assert by["citizenNDK_LoaiCuTru"].get("default") is True
 
 
 def test_so_luot_trich_trung_tai_khoan_nhung_khac_ten_giu_quan_he_phan_vai():

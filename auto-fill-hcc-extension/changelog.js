@@ -3,6 +3,20 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.28.29",
+    date: "22/11/2026",
+    items: [
+      "Đăng ký hộ kinh doanh: chủ hộ trên giấy đề nghị là chính người đang đăng nhập thì tự bấm \"Sao chép thông tin đăng ký tài khoản\" ở trang chủ hộ — nhân thân khớp CSDLQG về dân cư, không còn lấy số định danh viết tay sai.",
+    ],
+  },
+  {
+    version: "1.28.28",
+    date: "21/11/2026",
+    items: [
+      "Cổng dịch vụ công quốc gia mới: chọn quan hệ \"Bản thân\" thì các ô cổng tự điền sẵn rồi khoá (giấy tờ tùy thân, nơi cư trú) không còn bị tô đỏ là chưa điền.",
+    ],
+  },
+  {
     version: "1.28.27",
     date: "21/11/2026",
     items: [

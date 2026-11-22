@@ -2,6 +2,7 @@
 
 from app.pipelines._shared.formatting import normalize_ui_dates
 from app.pipelines._shared.thanh_tra import ban_va
+from app.pipelines._shared.thanh_tra import sdt_nguoi_nop
 
 from ..process import mapper
 from . import dia_chi, dinh_danh, giay_ho_tich, review
@@ -10,6 +11,7 @@ _RELATION = "citizenQuanhevoinguoiduoccapGiayxacnhantinhtranghonnhan"
 # (ô quyết định cụm có hiện trên form không, thanh tra soát cụm, các ô của cụm). Ô quyết định khác lượt đầu thì không
 # vá cụm đó: form hiện / ẩn cụm theo ô này, ghi vào cụm đang ẩn là mất giá trị.
 _CLUSTERS = (
+    (None, sdt_nguoi_nop.INSPECTOR.key, ("citizenPhone",)),
     (None, dinh_danh.INSPECTOR.key, ("citizenNDKHochudemtenngdccap", "citizenNDKNgaythangnamsinh",
                                      "citizenNDKSoDinhDanh", "citizenNDKSogiaytotuythan", "citizenNDKDantoc")),
     ("citizenNDKnoicutru", dia_chi.INSPECTOR.key, ("citizenNDKTinh_ThTru", "citizenNDKXa_ThTru",

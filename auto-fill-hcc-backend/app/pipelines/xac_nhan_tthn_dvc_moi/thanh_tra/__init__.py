@@ -2,6 +2,7 @@
 _shared/thanh_tra). Chạy ở nền sau lượt điền đầu, kết quả thành các ô điền đợt 2 (dot_hai.py, app/second_pass)."""
 
 from app.pipelines._shared.thanh_tra import engine
+from app.pipelines._shared.thanh_tra import sdt_nguoi_nop
 from app.pipelines._shared.thanh_tra.ho_so import Case, Result
 
 from ..process import mapper
@@ -9,7 +10,7 @@ from . import dia_chi, dinh_danh, giay_ho_tich
 
 TITLE = "cấp Giấy xác nhận tình trạng hôn nhân"
 # Giấy khai tử / bản án ly hôn không có trong tài khoản nên soát ở mọi hồ sơ.
-INSPECTORS_ALWAYS = (giay_ho_tich.INSPECTOR,)
+INSPECTORS_ALWAYS = (giay_ho_tich.INSPECTOR, sdt_nguoi_nop.INSPECTOR)
 # Chỉ soát khi người nộp KHÔNG phải người được cấp: chọn "Bản thân" thì khối người được cấp lấy theo tài khoản.
 INSPECTORS_FOR_OTHERS = (dinh_danh.INSPECTOR, dia_chi.INSPECTOR)
 

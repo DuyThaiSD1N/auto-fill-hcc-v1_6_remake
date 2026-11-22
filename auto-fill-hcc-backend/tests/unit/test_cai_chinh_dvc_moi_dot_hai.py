@@ -19,7 +19,7 @@ def test_registry_bat_dot_hai_surveyjs():
     proc = get_procedure("thay-doi-cai-chinh-ho-tich")
     assert proc["secondPass"] is True
     assert service.capability(proc) == "secondPass"
-    assert [i.key for i in thanh_tra.INSPECTORS] == ["dinh_danh", "dia_chi", "giay_to", "noi_dung"]
+    assert [i.key for i in thanh_tra.INSPECTORS] == ["dinh_danh", "dia_chi", "giay_to", "noi_dung", "sdt_nguoi_nop"]
 
 
 def test_ban_than_chi_soat_giay_to_va_noi_dung(monkeypatch):
@@ -33,7 +33,8 @@ def test_ban_than_chi_soat_giay_to_va_noi_dung(monkeypatch):
     opts = {"formContext": {"applicantFullname": "Le Van Con", "applicantIdentityNumber": "001090000001"}}
     asyncio.run(thanh_tra.review([], ctx.format("Bản thân"), {"NguoiThayDoi_HoTen": "Le Van Con"}, opts))
     asyncio.run(thanh_tra.review([], ctx.format("Khác"), {"NguoiThayDoi_HoTen": "Tran Thi Khac"}, opts))
-    assert seen == [["giay_to", "noi_dung"], ["giay_to", "noi_dung", "dinh_danh", "dia_chi"]]
+    assert seen == [["giay_to", "noi_dung", "sdt_nguoi_nop"],
+                    ["giay_to", "noi_dung", "sdt_nguoi_nop", "dinh_danh", "dia_chi"]]
 
 
 def test_o_dia_chi_chi_vao_ban_va_khi_extension_khai_biet_ghi(monkeypatch):

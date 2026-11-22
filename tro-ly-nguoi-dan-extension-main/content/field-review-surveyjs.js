@@ -70,6 +70,11 @@
     for (const q of list) {
       q.required = q.required || need.has(baseName(q.name));
       if (zero.has(baseName(q.name)) && q.value !== "" && Number(q.value) === 0 && !answered.has(q.name)) q.value = "";
+      if (msg.requiredOnly && !q.value && !q.required) {
+        // BE khai requiredOnly (thủ tục chỉ bổ sung ô bắt buộc): ô không bắt buộc còn trống để nguyên, không tô, không đếm.
+        questionEl(q.name)?.removeAttribute(MARK_ATTR);
+        continue;
+      }
       const kind = q.value ? "filled" : q.required ? "not-filled" : "optional";
       H.setSurveyJsMark?.(questionEl(q.name), kind);
       stats[q.value ? "filled" : q.required ? "required" : "optional"] += 1;
@@ -150,8 +155,8 @@
     // focus: công dân xin sửa một ô đã hỏi → về đúng ô đó dù đã có giá trị; không thì ô trống kế tiếp.
     // requiredFirst (BE luồng bản 2): hỏi hết ô bắt buộc trống trước rồi mới tới ô không bắt buộc.
     const q = (msg.focus && list.find((x) => x.name === msg.focus))
-      || (msg.requiredFirst && list.find((x) => !x.value && x.required && !skip.has(x.name)))
-      || list.find((x) => !x.value && !skip.has(x.name));
+      || ((msg.requiredFirst || msg.requiredOnly) && list.find((x) => !x.value && x.required && !skip.has(x.name)))
+      || (!msg.requiredOnly && list.find((x) => !x.value && !skip.has(x.name)));
     if (!q) { unfocus(); return { ok: true, applied, field: null, stats, ...catalogOf(msg, list) }; }
     let options = q.kind === "radio" ? q.options || [] : [];
     let province = "";

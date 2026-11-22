@@ -36,12 +36,24 @@ FIELDS: list[dict] = [
      "desc": "Tên giấy tờ hộ tịch đã đăng ký cần cấp bản sao (vd Giấy khai sinh, Giấy chứng nhận kết hôn, "
              "Trích lục khai tử). Không lấy tên tờ khai/giấy ủy quyền."},
     {"name": "GiayTo_CoQuanDangKy", "desc": "Cơ quan đã đăng ký sự kiện hộ tịch trước đây."},
+    {"name": "GiayTo_HoTenCha",
+     "desc": "Họ, chữ đệm, tên CHA của người được cấp, chép đúng dòng người cha trên giấy hộ tịch cần cấp bản sao "
+             "(giấy khai sinh: \"Họ, chữ đệm, tên người cha\") hoặc trên tờ khai nếu tờ khai ghi. Giấy không có dòng "
+             "cha / dòng để trống → bỏ field; không suy từ họ của người được cấp, không lấy tên người đi khai thay "
+             "cho dòng cha."},
+    {"name": "GiayTo_HoTenMe",
+     "desc": "Họ, chữ đệm, tên MẸ của người được cấp, chép đúng dòng người mẹ trên giấy hộ tịch cần cấp bản sao "
+             "(giấy khai sinh: \"Họ, chữ đệm, tên người mẹ\") hoặc trên tờ khai nếu tờ khai ghi. Giấy không có dòng "
+             "mẹ / dòng để trống → bỏ field; không lấy tên người đi khai thay cho dòng mẹ."},
     {"name": "GiayTo_So", "desc": "Số đăng ký của sự kiện hộ tịch (dòng 'Số:' / 'Số đăng ký')."},
     {"name": "GiayTo_QuyenSo",
      "desc": "Quyển số đăng ký, CHỈ khi nhãn 'Quyển số' có giá trị thật ngay sau nhãn."},
     {"name": "GiayTo_NgayDangKy", "desc": "Ngày đăng ký sự kiện hộ tịch, dd/mm/yyyy."},
     {"name": "SoLuongBanSao",
      "desc": "Số lượng bản sao yêu cầu, chỉ khi tờ khai/giấy ủy quyền ghi rõ; số nguyên dương."},
+    {"name": "NguoiNop_SoDienThoai",
+     "desc": "Số điện thoại của NGƯỜI NỘP (khối <nguoi_nop>) ghi trên giấy tờ, chỉ khi số ghi cạnh tên / chữ ký của "
+             "CHÍNH người đó. Không lấy số của người khác, cơ quan, cán bộ xác nhận. Không có → bỏ."},
 ]
 
 ALLOWED = {f["name"] for f in FIELDS}
@@ -55,6 +67,7 @@ COMPACT_COMP_BY_NAME["NguoiDuocCap_NoiCuTru"] = "x-select-area"
 # Ô SurveyJS: name = phần trước "__<số>" của data-name (hậu tố đổi theo phiên bản biểu mẫu nên
 # extension khớp theo tiền tố). comp chọn cách ghi giá trị trên model survey.
 UI_COMP_BY_NAME = {
+    "citizenPhone": "sjs-text",                        # SĐT người nộp: ô duy nhất mở trong khối người nộp
     "citizenQuanhe": "sjs-dropdown",           # Quan hệ với người được cấp
     "citizenField8": "sjs-text",               # Quan hệ khác
     # THÔNG TIN NGƯỜI ĐƯỢC CẤP GIẤY TỜ HỘ TỊCH
@@ -76,9 +89,18 @@ UI_COMP_BY_NAME = {
     # THÔNG TIN VỀ GIẤY TỜ HỘ TỊCH ĐÃ ĐĂNG KÝ
     "citizenLoaiViecYeuCau": "sjs-dropdown",
     "citizenHoSo_CoQuanDangKy": "sjs-text",
+    "citizenHotenCha": "sjs-text",             # Họ, tên Cha
+    "citizenHotenMe": "sjs-text",              # Họ, tên Mẹ
     "citizenTenGiayToHoTich": "sjs-text",
     "citizencauhoi3": "sjs-text",              # Số đăng ký
     "citizencauhoi4": "sjs-text",              # Quyển số
     "citizencauhoi5": "sjs-date",              # Ngày tháng năm đăng ký
     "citizenSoLuongBanSao": "sjs-text",
 }
+
+# Ô cổng đã gỡ khỏi biểu mẫu hiện hành: mapper vẫn tính đủ (cổng thêm lại thì chỉ cần bỏ tên khỏi đây) nhưng không trả
+# về — ô không còn trên trang thì extension báo "ô chưa khớp" bằng tên kỹ thuật.
+UI_REMOVED_BY_PORTAL = frozenset({
+    "citizenField13", "citizenField32",                                     # Giới tính, Dân tộc
+    "citizenNDK_Noicutru", "citizenField21", "citizenNDK_TinhThanh", "citizenNDK_PhuongXa", "citizenField38",  # nơi cư trú
+})

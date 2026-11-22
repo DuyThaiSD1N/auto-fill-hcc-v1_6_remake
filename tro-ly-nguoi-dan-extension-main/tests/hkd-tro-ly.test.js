@@ -23,7 +23,7 @@ test("thẻ đồng ý vẽ nút không có tờ khai khi BE gửi no_docs_label
 });
 
 test("trang chủ hộ chỉ sao chép tài khoản khi có __copyAccount và không xoá ô nhân thân", () => {
-  assert.match(business, /function applyOwnerFromDossier\(fields, keepMissing = false\)/);
+  assert.match(business, /function applyOwnerFromDossier\(fields, keepMissing = false, fromAccount = false\)/);
   assert.match(business, /if \(keepMissing && !source\) continue;/);
 });
 

@@ -79,10 +79,10 @@ _THAY_DOI_HO_TICH = [
 _TRICH_LUC = [
     # Biểu mẫu SurveyJS Cổng DVC quốc gia mới (package trich_luc_dvc_moi).
     "citizenQuanhe",
-    "citizenNDK_HoVaTen", "citizenNDK_NgaySinh", "citizenField13", "citizenNDK_SoDinhDanh",
+    "citizenNDK_HoVaTen", "citizenNDK_NgaySinh", "citizenNDK_SoDinhDanh",
     "citizenLoaiViecYeuCau", "citizenHoSo_CoQuanDangKy", "citizenTenGiayToHoTich", "citizencauhoi3",
     "citizencauhoi5", "citizenSoLuongBanSao",
-]  # 11
+]  # 10
 
 _TTHN = [
     # Biểu mẫu SurveyJS Cổng DVC quốc gia mới (package xac_nhan_tthn_dvc_moi).

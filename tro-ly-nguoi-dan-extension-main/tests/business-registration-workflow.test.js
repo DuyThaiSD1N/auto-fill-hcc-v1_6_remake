@@ -114,7 +114,7 @@ test("bootstrap chỉ chọn NEW và kiểm tra xác nhận trước khi bấm B
   assert.match(source, /bootstrapOnly/);
 });
 
-test("đăng ký mới điền chủ hộ thẳng từ giấy đề nghị, không sao chép tài khoản", () => {
+test("đăng ký mới điền chủ hộ từ giấy đề nghị, chỉ sao chép tài khoản khi chủ hộ trùng tài khoản", () => {
   const copyConfig = source.slice(
     source.indexOf("const COPY_PERSON_CFG"),
     source.indexOf("const OWNER_PAGE_CFG")
@@ -134,15 +134,22 @@ test("đăng ký mới điền chủ hộ thẳng từ giấy đề nghị, khô
   assert.match(ownerHandler, /fillFormStandard\(structural\)/);
   assert.match(ownerHandler, /fillAddressCascade\(address\)/);
   assert.match(ownerHandler, /clickSaveDetectReload\(saveBtn\)/);
-  assert.equal((ownerHandler.match(/applyOwnerFromDossier\(fields, copyAccount\)/g) || []).length, 2);
+  assert.equal((ownerHandler.match(/applyOwnerFromDossier\(fields, copyAccount, fromAccount\)/g) || []).length, 2);
   assert.ok(
-    ownerHandler.indexOf("applyOwnerFromDossier(fields, copyAccount)")
+    ownerHandler.indexOf("applyOwnerFromDossier(fields, copyAccount, fromAccount)")
       < ownerHandler.indexOf("fillAddressCascade(address)")
   );
   assert.ok(
-    ownerHandler.lastIndexOf("applyOwnerFromDossier(fields, copyAccount)")
+    ownerHandler.lastIndexOf("applyOwnerFromDossier(fields, copyAccount, fromAccount)")
       > ownerHandler.indexOf("fillAddressCascade(address)")
   );
+
+  // Hồ sơ có giấy đề nghị: chủ hộ trùng tên tài khoản (header) → sao chép, không ghi đè nhân thân đã khớp CSDLQG.
+  assert.match(ownerHandler, /const fromAccount = copyAccount \? false : await copyOwnerFromAccount\(st, fields\)/);
+  assert.match(ownerHandler, /if \(fromAccount === "wait"\) return;/);
+  assert.match(source, /ctl00_LV2_LblFullNameValue/);
+  assert.match(source, /if \(fromAccount && OWNER_IDENTITY_RE\.test\(id \|\| radioName\)\) continue;/);
+  assert.match(source, /function copiedOwnerConflicts[\s\S]*?dob\.length === 8[\s\S]*?id\.length === 12/);
 
   assert.match(source, /targetKey === "chu-ho-kinh-doanh"[\s\S]*?handleOwnerPage\(st\)/);
   assert.match(source, /targetKey === "nguoi-nop-ho-so"[\s\S]*?handleCopyPersonPage\(st, targetKey\)/);

@@ -4,7 +4,7 @@ import asyncio
 import contextlib
 
 from app.pipelines._shared.compact_agent import runner
-from app.pipelines.dang_ky_kinh_doanh.process import mapper, vision
+from app.pipelines.dang_ky_kinh_doanh.process import mapper, ten_ho, vision
 from app.pipelines.dang_ky_kinh_doanh.process.prompt import EXTRA_RULES
 from app.pipelines.dang_ky_kinh_doanh.process.schema import (
     ALIASES,
@@ -83,6 +83,9 @@ async def _from_files(files_by_role: dict[str, list[dict]]) -> dict:
         vision_task.cancel()
         raise
     compact = res["fields"]
+    # Tên viết tay hay lệch dấu → hỏi riêng một lượt nhỏ, chạy song song phần còn lại.
+    ten = next((f for f in compact if f.get("name") == "HoKinhDoanh_Ten" and f.get("value")), None)
+    ten_task = asyncio.create_task(ten_ho.fix_diacritics(ten["value"])) if ten else None
     # Đơn bỏ trống tỉnh/xã của trụ sở / địa chỉ thuế → LLM hay lấy tỉnh/xã CCCD; đối chiếu lại với OCR.
     fixed = mapper.fix_addresses_from_ocr(compact, res.get("ocr_text") or "")
     if fixed:
@@ -104,4 +107,7 @@ async def _from_files(files_by_role: dict[str, list[dict]]) -> dict:
             if raw_id and len(vision._digits(raw_id)) != 12:
                 res.setdefault("errors", []).append(
                     f"Số định danh chủ hộ đọc được '{raw_id}' không đủ 12 số — đối chiếu Giấy đề nghị.")
+    if ten_task and (fixed_name := await ten_task):
+        ten["value"] = fixed_name
+        res.setdefault("extracted", {})["tenHoSuaDau"] = True
     return res

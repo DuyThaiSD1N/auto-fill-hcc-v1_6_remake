@@ -17,9 +17,10 @@ from app.pipelines._shared.compact_agent.issuer import (
 from app.pipelines._shared.ethnic_normalize import co_ho_local_group, normalize_ethnic
 from app.pipelines._shared.formatting import upper_person_name
 from app.pipelines._shared.tai_khoan import account_context, matches_account
+from app.pipelines.trich_luc_dvc_moi import che_do_demo
 
 from .reason import QUAN_HE_OPTIONS, labeled_value, name_match, requester_context, section
-from .schema import UI_COMP_BY_NAME
+from .schema import UI_COMP_BY_NAME, UI_REMOVED_BY_PORTAL
 
 # Nhãn option "Loại trích lục bản sao cần cấp" giữ theo eForm hộ tịch; extension khớp gần đúng
 # với option thật của cổng (đã fold dấu, so theo cụm từ).
@@ -553,6 +554,16 @@ def _self_subject_values(values: dict, options: dict | None) -> dict:
     return out
 
 
+def _submitter_phone(value, context: str) -> str:
+    """Số điện thoại người nộp đọc từ giấy: chỉ khi người nộp có trong hồ sơ và số đúng dạng di động/cố định VN."""
+    if _fold(labeled_value(section(context, "nguoi_nop"), "Có trong hồ sơ")) != "co":
+        return ""
+    digits = _digits(value)
+    if digits.startswith("84") and len(digits) in (11, 12):
+        digits = "0" + digits[2:]
+    return digits if re.fullmatch(r"0\d{9,10}", digits) else ""
+
+
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
     values = {f.get("name"): f.get("value") for f in fields or [] if isinstance(f, dict)}
     options = options or {}
@@ -571,6 +582,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         out.append(field)
         seen.add(name)
 
+    # Ô SĐT là ô duy nhất người nộp tự điền trong khối người nộp (khối khóa theo tài khoản).
+    add("citizenPhone", _submitter_phone(values.get("NguoiNop_SoDienThoai"), context))
     event = _event_type(values, context)
     extracted_event = str(values.get("GiayTo_LoaiSuKien") or "").strip().lower()
     if extracted_event in _EVENT_TO_OPTION and extracted_event != event:
@@ -680,14 +693,19 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("citizenNDK_TinhThanh", area.get("tinh"), default=from_home)
         add("citizenNDK_PhuongXa", area.get("xa"), default=from_home)
         add("citizenField38", area.get("diaChi"), default=from_home or bool(area.get("_xaChuaChon")))
-        if from_home:
+        # Khối nơi cư trú không còn trên biểu mẫu thì cảnh báo về các ô đó chỉ làm cán bộ đi tìm ô không có.
+        address_on_form = "citizenNDK_TinhThanh" not in UI_REMOVED_BY_PORTAL
+        if from_home and address_on_form:
             warnings.append("Giấy khai tử không ghi nơi cư trú; đã lấy địa chỉ nơi chết (chết tại nhà) làm nơi cư trú — "
                             "cán bộ kiểm tra lại.")
-        elif event == "death" and not area.get("tinh"):
+        elif event == "death" and not area.get("tinh") and address_on_form:
             warnings.append("Giấy khai tử không ghi nơi cư trú của người chết — cán bộ nhập tay nơi cư trú.")
-        if area.get("_xaChuaChon") or (not area.get("tinh") and event != "death"):
+        if address_on_form and (area.get("_xaChuaChon") or (not area.get("tinh") and event != "death")):
             warnings.append("Chưa chọn được tỉnh/phường, xã nơi cư trú của người được cấp theo danh mục hiện hành — "
                             "cán bộ chọn lại ô Tỉnh/Thành phố và Phường/Xã.")
+    # Không đọc ra nơi cư trú vẫn điền "Thường trú" (viền vàng) — trường hợp gần như mọi hồ sơ; để trống thì ô bắt buộc
+    # này đỏ mà vòng hỏi bằng giọng nói tiếng Mông chưa hỏi được.
+    add("citizenNDK_LoaiCuTru", "Thường trú", default=True)
     if self_filing:
         for field in out[block_start:]:
             field["onlyIfEmpty"] = True
@@ -698,6 +716,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         registrar = _death_registrar(ocr_text) or registrar
     registrar = _full_registrar(event, registrar, ocr_text)
     add("citizenHoSo_CoQuanDangKy", registrar)
+    add("citizenHotenCha", upper_person_name(values.get("GiayTo_HoTenCha")))
+    add("citizenHotenMe", upper_person_name(values.get("GiayTo_HoTenMe")))
     add("citizenTenGiayToHoTich", values.get("GiayTo_TenGiayTo") or _EVENT_TO_DOCUMENT_NAME.get(event))
     # Ô "Số:" góc trên giấy hộ tịch viết tay OCR hay không ra chữ số, LLM vớ sang dòng "Số:" của khối CMND
     # ngay trong thân giấy → số đăng ký trùng số thẻ là đọc nhầm, bỏ trống để cán bộ nhập.
@@ -712,4 +732,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     add("citizencauhoi5", values.get("GiayTo_NgayDangKy"))
     quantity = _digits(values.get("SoLuongBanSao"))
     add("citizenSoLuongBanSao", str(int(quantity)) if quantity and int(quantity) > 0 else "")
-    return out, warnings
+    if che_do_demo.BAT:
+        add("citizenSoLuongBanSao", "1", default=True)  # giấy không ghi số bản → mặc định 1 (chế độ demo)
+    return [field for field in out if field["name"] not in UI_REMOVED_BY_PORTAL], warnings

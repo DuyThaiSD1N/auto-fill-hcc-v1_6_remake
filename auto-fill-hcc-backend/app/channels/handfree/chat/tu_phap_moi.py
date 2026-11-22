@@ -59,8 +59,9 @@ def _v2(conv: dict, proc: dict | None) -> bool:
 
 
 def _v2_say(tpl: dict, **kw) -> tuple[str, str]:
-    # Luồng bản 2 tắt ở chế độ Mông (field_review.active) → câu chỉ có bản tiếng Việt.
-    return tpl["md"].format(**kw), tpl["tts"].format(**kw)
+    # Luồng bản 2 chỉ chạy ở chế độ Mông khi thủ tục bật vòng hỏi tiếng Mông (field_review.active) — câu có bản Mông thì
+    # song ngữ như flow._fmt.
+    return field_review._say(tpl, **kw)
 
 
 def steps_action(steps: tuple[str, ...] | None = None, *, active: int = 0, done: bool = False,
@@ -304,6 +305,7 @@ async def _auto_fill_report_reply(conv: dict, rep: dict, proc: dict, review=None
         r = flow.Reply(f"{fill_md}\n\n{attach.display_md}".strip(),
                        f"{fill_tts} {attach.tts_text}".strip())
         r.actions = attach.actions
+        r.chips = attach.chips  # vd kế hoạch rỗng có lý do: nút Điều chỉnh giấy tờ nằm ở phần đính kèm
         field_review.decorate_single_page_fill(conv, proc, r, review, offer=False)
         return r
     if not (conv.get("attachment_plan_started") and conv.get("pipeline_status") == "running"):
@@ -319,12 +321,13 @@ def fill_result(conv: dict, rep: dict, stats: dict) -> tuple[str, str]:
     thấy tô xanh — chưa có vòng bổ sung ô thì là số ô engine điền được), ô điền mặc định (viền vàng), ô engine không
     khớp được trên trang."""
     defaults = sum(1 for f in conv.get("fields") or [] if isinstance(f, dict) and f.get("default"))
-    default_md, default_tts = _v2_say(vi.FLOW2_FILL_DEFAULT, count=defaults) if defaults else ("", "")
+    default_md, default_tts = (field_review._part(vi.FLOW2_FILL_DEFAULT, count=defaults) if defaults
+                               else (field_review._Bi(""), field_review._Bi("")))
     missing = [str(m) for m in rep.get("notFound") or []]
     not_found_md = (vi.FLOW2_FILL_NOT_FOUND.format(count=len(missing), labels=", ".join(missing[:8]))
                     if missing else "")
     return _v2_say(vi.FLOW2_FILL_RESULT, filled=stats["filled"], default_md=default_md, default_tts=default_tts,
-                   not_found_md=not_found_md)
+                   not_found_md=field_review._Bi(not_found_md, ""))
 
 
 async def _v2_fill_report_reply(conv: dict, rep: dict, proc: dict, review: dict):
@@ -347,6 +350,8 @@ async def _v2_fill_report_reply(conv: dict, rep: dict, proc: dict, review: dict)
     r.actions = [steps_action(active=2)]
     if conv.get("pipeline_status") == "attach_ready" and not conv.get("attach_action_in_progress"):
         attach = await flow._handle_attaching(conv, Intent("event", "attach_ready"))
+        if not attach.actions:
+            return _v2_attach_empty_reply(conv, proc, attach, r)
         r.actions = [*r.actions, *attach.actions]
         return r
     if not (conv.get("attachment_plan_started") and conv.get("pipeline_status") == "running"):
@@ -417,6 +422,27 @@ def _v2_attach_done_reply(conv: dict, proc: dict, attached: int, skipped: int, e
     md, tts, chips = field_review.conclusion(conv, proc, _final_chips(proc, conv))
     r.actions = [steps_action(active=2, done=not errors, failed=bool(errors)), {"type": "trail_message", "md": md}]
     r.tts_text += tts
+    r.chips = chips
+    return r
+
+
+def _v2_attach_empty_reply(conv: dict, proc: dict, planned, base=None):
+    """Kế hoạch rỗng có lý do (vd chế độ chỉ giấy ủy quyền): flow đã dựng câu lý do (planned) — chốt thẻ tiến trình lỗi
+    ở bước đính kèm, câu lý do + khung kết luận thành bong bóng phụ. Tờ khai vẫn làm tiếp được (bổ sung ô, chọn cách
+    nhận kết quả, nộp); thiếu kết luận thì thẻ quay mãi và không còn nút nào. `base`: khung kết quả điền cùng lượt."""
+    from app.channels.handfree.chat import flow
+
+    conv.setdefault("field_review", {})["attach_failed"] = True
+    md, tts, chips = field_review.conclusion(conv, proc, _final_chips(proc, conv))
+    if base is None:
+        r = flow.Reply(planned.display_md, planned.tts_text)
+        r.actions = [steps_action(active=2, failed=True), {"type": "trail_message", "md": md}]
+    else:
+        r = base
+        r.actions = [steps_action(active=2, failed=True), {"type": "trail_message", "md": planned.display_md},
+                     {"type": "trail_message", "md": md}]
+        r.tts_text = f"{r.tts_text} {planned.tts_text}".strip()
+    r.tts_text = (r.tts_text + (tts if tts.startswith(" ") else f" {tts}")).strip()
     r.chips = chips
     return r
 
@@ -931,6 +957,8 @@ async def handle(conv: dict, proc: dict, intent: Intent):
             if _v2(conv, proc):
                 # Thẻ tiến trình đang ở bước "Đính kèm": chỉ phát lệnh đính, tệp → dòng nói ở khung kết quả đính kèm.
                 planned = await flow._handle_attaching(conv, intent)
+                if not planned.actions:
+                    return _v2_attach_empty_reply(conv, proc, planned)
                 r = flow.Reply()
                 r.actions = planned.actions
                 return r

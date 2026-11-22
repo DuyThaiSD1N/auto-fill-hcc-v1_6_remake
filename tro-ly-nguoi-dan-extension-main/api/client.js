@@ -81,6 +81,19 @@
       this.conversationId = null;
     }
 
+    // POST /api/v1/dossiers/event — nhật ký cuối hồ sơ (hết 2 phút tự đăng xuất, công dân tự đăng xuất, kết quả xóa
+    // phiên từng cổng). Gửi sau khi conversation đã bị xóa nên đi HTTP riêng, không qua chat. Best-effort.
+    async reportDossierEvent(dossierId, type, portals = []) {
+      if (!dossierId) return;
+      try {
+        await this._fetchApi(`/api/v1/dossiers/event`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dossierId, type, portals }),
+        });
+      } catch (_) { /* nhật ký không được chặn luồng đăng xuất */ }
+    }
+
     // GET /api/v1/process/{requestId}/second-pass — kết quả điền đợt 2 (BE soát lại ở nền sau lượt điền).
     // Trả { status: "pending" | "done" | "none", fields? }; fields là các ô cần ghi lại.
     async getSecondPass(requestId) {

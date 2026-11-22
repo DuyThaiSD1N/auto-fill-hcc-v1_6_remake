@@ -68,7 +68,7 @@ async def test_ban_than_chi_soat_giay_ho_tich(monkeypatch):
     own = {"formContext": {"applicantFullname": "Trần Văn Mẫu", "applicantIdentityNumber": "001080000001"}}
     await thanh_tra.review([], "", dict(_RAW), own)
     await thanh_tra.review([], "", dict(_RAW), _OTHER)
-    assert seen == [["ho_tich"], ["ho_tich", "nhan_than", "dia_chi"]]
+    assert seen == [["ho_tich", "sdt_nguoi_nop"], ["ho_tich", "sdt_nguoi_nop", "nhan_than", "dia_chi"]]
 
 
 async def test_runner_chi_tra_ham_dot_hai_khi_duoc_bat(monkeypatch):

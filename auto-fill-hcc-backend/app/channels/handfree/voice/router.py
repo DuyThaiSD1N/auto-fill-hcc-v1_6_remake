@@ -73,6 +73,9 @@ async def voice_config(user: dict = Depends(require_auth)):
             lang: (mong.SCAN_GUIDE if lang == "hmong" else vi.SCAN_GUIDE)
             for lang in langs
         },
+        # Câu sidebar tự đọc ngoài lượt chat (cổng lỗi giữa lúc đính kèm, vừa nhận thêm tệp) theo từng ngôn ngữ — chế độ
+        # Mông đọc bản Mông thay vì câu tiếng Việt viết cứng trong extension. Extension cũ không đọc khoá này.
+        "localSpeech": {lang: (mong.LOCAL_SPEECH if lang == "hmong" else vi.LOCAL_SPEECH) for lang in langs},
         # Chuyển bước: đọc hết câu đang đọc rồi mới đọc câu mới, thay vì cắt ngang.
         "finishSentenceBeforeNext": _finish_sentence_before_next(user),
         # Thông báo bảo vệ dữ liệu cá nhân hiện trước khi mở phiên; extension cũ không đọc khoá này.

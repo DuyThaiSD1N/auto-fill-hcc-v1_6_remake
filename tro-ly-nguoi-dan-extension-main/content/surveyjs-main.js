@@ -153,9 +153,10 @@
   async function setOne(survey, field) {
     const q = findQuestion(survey, field.name);
     if (!q) return { ok: false, reason: "not-found" };
-    if (q.isReadOnly) return { ok: false, reason: "readonly" };
-    // Giá trị mặc định cho ô cổng tự đổ: đã có giá trị thì giữ nguyên, coi như xong.
+    // Ô cổng tự đổ (onlyIfEmpty) đã có giá trị thì giữ nguyên, coi như xong — kiểm TRƯỚC ô chỉ đọc: chọn "Bản thân"
+    // cổng chép giấy tờ tùy thân / nơi cư trú của tài khoản rồi KHOÁ các ô đó, kiểm sau thì ô đúng giá trị bị tô đỏ.
     if (field.onlyIfEmpty && !q.isEmpty?.()) return { ok: true, kept: true };
+    if (q.isReadOnly) return { ok: false, reason: "readonly" };
     const type = q.getType?.() || "";
     if (field.comp === "sjs-dropdown" || field.comp === "sjs-radio" ||
         ["dropdown", "radiogroup", "tagbox"].includes(type)) {

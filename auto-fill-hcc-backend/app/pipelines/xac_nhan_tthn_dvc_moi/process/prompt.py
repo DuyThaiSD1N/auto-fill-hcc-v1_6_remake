@@ -26,11 +26,16 @@ khoản → KHÔNG trích người nộp, trừ số điện thoại (xem <nguoi
 </nguoi_duoc_cap>
 
 <nguoi_nop>
-- NguoiNop_SoDienThoai: CHỈ khi <nguoi_nop> ghi "Có trong hồ sơ: Có". Lấy số điện thoại của CHÍNH người nộp ở:
-  (a) dòng "Số điện thoại" in trong khối người yêu cầu của tờ khai, khi người yêu cầu là người nộp;
-  (b) số viết tay cạnh / dưới tên, chữ ký của người nộp ("SĐT", "ĐT", hoặc chỉ một dãy số 10 chữ số);
-  (c) dòng "Số điện thoại"/"ĐT" trong đơn do chính người nộp đứng tên.
-  Chép đủ chữ số. Số của người khác, cơ quan, cán bộ xác nhận → bỏ.
+- NguoiNop_SoDienThoai: CHỈ khi <nguoi_nop> ghi "Có trong hồ sơ: Có". Hồ sơ có số điện thoại của CHÍNH người nộp thì
+  BẮT BUỘC trả — bỏ trống khi giấy có ghi là SAI. Rà đủ các chỗ:
+  (a) dòng "Số điện thoại"/"SĐT"/"ĐT" in hoặc viết trong khối người yêu cầu của tờ khai (kể cả ghi liền sau họ tên
+      trên cùng dòng), khi người yêu cầu là người nộp;
+  (b) dãy số 10 chữ số viết tay cạnh / dưới họ tên, chữ ký người yêu cầu ở cuối tờ khai, có hoặc không có chữ "ĐT" —
+      OCR hay tách dãy số này thành một dòng riêng ngay sau khối ký tên / cuối trang tờ khai;
+  (c) dòng "Số điện thoại"/"Điện thoại" ở mục NGƯỜI ĐƯỢC ỦY QUYỀN của giấy ủy quyền khi người nộp là người được ủy
+      quyền; dòng "Số điện thoại"/"ĐT" trong đơn do chính người nộp đứng tên.
+  Chép đủ chữ số. Số của người khác (bên ủy quyền khi người nộp là bên được ủy quyền, người được cấp / khai sinh không
+  phải người nộp), số của cơ quan, bệnh viện, cán bộ; số định danh / CCCD, mã số thuế, số hồ sơ → bỏ.
 - NguoiYeuCau_* chép khối người yêu cầu của tờ khai (họ tên, số giấy tờ, dòng quan hệ) — chỉ để đối chiếu với tài
   khoản; tờ khai ghi người yêu cầu khác tài khoản vẫn chép đúng tờ khai.
 </nguoi_nop>

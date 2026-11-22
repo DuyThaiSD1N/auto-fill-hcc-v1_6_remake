@@ -620,9 +620,12 @@
     else if (msg?.__tlnd === "attachRetryingRelay") mine = String(msg.originTabId || "") === String(TAB_ID);
     if (!mine || Date.now() - attachRetrySaidAt < 30000) return;
     attachRetrySaidAt = Date.now();
-    addBotMd(`⚠️ ${ATTACH_RETRY_TEXT}`);
+    // Chế độ Mông: đọc bản Mông BE gửi (voice/config localSpeech); BE cũ chưa có thì im — không đọc câu tiếng Việt.
+    const hm = voiceLang === "hmong" && _hmongAllowed();
+    const speech = String(voiceCfg?.localSpeech?.[hm ? "hmong" : "vi"]?.attachRetry || (hm ? "" : ATTACH_RETRY_TEXT));
+    addBotMd(`⚠️ ${ATTACH_RETRY_TEXT}${hm && speech ? `\n\n*${speech}*` : ""}`);
     setStatus("📎 Dịch vụ công đang lỗi — đang đính kèm lại…");
-    if (voiceCfg.tts && !ttsMuted) window.__hccTTS?.speak?.(ATTACH_RETRY_TEXT, "vi", () => {});
+    if (voiceCfg.tts && !ttsMuted && speech) window.__hccTTS?.speak?.(speech, hm ? "hmong" : "vi", () => {});
   });
 
   // Công dân tự gõ trên form SurveyJS: content/field-review-surveyjs.js đếm lại ô (đã tô lại màu) và báo số mới.
@@ -896,8 +899,17 @@
     if (completionLogoutMonitor) { clearInterval(completionLogoutMonitor); completionLogoutMonitor = null; }
   }
 
+  // Lý do kết thúc chờ đăng xuất → loại sự kiện ghi vào nhật ký hồ sơ (chọn qua nút/giọng nói đã ghi ở BE).
+  const COMPLETION_LOGOUT_EVENT = {
+    timeout: "logout_timeout",
+    manual_logout: "logout_manual",
+    portal_session_changed: "logout_manual",
+  };
+
   async function resolveCompletionLogout(reason, { notify = false } = {}) {
     if (!completionLogoutState) return;
+    const eventType = COMPLETION_LOGOUT_EVENT[reason];
+    if (eventType) void api.reportDossierEvent(completionLogoutState.conversationId, eventType);
     stopCompletionLogoutRuntime();
     completionLogoutState = null;
     await writeCompletionLogoutState(null);
@@ -4499,9 +4511,11 @@
       // Đã chốt giấy tờ, bot đang đọc/điền: câu "đã nhận N tệp" lúc này thừa và cắt mất câu bot đang nói.
       if (!voiceCfg?.tts || ttsMuted || botWorking()) return;
       try { stopReplyTts(); } catch (_) { /* ignore */ }
-      // Câu chỉ có tiếng Việt → đọc giọng Việt (giọng đi theo ngôn ngữ của chữ, không theo chế độ).
-      const lang = "vi";
-      window.__hccTTS?.speak?.(`Tôi đã nhận ${filesAnnouncedCount} tệp mà công dân gửi lên nhé.`, lang);
+      // Chế độ Mông: đọc bản Mông BE gửi (voice/config localSpeech) bằng giọng Mông; BE cũ chưa có thì im.
+      const lang = voiceLang === "hmong" && _hmongAllowed() ? "hmong" : "vi";
+      const tpl = voiceCfg?.localSpeech?.[lang]?.filesReceived
+        || (lang === "vi" ? "Tôi đã nhận {count} tệp mà công dân gửi lên nhé." : "");
+      if (tpl) window.__hccTTS?.speak?.(String(tpl).replace("{count}", String(filesAnnouncedCount)), lang);
     }, 800);
   }
 
@@ -6460,7 +6474,7 @@
   // là công dân sau ngồi vào máy còn nguyên đăng nhập của người trước. Trước đây khối này nằm
   // CUỐI một try…finally không có catch, nên bất kỳ bước dọn nào ở trên ném lỗi là nó bị bỏ
   // qua hoàn toàn, không một dòng cảnh báo.
-  async function clearCitizenSessionAndGoHome() {
+  async function clearCitizenSessionAndGoHome(dossierId = "") {
     let cookieCleanup = null;
     for (let attempt = 1; attempt <= CITIZEN_CLEANUP_ATTEMPTS; attempt += 1) {
       cookieCleanup = await resolveWithin(
@@ -6480,6 +6494,9 @@
       });
       if (attempt < CITIZEN_CLEANUP_ATTEMPTS) await new Promise((resolve) => setTimeout(resolve, 1000));
     }
+    // Kết quả lượt cuối theo từng cổng vào nhật ký hồ sơ (không phản hồi thì danh sách rỗng).
+    void api.reportDossierEvent(dossierId, "logout_result",
+      Array.isArray(cookieCleanup?.portals) ? cookieCleanup.portals : []);
     if (!cookieCleanup?.ok) {
       setStatus("⚠️ Chưa xóa hết phiên đăng nhập DVC/VNeID/Bộ Tư pháp. Cán bộ vui lòng kiểm tra trước khi tiếp nhận công dân tiếp theo.", true);
     } else {
@@ -6514,6 +6531,8 @@
     if (endingSession) return;
     if (busy) { pendingReturnReason = reason; pendingReturnProcedure = procedureKey; return; }
     endingSession = true;
+    // Mã hồ sơ = conversation id; giữ lại trước khi xóa conversation để ghi kết quả xóa phiên vào đúng hồ sơ.
+    const endedDossierId = api.conversationId || "";
     try {
       // "new_procedure" (Chọn/Làm thủ tục khác): công dân vẫn ở quầy, chỉ đổi thủ tục → mở thẳng
       // danh sách thủ tục, không về màn giới thiệu, không đưa trang cổng về trang chủ.
@@ -6591,7 +6610,7 @@
       // hướng" vì cả hai nằm trong clearCitizenSessionAndGoHome.
       if (reason === "completed") {
         try {
-          await clearCitizenSessionAndGoHome();
+          await clearCitizenSessionAndGoHome(endedDossierId);
         } catch (error) {
           console.error("[TLND] Lỗi khi xóa phiên công dân", error);
           setStatus("⚠️ Chưa xóa được phiên đăng nhập của công dân. Cán bộ vui lòng đăng xuất thủ công trên cổng trước khi tiếp nhận người tiếp theo.", true);

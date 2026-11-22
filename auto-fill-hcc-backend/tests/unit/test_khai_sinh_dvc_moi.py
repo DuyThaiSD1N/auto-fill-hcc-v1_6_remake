@@ -96,6 +96,8 @@ def test_ui_keys_exist_in_snapshot():
     for name in UI_COMP_BY_NAME:
         if name.endswith("_TrongNuoc") or name == "citizenField62":  # chỉ hiện theo điều kiện
             continue
+        if name == "citizenPhone":  # SĐT khối người nộp: cổng thêm sau ngày chụp snapshot này (có ở snapshot TTHN)
+            continue
         assert name in data_names, name
 
 

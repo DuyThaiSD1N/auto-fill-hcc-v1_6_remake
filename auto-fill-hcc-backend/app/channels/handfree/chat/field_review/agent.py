@@ -110,6 +110,29 @@ def _digits_ok(digits: str, lengths: tuple[int, ...]) -> bool:
     return len(digits) in lengths
 
 
+def _phone_zero(digits: str, lengths: tuple[int, ...]) -> str:
+    """Ô số điện thoại nghe được đúng 9 số, không có 0 đầu → thêm 0: số di động 10 số bỏ số 0 đầu còn đúng 9 số (công
+    dân không đọc số 0, nhận dạng giọng nói rơi / nghe nhầm chữ "không" / "xoom" đầu câu)."""
+    if lengths in (PHONE_LENGTHS, MOBILE_LENGTHS) and len(digits) == 9 and not digits.startswith("0"):
+        return "0" + digits
+    return digits
+
+
+def pad_phone(digits: str, lengths: tuple[int, ...]) -> str:
+    """Chế độ tiếng Mông: ô số điện thoại nghe được 7–9 số → đắp cho đủ số di động 10 số hợp lệ thay vì hỏi lại (nhận
+    dạng giọng nói tiếng Mông hay nuốt một số khi hai số giống nhau đọc liền): thiếu 0 đầu thì thêm 0, còn thiếu thì nhân
+    đôi chữ số giữa dãy. "" khi không đắp (không phải ô số điện thoại, quá ngắn, đã đủ)."""
+    digits = re.sub(r"\D", "", str(digits or ""))
+    if lengths not in (PHONE_LENGTHS, MOBILE_LENGTHS) or not 7 <= len(digits) <= 9:
+        return ""
+    if not digits.startswith("0"):
+        digits = "0" + digits
+    while len(digits) < 10:
+        mid = len(digits) // 2
+        digits = digits[:mid + 1] + digits[mid] + digits[mid + 1:]
+    return digits if _digits_ok(digits, lengths) else ""
+
+
 def phone_format_wrong(digits: str, lengths: tuple[int, ...]) -> bool:
     """Ô số điện thoại: đủ số chữ số nhưng không bắt đầu bằng 0 — lỗi dạng số, không phải đọc thiếu số."""
     return lengths in (PHONE_LENGTHS, MOBILE_LENGTHS) and len(digits) in lengths and not digits.startswith("0")
@@ -202,7 +225,7 @@ def _check(data: dict, field: dict, text: str = "", visited: list | None = None)
     if lengths and action in {"value", "unclear"}:
         # Ô số giấy tờ: công dân đọc đủ dãy chữ số thì chép đúng dãy đó (kể cả khi LLM bị tạp âm làm "unclear").
         # Trừ khi LLM nghe ra số hộ chiếu (có chữ cái) — chép chữ số sẽ làm rơi chữ cái.
-        digits = spoken_digits(text)
+        digits = _phone_zero(spoken_digits(text), lengths)
         code = re.sub(r"[^0-9A-Za-z]", "", str(data.get("value") or "")).upper()
         if _digits_ok(digits, lengths) and not (9 in lengths and _PASSPORT.match(code)):
             return Answer("value", digits)
@@ -235,7 +258,7 @@ def _check(data: dict, field: dict, text: str = "", visited: list | None = None)
     elif lengths:
         # Số định danh 12 chữ số, số giấy tờ 9 hoặc 12 chữ số, số điện thoại 10 / 11 số — sai độ dài thì hỏi lại,
         # không điền số sai. Ô số giấy tờ còn nhận số hộ chiếu (chữ + số) nguyên chuỗi.
-        digits = re.sub(r"\D", "", value)
+        digits = _phone_zero(re.sub(r"\D", "", value), lengths)
         code = re.sub(r"[^0-9A-Za-z]", "", value).upper()
         if _digits_ok(digits, lengths):
             value = digits

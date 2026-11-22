@@ -632,3 +632,10 @@ def test_quyet_dinh_ly_hon_khong_gop_sai():
         [0], [1, 2], [3], [4, 5]]
     # LLM không trả trangDau / trangSo → như cũ, mỗi tệp một mục.
     assert planner.join_divorce_pages([_ly_hon(), _ly_hon()], [[0], [1]], [0, 1]) == [[0], [1]]
+
+
+@pytest.mark.skipif(not SNAPSHOT.exists(), reason="thiếu snapshot cổng")
+def test_o_sdt_nguoi_nop_co_trong_khoi_nguoi_nop_cong_moi():
+    # Trích lục / cải chính / khai sinh / khai tử cổng mới dùng chung ô này; snapshot của các form đó chụp trước khi cổng
+    # thêm ô SĐT vào khối người nộp.
+    assert 'data-name="citizenPhone__' in SNAPSHOT.read_text(encoding="utf-8")

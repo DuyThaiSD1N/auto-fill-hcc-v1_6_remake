@@ -71,3 +71,10 @@ test("ô tra cứu CSDL: điền xong chờ cổng đổ dữ liệu rồi mới
   assert.match(adapter, /const LOOKUP_WAIT_MS = 2500;/);
   assert.match(adapter, /await sleep\(lookup \? LOOKUP_WAIT_MS : 350\);/);
 });
+
+test("requiredOnly (BE: thủ tục chỉ bổ sung ô bắt buộc): ô không bắt buộc còn trống không tô, không đếm, không hỏi", () => {
+  assert.match(adapter, /if \(msg\.requiredOnly && !q\.value && !q\.required\) \{\s*questionEl\(q\.name\)\?\.removeAttribute\(MARK_ATTR\);\s*continue;\s*\}/);
+  // Hết ô bắt buộc trống thì không rơi xuống ô không bắt buộc → field null, BE kết thúc vòng bổ sung.
+  assert.match(adapter, /\(\(msg\.requiredFirst \|\| msg\.requiredOnly\) && list\.find\(\(x\) => !x\.value && x\.required && !skip\.has\(x\.name\)\)\)/);
+  assert.match(adapter, /\|\| \(!msg\.requiredOnly && list\.find\(\(x\) => !x\.value && !skip\.has\(x\.name\)\)\);/);
+});

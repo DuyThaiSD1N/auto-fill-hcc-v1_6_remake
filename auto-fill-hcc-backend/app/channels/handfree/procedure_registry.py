@@ -470,7 +470,7 @@ PROCEDURES: list[dict] = [
             "headingDisabled": True,
         },
         "label": "Cấp bản sao Trích lục hộ tịch, bản sao Giấy khai sinh",
-        "shortLabel": "Bản sao Trích lục hộ tịch",
+        "shortLabel": "Bản sao Trích lục hộ tịch, Giấy khai sinh",
         "subtitle": "Trích lục khai sinh, kết hôn, khai tử",
         "icon": "📜",
         # Trang nộp một trang của Cổng DVC quốc gia (form + đính kèm + nhận kết quả).

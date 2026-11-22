@@ -530,6 +530,39 @@ async def test_luu_tai_khoan_xong_cong_ve_trang_chu_thi_mo_lai_link_ke_khai():
     assert {"type": "navigate", "url": url} not in r.actions
 
 
+async def test_tu_luu_tai_khoan_tren_cong_sang_trang_thu_tuc_thi_ket_thuc_buoc_tai_khoan():
+    """Công dân tự điền + Lưu trang tài khoản trên cổng (không bấm Lưu của trợ lý) rồi sang trang thủ tục 4 tab: bước
+    tài khoản xong luôn, vào trang như thường (hỏi cơ quan tiếp nhận), không kẹt pha account."""
+    for state in ("reviewing", "collecting_docs", "filling"):
+        conv = _account(state=state, milestones=["bn_account_intro"])
+        r = await _arrive_page(conv, tab=1, agency="")
+        st = conv["bac_ninh"]
+        assert st["account_saved"] is True and st.get("phase") is None and not bac_ninh.account_phase(conv, _proc())
+        assert {"type": "bn_agency"} in r.actions
+    # Vẫn đứng ở trang tài khoản (nạp lại) thì chưa coi là xong.
+    conv = _account(state="reviewing")
+    await _turn(conv, "event", "page_status", {"formKind": "bacninh", "bnAccountForm": True, "bnTab": 0})
+    assert conv["bac_ninh"]["phase"] == "account" and not conv["bac_ninh"].get("account_saved")
+
+
+async def test_tu_luu_tai_khoan_cong_ve_trang_chu_thi_mo_lai_link_ke_khai():
+    url = _proc()["keKhaiUrl"]
+
+    async def page(conv, at):
+        return await flow.handle_turn(conv, Intent("event", "page_status", {"formKind": "", "bnTab": 0}),
+                                      client_url=at)
+
+    conv = _account(state="reviewing", milestones=["bn_account_intro"])
+    r = await page(conv, "https://dichvucong.bacninh.gov.vn/web/guest/trang-chu")
+    assert r.actions == [{"type": "navigate", "url": url}]
+    assert conv["state"] == "guide_login" and conv["bac_ninh"]["account_saved"] is True
+    # Trang tài khoản / đăng nhập / cổng khác: giữ pha account.
+    for at in ("https://dichvucong.bacninh.gov.vn/vneidsso", "https://dichvucong.gov.vn/p/home"):
+        conv = _account(state="reviewing", milestones=["bn_account_intro"])
+        await page(conv, at)
+        assert conv["bac_ninh"]["phase"] == "account"
+
+
 async def test_sang_trang_thu_tuc_sau_tai_khoan_dien_luon_khong_xin_giay_to_lai(_no_io):
     conv = _conv("guide_login", bac_ninh={"account_saved": True}, milestones=["bn_account_intro"])
     await _arrive_page(conv)

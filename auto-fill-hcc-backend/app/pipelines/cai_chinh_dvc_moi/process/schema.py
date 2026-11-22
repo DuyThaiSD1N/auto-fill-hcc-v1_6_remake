@@ -48,6 +48,9 @@ FIELDS: list[dict] = [
     {"name": "SoLuongBanSao",
      "desc": "Số bản sao trích lục đề nghị cấp: số nguyên; tờ khai đánh dấu KHÔNG đề nghị cấp bản sao → 0. "
              "Tờ khai không ghi → bỏ field."},
+    {"name": "NguoiNop_SoDienThoai",
+     "desc": "Số điện thoại của NGƯỜI NỘP (khối <nguoi_nop>) ghi trên giấy tờ, chỉ khi số ghi cạnh tên / chữ ký của "
+             "CHÍNH người đó. Không lấy số của người khác, cơ quan, cán bộ xác nhận. Không có → bỏ."},
 ]
 
 ALLOWED = {f["name"] for f in FIELDS}
@@ -60,6 +63,7 @@ COMPACT_COMP_BY_NAME["NguoiThayDoi_NoiCuTru"] = "x-select-area"
 
 # Ô SurveyJS: name = phần trước "__<số>" của data-name (extension khớp theo tiền tố).
 UI_COMP_BY_NAME = {
+    "citizenPhone": "sjs-text",                        # SĐT người nộp: ô duy nhất mở trong khối người nộp
     "citizenNycNoicutru": "sjs-radio",                 # Nơi cư trú người nộp: cổng hay để trống
     "citizenQuanhevsngcaichinhhotich1": "sjs-radio",   # Bản thân / Khác
     "citizenMqhkhac": "sjs-text",                      # Quan hệ cụ thể, chỉ hiện khi chọn "Khác"

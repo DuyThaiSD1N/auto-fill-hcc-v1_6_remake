@@ -21,7 +21,7 @@ Quy ước:
 PROCEDURE_HMONG = {
     "ket-hon": "Cuv npe yuav txiv yuav poj niam",
     "khai-sinh-dang-ky": "Cuv npe yug me nyuam (txuas ntxiv)",
-    "trich-luc-ks": "Daim ntawv theej hộ tịch",
+    "trich-luc-ks": "Daim ntawv theej ntawv xeeb yug",
     "xac-nhan-tinh-trang-hon-nhan": "Ntawv lees paub tsis tau muaj txij nkawm",
     "khai-sinh-dang-ky-lai": "Cuv npe yug me nyuam dua tshiab",
     "khai-tu": "Cuv npe tuag",
@@ -476,6 +476,13 @@ CHIP_HMONG = {
     "🔁 Đã đủ giấy tờ - Điền lại tờ khai": "Muab txaus lawm, sau daim foos dua",
     "📎 Đã đủ giấy tờ - Đính kèm lại": "Muab txaus lawm, muab tso dua",
     "🗂️ Điều chỉnh giấy tờ": "Kho cov ntaub ntawv",
+    # Vòng hỏi từng ô của toàn trình (field_review). BẢN NHÁP chờ người soát — "sau ntxiv" (điền thêm), "hla" (bỏ qua),
+    # "tsum" (dừng), "kho" (sửa), "lub thawv" (ô, như FILL_REPORT_REVIEW).
+    "📝 Bổ sung các thông tin còn thiếu": "Sau ntxiv cov uas tshuav",
+    "⏭️ Bỏ qua ô này": "Hla lub thawv no",
+    "⏹️ Dừng bổ sung": "Tsum nug",
+    "↩️ Sửa ô vừa điền": "Kho lub thawv tas los",
+    "🔄 Tải lại danh sách xã": "Ua dua cov npe zos",
     # Nút chuyển bước / gửi hồ sơ của luồng dẫn từng bước (guidedSteps).
     "Xong, sang bước đính kèm →": "Tiav lawm, mus muab tso",
     "✅ Có, chứng thực luôn": "Yog, ua pov thawj",
@@ -663,7 +670,7 @@ CONFIRM_PROCEDURE_WITH_LOCATION = {
         "Pej xeem ua {procedure} ntawm {place} — puas yog? Yog lawm ces nias "
         "Đồng ý; tsis yog ces xaiv dua hauv qab no ces nias Đồng ý."
     ),
-    "tts": "Pej xeem ua {procedure} ntawm {place} — puas yog? Yog lawm ces nias Đồng ý.",
+    "tts": "Pej xeem ua {procedure} ntawm {place} — puas yog? Yog lawm ces nias lub pob Pom zoo.",
 }
 
 PROCEDURE_NOT_RECOGNIZED = {
@@ -706,8 +713,8 @@ HKD_GUIDE_LOGIN = {
         "saum npo, ces nkag nrog VNeID."
     ),
     "tts": (
-        "Yog nplooj ntawv tseem tsis tau nkag, pej xeem nias lub khawm Đăng nhập nyob ces kaum sab xis "
-        "saum npo, ces nkag nrog vi en ai đi."
+        "Yog nplooj ntawv tseem tsis tau nkag, pej xeem nias lub khawm nkag nyob ces kaum sab xis "
+        "saum npo, ces nkag nrog vi en ai di."
     ),
 }
 
@@ -744,21 +751,21 @@ REVIEW_ATTACHMENT_SAME_PAGE_BCA = {
 # BẢN NHÁP chờ anh Dư soát.
 ATTACH_DONE_SAME_PAGE_BCA = {
     "md": "Kuv txuas tiav {attached} daim ntawv lawm. Pej xeem xaiv qhov chaw txais ntawv, ces nias Đồng ý và tiếp tục.",
-    "tts": "Kuv txuas tiav lawm. Pej xeem xaiv qhov chaw txais ntawv, ces nias Đồng ý và tiếp tục.",
+    "tts": "Kuv txuas tiav lawm. Pej xeem xaiv qhov chaw txais ntawv, ces nias lub pob Pom zoo.",
 }
 
 # BẢN NHÁP chờ anh Dư soát — trang xác nhận + nút Nộp hồ sơ eForm Bộ Công an (thị thực 1.001194).
 BCA_NTH_CONFIRM_GUIDE = {
     "md": "Pej xeem sau Mã xác nhận, nias lub npov Tôi xin chịu trách nhiệm, ces nias Nộp hồ sơ hauv qab no.",
-    "tts": "Pej xeem sau tus lej, nias lub npov, ces nias Nộp hồ sơ hauv qab no.",
+    "tts": "Pej xeem sau tus lej, nias lub npov, ces nias lub pob Xa ntaub ntawv hauv qab no.",
 }
 BCA_NTH_CONFIRM_MANUAL = {
     "md": "Pej xeem sau Mã xác nhận, nias lub npov Tôi xin chịu trách nhiệm, ces nias Nộp hồ sơ hauv qab nplooj ntawv.",
-    "tts": "Pej xeem sau tus lej, nias lub npov, ces nias Nộp hồ sơ.",
+    "tts": "Pej xeem sau tus lej, nias lub npov, ces nias lub pob Xa ntaub ntawv.",
 }
 BCA_NTH_SUBMITTING = {
     "md": "Kuv tab tom nias Nộp hồ sơ.",
-    "tts": "Kuv tab tom nias Nộp hồ sơ.",
+    "tts": "Kuv tab tom nias lub pob Xa ntaub ntawv.",
 }
 BCA_NTH_MISSING_CAPTCHA = {
     "md": "Pej xeem tseem tsis tau sau Mã xác nhận. Sau tas ces nias Nộp hồ sơ dua.",
@@ -770,7 +777,7 @@ BCA_NTH_MISSING_COMMIT = {
 }
 BCA_NTH_CONFIRM_ASK = {
     "md": "Lub vev xaib nug dua — pej xeem nias Đồng ý.",
-    "tts": "Lub vev xaib nug dua, pej xeem nias Đồng ý.",
+    "tts": "Lub vev xaib nug dua, pej xeem nias lub pob Pom zoo.",
 }
 BCA_NTH_SUBMIT_BLOCKED = {
     "md": "⚠️ Lub vev xaib tseem tsis tau txais. Pej xeem kho ces nias Nộp hồ sơ dua.",
@@ -782,19 +789,19 @@ BCA_NTH_NO_BUTTON = {
 }
 BCA_NTH_NO_ENGINE = {
     "md": "Nplooj ntawv tsis txais kuv cov lus. Pej xeem nias Nộp hồ sơ hauv qab.",
-    "tts": "Pej xeem nias Nộp hồ sơ hauv qab.",
+    "tts": "Pej xeem nias lub pob Xa ntaub ntawv hauv qab.",
 }
 
 # BẢN NHÁP chờ anh Dư soát.
 AGENCY_DIRECT_FAILED = {
     "md": "⚠️ Kuv nias tsis tau. Pej xeem nias Nộp hồ sơ, ces nias Nộp trực tuyến.",
-    "tts": "Kuv nias tsis tau. Pej xeem nias Nộp hồ sơ, ces nias Nộp trực tuyến.",
+    "tts": "Kuv nias tsis tau. Pej xeem nias lub pob Xa ntaub ntawv, ces nias lub pob Xa ntaub ntawv.",
 }
 
 # BẢN NHÁP chờ anh Dư soát.
 BCA_TTHC_FAILED = {
     "md": "Kuv nias tsis tau Nộp hồ sơ. Pej xeem nias Nộp hồ sơ ntawm nplooj ntawv pab kuv.",
-    "tts": "Kuv nias tsis tau. Pej xeem nias Nộp hồ sơ ntawm nplooj ntawv pab kuv.",
+    "tts": "Kuv nias tsis tau. Pej xeem nias lub pob Xa ntaub ntawv ntawm nplooj ntawv pab kuv.",
 }
 
 AGENCY_MANUAL_GUIDE = {
@@ -890,12 +897,12 @@ AGENCY_SELECT_FAILED = {
 # đó; tên thẻ là chữ Việt nên không được nhúng placeholder vào đây. Tạm ghép từ câu có sẵn.
 AGENCY_CARD_MANUAL_GUIDE = {
     "md": "Pej xeem xaiv {area} kiag ces nias Đồng ý, ces nias Nộp trực tuyến.",
-    "tts": "Pej xeem xaiv kiag ces nias pom zoo, ces nias Nộp trực tuyến.",
+    "tts": "Pej xeem xaiv kiag ces nias pom zoo, ces nias lub pob Xa ntaub ntawv.",
 }
 
 AGENCY_CARD_MISSING = {
     "md": "Kuv xaiv tsis tau. Pej xeem nias Nộp trực tuyến kiag.",
-    "tts": "Kuv xaiv tsis tau. Pej xeem nias Nộp trực tuyến kiag.",
+    "tts": "Kuv xaiv tsis tau. Pej xeem nias lub pob Xa ntaub ntawv kiag.",
 }
 
 # BẢN NHÁP ghép từ chữ đã có (kos lub thawv = tích ô, hauv qab = bên dưới, los yog = hoặc, qhov chaw ua = cơ quan
@@ -903,35 +910,35 @@ AGENCY_CARD_MISSING = {
 SO_AGENCY_MANUAL_GUIDE = {
     "md": ("Pej xeem xaiv {province}, kos lub thawv Sở, ces xaiv {agency} hauv qab, ces nias Nộp hồ sơ "
            "(los yog Đồng ý), ces nias Nộp trực tuyến."),
-    "tts": ("Pej xeem xaiv xeev, kos lub thawv Sở, ces xaiv qhov chaw ua hauv qab, ces nias Nộp hồ sơ, "
-            "ces nias Nộp trực tuyến."),
+    "tts": ("Pej xeem xaiv xeev, kos lub thawv xeev, ces xaiv qhov chaw ua hauv qab, ces nias lub pob Xa ntaub ntawv, "
+            "ces nias lub pob Xa ntaub ntawv."),
 }
 
 # BẢN NHÁP chờ anh Dư soát — chặng cổng tỉnh (Quảng Ninh), ghép từ câu đã có (nkag VNeID, xaiv tsis tau, nias kiag).
 PROVINCE_PORTAL_LOGIN = {
     "md": "Cổng dịch vụ công {province} kom nkag dua. Pej xeem nias Đăng nhập bằng VNeID ces luam QR kom nkag. "
           "Tiav lawm kuv pab ntxiv.",
-    "tts": "Pej xeem nias Đăng nhập bằng VNeID ces luam QR kom nkag. Tiav lawm kuv pab ntxiv.",
+    "tts": "Pej xeem nias lub pob nkag ces luam QR kom nkag. Tiav lawm kuv pab ntxiv.",
 }
 
 PROVINCE_ROW_MANUAL = {
     "md": "Pej xeem nias Nộp hồ sơ ntawm {row}.",
-    "tts": "Pej xeem nias Nộp hồ sơ kiag.",
+    "tts": "Pej xeem nias lub pob Xa ntaub ntawv kiag.",
 }
 
 PROVINCE_ROW_FAILED = {
     "md": "Kuv xaiv tsis tau. Pej xeem nias Nộp hồ sơ ntawm {row}.",
-    "tts": "Kuv xaiv tsis tau. Pej xeem nias Nộp hồ sơ kiag.",
+    "tts": "Kuv xaiv tsis tau. Pej xeem nias lub pob Xa ntaub ntawv kiag.",
 }
 
 PROVINCE_INFO_MANUAL = {
     "md": "Pej xeem xaiv {agency} ces nias Xác nhận.",
-    "tts": "Pej xeem xaiv kiag ces nias Xác nhận.",
+    "tts": "Pej xeem xaiv kiag ces nias lub pob lees paub.",
 }
 
 GUIDE_LOGIN_NO_URL = {
     "md": "Kuv tsis muaj txoj kev mus rau nplooj ntawv {procedure}. Pej xeem qhib nplooj ntawv ntawm cổng dịch vụ công; kuv pom lawm yuav pab ntxiv.",
-    "tts": "Pej xeem qhib nplooj ntawv ntawm cổng dịch vụ công, kuv pom lawm yuav pab ntxiv.",
+    "tts": "Pej xeem qhib nplooj ntawv ntawm lub vev xaib, kuv pom lawm yuav pab ntxiv.",
 }
 
 # NỢ DỊCH: ghép "Kuv" (em) + "hais dua" (nói lại) từ các câu đã dịch, chờ người soát.
@@ -966,9 +973,7 @@ INTRO_AUTHORIZATION_SCAN_REACHED = {
         "Thông tin ủy quyền cá nhân."
     ),
     "tts": (
-        "Txog kauj ruam Thông tin người nộp hồ sơ thiab ủy quyền lawm. Vim Đối tượng thực hiện "
-        "yog Người khác ủy quyền, kuv yuav sau ob pawg: Thông tin người nộp hồ sơ thiab "
-        "Thông tin ủy quyền cá nhân."
+        "Txog kauj ruam sau tus neeg xa ntaub ntawv thiab daim ntawv tso cai lawm. Kuv yuav sau ob pawg: tus neeg xa ntaub ntawv thiab daim ntawv tso cai."
     ),
 }
 
@@ -1108,20 +1113,20 @@ DOCS_COMPLETE_NEXT_STEP = {
 
 ATTACH_MODE_PRESET_SPLIT = {
     "md": "\n\nRaws li **Cài đặt**, kuv yuav faib **ib daim ib phau** ntaub ntawv.",
-    "tts": " Raws li Cài đặt, kuv yuav faib ib daim ib phau ntaub ntawv.",
+    "tts": " Kuv yuav faib ib daim ib phau ntaub ntawv.",
 }
 
 WAIT_ATTACHMENT_SAME_PAGE = {
     "md": ("\n\nTam sim no kuv hloov mus rau **Thành phần hồ sơ** ces muab ntaub ntawv "
            "tso rau phau ntaub ntawv — pej xeem tos ib pliag."),
-    "tts": " Tam sim no kuv hloov mus rau Thành phần hồ sơ ces muab ntaub ntawv tso. Pej xeem tos ib pliag.",
+    "tts": " Tam sim no kuv hloov mus rau kauj ruam muab ntaub ntawv ces muab ntaub ntawv tso. Pej xeem tos ib pliag.",
 }
 
 # NỢ DỊCH (20/11/2026): ghép từ cụm đã dịch ("nias … kom mus rau", ATTACH_REQUEST_ON_DECLARATION "txog lawm kuv muab
 # tso kiag"), bỏ vế "cổng báo thiếu gì thì nói lại"; chờ người soát. eForm Nth Bộ Công an, bấm "Đính kèm giấy tờ".
 BCA_NTH_NEXT_TO_ATTACH = {
     "md": "Kuv nias **Đồng ý và tiếp tục** kom mus rau **Thành phần hồ sơ**, txog lawm kuv muab ntaub ntawv tso kiag.",
-    "tts": "Kuv nias Đồng ý và tiếp tục kom mus rau Thành phần hồ sơ, txog lawm kuv muab ntaub ntawv tso kiag.",
+    "tts": "Kuv nias lub pob Pom zoo kom mus rau kauj ruam muab ntaub ntawv, txog lawm kuv muab ntaub ntawv tso kiag.",
 }
 
 DOCS_COMPLETE_ATTACH = {
@@ -1282,6 +1287,26 @@ ATTACH_NONE_REPEAT = {
     "tts": "Kuv muab tsis tau.",
 }
 
+# CHƯA CÓ BẢN DỊCH RIÊNG cho câu "không có tệp nào để đính kèm, cán bộ kiểm tra giấy tờ" — cắt lại đúng vế đã dịch ở
+# ATTACH_NONE (như ATTACH_NONE_REPEAT), không tự đặt câu Mông mới. Có bản dịch thật thì thay.
+ATTACH_PLAN_EMPTY = {
+    "md": "Kuv muab tsis tau ib daim twg.",
+    "tts": "Kuv muab tsis tau.",
+}
+
+# Xác nhận nộp hồ sơ khi công dân NÓI chọn nút nộp — ghép các vế đã dịch sẵn trong file này ("xa ntaub ntawv" = gửi hồ
+# sơ, "nias lub pob" = bấm nút, "hais" = nói, "yog" = đúng, "Kuv tseem tsis tau xa" = tôi chưa gửi, "Pej xeem xyuas cov
+# ntaub ntawv, zoo lawm ces nias…" = công dân kiểm tra, xong thì bấm…). Không nhúng {label} (nhãn Việt) vào lời Mông.
+VOICE_SUBMIT_CONFIRM = {
+    "md": "Pej xeem puas xav xa ntaub ntawv? Hais yog, los yog nias lub pob Xa ntaub ntawv.",
+    "tts": "Pej xeem puas xav xa ntaub ntawv? Hais yog, los yog nias lub pob Xa ntaub ntawv.",
+}
+
+VOICE_SUBMIT_CANCELLED = {
+    "md": "Kuv tseem tsis tau xa. Pej xeem xyuas cov ntaub ntawv, zoo lawm ces nias Xa ntaub ntawv.",
+    "tts": "Kuv tseem tsis tau xa. Pej xeem xyuas cov ntaub ntawv, zoo lawm ces nias Xa ntaub ntawv.",
+}
+
 SAME_PAGE_TWO_STEP_SUMMARY = {
     "md": ("\n\n📋 **Nhập đơn đăng ký** — sau tau {filled} lub thawv ✓ · "
            "**Tải thành phần hồ sơ** — muab tau {attached} daim ✓"),
@@ -1308,7 +1333,7 @@ ATTACH_SUPPLEMENT_ASK = {
 
 DOCUMENT_ADJUSTMENT_WRONG_PAGE = {
     "md": "Nplooj no tsis yog Kê khai thông tin. Rov mus nplooj kê khai ces nias kho tiav.",
-    "tts": "Rov mus nplooj kê khai ces nias kho tiav.",
+    "tts": "Rov mus nplooj sau ntawv ces nias kho tiav.",
 }
 
 ATTACH_SUPPLEMENT_SESSION_EXPIRED = {
@@ -1368,7 +1393,7 @@ SCAN_PICK_OWNER = {
     ),
     "tts": (
         "Pej xeem muab ib daim ib zaug tso rau lub tshuab scan ces nias lub pob Scan, muaj daim "
-        "Căn cước công dân tus tswv ntaub ntawv thiab cov ntaub ntawv yuav theej. Kuv txais "
+        "daim npav tus tswv ntaub ntawv thiab cov ntaub ntawv yuav theej. Kuv txais "
         "thiab faib raws hom pab pej xeem."
     ),
 }
@@ -1511,7 +1536,7 @@ CHOOSE_VARIANT_REMIND = {
 
 VARIANT_DIALOG_AUTOFILL_GUIDE = {
     "md": "Kuv xaiv qhov {variant_label} ces nias Đồng ý kom mus rau nplooj sau ntawv.",
-    "tts": "Kuv xaiv qhov {variant_label} ces nias Đồng ý kom mus rau nplooj sau ntawv.",
+    "tts": "Kuv xaiv qhov {variant_label} ces nias lub pob Pom zoo kom mus rau nplooj sau ntawv.",
 }
 
 GUIDE_AGENCY_SELECT_PROVINCE = {
@@ -1528,21 +1553,21 @@ AGENCY_DEPT_DIALOG_AUTOFILL_GUIDE = {
     "md": ("Kuv xaiv xeev {province} thiab {agency}, ces nias "
            "Đồng ý và tiếp tục kom mus rau nplooj sau ntawv."),
     "tts": ("Kuv xaiv xeev {province} thiab {agency}, ces nias "
-            "Đồng ý và tiếp tục kom mus rau nplooj sau ntawv."),
+            "lub pob Pom zoo kom mus rau nplooj sau ntawv."),
 }
 
 AGENCY_WARD_DIALOG_AUTOFILL_GUIDE = {
     "md": ("Kuv xaiv {province} thiab {ward}, ces nias "
            "Đồng ý và tiếp tục kom mus rau nplooj sau ntawv."),
     "tts": ("Kuv xaiv {province} thiab {ward}, ces nias "
-            "Đồng ý và tiếp tục kom mus rau nplooj sau ntawv."),
+            "lub pob Pom zoo kom mus rau nplooj sau ntawv."),
 }
 
 MAE_AGENCY_AUTOFILL_GUIDE = {
     "md": ("Kuv xaiv xeev {province} thiab {agency}, kuv xaiv qhov {variant_label} ces nias "
            "Đồng ý và tiếp tục kom mus rau nplooj sau ntawv."),
     "tts": ("Kuv xaiv xeev {province} thiab {agency}, xaiv qhov {variant_label} ces nias "
-            "Đồng ý và tiếp tục kom mus rau nplooj sau ntawv."),
+            "lub pob Pom zoo kom mus rau nplooj sau ntawv."),
 }
 
 # Hộp thoại "Chọn trường hợp giải quyết" (cổng Bộ Xây dựng). CHƯA CÓ BẢN DỊCH RIÊNG: ghép từ các
@@ -1561,28 +1586,28 @@ CHOOSE_MAE_DIALOG_REMIND = {
 
 MAE_DIALOG_AUTOFILL_GUIDE = {
     "md": "Kuv xaiv ces nias Đồng ý kom mus rau nplooj sau ntawv.",
-    "tts": "Kuv xaiv ces nias Đồng ý kom mus rau nplooj sau ntawv.",
+    "tts": "Kuv xaiv ces nias lub pob Pom zoo kom mus rau nplooj sau ntawv.",
 }
 
 MAE_DIALOG_FAILED = {
     "md": ("Kuv xaiv tsis tau ntawm nplooj ntawv. Pej xeem xaiv Đơn vị thực hiện thiab "
            "Trường hợp giải quyết, ces nias Đồng ý."),
-    "tts": ("Kuv xaiv tsis tau. Pej xeem xaiv Đơn vị thực hiện thiab Trường hợp giải quyết, "
-            "ces nias Đồng ý."),
+    "tts": ("Kuv xaiv tsis tau. Pej xeem xaiv qhov chaw ua thiab qhov, "
+            "ces nias lub pob Pom zoo."),
 }
 
 MAE_AGENCY_FAILED = {
     "md": ("Kuv xaiv tsis tau ntawm nplooj ntawv. Pej xeem xaiv: Xeev {province}, ces Sở/Ban ngành "
            "xaiv {agency}, ces qhov {variant_label}, ces nias Đồng ý và tiếp tục."),
     "tts": ("Kuv xaiv tsis tau. Pej xeem xaiv xeev {province}, xaiv {agency}, xaiv qhov "
-            "{variant_label}, ces nias Đồng ý và tiếp tục."),
+            "{variant_label}, ces nias lub pob Pom zoo."),
 }
 
 MAE_AGENCY_WARD_FAILED = {
     "md": ("Kuv xaiv tsis tau ntawm nplooj ntawv. Pej xeem xaiv: {province}, ces Phường/Xã "
            "xaiv {ward}, ces nias Đồng ý và tiếp tục."),
     "tts": ("Kuv xaiv tsis tau. Pej xeem xaiv {province}, xaiv {ward}, ces nias "
-            "Đồng ý và tiếp tục."),
+            "lub pob Pom zoo."),
 }
 
 PROCEDURE_PROVINCE_LOCKED = {
@@ -1625,8 +1650,8 @@ REFILL_PROCESSING = {
 REFILL_WRONG_PAGE = {
     "md": ("Nplooj ntawv tsis yog nplooj Kê khai thông tin. Pej xeem rov mus rau nplooj Kê khai "
            "ces nias Điền lại thông tin."),
-    "tts": ("Nplooj ntawv tsis yog nplooj Kê khai thông tin. Pej xeem rov mus rau nplooj Kê khai "
-            "ces nias Điền lại thông tin."),
+    "tts": ("Nplooj ntawv tsis yog nplooj sau ntawv. Pej xeem rov mus rau nplooj sau ntawv "
+            "ces nias lub pob Sau dua."),
 }
 
 # ── Dẫn từng bước wizard (guidedSteps) ────────────────────────────────────────────────────
@@ -1643,7 +1668,7 @@ GUIDED_OWNER_STEP = {
     ),
     "tts": (
         "Pej xeem sau los yog kho tus tswv ntaub ntawv. Sau tiav ces nias lub pob hauv qab no, "
-        "kuv pab hloov mus rau Thành phần hồ sơ."
+        "kuv pab hloov mus rau kauj ruam muab ntaub ntawv."
     ),
 }
 
@@ -1665,7 +1690,7 @@ GUIDED_ATTACH_DONE = {
     ),
     "tts": (
         "Kuv muab tso tiav lawm. Pej xeem xyuas zaum kawg ces nias lub pob hauv qab no, "
-        "kuv pab hloov mus rau Thông tin nhận kết quả."
+        "kuv pab hloov mus rau kauj ruam txais txiaj ntsig."
     ),
 }
 
@@ -1678,7 +1703,7 @@ GUIDED_RESULT_PICK = {
         "nias txoj ntawd."
     ),
     "tts": (
-        "Twb nkag rau kauj ruam Thông tin nhận kết quả lawm. Pej xeem xav txais txiaj ntsig li "
+        "Twb nkag rau kauj ruam txais txiaj ntsig lawm. Pej xeem xav txais txiaj ntsig li "
         "cas ne? Kuv xaiv txoj kev ib, txais daim ntawv muaj hom thawj. Xav hloov txoj twg ces "
         "nias txoj ntawd."
     ),
@@ -1686,22 +1711,22 @@ GUIDED_RESULT_PICK = {
 
 GUIDED_RESULT_SUBMIT_HINT = {
     "md": "\n\nPej xeem xyuas cov ntaub ntawv, zoo lawm ces nias Gửi hồ sơ kuv xa ntaub ntawv.",
-    "tts": " Pej xeem xyuas cov ntaub ntawv, zoo lawm ces nias Gửi hồ sơ kuv xa ntaub ntawv.",
+    "tts": " Pej xeem xyuas cov ntaub ntawv, zoo lawm ces nias lub pob Xa ntaub ntawv kuv xa ntaub ntawv.",
 }
 
 # Ghép từ các câu Mông đã dùng ở trên (GUIDED_ATTACH_DONE, GUIDED_RESULT_PICK, GUIDED_RESULT_SUBMIT_HINT),
 # tên bước / tên nút viết thẳng trong câu, không nhúng placeholder chữ Việt.
 GUIDED_RESULT_CHOOSE = {
     "md": "Twb nkag rau kauj ruam Thông tin nhận kết quả lawm. Pej xeem xav txais txiaj ntsig li cas ne?",
-    "tts": "Twb nkag rau kauj ruam Thông tin nhận kết quả lawm. Pej xeem xav txais txiaj ntsig li cas ne?",
+    "tts": "Twb nkag rau kauj ruam txais txiaj ntsig lawm. Pej xeem xav txais txiaj ntsig li cas ne?",
 }
 VOICE_NEXT_STEP = {
     "md": "Kuv pab hloov mus rau Thông tin nhận kết quả.",
-    "tts": "Kuv pab hloov mus rau Thông tin nhận kết quả.",
+    "tts": "Kuv pab hloov mus rau kauj ruam txais txiaj ntsig.",
 }
 VOICE_SUBMIT_SELF = {
     "md": "Pej xeem xyuas cov ntaub ntawv, zoo lawm ces nias Gửi hồ sơ.",
-    "tts": "Pej xeem xyuas cov ntaub ntawv, zoo lawm ces nias Gửi hồ sơ.",
+    "tts": "Pej xeem xyuas cov ntaub ntawv, zoo lawm ces nias lub pob Xa ntaub ntawv.",
 }
 
 # Cổng Bộ Y tế (ô chọn thả xuống). Ghép từ GUIDED_RESULT_FAILED / GUIDED_RESULT_PICK ở dưới, bỏ vế "Gửi hồ sơ".
@@ -1747,7 +1772,7 @@ GUIDED_RESULT_FAILED = {
     ),
     "tts": (
         "Kuv tsis tau hloov tau lub pob txoj kev txais txiaj ntsig. Pej xeem hloov pab kuv "
-        "ntawm nplooj ntawv ces nias Gửi hồ sơ."
+        "ntawm nplooj ntawv ces nias lub pob Xa ntaub ntawv."
     ),
 }
 
@@ -1759,8 +1784,8 @@ GUIDED_ATTACH_SPLIT_DONE = {
     ),
     "tts": (
         "Kuv muab tiav lawm, ib daim ib phau. Nias lub pob hauv qab no kuv pab hloov phau hauv "
-        "lub tab no mus rau Thông tin nhận kết quả. Cov phau tshuav, pej xeem qhib ib lub tab "
-        "zuj zus ces nias Nộp hồ sơ."
+        "lub tab no mus rau kauj ruam txais txiaj ntsig. Cov phau tshuav, pej xeem qhib ib lub tab "
+        "zuj zus ces nias lub pob Xa ntaub ntawv."
     ),
 }
 
@@ -1796,15 +1821,15 @@ GUIDED_RESULT_STEP = {
         "Gửi hồ sơ nyob hauv nplooj ntawv."
     ),
     "tts": (
-        "Txog kauj ruam Thông tin nhận kết quả lawm. Pej xeem xaiv ib txoj kev txais ntaub "
+        "Txog kauj ruam txais txiaj ntsig lawm. Pej xeem xaiv ib txoj kev txais ntaub "
         "ntawv nyob hauv nplooj ntawv. Xaiv tiav ces nias lub pob hauv qab no los yog nias "
-        "Gửi hồ sơ nyob hauv nplooj ntawv."
+        "lub pob Xa ntaub ntawv nyob hauv nplooj ntawv."
     ),
 }
 
 GUIDED_SUBMIT_SENT = {
     "md": "Kuv nias Gửi hồ sơ pab pej xeem lawm. Pej xeem tos nplooj ntawv teb ib pliag.",
-    "tts": "Kuv nias Gửi hồ sơ pab pej xeem lawm. Pej xeem tos nplooj ntawv teb ib pliag.",
+    "tts": "Kuv nias lub pob Xa ntaub ntawv pab pej xeem lawm. Pej xeem tos nplooj ntawv teb ib pliag.",
 }
 
 GUIDED_OWNER_READY = {
@@ -1814,7 +1839,7 @@ GUIDED_OWNER_READY = {
     ),
     "tts": (
         "Kuv xyuas tus tswv ntaub ntawv hauv nplooj ntawv txaus lawm. Pej xeem nyeem dua ib "
-        "zaug, ces nias lub pob hauv qab no, kuv pab hloov mus rau Thành phần hồ sơ."
+        "zaug, ces nias lub pob hauv qab no, kuv pab hloov mus rau kauj ruam muab ntaub ntawv."
     ),
 }
 
@@ -1824,14 +1849,14 @@ GUIDED_CERTIFY_ASK = {
         "xav ua ntawv pov thawj daim no thiab?"
     ),
     "tts": (
-        "Hauv cov ntaub ntawv pej xeem tab tom muab muaj daim Căn cước công dân. Pej xeem puas "
+        "Hauv cov ntaub ntawv pej xeem tab tom muab muaj daim npav. Pej xeem puas "
         "xav ua ntawv pov thawj daim no thiab?"
     ),
 }
 
 GUIDED_CERTIFY_YES = {
     "md": "Kuv yuav ua ntawv pov thawj daim Căn cước công dân thiab.",
-    "tts": "Kuv yuav ua ntawv pov thawj daim Căn cước công dân thiab.",
+    "tts": "Kuv yuav ua ntawv pov thawj daim npav thiab.",
 }
 
 GUIDED_CERTIFY_NO = {
@@ -1840,7 +1865,7 @@ GUIDED_CERTIFY_NO = {
         "ntawv pov thawj."
     ),
     "tts": (
-        "Kuv siv daim Căn cước công dân los sau ntaub ntawv xwb, tsis muab tso rau hauv phau "
+        "Kuv siv daim npav los sau ntaub ntawv xwb, tsis muab tso rau hauv phau "
         "ntawv pov thawj."
     ),
 }
@@ -1851,7 +1876,7 @@ GUIDED_DOCS_STEP_SWITCHED = {
         "theej xwb. Pej xeem muab cov seem ces nias lub pob hauv qab no."
     ),
     "tts": (
-        "Txog kauj ruam Thành phần hồ sơ lawm. Txij no kuv tsuas txais cov ntaub ntawv yuav "
+        "Txog kauj ruam muab ntaub ntawv lawm. Txij no kuv tsuas txais cov ntaub ntawv yuav "
         "theej xwb. Pej xeem muab cov seem ces nias lub pob hauv qab no."
     ),
 }
@@ -1862,7 +1887,7 @@ GUIDED_IDENTITY_MOVED_NOTE = {
         "Yog tsis xav theej daim ntawd, pej xeem nias rho tawm."
     ),
     "tts": (
-        " Daim Căn cước công dân pej xeem muab, kuv tso rau hauv cov ntaub ntawv yuav theej. "
+        " Daim daim npav pej xeem muab, kuv tso rau hauv cov ntaub ntawv yuav theej. "
         "Yog tsis xav theej daim ntawd, pej xeem nias rho tawm."
     ),
 }
@@ -1879,8 +1904,7 @@ GUIDED_AUTHORIZATION_ATTACH_FAILED = {
         "ntawm kab giấy ủy quyền hauv nplooj ntawv."
     ),
     "tts": (
-        "Kuv muab tsis tau daim ntawv tso cai. Pej xeem nias Chọn tệp đính kèm ntawm kab "
-        "giấy ủy quyền hauv nplooj ntawv."
+        "Kuv muab tsis tau daim ntawv tso cai. Pej xeem nias lub pob xaiv ntaub ntawv ntawm kab daim ntawv tso cai hauv nplooj ntawv."
     ),
 }
 
@@ -1890,7 +1914,7 @@ GUIDED_AUTHORIZATION_ATTACH_FAILED = {
 # ntawv, thawv liab). Theo lối GUIDED_RESULT_*: KHÔNG nhúng chữ Việt qua placeholder.
 TPM_UPDATE_REQUIRED = {
     "md": "Tus pab no tseem ua tsis tau daim foos tshiab. Cán bộ hloov tus pab tshiab ces qhib dua; tam sim no pej xeem xaiv tau lwm yam.",
-    "tts": "Tus pab no tseem ua tsis tau daim foos tshiab. Cán bộ hloov tus pab tshiab ces qhib dua.",
+    "tts": "Tus pab no tseem ua tsis tau daim foos tshiab. Tus neeg ua hauj lwm hloov tus pab tshiab ces qhib dua.",
 }
 
 TPM_FILL_NEXT = {
@@ -2036,23 +2060,23 @@ BCA_AGENCY_NEED_WARD = {
 BCA_CASE_ASK = {
     "md": "Pej xeem xaiv Trường hợp raws li cov ntaub ntawv ntawm koj hauv qab no (yuav tsum xaiv ces nplooj ntawv "
           "thiaj qhib daim ntawv tshaj tawm):\n\n{cases}",
-    "tts": "Pej xeem xaiv Trường hợp hauv qab no.",
+    "tts": "Pej xeem xaiv qhov hauv qab no.",
 }
 BCA_CASE_REMIND = {
     "md": "Pej xeem xaiv Trường hợp hauv qab no.",
-    "tts": "Pej xeem xaiv Trường hợp hauv qab no.",
+    "tts": "Pej xeem xaiv qhov hauv qab no.",
 }
 BCA_CASE_FILLING = {
     "md": "Kuv tab tom xaiv Trường hợp {case} ntawm nplooj ntawv.",
-    "tts": "Kuv tab tom xaiv Trường hợp ntawm nplooj ntawv.",
+    "tts": "Kuv tab tom xaiv qhov ntawm nplooj ntawv.",
 }
 BCA_CASE_FILLED = {
     "md": "Kuv xaiv Trường hợp {case} tiav lawm.",
-    "tts": "Kuv xaiv Trường hợp tiav lawm.",
+    "tts": "Kuv xaiv qhov tiav lawm.",
 }
 BCA_CASE_MANUAL = {
     "md": "Pej xeem xaiv Trường hợp {case} ntawm nplooj ntawv.",
-    "tts": "Pej xeem xaiv Trường hợp ntawm nplooj ntawv.",
+    "tts": "Pej xeem xaiv qhov ntawm nplooj ntawv.",
 }
 BCA_AGENCY_READY = {
     "md": "Xaiv {ward}, {province} lawm. Nias Điền cơ quan thực hiện kom kuv xaiv ntawm nplooj ntawv.",
@@ -2072,15 +2096,227 @@ BCA_QR_LOGIN_GUIDE = {
 }
 COMMIT_TICKED = {
     "md": "Kuv kos lub thawv lees paub lawm. Pej xeem nias Nộp hồ sơ.",
-    "tts": "Kuv kos tiav lawm. Pej xeem nias Nộp hồ sơ.",
+    "tts": "Kuv kos tiav lawm. Pej xeem nias lub pob Xa ntaub ntawv.",
 }
 COMMIT_TICK_FAILED = {
     "md": "Kuv kos tsis tau lub thawv lees paub. Pej xeem kos lub thawv no hauv qab nplooj ntawv, ces nias Nộp hồ sơ.",
-    "tts": "Kuv kos tsis tau. Pej xeem kos lub thawv lees paub hauv qab nplooj ntawv, ces nias Nộp hồ sơ.",
+    "tts": "Kuv kos tsis tau. Pej xeem kos lub thawv lees paub hauv qab nplooj ntawv, ces nias lub pob Xa ntaub ntawv.",
 }
 # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có ("xyuas dua" xem lại, "kos lub thawv lees paub" tích ô cam kết, "nias"
 # bấm); tên nút giữ tiếng Việt như "Nộp hồ sơ". Bỏ vế "chọn lịch thu nhận sinh trắc học" (chưa có chữ).
 BCA_CCCD_SUBMIT_HINT = {
     "md": " Pej xeem xyuas dua, kos lub thawv lees paub, ces nias Lưu và Tiếp tục.",
-    "tts": " Pej xeem xyuas dua, kos lub thawv lees paub, ces nias Lưu và Tiếp tục.",
+    "tts": " Pej xeem xyuas dua, kos lub thawv lees paub, ces nias lub pob mus ntxiv.",
+}
+
+
+# Câu sidebar TỰ ĐỌC (voice/config "localSpeech") — ghép từ các vế đã dịch: "tab tom" = đang, "muab tso dua" = đính lại,
+# "tos ib pliag" = chờ chút, "txais" = nhận, "daim" = tờ/tệp, "lawm" = rồi.
+LOCAL_SPEECH = {
+    "attachRetry": "Kuv tab tom muab tso dua, pej xeem tos ib pliag.",
+    "filesReceived": "Kuv txais tau {count} daim ntaub ntawv lawm.",
+}
+
+
+# ── Toàn trình: vòng hỏi từng ô + luồng bản 2 trang một trang (field_review, tu_phap_moi) ──
+# BẢN NHÁP chờ người soát. Ghép từ chữ đã có: "lub thawv" (ô, FILL_REPORT_REVIEW), "daim foos" (tờ khai), "sau" (điền),
+# "muab tso" (đính kèm), "kuv teeb" (điền mặc định, FILL_READY), "kauj ruam txais txiaj ntsig" (bước nhận kết quả),
+# "lub pob Xa ntaub ntawv" (nút nộp), "tos ib pliag" (chờ chút). TỪ MỚI: "nug" (hỏi), "zuj zus" (lần lượt), "hla" (bỏ
+# qua), "tsum" (dừng), "yuav tsum" (bắt buộc), "tshuav" (còn lại), "hnov meej" (nghe rõ), "tus lej" (số), "ntu" (phần),
+# "rov qab" (quay lại), "pes tsawg" (bao nhiêu), "teb chaws" (quốc gia).
+# Không chèn {label}/{missing_note}/{plan_list}/{error_list}: nhãn và danh sách tiếng Việt chỉ ở khối Việt; nhãn ô
+# tiếng Mông đi qua {label_tts} (HMONG_LABELS của thủ tục).
+FR_FIELD_GENERIC = "no"  # ô chưa có tên Mông: "lub thawv no" = ô này
+FR_CHOICES_ANY = "ib qho"  # lựa chọn chưa có tên Mông: "xaiv ib qho" = chọn một cái
+FR_LEAD_FIRST = "Thawj yog"
+FR_LEAD_NEXT = "Tom ntej yog"
+FR_PROCEED_STEP_SINGLE = "tseem mus tsis tau rau kauj ruam txais txiaj ntsig"
+FR_MISSING_NOTE = " Tseem tshuav {count} lub thawv yuav tsum sau."
+FLOW2_DONE_ATTACHED = "sau txaus cov thawv yuav tsum sau thiab muab ntaub ntawv tso txaus"
+FLOW2_DONE_FILLED = "sau txaus cov thawv yuav tsum sau"
+FLOW2_REVIEW_DONE_LEAD = ("Kuv nug tag cov thawv tsis tau sau lawm. ", "Kuv nug tag cov thawv tsis tau sau lawm. ")
+FLOW2_REVIEW_STOP_LEAD = ("Kuv tsum nug lawm. ", "Kuv tsum nug lawm. ")
+# Nhãn lựa chọn hay gặp trên tờ khai (khoá = nhãn Việt nguyên văn) — nút chọn + câu hỏi đọc tên Mông.
+FR_OPTION_HMONG = {
+    "Có": "Yog",
+    "Không": "Tsis yog",
+    "Nam": "Txiv neej",
+    "Nữ": "Poj niam",
+    "Thường trú": "Nyob ruaj",
+    "Tạm trú": "Nyob ib ntus",
+    "Nơi ở hiện tại": "Qhov chaw nyob tam sim no",
+    "Trong nước": "Hauv teb chaws",
+    "Nước ngoài": "Txawv teb chaws",
+    "Việt Nam": "Nyab Laj",
+    "Bản thân": "Tus kheej",
+    "Khác": "Lwm yam",
+}
+
+FR_FILL_STATS = {
+    "md": ("Daim foos tseem tshuav {empty} lub thawv tsis tau sau ({required} lub yuav tsum sau). Pej xeem nias lub pob "
+           "Sau ntxiv cov uas tshuav kom kuv nug ib lub zuj zus."),
+    "tts": (" Daim foos tseem tshuav {empty} lub thawv tsis tau sau. Pej xeem nias lub pob Sau ntxiv cov uas tshuav kom "
+            "kuv nug ib lub zuj zus."),
+}
+FR_FILL_STATS_WAIT = {
+    "md": "Daim foos tseem tshuav {empty} lub thawv tsis tau sau. Muab ntaub ntawv tso tiav, kuv mam nug pej xeem sau ntxiv.",
+    "tts": " Daim foos tseem tshuav {empty} lub thawv tsis tau sau. Muab ntaub ntawv tso tiav, kuv mam nug pej xeem sau ntxiv.",
+}
+FR_OFFER_AFTER_ATTACH = {
+    "md": ("Daim foos tseem tshuav {empty} lub thawv tsis tau sau ({required} lub yuav tsum sau). Pej xeem nias lub pob "
+           "Sau ntxiv cov uas tshuav kom kuv nug ib lub zuj zus."),
+    "tts": (" Daim foos tseem tshuav {empty} lub thawv tsis tau sau. Pej xeem nias lub pob Sau ntxiv cov uas tshuav kom "
+            "kuv nug ib lub zuj zus."),
+}
+FR_START = {
+    "md": "Kuv yuav nug ib lub thawv zuj zus, txij saum mus rau hauv qab. Lub twg tsis paub, pej xeem hais hla.",
+    "tts": "Kuv yuav nug ib lub thawv zuj zus. Lub twg tsis paub, pej xeem hais hla. ",
+}
+FR_HEAD = {"md": "{lead} ", "tts": "{lead} ntu {where_tts}, lub thawv {label_tts}. "}
+FR_HEAD_NO_PART = {"md": "{lead} ", "tts": "{lead} lub thawv {label_tts}. "}
+FR_ASK = {
+    "md": "{head_md}lub thawv {label_tts}.{how_md}",
+    "tts": "{head_tts}{how_tts}",
+}
+FR_ASK_HOW = {"md": " Pej xeem hais los yog ntaus rau kuv.", "tts": "Pej xeem hais los yog ntaus rau kuv."}
+FR_ASK_CHOICES = {
+    "md": "{head_md}lub thawv {label_tts}. Pej xeem nias xaiv hauv qab no, los yog hais los yog ntaus.{extra_md}",
+    "tts": "{head_tts}Pej xeem xaiv {choices_tts}. Nias xaiv hauv qab no, los yog hais los yog ntaus.{extra_tts}",
+}
+FR_ASK_COUNTRY = {
+    "md": "{head_md}lub thawv {label_tts}. Pej xeem hais los yog ntaus lub npe teb chaws.",
+    "tts": "{head_tts}Pej xeem hais los yog ntaus lub npe teb chaws.",
+}
+FR_ASK_WARDS_FAILED = {
+    "md": ("{head_md}lub thawv {label_tts}. Nplooj ntawv tsis tau qhib cov npe zos. Pej xeem nias lub pob Ua dua cov npe "
+           "zos, los yog hla lub thawv no."),
+    "tts": ("{head_tts}Nplooj ntawv tsis tau qhib cov npe zos. Pej xeem nias lub pob Ua dua cov npe zos, los yog hla lub "
+            "thawv no."),
+}
+FR_COPY_COUNT_HINT = {
+    "md": " Xav tau daim ntawv theej ces hais pes tsawg daim, piv txwv: yog, ob daim.",
+    "tts": " Xav tau daim ntawv theej ces pej xeem hais pes tsawg daim, piv txwv yog, ob daim.",
+}
+FR_OTHER_TEXT_HINT = {
+    "md": " Yog {option_tts} ces pej xeem hais kom meej tias yog dab tsi.",
+    "tts": " Yog {option_tts} ces pej xeem hais kom meej tias yog dab tsi.",
+}
+FR_APPLIED = {"md": "Kuv sau lub thawv {label_tts} lawm: {value}", "tts": "Kuv sau tiav lawm. "}
+FR_APPLIED_NO_PART = {"md": "Kuv sau lub thawv {label_tts} lawm: {value}", "tts": "Kuv sau tiav lawm. "}
+FR_COPY_COUNT_FAILED = {
+    "md": "Kuv xaiv lawm, tab sis tsis tau sau pes tsawg daim ntawv theej. Kuv yuav nug dua lub thawv ntawd.",
+    "tts": "Kuv xaiv lawm, tab sis tsis tau sau pes tsawg daim ntawv theej. Kuv yuav nug dua. ",
+}
+FR_APPLY_FAILED = {
+    "md": "Kuv sau tsis tau lub thawv {label_tts}, pej xeem sau ntawm nplooj ntawv.",
+    "tts": "Kuv sau tsis tau lub thawv {label_tts}, pej xeem sau ntawm nplooj ntawv. ",
+}
+FR_SKIPPED = {"md": "Hla lub thawv {label_tts}.", "tts": "Kuv hla lub thawv {label_tts}. "}
+FR_BACK = {
+    "md": "Rov qab mus rau lub thawv {label_tts} kom kho.",
+    "tts": "Kuv rov qab mus rau lub thawv {label_tts} kom pej xeem kho. ",
+}
+FR_NO_BACK = {
+    "md": "Tseem tsis tau muaj lub thawv twg sau tas los kom kho.",
+    "tts": "Tseem tsis tau muaj lub thawv twg sau tas los kom kho. ",
+}
+FR_UNCLEAR = {
+    "md": "Kuv tsis tau hnov meej. Pej xeem hais dua lub thawv {label_tts}.",
+    "tts": "Kuv tsis tau hnov meej. Pej xeem hais dua lub thawv {label_tts}.",
+}
+FR_DIGITS_SHORT = {
+    "md": "Kuv mam li hnov {count} tus lej, lub thawv {label_tts} yuav tsum muaj {need} tus lej. Pej xeem nyeem dua maj mam.",
+    "tts": ("Kuv mam li hnov {count} tus lej, lub thawv {label_tts} yuav tsum muaj {need} tus lej. Pej xeem nyeem dua maj "
+            "mam ib tus zuj zus."),
+}
+FR_PHONE_FORMAT = {
+    "md": "Lub thawv {label_tts} yuav tsum pib ntawm tus lej xoom. Pej xeem nyeem dua tag nrho, pib ntawm xoom.",
+    "tts": "Kuv hnov tus lej no, tab sis lub thawv {label_tts} yuav tsum pib ntawm tus lej xoom. Pej xeem nyeem dua tag nrho, pib ntawm xoom.",
+}
+FR_PROCEED_BLOCKED = {
+    "md": ("Daim foos tseem tshuav {required} lub thawv yuav tsum sau, {step_md}. Kuv nug ntxiv lub thawv {label_tts}; "
+           "tsis paub ces hais hla, los yog hais tsum kom pej xeem sau ntawm daim foos."),
+    "tts": ("Daim foos tseem tshuav {required} lub thawv yuav tsum sau, {step_md}. Kuv nug ntxiv lub thawv {label_tts}, "
+            "tsis paub ces hais hla, los yog hais tsum kom pej xeem sau ntawm daim foos."),
+}
+FR_OPTIONAL_PHASE_SINGLE = {
+    "md": ("Cov thawv yuav tsum sau puv lawm. Kuv nug ntxiv {optional} lub thawv tsis yuav tsum sau; xav mus ntxiv ces "
+           "nias lub pob Xaiv txoj kev txais txiaj ntsig los yog lub pob Xa ntaub ntawv."),
+    "tts": ("Cov thawv yuav tsum sau puv lawm. Kuv nug ntxiv cov thawv tsis yuav tsum sau, xav mus ntxiv ces nias lub pob "
+            "Xaiv txoj kev txais txiaj ntsig los yog lub pob Xa ntaub ntawv. "),
+}
+FR_DONE_SINGLE_PAGE = {
+    "md": ("Kuv nug tag cov thawv tsis tau sau lawm.{required_note} Pej xeem xyuas dua daim foos, ces nias lub pob Xaiv "
+           "txoj kev txais txiaj ntsig thiab lub pob Xa ntaub ntawv."),
+    "tts": ("Kuv nug tag cov thawv tsis tau sau lawm. Pej xeem xyuas dua daim foos, ces nias lub pob Xaiv txoj kev txais "
+            "txiaj ntsig thiab lub pob Xa ntaub ntawv."),
+}
+FR_STOPPED_SINGLE_PAGE = {
+    "md": ("Kuv tsum nug lawm.{required_note} Pej xeem xyuas dua daim foos, ces nias lub pob Xaiv txoj kev txais txiaj "
+           "ntsig thiab lub pob Xa ntaub ntawv."),
+    "tts": ("Kuv tsum nug lawm. Pej xeem xyuas dua daim foos, ces nias lub pob Xaiv txoj kev txais txiaj ntsig thiab lub "
+            "pob Xa ntaub ntawv."),
+}
+FR_LOOP_ENDED = {
+    "md": "Kuv tsum nug lawm. Pej xeem nias lub pob Sau ntxiv cov uas tshuav kom kuv nug ntxiv.",
+    "tts": "Kuv tsum nug lawm. Pej xeem nias lub pob Sau ntxiv cov uas tshuav kom kuv nug ntxiv.",
+}
+FLOW2_NEED_REQUIRED = {
+    "md": ("Daim foos tseem tshuav {required} lub thawv yuav tsum sau. Pej xeem sau kiag rau daim foos, los yog nias lub "
+           "pob Sau ntxiv cov uas tshuav kom kuv nug thiab sau ib lub zuj zus."),
+    "tts": (" Daim foos tseem tshuav {required} lub thawv yuav tsum sau. Pej xeem sau kiag rau daim foos, los yog nias "
+            "lub pob Sau ntxiv cov uas tshuav kom kuv nug thiab sau ib lub zuj zus."),
+}
+FLOW2_OPTIONAL_ONLY = {
+    "md": ("Cov thawv yuav tsum sau puv lawm, tshuav {optional} lub thawv tsis yuav tsum sau. Xav sau ntxiv ces nias lub "
+           "pob Sau ntxiv cov uas tshuav; tsis xav ces nias lub pob Xaiv txoj kev txais txiaj ntsig, los yog lub pob Xa "
+           "ntaub ntawv."),
+    "tts": (" Cov thawv yuav tsum sau puv lawm, tshuav {optional} lub thawv tsis yuav tsum sau. Xav sau ntxiv ces nias "
+            "lub pob Sau ntxiv cov uas tshuav, tsis xav ces nias lub pob Xaiv txoj kev txais txiaj ntsig, los yog lub pob "
+            "Xa ntaub ntawv."),
+}
+FLOW2_READY = {
+    "md": ("Pej xeem {done} lawm. Kuv twb xaiv ib txoj kev txais txiaj ntsig. Xav hloov ces nias lub pob Xaiv txoj kev "
+           "txais txiaj ntsig, los yog nias lub pob Xa ntaub ntawv kom xa kiag."),
+    "tts": (" Pej xeem {done} lawm. Kuv twb xaiv ib txoj kev txais txiaj ntsig. Xav hloov ces nias lub pob Xaiv txoj kev "
+            "txais txiaj ntsig, los yog nias lub pob Xa ntaub ntawv kom xa kiag."),
+}
+FLOW2_READY_NO_DEFAULT = {
+    "md": "Pej xeem {done} lawm. Pej xeem nias lub pob Xaiv txoj kev txais txiaj ntsig, ces nias lub pob Xa ntaub ntawv.",
+    "tts": " Pej xeem {done} lawm. Pej xeem nias lub pob Xaiv txoj kev txais txiaj ntsig, ces nias lub pob Xa ntaub ntawv.",
+}
+FLOW2_REVIEW_MISSING = {
+    "md": ("{lead_md}Daim foos tseem tshuav {required} lub thawv yuav tsum sau. Pej xeem sau kiag rau daim foos, los yog "
+           "nias lub pob Sau ntxiv cov uas tshuav kom kuv nug dua."),
+    "tts": ("{lead_tts}Daim foos tseem tshuav {required} lub thawv yuav tsum sau. Pej xeem sau kiag rau daim foos, los yog "
+            "nias lub pob Sau ntxiv cov uas tshuav kom kuv nug dua."),
+}
+FLOW2_DOCS_RECEIVED = {
+    "md": ("Kuv txais tau {files_count} daim lawm. Kuv tab tom nyeem cov ntaub ntawv los sau daim foos thiab muab tso, "
+           "pej xeem tos ib pliag."),
+    "tts": "Kuv txais tau cov ntaub ntawv lawm. Kuv tab tom nyeem los sau daim foos thiab muab tso, pej xeem tos ib pliag.",
+}
+FLOW2_REFILL = {
+    "md": "Kuv tab tom nyeem cov ntaub ntawv dua los sau daim foos dua, pej xeem tos ib pliag.",
+    "tts": "Kuv tab tom nyeem cov ntaub ntawv dua los sau daim foos dua, pej xeem tos ib pliag.",
+}
+FLOW2_FILL_RESULT = {
+    "md": "Kuv sau tau {filled} lub thawv rau daim foos.{default_md}",
+    "tts": "Kuv sau tau {filled} lub thawv rau daim foos.{default_tts}",
+}
+FLOW2_FILL_DEFAULT = {
+    "md": " Muaj {count} lub thawv kuv teeb (ciam daj), pej xeem xyuas dua.",
+    "tts": " Muaj {count} lub thawv kuv teeb, pej xeem xyuas dua.",
+}
+FLOW2_ATTACH_RESULT = {
+    "md": "Kuv muab {attached} daim tso lawm. Pej xeem xyuas dua cov daim muab tso ntawm nplooj ntawv.",
+    "tts": "Kuv muab tso tiav lawm. Pej xeem xyuas dua cov daim muab tso ntawm nplooj ntawv.",
+}
+FLOW2_ATTACH_ALL_EXIST = {
+    "md": "Cov ntaub ntawv twb muaj lawm, kuv tsis muab tso dua.",
+    "tts": "Cov ntaub ntawv twb muaj lawm, kuv tsis muab tso dua.",
+}
+FLOW2_ATTACH_ERRORS = {
+    "md": "Kuv muab tau {attached} daim, tshuav qee daim tsis tau. Pej xeem nias lub pob Muab tso dua kom kuv ua dua.",
+    "tts": "Kuv muab tau ib txhia, tshuav qee daim tsis tau. Pej xeem nias lub pob Muab tso dua kom kuv ua dua.",
 }

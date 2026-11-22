@@ -1523,6 +1523,12 @@ ATTACH_NONE = {
 
 # Kế hoạch có tệp KHÔNG xếp được vào hồ sơ nào (vd giấy tùy thân không khớp người ký của văn bản
 # nào). Nói NGAY ở bước báo kế hoạch để cán bộ biết trước tệp nào sẽ không được đính.
+ATTACH_PLAN_EMPTY = {
+    "md": "📎 Không có tệp nào để đính kèm.\n\n⚠️ {skipped_note}\n\nCán bộ kiểm tra lại giấy tờ — cần thì bấm **Điều chỉnh "
+          "giấy tờ** hoặc đính tay trên trang ạ.",
+    "tts": "Dạ, không có tệp nào để đính kèm. Cán bộ kiểm tra lại giấy tờ giúp tôi ạ.",
+}
+
 ATTACH_PLAN_SKIPPED_NOTE = {
     "md": "\n\n⚠️ {skipped_note}",
     "tts": " Có giấy tờ tôi chưa xếp được, sẽ bỏ qua ạ.",
@@ -2233,7 +2239,7 @@ TPM_DONE_REMIND = {
     "tts": "Dạ, công dân bấm nút bên dưới ạ.",
 }
 
-# ── Trang nộp một trang, luồng bản 2 (extension khai supportsFlowV2; chế độ Mông giữ luồng cũ) ──
+# ── Trang nộp một trang, luồng bản 2 (extension khai supportsFlowV2; chế độ Mông chỉ ở thủ tục khai HMONG_LABELS) ──
 # Mỗi khung một việc: nhận tệp → thẻ tiến trình 3 bước → kết quả điền → kết quả đính kèm → kết luận. Nút đi tiếp
 # (chọn hình thức nhận kết quả, nộp) chỉ hiện khi tờ khai đủ ô bắt buộc.
 FLOW2_STEPS = ("Bóc tách thông tin từ giấy tờ", "Điền tờ khai", "Đính kèm giấy tờ")
@@ -3116,7 +3122,7 @@ PLACE_NOT_HEARD = {
 }
 
 # ── Bổ sung ô còn trống ngay trên tờ khai eForm (chat/field_review) ──
-# Chỉ chạy ở chế độ tiếng Việt: nhãn ô lấy NGUYÊN VĂN từ tờ khai nên chưa có bản Mông.
+# Nhãn ô lấy NGUYÊN VĂN từ tờ khai. Chế độ Mông chỉ chạy ở thủ tục khai HMONG_LABELS (nhãn ô tiếng Mông theo tên ô).
 # Lời đọc KHÔNG ngắt dấu phẩy thành mẩu quá ngắn (TTS dễ đọc vấp); *_tts của nhãn đã bỏ dấu phẩy và "/".
 # Mỗi bong bóng một thông tin: kết quả ô trước / lời mở đầu / câu hỏi ô kế tiếp hiện riêng.
 FR_CHIP = "📝 Bổ sung các thông tin còn thiếu"
@@ -3309,9 +3315,9 @@ FR_CURRENT_MD = "\n\nĐang điền: **{value}**"
 # Ô ít lựa chọn (≤ 6): đọc luôn các lựa chọn và hiện nút bấm chọn. choices_* là nhãn NGUYÊN VĂN trên tờ khai.
 FR_ASK_CHOICES = {
     "md": ("{head_md}Ô: **{label}**{where_md}{current_md}\n\n{choices_md}\n\n"
-           "Công dân bấm chọn bên dưới, hoặc nói / gõ giúp tôi ạ."),
+           "Công dân bấm chọn bên dưới, hoặc nói / gõ giúp tôi ạ.{extra_md}"),
     "tts": ("{head_tts}Công dân chọn {choices_tts} ạ. "
-            "Công dân bấm chọn bên dưới hoặc nói hoặc gõ giúp tôi."),
+            "Công dân bấm chọn bên dưới hoặc nói hoặc gõ giúp tôi.{extra_tts}"),
 }
 # Ô Quốc gia / Quốc tịch (danh sách cả trăm nước): hỏi Việt Nam hay nước khác.
 FR_ASK_COUNTRY = {
@@ -4145,4 +4151,11 @@ WALLET_ONLY_UNAVAILABLE = {
 WALLET_ONLY_NONE_PICKED = {
     "md": "Công dân chưa chọn giấy nào trong Ví cá nhân. Công dân gửi giấy tờ bằng một trong các cách dưới đây ạ.",
     "tts": "Dạ, công dân chưa chọn giấy nào trong ví. Công dân gửi giấy tờ bằng một trong các cách dưới đây ạ.",
+}
+
+
+# Câu sidebar TỰ ĐỌC ngoài lượt chat (voice/config "localSpeech"): cổng lỗi giữa lúc đính kèm, vừa nhận thêm tệp.
+LOCAL_SPEECH = {
+    "attachRetry": "Dạ dịch vụ công đang lỗi, công dân chờ chút tôi đính kèm lại ạ.",
+    "filesReceived": "Tôi đã nhận {count} tệp mà công dân gửi lên nhé.",
 }

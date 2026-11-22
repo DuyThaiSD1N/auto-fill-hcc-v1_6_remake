@@ -374,7 +374,7 @@ def test_review_soat_cum_ly_hon_tren_gia_tri_se_duoc_dien(monkeypatch):
     values = {**VALUES, "DivorceDecision_Number": "15/2018", "BanAn_Date": "02/03/2019"}
     asyncio.run(thanh_tra.review([], "", values, OTHER_ACCOUNT))
     assert seen["values"]["BanAn_Number"] == "15/2018" and seen["values"]["BanAn_Date"] == "02/03/2019"
-    assert seen["keys"] == ["giay_ho_tich", "dinh_danh", "dia_chi"]
+    assert seen["keys"] == ["giay_ho_tich", "sdt_nguoi_nop", "dinh_danh", "dia_chi"]
 
 
 def test_co_quan_chi_doi_khi_chep_tu_dong_goc_hoac_ghi_du_cap_hon(monkeypatch):

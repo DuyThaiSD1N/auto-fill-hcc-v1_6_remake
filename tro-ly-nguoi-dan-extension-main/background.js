@@ -464,6 +464,7 @@ async function clearCitizenDvcCookies(tabId) {
 
   let removed = 0;
   let failed = 0;
+  const removedCookies = [];
   await Promise.all([...unique.values()].map(async ({ cookie, removalHost }) => {
     const url = cookieRemovalUrl(cookie, removalHost);
     if (!url || !cookie?.name) {
@@ -475,12 +476,37 @@ async function clearCitizenDvcCookies(tabId) {
     if (cookie.partitionKey) details.partitionKey = cookie.partitionKey;
     try {
       const result = await chrome.cookies.remove(details);
-      if (result) removed += 1;
-      else failed += 1;
+      if (result) {
+        removed += 1;
+        removedCookies.push({ cookie });
+      } else failed += 1;
     } catch (_) {
       failed += 1;
     }
   }));
+
+  // Kết quả theo TỪNG cổng (miền trong phạm vi dọn) cho nhật ký hồ sơ: tìm thấy / đã xóa / còn lại sau khi quét lại.
+  const portalOf = (cookie) => {
+    const domain = String(cookie?.domain || "").replace(/^\./, "").toLowerCase();
+    return scope.domains.find((d) => domain === d || domain.endsWith(`.${d}`)) || "";
+  };
+  const portals = new Map(scope.domains.map((d) => [d, { host: d, found: 0, removed: 0, left: 0 }]));
+  for (const { cookie } of unique.values()) {
+    const row = portals.get(portalOf(cookie));
+    if (row) row.found += 1;
+  }
+  for (const { cookie } of removedCookies) {
+    const row = portals.get(portalOf(cookie));
+    if (row) row.removed += 1;
+  }
+  const recheck = await Promise.allSettled(queryDetails.map(async (details) => chrome.cookies.getAll(details)));
+  for (const query of recheck) {
+    if (query.status !== "fulfilled") continue;
+    for (const cookie of query.value || []) {
+      const row = portals.get(portalOf(cookie));
+      if (row) row.left += 1;
+    }
+  }
 
   // localStorage/IndexedDB: các host đã đi qua + host đang giữ cookie phiên (miền SSO của cổng).
   const origins = new Set(scope.hosts.map((host) => `https://${host}`));
@@ -517,6 +543,8 @@ async function clearCitizenDvcCookies(tabId) {
     storageError,
     clearedTabs,
     failedTabs,
+    // Chỉ tên miền + số đếm, không tên/giá trị cookie. Cổng không còn cookie nào vẫn báo (đã đăng xuất sẵn).
+    portals: [...portals.values()],
   };
 }
 

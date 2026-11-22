@@ -147,17 +147,17 @@ def test_luot_chi_co_chu_giu_nut_cung_buoc_bo_nut_khi_sang_buoc_khac():
     assert conv["voice_options"] is None
 
 
-def test_noi_duoc_nut_nop_ho_so_tru_che_do_mong():
+def test_noi_duoc_nut_nop_ho_so_ca_che_do_mong():
+    # Chế độ Mông cũng nói chọn được nút nộp (vẫn qua câu xác nhận, có bản Mông) — kèm nhãn Mông cho lớp dịch.
     r = flow.Reply("x")
-    r.chips = [{"label": "Gửi hồ sơ", "send": "__action:guided_submit"},
+    r.chips = [{"label": "Gửi hồ sơ", "send": "__action:guided_submit", "labelHmong": "Xa ntaub ntawv"},
                {"label": "Nhận bản giấy", "send": '__action:pick_result_method:{"method":"paper"}'}]
-    conv = _conv("done")
-    flow.update_voice_options(conv, r)
-    assert [i["label"] for i in conv["voice_options"]["items"]] == ["Gửi hồ sơ", "Nhận bản giấy"]
-    conv = _conv("done")
-    conv["lang"] = "hmong"
-    flow.update_voice_options(conv, r)
-    assert [i["label"] for i in conv["voice_options"]["items"]] == ["Nhận bản giấy"]
+    for lang in ("vi", "hmong"):
+        conv = _conv("done")
+        conv["lang"] = lang
+        flow.update_voice_options(conv, r)
+        assert [i["label"] for i in conv["voice_options"]["items"]] == ["Gửi hồ sơ", "Nhận bản giấy"]
+        assert conv["voice_options"]["items"][0]["labelHmong"] == "Xa ntaub ntawv"
 
 
 async def test_noi_nop_ho_so_thi_hoi_xac_nhan_roi_moi_nop():
@@ -284,3 +284,24 @@ async def test_noi_quet_bang_dien_thoai_o_buoc_chu_ho_so_thi_mo_lai_qr(monkeypat
     r = await flow.handle_turn(conv, Intent("pick_doc_method", "qr"), free_text=True)
     assert conv["state"] == "qr_waiting" and conv["owner_phase"] is True
     assert r.actions == [{"type": "show_qr", "sid": "new"}]
+
+
+async def test_che_do_mong_noi_nop_thi_hoi_xac_nhan_bang_tieng_mong():
+    conv = _conv("done", caps={"supportsTuPhapMoi": True, "supportsTpmAutoFlow": True})
+    conv["lang"] = "hmong"
+    chip = {"label": "💾 Lưu và nộp hồ sơ", "send": "__action:tpm_submit", "solid": True, "cta": True}
+    conv["voice_options"] = {"state": "done", "items": [{"label": chip["label"], "send": chip["send"], "chip": chip}]}
+    asked = await flow.handle_turn(conv, Intent("action", "tpm_submit", {"_voice_button": chip["send"]}))
+    assert asked.tts_lang == "hmong" and "xa ntaub ntawv" in asked.tts_text
+    assert not any(a.get("type") == "guided_submit" for a in asked.actions)
+    assert asked.chips[0]["send"] == '__action:tpm_submit:{"voiceConfirmed":true}'
+    cancelled = await flow.handle_turn(conv, Intent("deny"))
+    assert cancelled.tts_lang == "hmong" and "Kuv tseem tsis tau xa" in cancelled.tts_text
+
+
+def test_the_chon_cach_gui_giay_mang_nhan_mong_cho_giong_noi():
+    card = {"kind": "doc_options", "options": ["qr", "scan"],
+            "hmong": {"qr": {"title": "Thaij duab ntawm xov tooj (luam QR)"}}}
+    items = flow._card_voice_items(card)
+    assert items[0]["labelHmong"] == "Thaij duab ntawm xov tooj (luam QR)"
+    assert "labelHmong" not in items[1]

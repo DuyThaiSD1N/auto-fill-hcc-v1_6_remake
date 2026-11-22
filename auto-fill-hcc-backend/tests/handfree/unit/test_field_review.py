@@ -293,9 +293,12 @@ def test_o_ngay_phai_du_ngay_thang_nam():
 
 def test_nhan_viet_tat_sdt_cung_kiem_do_dai_so_dien_thoai():
     field = {"label": "SĐT (Không sử dụng SĐT bàn)", "kind": "text", "options": []}
-    # Công dân đọc thiếu số 0 đầu (9 số) → hỏi lại, mang theo dãy đã nghe để câu hỏi nói rõ mới nghe được mấy số.
+    # Công dân đọc thiếu số 0 đầu (9 số) → thêm 0 (số di động 10 số bỏ 0 đầu còn đúng 9 số).
     short = agent._check({"action": "value", "value": "963765189"}, field, "chín sáu ba bảy sáu năm một tám chín")
-    assert short.action == "unclear" and short.value == "963765189"
+    assert short == agent.Answer("value", "0963765189")
+    # Thiếu số ở giữa (8 số) → vẫn hỏi lại, mang theo dãy đã nghe để câu hỏi nói rõ mới nghe được mấy số.
+    short = agent._check({"action": "value", "value": "96376518"}, field, "chín sáu ba bảy sáu năm một tám")
+    assert short.action == "unclear" and short.value == "96376518"
     assert agent._check({"action": "value", "value": "0963765189"}, field) == agent.Answer("value", "0963765189")
     # Thủ tục chạy luồng 4 bước iGate: chỉ số di động 10 số; nơi khác vẫn nhận máy bàn 11 số (02x…).
     landline = {"action": "value", "value": "02433334444"}

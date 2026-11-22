@@ -3,12 +3,14 @@ bước phân vai chốt là người chết + toà án (khung ở _shared/thanh
 ô điền đợt 2 (dot_hai.py, app/second_pass)."""
 
 from app.pipelines._shared.thanh_tra import engine
+from app.pipelines._shared.thanh_tra import sdt_nguoi_nop
 from app.pipelines._shared.thanh_tra.ho_so import Case, Result
 
 from . import dia_chi, dinh_danh, quan_he, thong_tin_chet
 
 TITLE = "đăng ký khai tử"
-INSPECTORS = (dinh_danh.INSPECTOR, thong_tin_chet.INSPECTOR, dia_chi.INSPECTOR, quan_he.INSPECTOR)
+INSPECTORS = (dinh_danh.INSPECTOR, thong_tin_chet.INSPECTOR, dia_chi.INSPECTOR, quan_he.INSPECTOR,
+              sdt_nguoi_nop.INSPECTOR)
 
 
 async def review(documents: list[dict], context: str, values: dict, options: dict | None = None) -> Result:

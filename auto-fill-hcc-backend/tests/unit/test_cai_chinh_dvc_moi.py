@@ -85,8 +85,10 @@ def test_detect_matches_own_page_only():
 def test_ui_keys_exist_in_snapshot():
     data_names = set(re.findall(r'data-name="([A-Za-z0-9_]+?)__\d+"', SNAPSHOT.read_text(encoding="utf-8")))
     # Snapshot chụp trước khi cổng đổi ô ngày sinh "citizenNDKNgaysinh" → "citizenNDK_NgaySinh" (DOM thật);
-    # ô "citizenMqhkhac" chỉ render sau khi chọn quan hệ "Khác".
-    for name in set(UI_COMP_BY_NAME) - {"citizenNDKNoiCuTru_TrongNuoc", "citizenNDK_NgaySinh", "citizenMqhkhac"}:
+    # ô "citizenMqhkhac" chỉ render sau khi chọn quan hệ "Khác"; "citizenPhone" (SĐT khối người nộp) cổng thêm sau
+    # ngày chụp snapshot này, có trong snapshot TTHN mới hơn.
+    for name in set(UI_COMP_BY_NAME) - {"citizenNDKNoiCuTru_TrongNuoc", "citizenNDK_NgaySinh", "citizenMqhkhac",
+                                        "citizenPhone"}:
         assert name in data_names, name
 
 

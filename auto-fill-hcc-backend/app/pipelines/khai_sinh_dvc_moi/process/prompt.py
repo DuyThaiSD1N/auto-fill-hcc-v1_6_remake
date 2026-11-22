@@ -56,6 +56,19 @@ khai sinh. Khối người nộp trên cổng khóa theo tài khoản → KHÔNG
 13. SoLuongBanSao: "Đề nghị cấp bản sao: Có ☑ ... <n> bản" → n; đánh dấu "Không" → 0; không ghi → bỏ.
 </nguoi_yeu_cau>
 
+<nguoi_nop>
+- NguoiNop_SoDienThoai: CHỈ khi <nguoi_nop> ghi "Có trong hồ sơ: Có". Hồ sơ có số điện thoại của CHÍNH người nộp thì
+  BẮT BUỘC trả — bỏ trống khi giấy có ghi là SAI. Rà đủ các chỗ:
+  (a) dòng "Số điện thoại"/"SĐT"/"ĐT" in hoặc viết trong khối người yêu cầu của tờ khai (kể cả ghi liền sau họ tên
+      trên cùng dòng), khi người yêu cầu là người nộp;
+  (b) dãy số 10 chữ số viết tay cạnh / dưới họ tên, chữ ký người yêu cầu ở cuối tờ khai, có hoặc không có chữ "ĐT" —
+      OCR hay tách dãy số này thành một dòng riêng ngay sau khối ký tên / cuối trang tờ khai;
+  (c) dòng "Số điện thoại"/"Điện thoại" ở mục NGƯỜI ĐƯỢC ỦY QUYỀN của giấy ủy quyền khi người nộp là người được ủy
+      quyền; dòng "Số điện thoại"/"ĐT" trong đơn do chính người nộp đứng tên.
+  Chép đủ chữ số. Số của người khác (bên ủy quyền khi người nộp là bên được ủy quyền, người được cấp / khai sinh không
+  phải người nộp), số của cơ quan, bệnh viện, cán bộ; số định danh / CCCD, mã số thuế, số hồ sơ → bỏ.
+</nguoi_nop>
+
 <khong_bia>
 14. Giấy tờ không ghi → bỏ field. Không suy diễn, không ghép ngày "01/01".
 </khong_bia>"""

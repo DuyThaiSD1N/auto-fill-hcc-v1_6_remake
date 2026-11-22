@@ -72,5 +72,5 @@ test("tờ khai form cũ (eForm): công dân tự gõ thì tô lại màu, đế
 test("requiredFirst: tìm ô kế tiếp lấy ô bắt buộc trống trước, rồi mới tới ô không bắt buộc (cả eForm lẫn SurveyJS)", () => {
   const legacy = read("content/field-review.js");
   assert.match(legacy, /\|\| \(msg\.requiredFirst && list\.find\(\(s\) => !s\.value\(\) && s\.required && !skip\.has\(s\.key\)\)\)\s*\|\| list\.find\(\(s\) => !s\.value\(\) && !skip\.has\(s\.key\)\);/);
-  assert.match(adapter, /\|\| \(msg\.requiredFirst && list\.find\(\(x\) => !x\.value && x\.required && !skip\.has\(x\.name\)\)\)\s*\|\| list\.find\(\(x\) => !x\.value && !skip\.has\(x\.name\)\);/);
+  assert.match(adapter, /\|\| \(\(msg\.requiredFirst \|\| msg\.requiredOnly\) && list\.find\(\(x\) => !x\.value && x\.required && !skip\.has\(x\.name\)\)\)\s*\|\| \(!msg\.requiredOnly && list\.find\(\(x\) => !x\.value && !skip\.has\(x\.name\)\)\);/);
 });

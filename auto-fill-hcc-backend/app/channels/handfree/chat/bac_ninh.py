@@ -957,6 +957,30 @@ _BN_HOST = "dichvucong.bacninh.gov.vn"
 _BN_STAY_MARKS = ("eform", "vneidsso", "login", "sso")
 
 
+def account_left_reply(conv: dict, proc: dict | None, ctx: dict | None, url: str):
+    """Công dân tự điền + Lưu thông tin tài khoản ngay trên cổng (không qua nút Lưu của trợ lý) rồi cổng sang trang thủ
+    tục 4 tab / về trang chủ: bước tài khoản coi như xong như khi Lưu bằng trợ lý. Không thì pha "account" kẹt lại —
+    lượt điền sau vẫn nhắm trang tài khoản (điền 0 ô) và kết quả đọc đơn không bao giờ được điền."""
+    ctx = ctx if isinstance(ctx, dict) else {}
+    if not account_phase(conv, proc) or ctx.get("bnAccountForm"):
+        return None
+    on_tab = bool(_page_tab(ctx))
+    parts = urlsplit(url or "")
+    at_home = parts.hostname == _BN_HOST and not any(
+        m in f"{parts.path}?{parts.query}".lower() for m in _BN_STAY_MARKS)
+    if not on_tab and not at_home:
+        return None
+    st = _st(conv)
+    st["account_saved"] = True
+    st["phase"] = None
+    conv.pop("field_review", None)
+    conv["state"] = "guide_login"
+    conv["pipeline_status"] = ""
+    if on_tab:
+        return arrive_reply(conv, proc, ctx) or _reply()
+    return account_home_reply(conv, proc, url) or _reply()
+
+
 def account_home_reply(conv: dict, proc: dict | None, url: str):
     """Lưu tài khoản xong cổng Bắc Ninh đưa về TRANG CHỦ chứ không mở lại tờ khai đang dở → mở lại link kê khai của
     thủ tục (im lặng: trang thủ tục mở ra thì watcher báo, luồng đi tiếp như thường). Giới hạn số lần như trang chủ

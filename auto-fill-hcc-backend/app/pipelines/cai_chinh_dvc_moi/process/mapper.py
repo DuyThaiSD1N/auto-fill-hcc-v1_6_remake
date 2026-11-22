@@ -231,6 +231,16 @@ def _self_subject_values(values: dict, options: dict | None) -> dict:
     return out
 
 
+def _submitter_phone(value, context: str) -> str:
+    """Số điện thoại người nộp đọc từ giấy: chỉ khi người nộp có trong hồ sơ và số đúng dạng di động/cố định VN."""
+    if _fold(labeled_value(section(context, "nguoi_nop"), "Có trong hồ sơ")) != "co":
+        return ""
+    digits = _digits(value)
+    if digits.startswith("84") and len(digits) in (11, 12):
+        digits = "0" + digits[2:]
+    return digits if re.fullmatch(r"0\d{9,10}", digits) else ""
+
+
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
     values = {f.get("name"): f.get("value") for f in fields or [] if isinstance(f, dict)}
     options = options or {}
@@ -249,6 +259,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         seen.add(name)
         return field
 
+    # Ô SĐT là ô duy nhất người nộp tự điền trong khối người nộp (khối khóa theo tài khoản).
+    add("citizenPhone", _submitter_phone(values.get("NguoiNop_SoDienThoai"), context))
     # Khối người nộp cổng đổ theo tài khoản nhưng hay bỏ trống radio nơi cư trú → mặc định "Trong Nước",
     # chỉ ghi khi ô còn trống để không đè lựa chọn có sẵn.
     nyc_residence = add("citizenNycNoicutru", "Trong Nước", default=True)
