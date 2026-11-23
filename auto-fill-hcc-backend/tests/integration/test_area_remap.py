@@ -132,6 +132,12 @@ def test_bac_ninh_old_village_renamed_to_to_dan_pho_in_detail():
     assert dia_chi("Song Liễu", "Thôn Mãn Xá") == "Tổ dân phố Mãn Xá"
     assert dia_chi("Song Liễu", "Tổ dân phố Mãn Xá") == "Tổ dân phố Mãn Xá"
     assert dia_chi("Song Liễu", "Thôn Đồng Ngư") == "Tổ dân phố Đồng Ngư"
+    # Địa chỉ tài khoản cổng ghi cả tên cũ lẫn tên mới: đổi xong không lặp tổ dân phố.
+    assert dia_chi("Song Liễu", "Khu dân cư Ngọc Tỉnh, TDP Liễu Khê") == "Tổ dân phố Liễu Khê"
+    assert dia_chi("Song Liễu", "TDP Liễu Khê, Thôn Ngọc Tỉnh") == "Tổ dân phố Liễu Khê"
+    assert dia_chi("Song Liễu", "Thôn Ngọc Tỉnh, TDP Ngọc Tỉnh, Bến Long") == "Tổ dân phố Liễu Khê"
+    assert dia_chi("Song Liễu", "Số 5 Ngọc Tỉnh, TDP Liễu Khê") == "Số 5 Liễu Khê, TDP Liễu Khê"
+    assert dia_chi("Song Liễu", "Thôn Ngọc Tỉnh, Thôn Ngọc Lâm") == "Tổ dân phố Liễu Khê, Tổ dân phố Ngọc Liễu"
 
 
 def test_lai_chau_muong_kim_old_ban_renamed_in_detail():

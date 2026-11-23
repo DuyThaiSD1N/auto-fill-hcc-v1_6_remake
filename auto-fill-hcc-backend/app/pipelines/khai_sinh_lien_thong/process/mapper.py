@@ -15,7 +15,8 @@ from app.pipelines.khai_sinh_lien_thong.process.schema import QUOC_TICH_QUOC_GIA
 # Cấu hình theo tài khoản: 4 phường Đà Lạt (Xuân Hương, Lâm Viên, Cam Ly, Lang Biang — Lâm Đồng) mục
 # "Thông tin cấp thẻ BHYT" luôn chọn giám hộ trên thẻ = mẹ và nơi KCB ban đầu = Bệnh viện Sản - Nhi tỉnh Lâm
 # Đồng. Phường Hải Châu (Đà Nẵng) và Phường Nha Trang (Khánh Hòa) chỉ chọn giám hộ trên thẻ = mẹ, nơi
-# KCB để cán bộ tự chọn.
+# KCB để cán bộ tự chọn. Phường Bắc Nha Trang (Khánh Hòa) thì ngược lại: KHÔNG đặt mặc định giám hộ trên thẻ = mẹ
+# (bỏ mặc định chung của STATIC_DEFAULTS), để cán bộ tự chọn.
 # Mapper không biết tài khoản nên router (Auto Fill) và pipeline_runner (Handfree) gọi
 # with_account_process_options để server tự đặt cờ; cờ luôn bị ghi đè theo tài khoản, client không
 # tự bật được cho xã khác.
@@ -23,6 +24,7 @@ PROCEDURE_KEY = "khai-sinh-dang-ky"
 DA_LAT_BHYT_OPTION = "daLatBhytDefaults"
 HAI_CHAU_BHYT_OPTION = "haiChauBhytDefaults"
 NHA_TRANG_BHYT_OPTION = "nhaTrangBhytDefaults"
+BAC_NHA_TRANG_NO_GUARDIAN_OPTION = "bacNhaTrangNoBhytGuardianDefault"
 _DA_LAT_WARDS = {"xuan huong", "lam vien", "cam ly", "lang biang"}
 _WARD_PREFIXES = ("xa ", "phuong ", "thi tran ")
 # ng-select Nơi KCB: extension gõ chuỗi này vào ô tìm rồi chọn option CHỨA nó.
@@ -62,12 +64,21 @@ def is_nha_trang_bhyt_ward(user: dict | None) -> bool:
     return "khanh hoa" in tinh and xa == "nha trang"
 
 
+def is_bac_nha_trang_ward(user: dict | None) -> bool:
+    """True khi tài khoản thuộc ĐÚNG Phường Bắc Nha Trang, tỉnh Khánh Hòa."""
+    tinh, xa = _account_area(user)
+    return "khanh hoa" in tinh and xa == "bac nha trang"
+
+
 def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
-    """Trả bản sao options với cờ mặc định BHYT (Đà Lạt, Hải Châu, Nha Trang) do server quyết theo tài khoản."""
+    """Trả bản sao options với cờ mặc định BHYT (Đà Lạt, Hải Châu, Nha Trang, Bắc Nha Trang) do server quyết theo tài khoản."""
     result = dict(options or {})
     result.pop(DA_LAT_BHYT_OPTION, None)
     result.pop(HAI_CHAU_BHYT_OPTION, None)
     result.pop(NHA_TRANG_BHYT_OPTION, None)
+    result.pop(BAC_NHA_TRANG_NO_GUARDIAN_OPTION, None)
+    if procedure == PROCEDURE_KEY and is_bac_nha_trang_ward(user):
+        result[BAC_NHA_TRANG_NO_GUARDIAN_OPTION] = True
     if procedure == PROCEDURE_KEY and is_da_lat_bhyt_ward(user):
         result[DA_LAT_BHYT_OPTION] = True
     if procedure == PROCEDURE_KEY and is_hai_chau_bhyt_ward(user):
@@ -1311,6 +1322,9 @@ def enrich(fields: list[dict], options: dict | None = None, *, ocr_text: str = "
     # Phường Hải Châu - Đà Nẵng và Phường Nha Trang - Khánh Hòa: chỉ giám hộ trên thẻ BHYT = mẹ.
     if options.get(HAI_CHAU_BHYT_OPTION) or options.get(NHA_TRANG_BHYT_OPTION):
         add("NguoiGiamHo", "Thông tin mẹ", default=True)
+    # Phường Bắc Nha Trang - Khánh Hòa: bỏ mặc định giám hộ trên thẻ BHYT = mẹ, cán bộ tự chọn.
+    if options.get(BAC_NHA_TRANG_NO_GUARDIAN_OPTION):
+        seen.add("NguoiGiamHo")
 
     for default in STATIC_DEFAULTS:
         if default["name"] not in seen:
