@@ -7,6 +7,8 @@ Cùng template ba khối với đăng ký đất đai lần đầu Khánh Hòa n
 - Phần III thửa đất  -> data[diaChiThuaDat] (chữ, theo GCN + "(nay là …)")/SoThuaDat/SoToBanDo/province2/village2/
                          nation2.
 Người nộp khác tên chủ hồ sơ = có ủy quyền: mỗi khối chỉ dùng facts của đúng vai, không mượn chéo.
+Bật "Lấy người nộp theo tờ khai" (options.submitterMode, submitter_is_declarant): Phần I khai chủ hồ sơ cá nhân (người
+đề nghị đứng Đơn), bỏ bên được ủy quyền; chủ hồ sơ là tổ chức thì giữ mặc định.
 """
 
 from __future__ import annotations
@@ -28,6 +30,7 @@ from app.pipelines.dang_ky_dat_dai_lan_dau_khanh_hoa.process.mapper import (
     _text,
     _ward,
     clear_blank_fields,
+    submitter_is_declarant,
 )
 
 from .schema import UI_COMP_BY_NAME
@@ -77,6 +80,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         _text(values.get("UyQuyen_HoTenNguoiDuocUyQuyen")) or _text(values.get("NguoiNop_HoTen")) or owner_name
     )
     authorized = bool(owner_name and applicant_name and _fold(owner_name) != _fold(applicant_name))
+    # Bật "Lấy người nộp theo tờ khai": Phần I = chủ hồ sơ cá nhân, không lấy bên được ủy quyền.
+    owner_submits = submitter_is_declarant(options, owner_name, values.get("ChuHoSo_LoaiChuThe"))
+    if owner_submits:
+        applicant_name = owner_name
 
     def owner_val(key: str) -> Any:
         value = values.get(f"ChuHoSo_{key}")
@@ -85,6 +92,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         return value
 
     def applicant_val(key: str) -> Any:
+        if owner_submits:
+            return owner_val(key)
         value = values.get(f"NguoiNop_{key}")
         if value in (None, "", {}, []) and not authorized:
             value = values.get(f"ChuHoSo_{key}")

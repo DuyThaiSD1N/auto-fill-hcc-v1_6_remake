@@ -668,3 +668,56 @@ def test_tach_giay_trang_noi_tiep_va_trang_ngoai_tep():
         {"tep": 5, "trang": 1, "moGiay": True, "ten": "Tệp không có"},
     ]}
     assert tach._page_starts(data, {0: ["a", "b"]}) == {0: [(0, "Đơn")]}
+
+
+# --------------------------------------------------------------------------------------
+# CÀI ĐẶT "LẤY NGƯỜI NỘP THEO TỜ KHAI" — 6 thủ tục Khánh Hòa khối ChuHoSo/NguoiNop (1.013947 test ở file riêng)
+# --------------------------------------------------------------------------------------
+_THEO_TO_KHAI = {"submitterMode": "owner_as_submitter"}
+
+
+def _mappers_chu_ho_so_nguoi_nop():
+    import importlib
+
+    return {key: importlib.import_module(f"app.pipelines.{key.replace('-', '_')}.process.mapper")
+            for key in _KHANH_HOA_KEYS if key != "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa"}
+
+
+def test_lay_nguoi_nop_theo_to_khai_phan_i_la_chu_ho_so_ca_sau_thu_tuc():
+    facts = _facts(**_OWNER, ChuHoSo_NgayCap="10/10/2021", ChuHoSo_NoiCap="Bộ Công an", **_AUTHORIZED,
+                   NguoiNop_DienThoai="0987654321", **_PARCEL)
+    for key, module in _mappers_chu_ho_so_nguoi_nop().items():
+        # Tắt cài đặt: Phần I là bên được ủy quyền như cũ.
+        values = _values(module.enrich(facts, {})[0])
+        assert values["data[fullname]"] == "Lê Văn An", key
+        assert values["data[identityNumber]"] == "001090012345", key
+
+        # Bật: Phần I chép chủ hồ sơ, không ô nào còn dữ liệu bên được ủy quyền.
+        values = _values(module.enrich(facts, _THEO_TO_KHAI)[0])
+        assert values["data[fullname]"] == values["data[ownerFullname]"] == "Trần Thị Bình", key
+        assert values["data[identityNumber]"] == values["data[ownerIdentityNumber]"] == "056175012345", key
+        assert values["data[birthday]"] == values["data[ownerBirthday]"] == "05/06/1975", key
+        assert values["data[phoneNumber]"] == values["data[ownerPhoneNumber]"] == "0912345678", key
+        assert values["data[identityDate]"] == values["data[ownerIdentityDate]"] == "10/10/2021", key
+        assert values["data[address]"] == values["data[ownerAddress]"] == "Tổ dân phố 3", key
+        assert not {"Lê Văn An", "001090012345", "01/02/1980", "0987654321", "Thôn 1"} & set(values.values()), key
+
+
+def test_lay_nguoi_nop_theo_to_khai_chu_ho_so_thieu_o_va_to_chuc():
+    no_phone = {key: value for key, value in _OWNER.items() if key != "ChuHoSo_DienThoai"}
+    for key, module in _mappers_chu_ho_so_nguoi_nop().items():
+        # Chủ hồ sơ thiếu điện thoại: Phần I trả TRỐNG, không mượn số của bên được ủy quyền.
+        facts = _facts(**no_phone, **_AUTHORIZED, NguoiNop_DienThoai="0987654321")
+        values = _values(module.enrich(facts, _THEO_TO_KHAI)[0])
+        assert values["data[phoneNumber]"] == "", key
+        # Tài khoản chính là chủ hồ sơ: ô Phần I giấy tờ không có giữ giá trị cổng (không xoá).
+        options = {**_THEO_TO_KHAI, "formContext": {"applicantIdentityNumber": "056175012345"}}
+        assert "data[phoneNumber]" not in _values(module.enrich(facts, options)[0]), key
+
+        # Chủ hồ sơ là tổ chức: không đứng Phần I được -> giữ bên được ủy quyền như mặc định.
+        org = _facts(ChuHoSo_HoTen="Công ty TNHH Ví Dụ", ChuHoSo_LoaiChuThe="Tổ chức", **_AUTHORIZED)
+        assert _values(module.enrich(org, _THEO_TO_KHAI)[0])["data[fullname]"] == "Lê Văn An", key
+
+    # Giá trị lạ của submitterMode không bật cài đặt.
+    assert not mapper.submitter_from_declaration({"submitterMode": "account"})
+    assert not mapper.submitter_from_declaration(None)

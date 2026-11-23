@@ -5,6 +5,8 @@ Phân vai theo file mapping: Phần I người nộp = người THỨ NHẤT đ�
 II chủ hồ sơ = người THỨ HAI (Đơn một người thì chính người đó). Điện thoại + địa chỉ liên hệ ở Đơn mục 2 dùng chung cho
 người đứng Đơn (địa danh mới, đứng trước nơi thường trú cũ in trên GCN). Số thửa/tờ theo GCN; số mới của Phiếu đo đạc chỉ
 cảnh báo. Ô giấy tờ không có dữ liệu thì trả về TRỐNG (finish_blank_fields).
+Bật "Lấy người nộp theo tờ khai" (options.submitterMode, submitter_is_declarant): Phần I khai người THỨ NHẤT đứng Đơn (cá
+nhân), bỏ bên được ủy quyền; Phần II giữ nguyên.
 """
 
 from __future__ import annotations
@@ -33,6 +35,7 @@ from app.pipelines.dang_ky_dat_dai_lan_dau_khanh_hoa.process.mapper import (
     _province,
     _text,
     _ward,
+    submitter_is_declarant,
 )
 
 from .schema import UI_COMP_BY_NAME
@@ -143,7 +146,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         second = None
     agent = _person(values, "UyQuyen", warnings)
     land_users = {_fold(first["name"])} | ({_fold(second["name"])} if second else set())
-    authorized = bool(agent["name"] and _fold(agent["name"]) not in land_users)
+    # Bật "Lấy người nộp theo tờ khai": Phần I = người thứ nhất đứng Đơn, không lấy bên được ủy quyền.
+    authorized = bool(agent["name"] and _fold(agent["name"]) not in land_users) and not submitter_is_declarant(
+        options, first["name"], values.get("NSD_LoaiChuThe"))
     owner = second or first
     contact = _person_area(values.get("Don_DiaChiLienHe"), fallback_provinces)
     if contact and parcel_area and _same_address(contact, parcel_area) and (
