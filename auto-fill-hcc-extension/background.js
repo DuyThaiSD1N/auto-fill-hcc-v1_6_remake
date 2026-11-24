@@ -195,6 +195,20 @@ function withSplitQueueLock(task) {
   return run;
 }
 
+// Chế độ ẩn danh "spanning": service worker thuộc hồ sơ thường nên tabs.create không kèm windowId mở tab ở cửa sổ
+// thường (không có thì tự mở cửa sổ mới) → tab tách mất phiên đăng nhập của cửa sổ ẩn danh. Mở đúng cửa sổ của tab đã
+// bắt đầu lượt đính; cửa sổ đó đã đóng thì mở như cũ.
+async function splitQueueWindowId(sender, tabId) {
+  if (sender?.tab?.windowId != null) return sender.tab.windowId;
+  try { return tabId ? (await chrome.tabs.get(tabId))?.windowId ?? null : null; } catch (_) { return null; }
+}
+async function createSplitTab(windowId) {
+  if (windowId != null) {
+    try { return await chrome.tabs.create({ url: "about:blank", active: true, windowId }); } catch (_) { /* cửa sổ đã đóng */ }
+  }
+  return await chrome.tabs.create({ url: "about:blank", active: true });
+}
+
 async function openNextSplitQueueItemUnlocked() {
   let state = await getSplitAttachQueue();
   if (!state) return { done: true };
@@ -212,7 +226,7 @@ async function openNextSplitQueueItemUnlocked() {
 
       // Modal Radix/React không ổn định trong tab nền. Chỉ tạo DUY NHẤT một tab và kích hoạt nó;
       // tab kế tiếp chỉ được tạo khi content báo thành công hoặc thất bại terminal.
-      tab = await chrome.tabs.create({ url: "about:blank", active: true });
+      tab = await createSplitTab(state.windowId);
       const pendingMap = await getPendingMap();
       pendingMap[tab.id] = {
         files,
@@ -779,6 +793,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             results: [],
             startedAt: Date.now(),
             runId: String(msg.runId || `split-${Date.now()}`),
+            windowId: await splitQueueWindowId(sender, Number(msg.originTabId) || waitForTabId),
           };
           const total = Math.max(Number(msg.totalBundles) || 0, items.length + (waitForTabId ? 1 : 0));
           await startSplitSubmitBook(items, Number(msg.originTabId) || null, total);

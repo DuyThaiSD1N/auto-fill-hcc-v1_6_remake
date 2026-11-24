@@ -83,6 +83,16 @@ def _llm_document_name(answer: dict) -> str:
     return " ".join(part for part in ("CCCD", " ".join(words), side) if part)
 
 
+def ten_tren_mat(chu_the: str, text: str) -> bool:
+    """Họ tên chủ thẻ LLM trả có in trên CHÍNH mặt thẻ đó không (dòng họ tên hoặc MRZ). Mặt sau CMND cũ không in họ
+    tên, LLM hay mượn tên từ thẻ khác cùng hồ sơ → không được dùng tên đó làm khoá ghép hai mặt. So theo đầu từ: OCR
+    hay dính ký tự đệm của MRZ vào cuối tên ("NAM<<<" → "NAME")."""
+    def words(value: str) -> list[str]:
+        return re.sub(r"[^a-z ]+", " ", fold(str(value or "").replace("<", " "))).split()
+    name, tokens = words(chu_the), words(text)
+    return bool(name) and all(any(token.startswith(word) for token in tokens) for word in name)
+
+
 def _card_side(doc: dict) -> tuple[str, str, str]:
     """(mặt, số định danh đọc từ OCR, chủ thẻ đã bỏ dấu) khi phần tử là MỘT mặt thẻ CCCD/CMND; ngược lại rỗng.
     LLM không cho biết mặt thẻ, hoặc nói "ca_hai" mà chữ OCR chỉ có dấu hiệu của MỘT mặt (không MRZ / vân tay ở ảnh
@@ -94,6 +104,8 @@ def _card_side(doc: dict) -> tuple[str, str, str]:
     if side not in ("truoc", "sau"):
         return "", "", ""
     holder = " ".join(re.sub(r"[^a-z ]+", " ", fold(str(doc.get("chuThe") or "").replace("<", " "))).split())
+    if doc.get("_tenTrenMat") is False:
+        holder = ""
     return side, str(doc.get("_soThe") or ""), holder
 
 
@@ -266,6 +278,7 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
         a["_soThe"] = so_dinh_danh_the(texts.get(i, ""))
         a["_matTheOcr"] = mat_the(texts.get(i, ""))
         a["chuThe"] = ho_ten_co_dau(a.get("chuThe") or "", texts.get(i, ""))
+        a["_tenTrenMat"] = ten_tren_mat(a["chuThe"], texts.get(i, ""))
     doc_names = {i: _llm_document_name(a) for i, a in answers.items()}
     # Hai TỆP là hai mặt thẻ của cùng một người → một mục gộp (extension ghép thành một PDF).
     docs = [answers.get(i, {}) for i in range(len(raw_files))]

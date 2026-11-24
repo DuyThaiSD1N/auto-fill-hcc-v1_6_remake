@@ -1855,6 +1855,8 @@ body.settings-mode .voice-panel { display: none; }
 .wallet-tag{font-style:normal;font-size:9.5px;font-weight:800;letter-spacing:.03em;padding:1px 7px;border-radius:999px}
 .wallet-tag.dup{background:#fff0e2;color:#b4501a}
 .wallet-tag.fix{background:#ecefff;color:#3a4cc0}
+.wallet-tag.issued{background:#e6f4ec;color:#1d6b42}
+.wallet-tag.signed{background:#fdf3d8;color:#8a5a00}
 .wallet-orig{font-size:10.5px;color:#8b95a7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .wallet-eye{width:34px;height:34px;flex:none;border-radius:9px;border:0;background:#eef1f4;cursor:pointer;font-size:15px}
 .wallet-foot{padding:9px 10px 10px;border-top:1px solid var(--line)}

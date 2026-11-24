@@ -42,7 +42,7 @@ const chrome = {
       updatedTabs.push({ tabId, ...options });
       return { id: tabId, ...options };
     },
-    async get(tabId) { return { id: tabId }; },
+    async get(tabId) { return { id: tabId, windowId: 5 }; },
     async reload() {},
     async remove() {},
     async sendMessage() {},
@@ -112,6 +112,7 @@ function bundle(ordinal) {
   assert.equal(storage.autofill_split_attach_queue_stage, undefined, "Staging phải được dọn sau khi background nhận");
   assert.equal(createdTabs.length, 1, "Khởi động queue chỉ được mở một tab");
   assert.equal(createdTabs[0].active, true, "Tab đang đính kèm phải được activate");
+  assert.equal(createdTabs[0].windowId, 5, "tab tách phải mở trong cửa sổ của tab gốc (ẩn danh)");
   assert.equal(updatedTabs[0].active, true);
   assert.equal(storage.autofill_split_attach_queue.activeTabId, createdTabs[0].id);
   assert.equal(storage.autofill_split_attach_queue.remaining.length, 1);
@@ -136,6 +137,7 @@ function bundle(ordinal) {
   await dispatch({ action: "clearPendingAttach" }, createdTabs[0].id);
   assert.equal(createdTabs.length, 2, "Chỉ sau khi tab đầu thành công mới được mở tab thứ hai");
   assert.equal(storage.autofill_split_attach_queue.activeTabId, createdTabs[1].id);
+  assert.equal(createdTabs[1].windowId, 5, "tab tách phải mở trong cửa sổ của tab gốc (ẩn danh)");
   assert.equal(storage.autofill_split_attach_queue.remaining.length, 0);
   assert.equal(storage.autofill_split_attach_progress.completed, 2);
   assert.equal(storage.autofill_split_attach_progress.succeeded, 2);

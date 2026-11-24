@@ -62,6 +62,8 @@ in cơ quan cấp (giấy chứng sinh, CCCD, giấy / trích lục kết hôn) 
 viết tay) > giấy người dân tự lập. Hai cách viết chỉ khác DẤU là chuyện thường (OCR đọc lệch dấu chữ viết tay), KHÔNG phải
 lý do giữ A. Mã đã tự loại cách viết là bản rơi dấu của A, chữ Đ đọc thành D, và cách viết đổi chữ cái khi chữ cái của A đã
 có trên giấy ngoài tờ khai. Dòng trích dẫn là họ tên của người khác (không phải người nêu ở tên mục) → KHONG_DU_CAN_CU.
+Riêng TÊN TRẺ: A theo tờ khai đăng ký khai sinh, B là tên mục 1 tờ CT01, cùng chữ cái chỉ khác dấu, không giấy in cơ quan
+cấp nào ghi A → chọn B (OCR hay đọc lệch dấu ở tờ khai đăng ký khai sinh viết tay, mục 1 CT01 viết in hoa trong ô kẻ).
 </ho_ten>
 
 <so_ngay>
@@ -253,6 +255,40 @@ def gcs_mother_findings(values: dict, page_list: list[dict], card_done: set[str]
     return out
 
 
+_CT01_HEAD = "to khai thay doi thong tin cu tru"
+
+
+def ct01_child_finding(child: Person, values: dict, page_list: list[dict]) -> Finding | None:
+    """Tên trẻ lấy theo tờ khai đăng ký khai sinh mà mục 1 tờ CT01 ghi cùng chữ cái, chỉ khác DẤU → theo CT01.
+
+    Hai tờ khai cùng hạng, cùng viết tay nên phép đếm trang hoà nhau và giữ tờ khai. Trên hồ sơ thật, chỗ lệch là OCR
+    đọc dấu ở tờ khai đăng ký khai sinh; tên mục 1 CT01 viết in hoa trong ô kẻ, OCR giữ dấu đúng. Giấy in (giấy chứng
+    sinh, thẻ) ghi theo cách viết đang có thì giữ nguyên."""
+    if child.name != "Tk_HoTenCon":
+        return None
+    current = " ".join(str(values.get(child.name) or "").split())
+    ct01 = " ".join(str(values.get("Ct01_HoTen") or "").split())
+    if not current or not ct01 or fold(current).split() != fold(ct01).split():
+        return None
+    if trang.name_key(ct01) == trang.name_key(current):
+        return None
+    if base._adds_marks(trang.name_key(ct01), trang.name_key(current)) or base._lost_stroke(
+            trang.name_key(ct01), trang.name_key(current)):
+        return None  # CT01 chỉ là bản rơi dấu / "Đ" đọc thành "D" của tên đang có
+    needle = trang.words(ct01)
+    quote = next(((line, page["doc"]) for page in page_list if page["kind"] == "to_khai"
+                  and _CT01_HEAD in " ".join(fold(line) for line in page["lines"][:12])
+                  for line in page["lines"] if needle in trang.words(line)), None)
+    if quote is None:
+        return None
+    mine = trang.support(current, page_list)
+    if mine["ban_in"] + mine["the"]:
+        return None
+    return _finding(child, "ho_ten", ct01.upper(), quote[0], quote[1], "tờ khai thay đổi thông tin cư trú (CT01)",
+                    f"Tờ khai đăng ký khai sinh ghi A, mục 1 tờ CT01 ghi B — cùng chữ cái, chỉ khác dấu; không giấy in "
+                    f"cơ quan cấp nào ghi A (A: {mine['to_khai']} tờ khai, {mine['tu_lap']} giấy tự lập)")
+
+
 def findings_from(case: Case) -> list[Finding]:
     page_list = trang.pages(case.documents)
     out = []
@@ -268,7 +304,8 @@ def findings_from(case: Case) -> list[Finding]:
         name = name_finding(person, case.values, page_list)
         out += [*([name] if name else []), *cards]
     child = next((person for person in CHILD if str(case.values.get(person.name) or "").strip()), None)
-    name = name_finding(child, case.values, page_list) if child else None
+    name = (name_finding(child, case.values, page_list) or ct01_child_finding(child, case.values, page_list)
+            if child else None)
     return out + ([name] if name else [])
 
 

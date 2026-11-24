@@ -639,3 +639,19 @@ def test_o_sdt_nguoi_nop_co_trong_khoi_nguoi_nop_cong_moi():
     # Trích lục / cải chính / khai sinh / khai tử cổng mới dùng chung ô này; snapshot của các form đó chụp trước khi cổng
     # thêm ô SĐT vào khối người nộp.
     assert 'data-name="citizenPhone__' in SNAPSHOT.read_text(encoding="utf-8")
+
+
+
+def test_ten_chu_the_khong_in_tren_mat_sau_thi_khong_ghep_theo_ten():
+    # Mặt sau CMND cũ không in họ tên: tên LLM mượn từ thẻ khác không được làm khoá ghép.
+    back_cmnd = "Dân tộc: Kinh\nDẤU VẾT RIÊNG VÀ DỊ HÌNH\nNGÓN TRỎ TRÁI\nGIÁM ĐỐC CA TỈNH X\nTRẦN VĂN K"
+    assert planner.ten_tren_mat("NGUYỄN VĂN A", back_cmnd) is False
+    assert planner.ten_tren_mat("NGUYỄN VĂN A", "IDVNM0010\nNGUYEN<<VAN<A<<<<") is True
+    docs = [
+        {"docType": "identity", "matThe": "truoc", "chuThe": "NGUYEN VAN A", "_soThe": "001190000001"},
+        {"docType": "identity", "matThe": "sau", "chuThe": "NGUYEN VAN A", "_soThe": "",
+         "_tenTrenMat": planner.ten_tren_mat("NGUYEN VAN A", back_cmnd)},
+    ]
+    assert planner.pair_card_sides(docs) == [[0], [1]]
+    docs[1]["_tenTrenMat"] = True
+    assert planner.pair_card_sides(docs) == [[0, 1]]

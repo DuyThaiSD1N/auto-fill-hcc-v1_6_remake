@@ -54,6 +54,8 @@ HMONG_LABELS = {
     "citizenHoSo_CoQuanDangKy": ("qhov chaw tau cuv npe", _RECORD),
     "citizenHotenCha": ("npe txiv", _PERSON),
     "citizenHotenMe": ("npe niam", _PERSON),
+    "citizenHotenVohoacChong": ("npe tus poj niam los tus txiv", _PERSON),
+    "citizenNgaysinhVohoacChong": ("hnub yug tus poj niam los tus txiv", _PERSON),
     "citizenTenGiayToHoTich": ("lub npe daim ntawv", _RECORD),
     "citizencauhoi3": ("tus lej cuv npe", _RECORD),
     "citizencauhoi4": ("tus lej phau ntawv", _RECORD),

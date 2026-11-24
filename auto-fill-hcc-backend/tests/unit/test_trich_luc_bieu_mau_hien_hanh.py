@@ -75,3 +75,33 @@ def test_truong_cha_me_co_trong_schema_va_nhan_mong():
 
 def test_truong_chinh_cua_trace_khong_tinh_o_cong_da_go():
     assert not set(KEY_FIELDS_BY_PROCEDURE["trich-luc-ks"]) & schema.UI_REMOVED_BY_PORTAL
+
+
+_KET_HON = {**VALUES, "GiayTo_LoaiSuKien": "marriage", "GiayTo_HoTenCha": "", "GiayTo_HoTenMe": "",
+            "GiayTo_HoTenVoChong": "Pham Van E", "GiayTo_NgaySinhVoChong": "03/04/1988"}
+
+
+def _enrich_ket_hon(values: dict):
+    context = CONTEXT.replace("Loại trích lục cần cấp: khai sinh", "Loại trích lục cần cấp: kết hôn")
+    fields = [{"name": k, "value": v} for k, v in values.items()]
+    return mapper.enrich(fields, {"_reasoning_context": context, "_ocr_text": "", "formContext": ACCOUNT})
+
+
+def test_trich_luc_ket_hon_dien_ho_ten_va_ngay_sinh_vo_chong():
+    by = {f["name"]: f for f in _enrich_ket_hon(_KET_HON)[0]}
+    assert by["citizenHotenVohoacChong"]["value"] == "PHAM VAN E"
+    assert by["citizenNgaysinhVohoacChong"] == {"name": "citizenNgaysinhVohoacChong", "comp": "sjs-date",
+                                                "value": "03/04/1988"}
+
+
+def test_vo_chong_chi_nam_sinh_hoac_trung_nguoi_duoc_cap_thi_bo():
+    names = [f["name"] for f in _enrich_ket_hon({**_KET_HON, "GiayTo_NgaySinhVoChong": "1988"})[0]]
+    assert "citizenHotenVohoacChong" in names and "citizenNgaysinhVohoacChong" not in names
+    names = [f["name"] for f in _enrich_ket_hon({**_KET_HON, "GiayTo_HoTenVoChong": "TRẦN THỊ B"})[0]]
+    assert "citizenHotenVohoacChong" not in names
+
+
+def test_loai_khac_ket_hon_khong_tra_o_vo_chong():
+    names = [f["name"] for f in _enrich({**VALUES, "GiayTo_HoTenVoChong": "Pham Van E"})[0]]
+    assert "citizenHotenVohoacChong" not in names
+    assert field_review.HMONG_LABELS["citizenHotenVohoacChong"][0] == "npe tus poj niam los tus txiv"

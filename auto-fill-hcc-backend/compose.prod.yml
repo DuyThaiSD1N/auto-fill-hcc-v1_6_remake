@@ -10,9 +10,7 @@
 services:
   mongo:
     image: mongo:7
-    # always (không phải unless-stopped): mở Docker là mongo + app (12005) + fe (12006) luôn lên, kể cả khi trước đó
-    # đã bấm Stop tay trong Docker Desktop.
-    restart: always
+    restart: unless-stopped
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME:-root}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD:-callbot}
@@ -43,7 +41,7 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
-    restart: always
+    restart: unless-stopped
     logging: &small-logs
       driver: json-file
       options:
@@ -78,7 +76,7 @@ services:
       - "12006:12006"
     depends_on:
       - app
-    restart: always
+    restart: unless-stopped
     networks:
       - autofill
 

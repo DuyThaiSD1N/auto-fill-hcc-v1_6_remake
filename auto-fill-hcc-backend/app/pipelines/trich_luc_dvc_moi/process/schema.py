@@ -46,6 +46,13 @@ FIELDS: list[dict] = [
              "(giấy khai sinh: \"Họ, chữ đệm, tên người mẹ\") hoặc trên tờ khai nếu tờ khai ghi. Giấy không có dòng "
              "mẹ / dòng để trống → bỏ field; không lấy tên người đi khai thay cho dòng mẹ. Người mẹ cũng là người đi "
              "khai / người nộp → vẫn chép dòng mẹ."},
+    {"name": "GiayTo_HoTenVoChong",
+     "desc": "CHỈ khi cần cấp bản sao trích lục KẾT HÔN: họ, chữ đệm, tên của người CÒN LẠI trên giấy chứng nhận kết "
+             "hôn (vợ hoặc chồng của người được cấp — cột không phải của người được cấp), chép đúng dòng \"Họ, chữ "
+             "đệm, tên vợ\" / \"... chồng\". Loại trích lục khác → bỏ field."},
+    {"name": "GiayTo_NgaySinhVoChong",
+     "desc": "CHỈ khi cần cấp bản sao trích lục KẾT HÔN: ngày sinh của người ở GiayTo_HoTenVoChong, dd/mm/yyyy, lấy "
+             "đúng cột của người đó trên giấy chứng nhận kết hôn. Giấy chỉ ghi năm sinh → bỏ field."},
     {"name": "GiayTo_So", "desc": "Số đăng ký của sự kiện hộ tịch (dòng 'Số:' / 'Số đăng ký')."},
     {"name": "GiayTo_QuyenSo",
      "desc": "Quyển số đăng ký, CHỈ khi nhãn 'Quyển số' có giá trị thật ngay sau nhãn."},
@@ -61,7 +68,7 @@ ALLOWED = {f["name"] for f in FIELDS}
 ALIASES: dict[str, list[str]] = {}
 
 COMPACT_COMP_BY_NAME = {name: "x-input" for name in ALLOWED}
-for _name in ("NguoiDuocCap_NgaySinh", "NguoiDuocCap_NgayCap", "GiayTo_NgayDangKy"):
+for _name in ("NguoiDuocCap_NgaySinh", "NguoiDuocCap_NgayCap", "GiayTo_NgayDangKy", "GiayTo_NgaySinhVoChong"):
     COMPACT_COMP_BY_NAME[_name] = "x-date"
 COMPACT_COMP_BY_NAME["NguoiDuocCap_NoiCuTru"] = "x-select-area"
 
@@ -92,6 +99,8 @@ UI_COMP_BY_NAME = {
     "citizenHoSo_CoQuanDangKy": "sjs-text",
     "citizenHotenCha": "sjs-text",             # Họ, tên Cha
     "citizenHotenMe": "sjs-text",              # Họ, tên Mẹ
+    "citizenHotenVohoacChong": "sjs-text",     # Họ, tên Vợ hoặc chồng (chỉ hiện với trích lục kết hôn)
+    "citizenNgaysinhVohoacChong": "sjs-date",  # Ngày sinh vợ hoặc chồng
     "citizenTenGiayToHoTich": "sjs-text",
     "citizencauhoi3": "sjs-text",              # Số đăng ký
     "citizencauhoi4": "sjs-text",              # Quyển số

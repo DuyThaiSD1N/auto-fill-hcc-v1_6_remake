@@ -15,11 +15,14 @@
   const WALLET_EVENT = "__HCC_MOJ_WALLET_LIST__";
   const WALLET_LIST = /\/api\/CongDan\/TaiLieuCaNhan(?:[?#]|$)/i;
 
-  // Chỉ tab "Tài liệu tải lên" của chính công dân; tab "Tài liệu được cấp" là bản điện tử do cơ quan cấp.
+  // Cùng một API cho hai tab: "Tài liệu tải lên" gọi filter=uploaded&uploadBy=MY, "Tài liệu được cấp" gọi
+  // filter=issued&uploadBy=OTHER. keyword đi kèm để trợ lý biết danh sách nào là kết quả ô "Tìm kiếm tài liệu".
   function emitWalletList(url, body) {
     try {
       const u = new URL(String(url || ""), location.href);
-      if (u.searchParams.get("filter") !== "uploaded" || u.searchParams.get("uploadBy") !== "MY") return;
+      const filter = u.searchParams.get("filter");
+      const uploaded = filter === "uploaded";
+      if (uploaded ? u.searchParams.get("uploadBy") !== "MY" : filter !== "issued") return;
       const data = (body && body.data) || {};
       const items = (Array.isArray(data.items) ? data.items : []).map((it) => ({
         id: String(it && it.id || ""),
@@ -28,9 +31,13 @@
         size: Number(it && it.size) || 0,
         type: String(it && it.type || ""),
         createdAt: String(it && it.createdAt || ""),
+        signed: !!(it && it.isSigned),
       }));
       document.dispatchEvent(new CustomEvent(WALLET_EVENT, { detail: JSON.stringify({
         origin: u.origin,
+        tab: uploaded ? "uploaded" : "issued",
+        filter: String(u.searchParams.get("filter") || ""),
+        keyword: String(u.searchParams.get("keyword") || ""),
         page: Number(u.searchParams.get("page")) || 1,
         total: Number(data.totalItems) || 0,
         items,

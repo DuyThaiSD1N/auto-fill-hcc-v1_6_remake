@@ -881,6 +881,12 @@ async def run_attach(conv_id: str, sid: str, procedure_key: str,
         # phải gọi Ở ĐÂY. Account/thủ tục khác → no-op (directive None), plan giữ nguyên.
         with mon.span("post.stt1"):
             result = apply_stt1_virtual_copy(result, owner_user, procedure_key)
+        # Giấy lấy từ Ví cá nhân: đính bằng nút "Chọn" của ví (bản extension có cờ supportsWalletPick).
+        from app.channels.handfree.chat import wallet_reuse
+
+        files_by_fid = {f.get("fid"): f for f in sess.get("files", [])}
+        result["attachments"] = wallet_reuse.apply_picks(
+            conv, result.get("attachments") or [], [files_by_fid.get(fid) or {} for fid in raw_fids])
         if rec is not None:
             rec.output("plan", result.get("attachments"))
             rec.output("extracted", result.get("extracted"))

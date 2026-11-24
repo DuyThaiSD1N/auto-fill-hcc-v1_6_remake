@@ -28,13 +28,16 @@ def _no_io(monkeypatch):
     monkeypatch.setattr(wallet_reuse.up_store, "get", AsyncMock(return_value={"_id": "s1", "owner_user_id": "u1"}))
     monkeypatch.setattr(wallet_reuse.up_store, "save", AsyncMock())
     monkeypatch.setattr(wallet_reuse.up_store, "delete_session", AsyncMock())
+    # Mặc định LLM không trả lời → dò số dự phòng; test hiểu câu bằng LLM tự đặt câu trả lời.
+    monkeypatch.setattr(wallet_reuse, "llm_chat", AsyncMock(side_effect=RuntimeError("không gọi LLM trong test")))
     return spawned
 
 
 def _conv(caps=CAPS, **extra) -> dict:
     conv = store.new_conversation()
     conv.update({"procedure_key": PROC, "state": "owner_waiting_next", "client_capabilities": dict(caps),
-                 "upload_session_id": "s1", "auth_user": {"id": "u1", wallet_reuse.SETTING: True},
+                 "upload_session_id": "s1",
+                 "auth_user": {"id": "u1", wallet_reuse.SETTING: True, wallet_reuse.SETTING_SAVED: True},
                  "attachment_preferences": {"attachMode": "merge"},
                  "attachment_context": {"components": [{"name": "Bản chính"}]}})
     conv.update(extra)
@@ -67,7 +70,7 @@ async def test_extension_cu_khong_khai_capability_thi_di_thang_dinh_kem():
 
 
 async def test_tai_khoan_tat_cai_dat_thi_khong_hoi():
-    conv = _conv(auth_user={"id": "u1", wallet_reuse.SETTING: False})
+    conv = _conv(auth_user={"id": "u1", wallet_reuse.SETTING: False, wallet_reuse.SETTING_SAVED: False})
     await _arrive(conv)
     assert conv["state"] == "attaching"
 
@@ -181,7 +184,7 @@ async def test_tai_hong_het_thi_bao_roi_dinh_giay_vua_nhan():
     assert "chưa đọc được Ví cá nhân" in reply.display_md and conv["state"] == "attaching"
 
 
-async def test_noi_so_thu_tu_de_chon_bo_va_xong():
+async def test_llm_loi_thi_do_chu_so_de_chon_bo_va_xong():
     conv = await _choosing()
     reply = await flow.handle_turn(conv, Intent("action", "wallet_answer", {"text": "chọn số 2 và 3"}))
     assert conv["wallet_picked"] == [2, 3] and "2, 3" in reply.display_md
@@ -257,7 +260,7 @@ async def test_buoc_chu_ho_so_khong_co_nut_chi_vi():
 
 
 async def test_tat_cai_dat_thi_khong_co_nut_chi_vi():
-    conv = _ask_conv(auth_user={"id": "u1", wallet_reuse.SETTING: False})
+    conv = _ask_conv(auth_user={"id": "u1", wallet_reuse.SETTING: False, wallet_reuse.SETTING_SAVED: False})
     reply = await flow.handle_turn(conv, Intent("event", "page_status", PAGE), PAGE)
     assert ONLY not in _sends(reply)
 
@@ -322,3 +325,134 @@ async def test_chi_vi_tai_hong_thi_ve_buoc_chon_cach_gui(monkeypatch):
 async def test_da_gui_tep_roi_bam_nut_chi_vi_thi_hoi_nhu_thuong(monkeypatch):
     conv, _ = await _only_start(monkeypatch, files_count=3)
     assert conv["wallet_only"] is False
+
+
+# ── Bản có supportsWalletPick: hai tab, đính bằng nút "Chọn" của ví ──
+PICK_CAPS = {**CAPS, wallet_reuse.PICK_CAPABILITY: True}
+DEFAULT_ONLY = {"id": "u1", wallet_reuse.SETTING: True, wallet_reuse.SETTING_SAVED: False}
+
+
+async def test_cai_dat_mac_dinh_chi_bat_cho_ban_chon_tu_vi():
+    old = _conv(auth_user=dict(DEFAULT_ONLY))
+    await _arrive(old)
+    assert old["state"] == "attaching", "bản trên chợ: tài khoản chưa tự bật thì không hỏi như trước"
+    new = _conv(caps=PICK_CAPS, auth_user=dict(DEFAULT_ONLY))
+    reply = await _arrive(new)
+    assert reply.actions == [{"type": "wallet_list", "limit": wallet_reuse.LIMIT, "tabs": ["uploaded", "issued"]}]
+
+
+async def test_ban_cu_khong_xin_tab_duoc_cap():
+    reply = await _arrive(_conv())
+    assert reply.actions == [{"type": "wallet_list", "limit": wallet_reuse.LIMIT}]
+
+
+def test_danh_sach_hai_tab_tai_len_truoc_moi_tab_toi_da_20():
+    raw = [{"id": f"c{i}", "uri": f"c{i}", "tab": "issued", "signed": True} for i in range(25)]
+    raw += [{"id": f"u{i}", "uri": f"u{i}", "tab": "uploaded"} for i in range(25)]
+    raw += [{"id": "z", "uri": "z", "tab": "lạ"}]
+    items = wallet_reuse._clean_items(raw)
+    assert [i["tab"] for i in items] == ["uploaded"] * 20 + ["issued"] * 20
+    assert items[0]["id"] == "u0" and items[20]["id"] == "c0" and items[20]["signed"] is True
+    entries = wallet_reuse._entries({"wallet_items": items})
+    assert entries[20]["no"] == 21 and entries[20]["tab"] == "issued"
+
+
+async def test_chep_tep_ban_chon_tu_vi_mang_dau_vi(monkeypatch, tmp_path):
+    monkeypatch.setattr(wallet_reuse.up_store.settings, "storage_dir", str(tmp_path))
+    wallet_reuse.up_store.save_file_bytes("W1", "f0.pdf", b"%PDF-a")
+    wallet = {"_id": "W1", "files": [{"fid": "f0.pdf", "name": "f0.pdf", "type": "application/pdf"}]}
+    main = {"_id": "s1", "files": [], "required_docs": [{"key": "khac", "sides": 1}]}
+    monkeypatch.setattr(wallet_reuse.up_store, "get", AsyncMock(side_effect=lambda sid: {"W1": wallet, "s1": main}[sid]))
+    appended = []
+
+    async def append(sid, metas, limit):
+        appended.extend(metas)
+        return {**main, "files": metas}
+    monkeypatch.setattr(wallet_reuse.up_store, "append_files_with_limit", append)
+    monkeypatch.setattr(wallet_reuse, "broadcast", AsyncMock())
+    items = wallet_reuse._clean_items([{"id": "c1", "uri": "c1", "name": "KQ_1.pdf", "tab": "issued"}])
+    conv = _conv(caps=PICK_CAPS, wallet_session_id="W1", wallet_items=items, wallet_picked=[1])
+    assert await wallet_reuse.import_staged(conv, {"f0.pdf": "c1"}) == 1
+    assert appended[0]["wallet"] == {"id": "c1", "name": "KQ_1.pdf", "tab": "issued"}
+
+
+def _item(index, name, **extra):
+    return {"fileIndex": index, "fileName": f"f{index}", "documentName": name, "componentName": name,
+            "target": "new", "componentIndex": None, "needsAddComponent": True, **extra}
+
+
+FILES = [{"name": "scan.pdf"}, {"name": "vi-a.pdf", "wallet": {"id": "a", "name": "vi-a.pdf", "tab": "uploaded"}},
+         {"name": "vi-b.pdf", "wallet": {"id": "b", "name": "vi-b.pdf", "tab": "issued"}}]
+
+
+def test_ban_cu_khong_gan_chon_tu_vi():
+    plan = [_item(1, "Học bạ")]
+    assert wallet_reuse.apply_picks(_conv(), plan, FILES) is plan
+
+
+def test_muc_dung_nguyen_tep_vi_thi_gan_walletpick():
+    plan = [_item(0, "CCCD", target="existing", componentIndex=1), _item(1, "Học bạ")]
+    out = wallet_reuse.apply_picks(_conv(caps=PICK_CAPS), plan, FILES)
+    assert "walletPick" not in out[0]
+    assert out[1]["walletPick"] == {"id": "a", "name": "vi-a.pdf", "tab": "uploaded"}
+    assert out[1]["documentName"] == "Học bạ"
+
+
+def test_muc_gop_tep_vi_voi_tep_scan_thi_tach_moi_tep_vi_mot_dong():
+    segs = [{"fileIndex": 0, "pageIndexes": None}, {"fileIndex": 1, "pageIndexes": None},
+            {"fileIndex": 2, "pageIndexes": None}]
+    plan = [_item(0, "Hợp đồng", target="existing", componentIndex=1, componentName="Bản chính", sourceSegments=segs)]
+    out = wallet_reuse.apply_picks(_conv(caps=PICK_CAPS), plan, FILES)
+    assert [o.get("walletPick", {}).get("id") for o in out] == [None, "a", "b"]
+    assert out[0]["target"] == "existing" and out[0]["componentName"] == "Bản chính" and "sourceSegments" not in out[0]
+    assert [o["documentName"] for o in out] == ["Hợp đồng phần 1", "Hợp đồng phần 2", "Hợp đồng phần 3"]
+    assert all(o["target"] == "new" and o["componentName"] == o["documentName"] for o in out[1:])
+    assert all("sourceSegments" not in o for o in out[1:])
+
+
+def test_tep_vi_bi_cat_ra_nhieu_giay_thi_giu_tai_len():
+    plan = [_item(1, "Giấy A", sourceSegments=[{"fileIndex": 1, "pageIndexes": [0]}]),
+            _item(1, "Giấy B", sourceSegments=[{"fileIndex": 1, "pageIndexes": [1]}])]
+    out = wallet_reuse.apply_picks(_conv(caps=PICK_CAPS), plan, FILES)
+    assert out == plan and all("walletPick" not in o for o in out)
+
+
+# ── Câu chọn giấy hiểu bằng LLM (ASR trả số bằng chữ) ──
+def _llm(monkeypatch, *answers):
+    mock = AsyncMock(side_effect=list(answers))
+    monkeypatch.setattr(wallet_reuse, "llm_chat", mock)
+    return mock
+
+
+async def test_noi_so_bang_chu_thi_llm_hieu_va_chon(monkeypatch):
+    conv = await _choosing()
+    llm = _llm(monkeypatch, '{"y": "chon", "so": [1, 2]}', '{"y": "chon", "so": [1, 2, 9]}')
+    reply = await flow.handle_turn(conv, Intent("action", "wallet_answer", {"text": "số một và số hai"}))
+    assert conv["wallet_picked"] == [1, 2] and "1, 2" in reply.display_md
+    prompt = llm.await_args.args[0][0]["content"]
+    assert "[1] (Tài liệu tải lên) Scan_0.pdf" in prompt and "chưa chọn giấy nào" in prompt
+    await flow.handle_turn(conv, Intent("action", "wallet_answer", {"text": "thêm số chín"}))
+    assert conv["wallet_picked"] == [1, 2], "số ngoài danh sách bị bỏ"
+    assert "Đang chọn: 1, 2" in llm.await_args.args[0][0]["content"]
+
+
+async def test_llm_hieu_xong_thi_tai_giay_da_chon(monkeypatch):
+    conv = await _choosing()
+    _llm(monkeypatch, '{"y": "xong", "so": [2]}')
+    reply = await flow.handle_turn(conv, Intent("action", "wallet_answer", {"text": "lấy số hai thôi, xong"}))
+    read = next(a for a in reply.actions if a["type"] == "wallet_read")
+    assert [i["id"] for i in read["items"]] == ["w1"]
+
+
+async def test_llm_hieu_bo_qua_thi_roi_buoc_vi(monkeypatch):
+    conv = await _choosing()
+    _llm(monkeypatch, '{"y": "bo_qua", "so": []}')
+    await flow.handle_turn(conv, Intent("action", "wallet_answer", {"text": "thôi không cần đâu"}))
+    assert conv["state"] != wallet_reuse.STATE and conv.get("wallet_reuse_done") is True
+
+
+async def test_llm_khong_ro_thi_hoi_lai(monkeypatch):
+    conv = await _choosing()
+    _llm(monkeypatch, '{"y": "khong_ro", "so": []}')
+    reply = await flow.handle_turn(conv, Intent("action", "wallet_answer", {"text": "ờ ừ"}))
+    assert reply.display_md.startswith("Tôi chưa nghe ra số nào") and conv["wallet_picked"] == []

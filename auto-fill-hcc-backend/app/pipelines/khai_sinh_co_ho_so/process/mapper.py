@@ -439,6 +439,29 @@ def _full_date(value) -> str:
     return value.strip()
 
 
+def _dmy(value) -> tuple[int, ...]:
+    full = _full_date(value)
+    return tuple(int(part) for part in re.split(r"[/-]", full)) if full else ()
+
+
+def _issue_date_not_birth(issue_date, values: dict, options: dict | None):
+    """Tờ khai chỉ ghi số CCCD mà không ghi ngày cấp → LLM hay chép ngày sinh trên dòng người yêu cầu sang ô ngày
+    cấp. Thẻ không thể cấp đúng ngày sinh của chủ thẻ → ngày cấp trùng ngày sinh của CHÍNH người yêu cầu (người được
+    khai sinh khi tự đăng ký; chủ tài khoản khi cùng số định danh) là sai nguồn → bỏ."""
+    issued = _dmy(issue_date)
+    if not issued:
+        return issue_date
+    requester_id = _digits(values.get("Requester_IdNumber"))
+    ctx = (options or {}).get("formContext") or {}
+    births = []
+    if _canonical_relation(values.get("Requester_RelationToSubject")) == "BanThan" or (
+            requester_id and requester_id == _digits(values.get("Subject_IdNumber"))):
+        births.append(values.get("Subject_BirthDate"))
+    if requester_id and requester_id == _digits(ctx.get("applicantIdentityNumber")):
+        births.append(ctx.get("applicantBirthday"))
+    return "" if any(_dmy(birth) == issued for birth in births) else issue_date
+
+
 def _subject_birth_date(values: dict):
     """Ngày sinh mục II — ƯU TIÊN ngày in trên CCCD/CMND CỦA CHÍNH người được khai sinh.
 
@@ -885,7 +908,7 @@ def _resolve_requester(values: dict, context: str, options: dict | None = None) 
         declared = {
             "ho_ten": values.get("Requester_FullName"),
             "so_dinh_danh": values.get("Requester_IdNumber"),
-            "ngay_cap": values.get("Requester_IdIssueDate"),
+            "ngay_cap": _issue_date_not_birth(values.get("Requester_IdIssueDate"), values, options),
             "noi_cap": _issuer_or_default(values, "Requester"),
             "noi_cu_tru": _normalize_domestic_area(residence) if isinstance(residence, dict) else None,
         }

@@ -20,7 +20,7 @@ from app.process.schemas import FileItem
 from app.services.llm import client
 
 from ..dinh_kem_khong_tach.planner import DEFAULT_ROW, DOC_TYPES, ROWS, _document_name, _llm_document_name
-from ..dinh_kem_khong_tach.planner import both_sides, join_divorce_pages, pair_card_sides
+from ..dinh_kem_khong_tach.planner import both_sides, join_divorce_pages, pair_card_sides, ten_tren_mat
 from ..dinh_kem_khong_tach.planner import plan as plan_without_split
 from ..nghia_hung import OMITTED_DECLARATION_NOTE, keep_only_authorization, omits_paper_declaration, only_authorization
 from .prompt import CONFIRM_PROMPT, SYSTEM_PROMPT, build_confirm_prompt, build_user_prompt
@@ -309,8 +309,9 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
     for s in segments:
         pages = pages_by_file.get(s["fileIndex"], [])
         text = "\n".join(pages if s["pages"] is None else [pages[i] for i in s["pages"] if i < len(pages)])
+        chu_the = ho_ten_co_dau(s["doc"].get("chuThe") or "", text)
         s["doc"] = {**s["doc"], "_soThe": so_dinh_danh_the(text), "_matTheOcr": mat_the(text),
-                    "chuThe": ho_ten_co_dau(s["doc"].get("chuThe") or "", text)}
+                    "chuThe": chu_the, "_tenTrenMat": ten_tren_mat(chu_the, text)}
 
     attachments: list[dict] = []
     seen: dict[str, int] = {}

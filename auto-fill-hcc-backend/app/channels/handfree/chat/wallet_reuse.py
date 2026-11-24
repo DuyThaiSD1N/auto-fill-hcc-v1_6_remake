@@ -13,19 +13,30 @@ Tới bước Thành phần hồ sơ, trước khi lập kế hoạch đính kè
 
 Bật khi: extension khai ``supportsWalletReuse`` + tài khoản bật cài đặt ``reuseWalletDocuments`` + thủ tục trong
 ``PROCEDURES`` + tiếng Việt (câu thoại chưa có bản Mông). Mỗi hội thoại chỉ hỏi một lần.
+
+Extension khai thêm ``supportsWalletPick``: đọc cả tab "Tài liệu được cấp", và giấy lấy từ ví được đính bằng nút "Chọn"
+trên đúng dòng của ví (cổng chỉ ghi nhận "dùng lại giấy tờ" khi chọn từ ví) thay vì tải lên lại. Tệp vẫn được tải về
+phiên hồ sơ để planner đọc nội dung đặt tên thành phần; ``apply_picks`` gắn ``walletPick`` vào mục kế hoạch.
 """
+import json
 import logging
 import re
 
 from app.channels.handfree.chat import script_vi as vi
 from app.channels.handfree.chat.intents import fold
+from app.services.llm.client import chat as llm_chat
 from app.upload_session import store as up_store
 from app.upload_session.ws import broadcast
 
 logger = logging.getLogger(__name__)
 
 CAPABILITY = "supportsWalletReuse"
+PICK_CAPABILITY = "supportsWalletPick"
 SETTING = "reuseWalletDocuments"
+# Cài đặt mặc định bật nhưng chỉ cho extension có PICK_CAPABILITY. Bản trên chợ chỉ có CAPABILITY (đính bằng tải lên
+# lại) giữ hành vi cũ: chỉ hỏi khi tài khoản đã tự bật cài đặt — router ghi giá trị đã lưu vào khoá này.
+SETTING_SAVED = "reuseWalletDocumentsSaved"
+TABS = ("uploaded", "issued")
 PROCEDURES = frozenset({"chung-thuc-ban-sao"})
 STATE = "wallet_reuse"
 LIMIT = 20
@@ -44,9 +55,14 @@ def enabled(conv: dict, proc: dict | None) -> bool:
             and str((proc or {}).get("key") or conv.get("procedure_key") or "") in PROCEDURES)
 
 
+def pick_enabled(conv: dict) -> bool:
+    return (conv.get("client_capabilities") or {}).get(PICK_CAPABILITY) is True
+
+
 def setting_on(conv: dict) -> bool:
     # Router chép cài đặt của tài khoản vào auth_user ở mỗi lượt (đọc từ đúng document user đã xác thực).
-    return (conv.get("auth_user") or {}).get(SETTING) is True
+    user = conv.get("auth_user") or {}
+    return user.get(SETTING if pick_enabled(conv) else SETTING_SAVED) is True
 
 
 def should_offer(conv: dict, proc: dict | None) -> bool:
@@ -99,7 +115,7 @@ def start(conv: dict, *, only: bool = False):
     conv["wallet_phase"] = "checking"
     conv["wallet_items"] = []
     r = _reply(vi.WALLET_CHECKING)
-    r.actions = [{"type": "wallet_list", "limit": LIMIT}]
+    r.actions = [{"type": "wallet_list", "limit": LIMIT, **({"tabs": list(TABS)} if pick_enabled(conv) else {})}]
     return r
 
 
@@ -108,22 +124,27 @@ def _text(value) -> str:
 
 
 def _clean_items(raw) -> list[dict]:
-    out, seen = [], set()
+    """Tối đa LIMIT tệp mỗi tab; tab "Tài liệu tải lên" đứng trước để số thứ tự liền nhau qua hai tab. Bản extension
+    cũ không gửi ``tab`` → coi là tab tải lên (bản cũ chỉ đọc tab đó)."""
+    by_tab: dict[str, list[dict]] = {tab: [] for tab in TABS}
+    seen = set()
     for item in raw if isinstance(raw, list) else []:
         if not isinstance(item, dict):
             continue
+        tab = item.get("tab") if item.get("tab") in TABS else TABS[0]
         uri = _text(item.get("uri"))
         wid = _text(item.get("id")) or uri
         # uri là mã tệp trên kho của cổng, ghép thẳng vào URL tải → chỉ nhận đúng dạng mã.
-        if not uri or not re.fullmatch(r"[A-Za-z0-9._-]{1,120}", uri) or wid in seen:
+        if not uri or not re.fullmatch(r"[A-Za-z0-9._-]{1,120}", uri) or (tab, wid) in seen:
             continue
-        seen.add(wid)
-        out.append({"id": wid, "uri": uri, "name": _text(item.get("name")) or uri,
-                    "size": int(item.get("size") or 0) if str(item.get("size") or "0").isdigit() else 0,
-                    "createdAt": _text(item.get("createdAt"))[:32]})
-        if len(out) >= LIMIT:
-            break
-    return out
+        if len(by_tab[tab]) >= LIMIT:
+            continue
+        seen.add((tab, wid))
+        by_tab[tab].append({"id": wid, "uri": uri, "name": _text(item.get("name")) or uri,
+                            "size": int(item.get("size") or 0) if str(item.get("size") or "0").isdigit() else 0,
+                            "createdAt": _text(item.get("createdAt"))[:32],
+                            "tab": tab, "signed": item.get("signed") is True})
+    return [item for tab in TABS for item in by_tab[tab]]
 
 
 async def _new_staging_session(conv: dict) -> str:
@@ -153,10 +174,56 @@ def _numbers(text: str) -> list[int]:
     return [int(n) for n in re.findall(r"\d{1,2}", text)]
 
 
+_ANSWER_PROMPT = """Công dân đang chọn giấy tờ trong danh sách đánh số dưới đây (Ví cá nhân trên cổng dịch vụ công) bằng
+cách nói hoặc gõ. Câu nói qua nhận dạng giọng nói: số thường viết bằng chữ, có thể thiếu dấu, sai chính tả.
+
+Danh sách:
+{listing}
+
+Đang chọn: {picked}
+
+Hiểu câu của công dân và trả về DUY NHẤT một JSON {{"y": "...", "so": [...]}}:
+- "y" = "chon": công dân chọn thêm / bỏ bớt / chọn lại giấy. "so" = danh sách số ĐÃ CHỌN SAU câu này (giữ các số đang
+  chọn trừ khi công dân bỏ đi hoặc nói chọn lại từ đầu).
+- "y" = "xong": công dân chốt dùng các giấy đã chọn, kể cả khi cùng câu vừa chọn thêm vừa chốt (chọn rồi nói xong /
+  đính kèm / dùng các giấy này) — câu có ý chốt thì luôn là "xong". "so" = danh sách cuối cùng.
+- "y" = "bo_qua": công dân không dùng giấy nào trong ví nữa. "so" = [].
+- "y" = "khong_ro": không hiểu được công dân muốn chọn gì. "so" = danh sách đang chọn.
+Cách đọc số: các số đọc liền nhau là các số riêng ("một hai ba" là 1, 2, 3); "mười", "mười một", "hai mươi", "hai mốt"
+là một số; "từ … đến …" là cả khoảng; "tất cả" là mọi số trong danh sách. Công dân có thể gọi giấy bằng tên hoặc loại
+giấy thay cho số — chọn số của giấy có tên khớp. Chỉ dùng số có trong danh sách."""
+
+
+async def _understand_answer(conv: dict, text: str) -> tuple[str, list[int]] | None:
+    """Câu chọn giấy trong ví → (ý, danh sách số sau câu). None = LLM không trả lời được (dùng dò số dự phòng)."""
+    items = conv.get("wallet_items") or []
+    tab_label = {"uploaded": "Tài liệu tải lên", "issued": "Tài liệu được cấp"}
+    listing = "\n".join(f"[{no}] ({tab_label.get(item.get('tab'), 'Ví cá nhân')}) {item.get('name') or ''}"
+                        for no, item in enumerate(items, start=1))
+    picked = ", ".join(str(n) for n in conv.get("wallet_picked") or []) or "chưa chọn giấy nào"
+    try:
+        raw = await llm_chat(
+            [{"role": "system", "content": _ANSWER_PROMPT.format(listing=listing, picked=picked)},
+             {"role": "user", "content": str(text)[:300]}],
+            temperature=0.0, max_tokens=120,
+        )
+        found = re.search(r"\{[\s\S]*\}", raw or "")
+        data = json.loads(found.group(0)) if found else {}
+    except Exception as e:  # noqa: BLE001 — LLM lỗi thì dò số bằng chữ số như trước
+        logger.warning("[wallet] hiểu câu chọn giấy lỗi: %s", e)
+        return None
+    y = str(data.get("y") or "")
+    if y not in ("chon", "xong", "bo_qua", "khong_ro"):
+        return None
+    numbers = [int(n) for n in data.get("so") or [] if str(n).isdigit()] if isinstance(data.get("so"), list) else []
+    return y, numbers
+
+
 def _entries(conv: dict) -> list[dict]:
     # fids/files giữ cho extension 1.18.22–23 (vẽ thẻ theo khung danh mục cũ); uri + origin để bản mới xem tệp từ cổng.
     return [{"no": no, "id": item["id"], "uri": item["uri"], "name": item["name"], "size": item.get("size") or 0,
-             "date": item.get("createdAt") or "", "fids": [], "files": [item["name"]]}
+             "date": item.get("createdAt") or "", "fids": [], "files": [item["name"]],
+             "tab": item.get("tab") or TABS[0], "signed": item.get("signed") is True}
             for no, item in enumerate(conv.get("wallet_items") or [], start=1)]
 
 
@@ -287,6 +354,20 @@ async def handle(conv: dict, intent, resume, back):
                           "items": [{k: item[k] for k in ("id", "uri", "name")} for item in items]}]
             return r
         if kind == "action" and value == "wallet_answer":
+            understood = await _understand_answer(conv, str(payload.get("text") or ""))
+            if understood is not None:
+                y, numbers = understood
+                chosen = sorted({n for n in numbers if n in valid})
+                if y == "bo_qua":
+                    return await _finish(conv, resume, back)
+                if y == "xong":
+                    return await handle(conv, type(intent)("action", "wallet_pick", {"picked": chosen}), resume, back)
+                if y == "chon" and chosen != sorted(conv.get("wallet_picked") or []):
+                    conv["wallet_picked"] = chosen
+                    return _list_reply(conv, vi.WALLET_PICKED_VOICE, numbers=", ".join(map(str, chosen)) or "0")
+                r = _reply(vi.WALLET_PICK_NONE_VOICE)
+                r.chips = _choice_chips(conv)
+                return r
             text = fold(payload.get("text"))
             picked = set(conv.get("wallet_picked") or [])
             if re.search(r"\b(bo qua|khong can|khong dung|thoi)\b", text) and not _numbers(text):
@@ -322,7 +403,12 @@ async def import_staged(conv: dict, mapping: dict[str, str]) -> int:
     main = await up_store.get(main_sid) or {}
     if not wallet or not main:
         return 0
-    names = {item["id"]: item["name"] for item in conv.get("wallet_items") or []}
+    # Thứ tự trong phiên tạm = thứ tự đã chọn; mapping chỉ mang id ví nên tra ngược tab bằng các mục đã chọn.
+    picked = [conv["wallet_items"][n - 1] for n in conv.get("wallet_picked") or []
+              if 0 < n <= len(conv.get("wallet_items") or [])]
+    by_id = {item["id"]: item for item in picked or conv.get("wallet_items") or []}
+    names = {wid: item["name"] for wid, item in by_id.items()}
+    pick = pick_enabled(conv)
     taken = {str(f.get("name") or "") for f in main.get("files") or []}
     metas, written = [], []
     for src in wallet.get("files") or []:
@@ -335,8 +421,12 @@ async def import_staged(conv: dict, mapping: dict[str, str]) -> int:
         new_fid = up_store.new_file_id(file_name)
         up_store.save_file_bytes(main_sid, new_fid, data)
         written.append(new_fid)
-        metas.append({"fid": new_fid, "doc_key": "khac", "side": None, "name": file_name,
-                      "type": src.get("type") or "application/pdf", "size": len(data), "note": ""})
+        meta = {"fid": new_fid, "doc_key": "khac", "side": None, "name": file_name,
+                "type": src.get("type") or "application/pdf", "size": len(data), "note": ""}
+        if pick and wallet_id in by_id:
+            # Dấu để apply_picks biết tệp này đính bằng nút "Chọn" của ví: tên + tab để tìm dòng, id để khớp đúng tệp.
+            meta["wallet"] = {"id": wallet_id, "name": by_id[wallet_id]["name"], "tab": by_id[wallet_id]["tab"]}
+        metas.append(meta)
     if not metas:
         return 0
     was_complete = bool(main.get("complete"))
@@ -351,3 +441,79 @@ async def import_staged(conv: dict, mapping: dict[str, str]) -> int:
         return 0
     await broadcast(main_sid, {"type": "progress", **up_store.progress(updated)})
     return len(metas)
+
+
+def _sources(item: dict) -> list[dict]:
+    segments = item.get("sourceSegments")
+    if isinstance(segments, list) and segments:
+        return [s for s in segments if isinstance(s, dict)]
+    return [{"fileIndex": item.get("fileIndex"), "pageIndexes": None}]
+
+
+def apply_picks(conv: dict, attachments: list[dict], session_files: list[dict]) -> list[dict]:
+    """Gắn ``walletPick`` cho mục kế hoạch dùng NGUYÊN một tệp lấy từ ví → extension bấm "Chọn" trên dòng của ví.
+
+    ``session_files[i]`` là tệp phiên ứng với ``fileIndex`` i. Nút "Chọn" đính nguyên tệp trong ví, không gộp / cắt
+    trang được, nên:
+    - mục gộp tệp ví với phần khác → tách: mỗi tệp ví một dòng riêng ("<tên> phần k"), phần còn lại giữ dòng cũ;
+    - tệp ví bị planner cắt ra nhiều giấy (dùng ở nhiều mục) → giữ đường tải lên như cũ cho các mục đó.
+    """
+    if not pick_enabled(conv) or not attachments:
+        return attachments
+    wallet_of = {i: f["wallet"] for i, f in enumerate(session_files or [])
+                 if isinstance(f, dict) and isinstance(f.get("wallet"), dict) and f["wallet"].get("id")}
+    if not wallet_of:
+        return attachments
+    uses: dict[int, int] = {}
+    for item in attachments:
+        if item.get("target") == "skipped":
+            continue
+        for index in {s.get("fileIndex") for s in _sources(item)}:
+            uses[index] = uses.get(index, 0) + 1
+
+    def pickable(source: dict) -> bool:
+        return source.get("fileIndex") in wallet_of and uses.get(source.get("fileIndex")) == 1
+
+    def picked(item: dict, index: int) -> dict:
+        out = {k: v for k, v in item.items() if k not in ("sourceSegments", "sourceFileIndexes")}
+        out["fileIndex"] = index
+        out["fileName"] = str(session_files[index].get("name") or out.get("fileName") or "")
+        out["walletPick"] = dict(wallet_of[index])
+        return out
+
+    result: list[dict] = []
+    for item in attachments:
+        sources = _sources(item)
+        if item.get("target") == "skipped" or not any(pickable(s) for s in sources):
+            result.append(item)
+            continue
+        if len(sources) == 1:
+            result.append(picked(item, sources[0]["fileIndex"]))
+            continue
+        picks = list(dict.fromkeys(s["fileIndex"] for s in sources if pickable(s)))
+        rest = [s for s in sources if not pickable(s)]
+        parts: list[dict] = []
+        if rest:
+            kept = dict(item)
+            if len(rest) == 1 and rest[0].get("pageIndexes") is None:
+                kept.pop("sourceSegments", None)
+                kept["fileIndex"] = rest[0]["fileIndex"]
+            else:
+                kept["sourceSegments"] = rest
+                kept["fileIndex"] = rest[0]["fileIndex"]
+            parts.append(kept)
+        parts.extend(picked(item, index) for index in picks)
+        name = str(item.get("documentName") or "").strip()
+        stem = name[:42].rstrip()
+        for k, part in enumerate(parts):
+            if k == 0:
+                continue
+            part_name = f"{stem} phần {k + 1}".strip()
+            part.update({"documentName": part_name, "componentName": part_name, "target": "new",
+                         "componentIndex": None, "needsAddComponent": True})
+        if len(parts) > 1 and name:
+            parts[0]["documentName"] = f"{stem} phần 1".strip()
+            if parts[0].get("target") == "new":
+                parts[0]["componentName"] = parts[0]["documentName"]
+        result.extend(parts)
+    return result

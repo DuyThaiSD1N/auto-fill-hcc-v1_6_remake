@@ -1,5 +1,5 @@
 // Dùng lại giấy tờ trong Ví cá nhân của cổng Bộ Tư pháp (BE chat/wallet_reuse.py).
-// Khoá: cờ supportsWalletReuse; cài đặt theo tài khoản reuseWalletDocuments mặc định tắt; extension KHÔNG đọc token của
+// Khoá: cờ supportsWalletReuse; cài đặt theo tài khoản reuseWalletDocuments (công tắc khoá tới khi đọc BE); extension KHÔNG đọc token của
 // cổng — danh sách lấy từ phần dữ liệu mà chính trang gọi (MAIN world), tệp tải bằng đường không cần token, gửi vào
 // phiên TẠM của BE; runActions không await ask (khoá sidebar).
 const assert = require("node:assert/strict");
@@ -39,7 +39,7 @@ assert.match(sidebar, /card\.kind === "wallet_docs"\) return renderWalletDocs\(c
 
 // Đọc danh sách qua content, báo BE kèm origin.
 const list = slice(sidebar, "async function runWalletList", "\n  }\n");
-assert.match(list, /sendToContent\(\{ action: "listWalletDocuments", limit: a\.limit \}\)/);
+assert.match(list, /sendToContent\(\{ action: "listWalletDocuments", limit: a\.limit, tabs: a\.tabs \}\)/);
 assert.match(list, /__event:wallet_list:/);
 assert.match(list, /origin: String\(res\?\.origin \|\| ""\)/);
 
@@ -69,7 +69,10 @@ assert.match(card, /walletSizeText\(entry\.size\)/);
 // MAIN world: nghe phần dữ liệu danh sách ví, KHÔNG đọc header (token).
 assert.match(watcher, /__HCC_MOJ_WALLET_LIST__/);
 assert.match(watcher, /\\\/api\\\/CongDan\\\/TaiLieuCaNhan/);
-assert.match(watcher, /get\("filter"\) !== "uploaded"/);
+assert.match(watcher, /const uploaded = filter === "uploaded";/);
+assert.match(watcher, /if \(uploaded \? u\.searchParams\.get\("uploadBy"\) !== "MY" : filter !== "issued"\) return;/);
+assert.match(watcher, /tab: uploaded \? "uploaded" : "issued",/);
+assert.match(watcher, /keyword: String\(u\.searchParams\.get\("keyword"\) \|\| ""\),/);
 assert.doesNotMatch(watcher, /getResponseHeader|getAllResponseHeaders|setRequestHeader|[Aa]uthorization/);
 
 // Content: mở ví của dòng hồ sơ, gom theo trang, luôn đóng hộp thoại.
@@ -78,6 +81,26 @@ assert.match(listFn, /openDocumentWalletForRow\(row, \{\}\)/);
 assert.match(listFn, /foldedNodeText\(b\) === "sau"/);
 assert.match(listFn, /finally \{[\s\S]*closeWalletListDialog\(\)/);
 assert.match(attachCore, /msg\?\.action === "listWalletDocuments"/);
+assert.match(attachCore, /listWalletDocuments\(msg\.limit, msg\.tabs\)/);
+// Tab được cấp chỉ đọc khi BE xin; danh sách kết quả tìm kiếm (keyword) không lẫn vào danh sách ví.
+assert.match(listFn, /const withIssued = Array\.isArray\(tabs\) && tabs\.includes\("issued"\);/);
+assert.match(listFn, /\|\| data\.keyword\) return;/);
+assert.match(listFn, /\.map\(\(item\) => \(\{ \.\.\.item, tab \}\)\)/);
+
+// Bản supportsWalletPick: giấy lấy từ ví đính bằng nút "Chọn" của đúng dòng trong ví (cổng chỉ tính dùng lại giấy tờ
+// khi chọn từ ví), khớp đúng id qua danh sách API; không thấy thì vẫn tải lên để không sót giấy.
+assert.match(sidebar, /supportsWalletPick: true,/);
+const pick = slice(attachCore, "async function pickExistingWalletDocument", "\n}\n");
+assert.match(pick, /String\(item\?\.id \|\| ""\) === wantId/);
+assert.match(pick, /input\[name="keyword"\]/);
+assert.match(pick, /let row = latest \? findRow\(\) : null;/, "chưa có danh sách mang id thì chưa khớp theo tên");
+assert.match(pick, /button\.click\(\);\s*return \{ ok: true \};/, "bấm một lần (clickLikeUser bắn hai click)");
+const one = slice(attachCore, "async function attachOneFileViaDocumentWallet", "\n}\n");
+assert.match(one, /if \(planItem\.walletPick\) \{[\s\S]*pickExistingWalletDocument\(dialog, planItem\.walletPick\)[\s\S]*waitForPersistedAttachment\(row, planItem, existingName, 8000\)/);
+assert.ok(one.indexOf("pickExistingWalletDocument") < one.indexOf('findButtonByText(dialog, ["Tải lên từ thiết bị"])'),
+  "chọn từ ví trước, tải lên chỉ là đường dự phòng");
+assert.match(attachCore, /if \(planItem\.walletPick\?\.name\) ownNames\.push\(planItem\.walletPick\.name\);/);
+assert.match(card, /entry\.tab === "issued"/);
 
 // Khung chat là cột flex cao cố định: thẻ phải flex:none, không thì bị co còn mỗi viền.
 const css = fs.readFileSync(path.join(root, "sidebar.css"), "utf8");
@@ -112,6 +135,17 @@ assert.match(css, /\.wallet-card\{[^}]*flex:none/);
   const detail = JSON.parse(events[0].detail);
   assert.equal(detail.origin, "https://apidvc.moj.gov.vn");
   assert.deepEqual(detail.items.map((i) => i.uri), ["u-1"]);
+  assert.equal(detail.tab, "uploaded");
+  const issued = new FakeXhr();
+  issued.open("GET", "https://apidvc.moj.gov.vn/api/CongDan/TaiLieuCaNhan?page=1&pageSize=10&filter=issued&status=5&uploadBy=OTHER&keyword=KQ");
+  issued.send();
+  Object.assign(issued, { status: 200, responseType: "", responseText: JSON.stringify({ data: { totalItems: 1, items: [
+    { id: "2", name: "KQ_1.pdf", uri: "u-2", size: 5, isSigned: true }] } }) });
+  issued.listeners.loadend();
+  const second = JSON.parse(events[1].detail);
+  assert.equal(second.tab, "issued");
+  assert.equal(second.keyword, "KQ");
+  assert.equal(second.items[0].signed, true);
 }
 
 console.log("wallet reuse (handfree) passed");

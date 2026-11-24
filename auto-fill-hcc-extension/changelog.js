@@ -3,6 +3,20 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.28.31",
+    date: "23/11/2026",
+    items: [
+      "Đính kèm nhiều hồ sơ (tách tab) trong cửa sổ ẩn danh: các tab hồ sơ tiếp theo mở ngay trong cửa sổ ẩn danh đang làm, không còn nhảy sang trình duyệt chính.",
+    ],
+  },
+  {
+    version: "1.28.30",
+    date: "23/11/2026",
+    items: [
+      "Đính kèm vào ô cố định (hỗ trợ mai táng, các thủ tục Bộ Y tế, khai sinh liên thông…): chỉ báo \"đã đính\" khi tệp hiện thật trên cổng, kèm dấu ✓ xanh ở tên tệp; cổng không nhận thì báo rõ tệp nào để đính tay.",
+    ],
+  },
+  {
     version: "1.28.29",
     date: "22/11/2026",
     items: [

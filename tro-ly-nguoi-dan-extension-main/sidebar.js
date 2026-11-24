@@ -312,6 +312,8 @@
     supportsAttachFileReport: true,
     // Bước Thành phần hồ sơ chứng thực bản sao: đọc Ví cá nhân của cổng (wallet_list / wallet_read, thẻ wallet_docs).
     supportsWalletReuse: true,
+    // Ví cá nhân: đọc thêm tab "Tài liệu được cấp"; giấy lấy từ ví đính bằng nút "Chọn" của ví (walletPick trong kế hoạch).
+    supportsWalletPick: true,
     // Wizard tư pháp: bấm nút "Quay lại" của cổng (guided_click_back) và đếm lại ô tờ khai khi lùi về Kê khai
     // (step_back_scan) để BE điền lại / mời bổ sung. Thiếu cờ → BE không theo khi trang lùi bước.
     supportsStepBack: true,
@@ -553,6 +555,25 @@
       pageWorkInFlight = Math.max(0, pageWorkInFlight - 1);
       pageWorkEndedAt = Date.now();
     });
+  }
+
+  // Lệnh điền gửi ngay lúc cổng vừa chuyển sang bước kê khai: eForm chưa dựng xong thì không frame nào nhận ra form
+  // (content script im lặng) → kênh đóng, trả null; hoặc khung form có rồi mà các ô chưa render → 0 ô, không lỗi.
+  // Báo thẳng kết quả đó thì cán bộ thấy form gần như trống. Điền lại cùng bộ ô là an toàn (như nút "Điền lại
+  // thông tin") → chờ cổng dựng xong rồi gửi lại: chưa frame nào trả lời thì thử tới hết danh sách chờ (lượt thử khi
+  // form chưa có trả null ngay, không tốn gì); có form mà 0 ô thì thử lại MỘT lần.
+  const FILL_RETRY_DELAYS_MS = [800, 1500, 2500, 4000];
+  async function sendFillWithRetry(payload) {
+    let res = await sendToContent(payload);
+    for (let attempt = 0; attempt < FILL_RETRY_DELAYS_MS.length; attempt++) {
+      const noFrame = !res;
+      const nothingFilled = !!res && !res.error && !(res.filled > 0) && !(res.errors || []).length;
+      if (!noFrame && !(nothingFilled && attempt === 0)) break;
+      console.warn("[TLND] Điền chưa vào ô nào, chờ cổng dựng form rồi thử lại:", { attempt: attempt + 1, res });
+      await new Promise((r) => setTimeout(r, FILL_RETRY_DELAYS_MS[attempt]));
+      res = await sendToContent(payload);
+    }
+    return res;
   }
 
   // ── Mốc "công dân bấm Gửi hồ sơ" ──
@@ -1690,7 +1711,7 @@
     setStatus("🔎 Đang xem Ví cá nhân trên cổng…");
     let res = null;
     try {
-      res = await sendToContent({ action: "listWalletDocuments", limit: a.limit });
+      res = await sendToContent({ action: "listWalletDocuments", limit: a.limit, tabs: a.tabs });
     } catch (e) {
       res = { ok: false, error: String(e?.message || e) };
     }
@@ -1864,6 +1885,8 @@
       ].filter(Boolean).join(" · ");
       const tags = document.createElement("span");
       tags.className = "wallet-tags";
+      if (entry.tab === "issued") tags.insertAdjacentHTML("beforeend", '<i class="wallet-tag issued">ĐƯỢC CẤP</i>');
+      if (entry.signed) tags.insertAdjacentHTML("beforeend", '<i class="wallet-tag signed">ĐÃ KÝ SỐ</i>');
       if (entry.inDossier) tags.insertAdjacentHTML("beforeend", '<i class="wallet-tag dup">ĐÃ CÓ TRONG HỒ SƠ</i>');
       if (entry.renamed) tags.insertAdjacentHTML("beforeend", '<i class="wallet-tag fix">ĐẶT LẠI TÊN</i>');
       txt.append(name, tags, meta);
@@ -6146,7 +6169,7 @@
           });
         }
         const secondPassId = String(a.secondPass?.requestId || "");
-        const res = await sendToContent({
+        const res = await sendFillWithRetry({
           action: "fillFields", fields: a.fields, toolAccount: a.toolAccount || null,
           formSnapshot: a.formSnapshot || null,
           // Cổng Bắc Ninh: tab chứa các ô của lượt điền này (khối người ủy quyền / đơn đăng ký).

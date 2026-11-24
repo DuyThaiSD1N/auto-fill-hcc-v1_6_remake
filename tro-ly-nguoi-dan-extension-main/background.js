@@ -869,6 +869,20 @@ async function relaySplitTabClosed(tabId) {
   } catch (_) { /* sidebar tab gốc đã đóng */ }
 }
 
+// Chế độ ẩn danh "spanning": service worker thuộc hồ sơ thường nên tabs.create không kèm windowId mở tab ở cửa sổ
+// thường (không có thì tự mở cửa sổ mới) → tab tách mất phiên đăng nhập của cửa sổ ẩn danh. Mở đúng cửa sổ của tab đã
+// bắt đầu lượt đính; cửa sổ đó đã đóng thì mở như cũ.
+async function splitQueueWindowId(sender, tabId) {
+  if (sender?.tab?.windowId != null) return sender.tab.windowId;
+  try { return tabId ? (await chrome.tabs.get(tabId))?.windowId ?? null : null; } catch (_) { return null; }
+}
+async function createSplitTab(windowId) {
+  if (windowId != null) {
+    try { return await chrome.tabs.create({ url: "about:blank", active: true, windowId }); } catch (_) { /* cửa sổ đã đóng */ }
+  }
+  return await chrome.tabs.create({ url: "about:blank", active: true });
+}
+
 async function openNextSplitQueueItemUnlocked() {
   let state = await getSplitAttachQueue();
   if (!state) return { done: true };
@@ -886,7 +900,7 @@ async function openNextSplitQueueItemUnlocked() {
       }
 
       // Lưu pending + activeTabId TRƯỚC khi điều hướng để content không thể đọc hụt bundle.
-      tab = await chrome.tabs.create({ url: "about:blank", active: true });
+      tab = await createSplitTab(state.windowId);
       const pending = await getPendingMap();
       pending[tab.id] = {
         queueId: state.queueId,
@@ -1043,6 +1057,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             activeItem: waitForTabId ? { ordinal: 1 } : null,
             // Tab có sidebar đã bắt đầu lượt tách — đích chuyển tiếp mốc "Nộp" của các tab tách.
             originTabId: Number(msg.originTabId) || waitForTabId || null,
+            windowId: await splitQueueWindowId(sender, Number(msg.originTabId) || waitForTabId),
             // Lệnh gạt "cách nhận kết quả" mặc định do BE gửi kèm. Tab tách chạy khung hồ sơ phụ
             // không nói chuyện với BE nên chỉ có nguồn này để tự gạt ở bước nhận kết quả.
             resultMethod: cleanResultMethod(msg.resultMethod),
