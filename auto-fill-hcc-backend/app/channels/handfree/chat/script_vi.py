@@ -2279,6 +2279,12 @@ FLOW2_NEED_REQUIRED = {
     "tts": (" Tờ khai còn {required} ô bắt buộc chưa có thông tin. Công dân có thể tự điền thẳng vào tờ khai, hoặc bấm "
             "Bổ sung các thông tin còn thiếu để tôi hỏi và điền lần lượt từng ô ạ."),
 }
+FLOW2_NEED_REQUIRED_ONLY = {
+    "md": ("🟥 **{required} ô bắt buộc** còn trống.\n\nTờ khai còn **{required} ô bắt buộc** chưa có thông tin. Công dân "
+           "có thể tự điền thẳng vào tờ khai, hoặc bấm **Bổ sung các thông tin còn thiếu** để tôi hỏi và điền lần lượt "
+           "từng ô cho đầy đủ ạ."),
+    "tts": FLOW2_NEED_REQUIRED["tts"],
+}
 FLOW2_OPTIONAL_ONLY = {
     "md": ("✓ Tờ khai đã đủ các ô bắt buộc, còn **{optional} ô không bắt buộc** để trống.\n\nCông dân muốn bổ sung thì "
            "bấm **Bổ sung các thông tin còn thiếu**; không thì bấm **Chọn hình thức nhận kết quả** để đổi cách nhận "
@@ -3284,6 +3290,18 @@ FR_FILL_STATS_WAIT = {
     "md": ("🟩 **{filled}** ô đã điền · 🟧 **{optional}** ô không bắt buộc còn trống · 🟥 **{required}** ô bắt buộc "
            "còn trống\n\nĐính kèm xong tôi mời công dân bổ sung các ô trống ạ."),
     "tts": " Trên tờ khai còn {empty} ô trống, đính kèm xong tôi sẽ mời công dân bổ sung ạ.",
+}
+# Thủ tục chỉ bổ sung ô bắt buộc (registry REQUIRED_ONLY): không đếm / không nhắc ô không bắt buộc.
+FR_FILL_STATS_REQUIRED_ONLY = {
+    "md": ("🟩 **{filled}** ô đã điền · 🟥 **{required}** ô bắt buộc còn trống\n\nBấm **Bổ sung các thông tin còn "
+           "thiếu** để tôi hỏi từng ô ạ."),
+    "tts": (" Trên tờ khai còn {required} ô bắt buộc còn trống. Công dân bấm nút Bổ sung các thông tin còn thiếu để tôi "
+            "hỏi lần lượt từng ô ạ."),
+}
+FR_FILL_STATS_WAIT_REQUIRED_ONLY = {
+    "md": ("🟩 **{filled}** ô đã điền · 🟥 **{required}** ô bắt buộc còn trống\n\nĐính kèm xong tôi mời công dân bổ "
+           "sung các ô bắt buộc ạ."),
+    "tts": " Trên tờ khai còn {required} ô bắt buộc còn trống, đính kèm xong tôi sẽ mời công dân bổ sung ạ.",
 }
 FR_OFFER_AFTER_ATTACH = {
     "md": ("📝 Tờ khai còn **{empty} ô trống** ({required} ô bắt buộc) → bấm **Bổ sung các thông tin còn thiếu** để "

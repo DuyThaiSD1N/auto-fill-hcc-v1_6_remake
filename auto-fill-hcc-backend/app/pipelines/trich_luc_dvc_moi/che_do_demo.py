@@ -9,4 +9,4 @@ BAT = False: thủ tục chạy như thường (ô số lượng để trống k
 Áp cho MỌI tài khoản dùng thủ tục này (cả Auto Fill lẫn trợ lý) — đổi giá trị rồi deploy lại backend.
 """
 
-BAT = True
+BAT = False

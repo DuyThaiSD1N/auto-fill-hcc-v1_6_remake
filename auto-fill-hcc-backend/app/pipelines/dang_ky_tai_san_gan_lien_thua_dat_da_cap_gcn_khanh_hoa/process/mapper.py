@@ -9,6 +9,8 @@ Cùng template ba khối với cấp đổi GCN / đăng ký biến động Khá
                          nation2.
 Không có Đơn ghi nội dung thì điền câu mặc định theo trường hợp giải quyết công dân đã chọn trên cổng (trợ lý truyền
 options.truongHop = "thay_doi" cho quy trình 1.013995-2.x "đăng ký thay đổi về tài sản").
+Bật "Lấy người nộp theo tờ khai" (options.submitterMode, submitter_is_declarant): Phần I khai chủ hồ sơ cá nhân, bỏ bên
+được ủy quyền.
 """
 
 from __future__ import annotations
@@ -36,6 +38,7 @@ from app.pipelines.dang_ky_dat_dai_lan_dau_khanh_hoa.process.mapper import (
     _province,
     _text,
     _ward,
+    submitter_is_declarant,
 )
 
 from .schema import UI_COMP_BY_NAME
@@ -101,6 +104,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     authorized = bool(owner_name and applicant_name and _fold(owner_name) != _fold(applicant_name))
     if not authorized and owner_name:
         applicant_name = owner_name  # cùng một người: hai khối ghi tên giống hệt nhau
+    # Bật "Lấy người nộp theo tờ khai": Phần I = chủ hồ sơ cá nhân, không lấy bên được ủy quyền.
+    owner_submits = submitter_is_declarant(options, owner_name, values.get("ChuHoSo_LoaiChuThe"))
+    if owner_submits:
+        applicant_name = owner_name
 
     def owner_val(key: str) -> Any:
         value = values.get(f"ChuHoSo_{key}")
@@ -109,7 +116,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         return value
 
     def applicant_val(key: str) -> Any:
-        if not authorized:
+        if owner_submits or not authorized:
             return owner_val(key)  # cùng một người: hai khối lấy đúng một nguồn, ghi giống hệt nhau
         return values.get(f"NguoiNop_{key}")
 

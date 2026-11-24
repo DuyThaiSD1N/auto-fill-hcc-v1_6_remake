@@ -1,0 +1,332 @@
+// API của dịch vụ agent (auto-test-hcc/agents/server.py), đi qua nginx ở /agent-api/.
+import { ApiError } from "../../api";
+import { apiRequest as request } from "../../api";
+import type { Batch, LabRun } from "./engine";
+
+export interface Opinion {
+  role: string;
+  label: string;
+  cause?: string;
+  confidence?: number;
+  summary?: string;
+  evidence?: string[];
+  proposal?: string;
+  codeRefs?: string[];
+  fields?: string[];
+  stance?: "agree" | "partly" | "disagree";
+  rebuttal?: string;
+  error?: string;
+}
+
+export interface Check {
+  field: string;
+  op: string;
+  expected: string;
+  why?: string;
+}
+
+export interface Plan {
+  summary: string;
+  files: string[];
+  steps: string[];
+  test: string;
+}
+
+export interface Decision {
+  decision: "skip_ocr" | "fix_code" | "report_only";
+  cause: string;
+  reason: string;
+  dissent?: string;
+  plan?: Plan;
+  acceptance?: Check[];
+  risk?: string;
+}
+
+export interface Evaluation {
+  rows: { check: Check; cells: { value: string | null; ok: boolean }[] }[];
+  passed: number;
+  total: number;
+  allPass: boolean;
+}
+
+export interface RunBrief {
+  n: number;
+  status: "ok" | "partial" | "error";
+  ms?: number;
+  requestId?: string;
+  error?: string;
+  ocrFresh?: boolean | null;
+}
+
+export interface Regression {
+  field: string;
+  before: string[];
+  after: string[];
+}
+
+export interface FullTests {
+  ok: boolean;
+  new: string[];
+  fixed: string[];
+  broken: boolean;
+  before: Counts;
+  after: Counts;
+}
+
+export interface ExtensionTests {
+  ok: boolean;
+  new: string[];
+  total: number;
+  failed: number;
+  failedBefore: number;
+}
+
+export interface Counts {
+  failed: number;
+  passed: number;
+  skipped: number;
+  errors: number;
+}
+
+export interface Round {
+  n: number;
+  opinions: Opinion[];
+  reviews: Opinion[];
+  debate: { skipped: boolean; reason?: string } | null;
+  decision: Decision | null;
+  /** Các kế hoạch trước mà người dùng yêu cầu trọng tài lập lại. */
+  planHistory?: Decision[];
+  /** Người dùng duyệt kế hoạch sửa (mỗi lần lập lại một mục). */
+  planReviews?: (ApprovalResult & { revision: number })[];
+  precheck?: Evaluation;
+  fix: { summary: string; files?: string[]; patch?: string; repairs?: number; notes?: string } | null;
+  tests: { pipeline?: { ok: boolean; skipped?: boolean; summary: string; files?: string[] }; full?: FullTests; extension?: ExtensionTests;
+    regression?: RegressionTests } | null;
+  approval?: ApprovalResult | null;
+  deploy: { ok: boolean; step?: string | null; ps?: string; health?: string } | null;
+  retest: { runs: RunBrief[]; total: number; phase?: string; evaluation?: Evaluation; regressions?: Regression[]; ocrFresh?: number } | null;
+  /** kept: hết vòng mà chưa đạt, code của vòng này được để lại trong thư mục làm việc cho người xem. */
+  result: { ok: boolean; reason?: string; kept?: boolean } | null;
+}
+
+/** approve: build + chạy kiểm; retry: hoàn tác, vòng sau làm lại theo góp ý; reject: hoàn tác và kết thúc. */
+export type Verdict = "approve" | "retry" | "reject";
+
+export interface ApprovalResult {
+  decision: Verdict;
+  note?: string;
+  by?: string;
+  at?: string;
+  timeout?: boolean;
+}
+
+/** Bản sửa đã qua test, đang chờ người duyệt trước khi build Docker và nạp extension. */
+/** Trọng tài đã lập kế hoạch sửa, đang chờ người dùng xác nhận trước khi agent sửa code. */
+export interface PendingPlan {
+  round: number;
+  revision: number;
+  since: string;
+  canRevise: boolean;
+  timeoutMin: number;
+}
+
+export interface PendingApproval {
+  round: number;
+  since: string;
+  files: string[];
+  canRetry: boolean;
+  timeoutMin: number;
+}
+
+export interface FileRecord {
+  path: string;
+  created: boolean;
+}
+
+export interface RequestInfo {
+  requestId: string;
+  procedure: string;
+  label: string;
+  status?: string;
+  createdAt?: string;
+  fieldsCount?: number;
+  account: { username: string; name?: string; xa?: string | null; tinh?: string | null };
+  files: { name: string; size?: number }[];
+  missingFiles: string[];
+  pipeline?: string | null;
+  experience?: string;
+  needsApplicant?: boolean;
+  /** mongo: còn trên production; archive: production đã xoá, lấy từ kho lưu trữ. */
+  source?: "mongo" | "archive";
+  /** autofill: lượt điền; attach: lượt đính kèm (chấm kế hoạch giấy nào vào dòng nào). */
+  kind?: "autofill" | "attach";
+  /** Lượt đính kèm: cài đặt Tách giấy tờ lúc đó, số dòng đính kèm extension đọc trên cổng. */
+  splitDocuments?: boolean | null;
+  portalRows?: number | null;
+  /** Lượt điền: các lượt đính kèm cùng hồ sơ. */
+  attachRuns?: { requestId: string; createdAt?: string }[];
+}
+
+/** Bộ ca hồi quy (auto-test-hcc/regression/cases) phát lại trên bản sửa, so với trước khi sửa. */
+export interface RegressionTests {
+  ok: boolean;
+  new: string[];
+  errors: Record<string, string>;
+  fixed: string[];
+  total: number;
+  passed: number;
+  broken: boolean;
+}
+
+/** Một repo thật bị sửa: nhánh agent/<mã ca> dựng trên tag release, link mở PR. */
+export interface PushResult {
+  component: string;
+  branch: string;
+  ref?: string;
+  base: string;
+  remote: string;
+  files: string[];
+  commit?: string;
+  compare?: string | null;
+  drift?: string[];
+  error?: string;
+}
+
+export interface Job {
+  id: string;
+  requestId: string;
+  description: string;
+  createdAt: string;
+  createdBy: string;
+  settings: { runs: number; maxRounds: number; reproduce: boolean; replayAccount: string; mode?: RunMode; target?: FixTarget; kind?: "autofill" | "attach" };
+  approval?: PendingApproval | null;
+  planApproval?: PendingPlan | null;
+  status: "queued" | "running" | "done" | "failed" | "stopped";
+  stage: string;
+  outcome: Outcome | null;
+  error: string | null;
+  warnings: string[];
+  case: Partial<RequestInfo>;
+  reproduce: { runs: RunBrief[]; total: number; ocrFresh?: number; faithful?: boolean; coverage?: { original: number; matched: number }; table?: { field: string; original: string; runs: (string | null)[]; stable: boolean }[] } | null;
+  rounds: Round[];
+  /** unverified: code của vòng chưa đạt, để lại cho người xem (Cần người xem), chưa build lên Docker. */
+  fix: {
+    files: FileRecord[]; patch: string; summary?: string; reverted: boolean; reverting?: boolean; revertedFiles?: string[]; keptFiles?: string[];
+    unverified?: boolean; round?: number;
+    /** Server: bản sửa đạt đã commit lên nhánh riêng của ca trên GitHub. */
+    git?: { branch: string; commit: string; base: string; remote: string; drift: string[] };
+    pushes?: PushResult[];
+    superseded?: boolean;
+  } | null;
+  /** Khu làm việc: tag release đang chạy production của từng repo mà ca này sửa trên đó. */
+  workspace?: Record<string, { ref: string; commit: string; url: string; base: string }>;
+  regression?: { saved: boolean; path?: string; catchesOldBug?: boolean; reason?: string };
+  report: { outcome: Outcome; headline: string; reason: string; finishedAt: string } | null;
+  cost: { usd: number; calls: number };
+  events: { t: string; level: string; who: string | null; text: string }[];
+}
+
+/** Chỉ còn chạy lại qua backend: bỏ Chromium / cổng thật ngày 18/11/2026. Job cũ có thể còn "portal". */
+export type RunMode = "portal" | "api";
+
+/** Sửa cho Auto Fill (extension Auto Fill) hay trợ lý hồ sơ (kênh handfree của backend). */
+export type FixTarget = "autofill" | "troly";
+
+export type Outcome = "fixed" | "skipped_ocr" | "report_only" | "not_reproduced" | "need_human" | "not_approved";
+
+export interface JobSummary {
+  id: string;
+  requestId: string;
+  label?: string;
+  description: string;
+  status: Job["status"];
+  stage: string;
+  outcome: Outcome | null;
+  createdAt: string;
+  rounds: number;
+  cost: { usd: number; calls: number };
+}
+
+export interface NewJob {
+  requestId: string;
+  description: string;
+  /** Bỏ trống (web không gửi): dịch vụ tự dựng tài khoản test cùng xã, tỉnh với tài khoản đã điền req. */
+  replayUsername?: string;
+  replayPassword?: string;
+  runs: number;
+  maxRounds: number;
+  reproduce: boolean;
+  applicant?: { applicantFullname: string; applicantIdentityNumber: string; applicantBirthday: string };
+  mode: RunMode;
+  target: FixTarget;
+}
+
+interface Phase {
+  phase: string;
+  runs: (RunBrief & { startedAt?: string; response?: Record<string, unknown> })[];
+}
+
+const json = (body: unknown): RequestInit => ({
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(body),
+});
+
+export const agentApi = {
+  health: () => request<{ ok: boolean; claude: boolean; busy: string | null; queued: number; server?: boolean; git?: boolean }>("/agent-api/health"),
+  lookup: (id: string) => request<RequestInfo>(`/agent-api/requests/${encodeURIComponent(id)}`),
+  list: () => request<{ items: JobSummary[]; busy: string | null }>("/agent-api/jobs"),
+  get: (id: string) => request<Job>(`/agent-api/jobs/${encodeURIComponent(id)}`),
+  runs: (id: string) => request<{ phases: Phase[] }>(`/agent-api/jobs/${encodeURIComponent(id)}/runs`),
+  create: (body: NewJob) => request<Job>("/agent-api/jobs", json(body)),
+  stop: (id: string) => request<Job>(`/agent-api/jobs/${encodeURIComponent(id)}/stop`, { method: "POST" }),
+  revert: (id: string) => request<Job>(`/agent-api/jobs/${encodeURIComponent(id)}/revert`, { method: "POST" }),
+  ready: (id: string) => request<Job>(`/agent-api/jobs/${encodeURIComponent(id)}/ready`, { method: "POST" }),
+  plan: (id: string, body: { round: number; revision: number; decision: Verdict; note: string }) =>
+    request<Job>(`/agent-api/jobs/${encodeURIComponent(id)}/plan`, json(body)),
+  approve: (id: string, body: { round: number; decision: Verdict; note: string }) =>
+    request<Job>(`/agent-api/jobs/${encodeURIComponent(id)}/approval`, json(body)),
+};
+
+/** Ảnh cần Bearer token nên không gắn thẳng vào <img src>. */
+/** nginx trả 502/504 khi dịch vụ trên máy host chưa bật. */
+export function serviceDown(reason: unknown): boolean {
+  return reason instanceof ApiError && (reason.status === 502 || reason.status === 504);
+}
+
+export function errorText(reason: unknown): string {
+  if (serviceDown(reason)) return "Dịch vụ agent chưa chạy. Máy local: python auto-test-hcc/agents/server.py · server: sudo systemctl start autotest-agent";
+  return reason instanceof Error ? reason.message : String(reason);
+}
+
+function phaseName(phase: string): string {
+  if (phase === "original") return "Lượt gốc (req)";
+  if (phase === "reproduce") return "Trước khi sửa";
+  const round = /^round(\d+)$/.exec(phase);
+  return round ? `Sau sửa, vòng ${round[1]}` : phase;
+}
+
+/** Đổi kết quả chạy lại sang Batch để dùng lại nguyên màn Results của web Kiểm thử. */
+export function toBatch(job: Job, phases: Phase[]): Batch {
+  const files = (job.case.files ?? []).map((f) => f.name);
+  const attach = job.settings.kind === "attach";
+  const runs: LabRun[] = phases.flatMap((phase, set) => phase.runs.map((r) => ({
+    set,
+    run: r.n - 1,
+    status: "done" as const,
+    startedAt: r.startedAt,
+    // Lượt đính kèm: kết quả nằm ở bước đính kèm để tab Mô phỏng đính kèm dựng bảng thành phần hồ sơ.
+    [attach ? "attach" : "fill"]: { status: r.status, ms: r.ms ?? 0, requestId: r.requestId, response: r.response, error: r.error },
+  })));
+  return {
+    version: 1,
+    id: `${job.id}:${phases.map((p) => `${p.phase}-${p.runs.length}`).join(",")}`,
+    procedure: job.case.procedure ?? "",
+    label: job.case.label ?? job.requestId,
+    account: job.settings.replayAccount,
+    createdAt: job.createdAt,
+    settings: { fill: !attach, attach, split: false, variant: "" },
+    sets: phases.map((p) => ({ name: phaseName(p.phase), files })),
+    runs,
+  };
+}

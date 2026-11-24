@@ -15,6 +15,9 @@ ENV BACKEND_URL=http://app:8000
 ENV AGENT_URL=http://host.docker.internal:12009
 
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
+# Đổi host.docker.internal (extra_hosts) thành IP trước envsubst; file phải có quyền chạy, thiếu là nginx bỏ qua.
+COPY docker-entrypoint.d/18-agent-url.envsh /docker-entrypoint.d/18-agent-url.envsh
+RUN sed -i 's/\r$//' /docker-entrypoint.d/18-agent-url.envsh && chmod 755 /docker-entrypoint.d/18-agent-url.envsh
 COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 12007

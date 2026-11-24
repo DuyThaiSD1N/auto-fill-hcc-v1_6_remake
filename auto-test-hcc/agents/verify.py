@@ -28,8 +28,11 @@ _SUMMARY = re.compile(r"(\d+) (failed|passed|skipped|errors?)\b")
 _STACK_MARK = RUNS / "_stack.json"
 
 
-def _compose_env() -> dict:
-    """Biến cho deploy/compose.local.yml: build từ khu làm việc, dùng .env của backend local, dữ liệu upload riêng."""
+def _compose_env() -> dict | None:
+    """Biến cho deploy/compose.local.yml và compose.server.yml: build từ cây backend agent đang sửa (khu làm việc), dùng .env
+    của backend local (server: bản chép .env production), dữ liệu upload riêng. compose.prod.yml (máy local kiểu cũ) không cần."""
+    if not COMPOSE_FILE:
+        return None
     env = dict(os.environ)
     env.update(AUTOTEST_BE_DIR=str(BE), AUTOTEST_MAIN_ENV=str(MAIN_BE / ".env"), AUTOTEST_DATA_DIR=str(RUNS / "_backend_data"))
     return env
@@ -275,7 +278,7 @@ def deploy(cancel: threading.Event) -> dict:
     """Bước 3–5. Luôn chỉ rõ file compose: compose mặc định đá app sang network khác làm web trace 502."""
     compose, cwd, service = _compose()
     extra = [] if COMPOSE_FILE else ["--remove-orphans"]
-    env = _compose_env() if USE_WORKSPACE else None
+    env = _compose_env()
     key = tree_key() if USE_WORKSPACE else None
     code, output = run([*compose, "up", "-d", "--build", *extra, service], cwd, 1500, cancel, env)
     if code != 0:

@@ -1,25 +1,36 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Cài / cập nhật web Agent tự sửa trên server trolyhoso (Ubuntu/Debian).
+# Cài / cập nhật Auto test + Agent tự sửa trên server production (Ubuntu/Debian).
 #
 #   bash setup.sh install   # lần đầu: cài gói, clone repo, venv, Mongo chỉ đọc, compose, systemd
-#   bash setup.sh update    # kéo main mới nhất (khi agent rảnh), build lại web + backend thử, restart dịch vụ
+#   bash setup.sh update    # kéo nhánh mới nhất (khi agent rảnh), build lại web + backend thử, restart dịch vụ
 #   bash setup.sh check     # kiểm tra mọi thứ đã sống
+#
+# Mặc định clone repo backend dev-f19/auto-fill-hcc-backend nhánh auto-fix (auto-test-hcc/ nằm trong gốc repo backend). Agent
+# sửa trong khu làm việc riêng (~/.autotest-hcc/workspace: clone 3 repo thật ở tag release đang chạy production), không sửa
+# bản clone này. Vẫn cài được từ bản clone monorepo cũ: REPO_URL=...test-auto-test-and-fix.git APP_DIR=... BRANCH=main.
 #
 # Chạy bằng user thường có sudo và thuộc nhóm docker (KHÔNG chạy bằng root).
 # Script KHÔNG sửa gì trong thư mục production (PROD_DIR): chỉ đọc .env để lấy cổng / Mongo / uploads, và tạo một
-# tài khoản Mongo role "read" trong Mongo production.
+# tài khoản Mongo role "read" trong Mongo production. Phần Monitor production gọi dịch vụ agent (AGENT_URL) thì người
+# quản trị tự thêm vào .env production, script chỉ in hướng dẫn (HUONG-DAN-SERVER.md mục B).
 # =============================================================================
 set -euo pipefail
 
 PROD_DIR="${PROD_DIR:-/opt/autofill-hcc}"
-REPO_URL="${REPO_URL:-git@github.com:dev-f19/test-auto-test-and-fix.git}"
-APP_DIR="${APP_DIR:-$HOME/test-auto-test-and-fix}"
-BRANCH="${BRANCH:-main}"
+REPO_URL="${REPO_URL:-git@github.com:dev-f19/auto-fill-hcc-backend.git}"
+APP_DIR="${APP_DIR:-$HOME/autotest-hcc}"
+BRANCH="${BRANCH:-auto-fix}"
 AT="$APP_DIR/auto-test-hcc"
 DEPLOY="$AT/deploy"
 COMPOSE=(docker compose -f "$DEPLOY/compose.server.yml")
 TEST_PORT=12015
+
+be_dir() {  # thư mục backend trong bản clone: gốc repo (repo backend) hoặc auto-fill-hcc-backend/ (monorepo)
+  if [ -d "$APP_DIR/app" ] && [ -f "$APP_DIR/compose.prod.yml" ]; then printf '%s' "$APP_DIR"; else printf '%s' "$APP_DIR/auto-fill-hcc-backend"; fi
+}
+
+monorepo() { [ -d "$APP_DIR/auto-fill-hcc-extension" ]; }
 
 say() { printf '\n==> %s\n' "$*"; }
 die() { printf '\n[LỖI] %s\n' "$*" >&2; exit 1; }
@@ -75,8 +86,18 @@ clone_repo() {
     say "Clone $REPO_URL → $APP_DIR (cần deploy key có quyền ghi, xem HUONG-DAN-SERVER.md)"
     git clone --branch "$BRANCH" "$REPO_URL" "$APP_DIR"
   fi
-  git -C "$APP_DIR" push --dry-run origin "HEAD:refs/heads/agent/_kiem-tra-quyen" >/dev/null 2>&1 \
-    || echo "  [CẢNH BÁO] Chưa push được lên origin: bản sửa đạt sẽ không lên GitHub cho tới khi có deploy key quyền ghi."
+  if monorepo; then
+    git -C "$APP_DIR" push --dry-run origin "HEAD:refs/heads/agent/_kiem-tra-quyen" >/dev/null 2>&1 \
+      || echo "  [CẢNH BÁO] Chưa push được lên origin: bản sửa đạt sẽ không lên GitHub cho tới khi có deploy key quyền ghi."
+    return
+  fi
+  # Khu làm việc tự clone 3 repo thật và đẩy bản sửa đạt lên nhánh agent/<mã ca> của từng repo (AUTOTEST_*_GIT_URL).
+  local url
+  for url in https://github.com/dev-f19/auto-fill-hcc-backend.git https://github.com/dev-f19/auto-fill-hcc-extension.git \
+             https://github.com/dev-f19/tro-ly-nguoi-dan-extension.git; do
+    GIT_TERMINAL_PROMPT=0 git ls-remote --heads "$url" >/dev/null 2>&1 \
+      || echo "  [CẢNH BÁO] Chưa đọc được $url: cấp quyền GitHub cho user $(whoami) (token / deploy key, HUONG-DAN-SERVER.md mục B)."
+  done
 }
 
 python_env() {
@@ -85,12 +106,13 @@ python_env() {
   py="$(command -v python3.11 || command -v python3.12 || command -v python3)"
   [ -d "$AT/.venv" ] || "$py" -m venv "$AT/.venv"
   PYTHONUTF8=1 "$AT/.venv/bin/pip" install -q --upgrade pip
-  PYTHONUTF8=1 "$AT/.venv/bin/pip" install -q -r "$APP_DIR/auto-fill-hcc-backend/requirements.txt" \
+  PYTHONUTF8=1 "$AT/.venv/bin/pip" install -q -r "$(be_dir)/requirements.txt" \
     pytest mongomock
 }
 
 backend_env() {
-  local be_env="$APP_DIR/auto-fill-hcc-backend/.env"
+  local be_env
+  be_env="$(be_dir)/.env"
   if [ ! -f "$be_env" ]; then
     say "Chép .env production cho backend thử (compose.server.yml ghi đè Mongo / JWT / vault)"
     install -m 600 "$PROD_DIR/.env" "$be_env"
@@ -98,6 +120,8 @@ backend_env() {
 }
 
 extension_port() {
+  # Bản clone repo backend không có extension; khu làm việc tự trỏ extension sang backend thử (workspace.point_extension).
+  monorepo || return 0
   say "Extension của bot trỏ backend thử localhost:$TEST_PORT (chỉ trên server, không commit)"
   local cfg="$APP_DIR/auto-fill-hcc-extension/api/config.js" man="$APP_DIR/auto-fill-hcc-extension/manifest.json"
   git -C "$APP_DIR" update-index --no-skip-worktree auto-fill-hcc-extension/api/config.js auto-fill-hcc-extension/manifest.json
@@ -143,6 +167,7 @@ server_env() {
   set_kv "$server_env" AUTOTEST_DENY_READ_DIRS "$PROD_DIR"
   set_kv "$server_env" AUTOTEST_AUTH_BACKEND "http://127.0.0.1:$prod_port"
   set_kv "$server_env" AUTOTEST_COMPOSE_FILE "$DEPLOY/compose.server.yml"
+  monorepo || set_kv "$server_env" AUTOTEST_WORKSPACE 1
   set_kv "$server_env" AUTOTEST_TEST_DB "$(env_get "$PROD_DIR/.env" MONGO_DB || true)"
   [ -n "$(env_get "$server_env" AUTOTEST_TEST_DB)" ] || set_kv "$server_env" AUTOTEST_TEST_DB autofill_hcc
   mongo_readonly
@@ -153,6 +178,11 @@ server_env() {
   set_kv "$compose_env" AUTH_BACKEND_URL "http://127.0.0.1:$prod_port"
   [ -n "$(env_get "$compose_env" TEST_JWT_ACCESS_SECRET)" ] || set_kv "$compose_env" TEST_JWT_ACCESS_SECRET "$(openssl rand -hex 32)"
   [ -n "$(env_get "$compose_env" TEST_JWT_REFRESH_SECRET)" ] || set_kv "$compose_env" TEST_JWT_REFRESH_SECRET "$(openssl rand -hex 32)"
+  # Lần build đầu (setup.sh): backend thử dựng từ bản clone này. Sau đó dịch vụ agent truyền cây trong khu làm việc.
+  set_kv "$compose_env" AUTOTEST_BE_DIR "$(be_dir)"
+  set_kv "$compose_env" AUTOTEST_MAIN_ENV "$(be_dir)/.env"
+  set_kv "$compose_env" AUTOTEST_DATA_DIR "$AT/runs/_backend_data"
+  mkdir -p "$AT/runs/_backend_data"
 }
 
 systemd_units() {
@@ -187,6 +217,10 @@ check() {
     && echo "  web 12008: sống" || { echo "  web 12008: CHƯA sống"; ok=0; }
   [ -n "$(env_get "$AT/server.env" CLAUDE_CODE_OAUTH_TOKEN)" ] \
     || echo "  [CẦN LÀM] Chưa có CLAUDE_CODE_OAUTH_TOKEN trong $AT/server.env: chạy 'claude setup-token', dán token, rồi 'sudo systemctl restart autotest-agent'."
+  [ -n "$(env_get "$AT/server.env" AUTOTEST_ARCHIVE_USER)" ] \
+    || echo "  [CẦN LÀM] Chưa có tài khoản dịch vụ kho lưu trữ (AUTOTEST_ARCHIVE_URL/USER/PASSWORD) trong $AT/server.env: req đã archive (sau ~30 phút) sẽ không đọc được."
+  grep -qE '^AGENT_URL=' "$PROD_DIR/.env" 2>/dev/null \
+    || echo "  [CẦN LÀM] Monitor production chưa gọi được dịch vụ agent: thêm 'AGENT_URL=http://host.docker.internal:12008' vào $PROD_DIR/.env rồi tạo lại monitor-fe (HUONG-DAN-SERVER.md mục B)."
   [ "$ok" = 1 ] && echo "  Tất cả đã sống." || return 1
 }
 
@@ -209,12 +243,15 @@ case "${1:-}" in
     preflight
     [ -z "$(agent_busy)" ] || die "Agent đang chạy hoặc còn ca trong hàng đợi: đợi xong hẵng cập nhật."
     say "Kéo $BRANCH mới nhất"
-    git -C "$APP_DIR" update-index --no-skip-worktree auto-fill-hcc-extension/api/config.js auto-fill-hcc-extension/manifest.json
-    git -C "$APP_DIR" checkout -- auto-fill-hcc-extension/api/config.js auto-fill-hcc-extension/manifest.json
+    if monorepo; then
+      git -C "$APP_DIR" update-index --no-skip-worktree auto-fill-hcc-extension/api/config.js auto-fill-hcc-extension/manifest.json
+      git -C "$APP_DIR" checkout -- auto-fill-hcc-extension/api/config.js auto-fill-hcc-extension/manifest.json
+    fi
     git -C "$APP_DIR" pull --ff-only origin "$BRANCH" \
       || die "Không kéo được (thư mục làm việc còn bản sửa chưa gộp?). Xem 'git -C $APP_DIR status'."
     extension_port
-    PYTHONUTF8=1 "$AT/.venv/bin/pip" install -q -r "$APP_DIR/auto-fill-hcc-backend/requirements.txt"
+    PYTHONUTF8=1 "$AT/.venv/bin/pip" install -q -r "$(be_dir)/requirements.txt"
+    server_env
     systemd_units
     compose_up
     restart_services

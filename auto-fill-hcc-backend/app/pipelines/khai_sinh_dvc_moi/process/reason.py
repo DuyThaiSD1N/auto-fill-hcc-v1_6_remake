@@ -43,9 +43,9 @@ c. GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ: chồng là CHA, vợ là M�
 d. Giấy cam đoan / văn bản người làm chứng về việc sinh; trích lục khai tử của cha/mẹ (người đó ĐÃ CHẾT).
 e. CCCD: gán vào đúng người có cùng họ tên / số định danh ở các giấy trên; không gán theo giới tính khi giấy tờ đã
    ghi rõ tên cha/mẹ. Người đi khai tử, người làm chứng, cán bộ ký không phải cha/mẹ/con.
-f. Hồ sơ KHÔNG có tờ khai, KHÔNG có giấy kết hôn mà có CCCD của một người NAM (không phải người nộp, không phải
-   người làm chứng / người đi khai tử) → người đó là CHA (người dân nộp CCCD của cha để khai phần cha), loại khai
-   sinh "Đã xác định được cả cha lẫn mẹ".
+f. Hồ sơ KHÔNG có tờ khai, KHÔNG có giấy kết hôn mà có CCCD của một người NAM (không phải người làm chứng / người
+   đi khai tử) → người đó là CHA (người dân nộp CCCD của cha để khai phần cha), loại khai sinh "Đã xác định được cả
+   cha lẫn mẹ". Thẻ nam đó là của chính NGƯỜI NỘP → vẫn là CHA (cha tự đi nộp), quan hệ "Cha".
 
 QUAN HỆ (người nộp là gì CỦA CON):
 - Người nộp là MẸ → "Mẹ"; là CHA → "Cha". Đối chiếu người nộp với cha/mẹ: số trùng → cùng người. Giấy tờ cũ (giấy
@@ -187,10 +187,10 @@ def _male_cards(text: str) -> list[tuple[str, str]]:
     return cards
 
 
-def _father_from_male_card(blocks: dict, documents: list[dict] | None, options: dict | None) -> dict:
+def _father_from_male_card(blocks: dict, documents: list[dict] | None) -> dict:
     """Hồ sơ chỉ có giấy chứng sinh + CCCD (không tờ khai, không giấy kết hôn): giấy chứng sinh không có dòng cha nên
-    LLM hay kết luận "Chưa xác định được cha" dù có nộp CCCD của cha. Đúng MỘT thẻ nam không phải người nộp / mẹ /
-    con, tên không xuất hiện ở giấy khác → đó là cha."""
+    LLM hay kết luận "Chưa xác định được cha" dù có nộp CCCD của cha. Đúng MỘT thẻ nam không phải mẹ / con, tên không
+    xuất hiện ở giấy khác → đó là cha. Thẻ của chính người nộp vẫn tính: cha tự đi nộp kèm CCCD của mình."""
     if not documents or labeled_value(blocks["cha"], "Họ tên") or not labeled_value(blocks["me"], "Họ tên"):
         return blocks
     co_ho_so = labeled_value(blocks["loai_khai_sinh"], "Đã có hồ sơ, giấy tờ cá nhân")
@@ -200,8 +200,7 @@ def _father_from_male_card(blocks: dict, documents: list[dict] | None, options: 
     folded = [_fold(text) for text in texts]
     if any(marker in text for text in folded for marker in _FATHER_SOURCE_MARKERS):
         return blocks
-    _, account_id = requester_context(options)
-    excluded_ids = {account_id} | {_digits(labeled_value(blocks[tag], "Số định danh")) for tag in ("me", "con")}
+    excluded_ids = {_digits(labeled_value(blocks[tag], "Số định danh")) for tag in ("me", "con")} - {""}
     excluded_names = {_fold(labeled_value(blocks[tag], "Họ tên")) for tag in ("me", "con")} - {""}
     candidates: dict[str, str] = {}
     for index, text in enumerate(texts):
@@ -225,11 +224,26 @@ def _father_from_male_card(blocks: dict, documents: list[dict] | None, options: 
     }
 
 
+def _both_parents_known(blocks: dict) -> dict:
+    """Phân vai đã ghi họ tên cả mẹ lẫn cha mà loại khai sinh lại "Chưa xác định được ..." là tự mâu thuẫn; cổng dựng
+    lại form khi cán bộ đổi loại khai sinh và xoá các ô cha/mẹ đã điền, nên chỉnh loại theo hai khối cha/mẹ."""
+    if not (labeled_value(blocks["me"], "Họ tên") and labeled_value(blocks["cha"], "Họ tên")):
+        return blocks
+    loai = blocks["loai_khai_sinh"]
+    if _fold(labeled_value(loai, "Kết luận")) not in {_fold(option) for option in LOAI_KHAI_SINH_OPTIONS[1:4]}:
+        return blocks
+    return {
+        **blocks,
+        "loai_khai_sinh": re.sub(r"(?im)^([ \t]*Kết luận[ \t]*:).*$", rf"\1 {LOAI_KHAI_SINH_OPTIONS[0]}", loai, count=1),
+    }
+
+
 def _render_context(raw: str, options: dict | None, documents: list[dict] | None = None) -> str:
     blocks = {tag: section(raw, tag) for tag in _TAGS}
     if not any(blocks[tag] for tag in ("con", "me", "cha")):
         return ""
-    blocks = _father_from_male_card(blocks, documents, options)
+    blocks = _father_from_male_card(blocks, documents)
+    blocks = _both_parents_known(blocks)
     name, number = requester_context(options)
     body = "\n".join(f"<{tag}>\n{value or 'Không xác định'}\n</{tag}>" for tag, value in blocks.items())
     return (

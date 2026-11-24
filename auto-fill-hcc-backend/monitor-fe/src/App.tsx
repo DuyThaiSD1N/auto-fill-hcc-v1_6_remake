@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { getFacets, getTrace, MONITOR_AUTH_EXPIRED_EVENT, monitorSession, validateMonitorSession } from "./api";
 import Layout from "./components/Layout";
 import { ErrorNotice, PageLoading } from "./components/Status";
+import AgentPage from "./autotest/agent/AgentPage";
 import ConfigPage from "./autotest/ConfigPage";
 import LabRunPage from "./autotest/LabRunPage";
 import { LabRunResultPage, LabRunsPage } from "./autotest/LabRunsPages";
@@ -80,6 +81,8 @@ function Routes() {
   if (path === "/autotest/runs") return <LabRunsPage />;
   if ((params = match("/autotest/runs/:no", path)) && /^\d+$/.test(params.no)) return <LabRunResultPage key={params.no} no={Number(params.no)} />;
   if (path === "/autotest/config") return <ConfigPage />;
+  if (path === "/autotest/agent") return <AgentPage key={query.get("req") ?? ""} initialRequest={query.get("req") ?? undefined} />;
+  if ((params = match("/autotest/agent/:job", path))) return <AgentPage key={params.job} jobId={params.job} />;
   return <ErrorNotice message="Không có trang này." />;
 }
 

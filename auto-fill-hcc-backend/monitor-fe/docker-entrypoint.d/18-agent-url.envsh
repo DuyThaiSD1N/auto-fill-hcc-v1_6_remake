@@ -1,0 +1,21 @@
+# shellcheck shell=sh
+# /docker-entrypoint.sh của nginx SOURCE file này (đuôi .envsh) trước 20-envsubst-on-templates.sh → không được `exit`.
+#
+# AGENT_URL (dịch vụ agent auto-test-hcc, nhóm menu Auto test) thường là http://host.docker.internal:<cổng>, tên khai bằng
+# extra_hosts: host-gateway trong compose.prod.yml. nginx proxy_pass dùng biến nên tra tên lúc chạy qua resolver 127.0.0.11
+# (DNS của Docker), DNS này không đọc /etc/hosts: trên server Linux tên đó không phân giải được → /agent-api/ luôn 502 và
+# nhóm menu Auto test bị ẩn. Đổi tên thành IPv4 ghi trong /etc/hosts (nếu có) trước khi dựng cấu hình nginx.
+_agent_host=$(printf '%s\n' "${AGENT_URL:-}" | awk -F/ '{ split($3, a, ":"); print a[1] }')
+case "$_agent_host" in
+  "" | *[!0-9.]*)
+    _agent_ip=$(awk -v h="$_agent_host" '$1 ~ /^[0-9.]+$/ { for (i = 2; i <= NF; i++) if ($i == h) { print $1; exit } }' /etc/hosts 2>/dev/null)
+    if [ -n "$_agent_host" ] && [ -n "$_agent_ip" ]; then
+      _agent_from="$AGENT_URL"
+      AGENT_URL=$(printf '%s\n' "$AGENT_URL" | awk -v h="//$_agent_host" -v ip="//$_agent_ip" \
+        '{ i = index($0, h); if (i) $0 = substr($0, 1, i - 1) ip substr($0, i + length(h)); print }')
+      export AGENT_URL
+      echo "18-agent-url.envsh: AGENT_URL $_agent_from -> $AGENT_URL (theo /etc/hosts)"
+    fi
+    ;;
+esac
+unset _agent_host _agent_ip _agent_from

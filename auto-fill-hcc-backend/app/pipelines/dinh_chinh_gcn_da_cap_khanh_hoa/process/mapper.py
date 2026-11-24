@@ -11,6 +11,8 @@ liệu thì TRẢ VỀ TRỐNG như cấp đổi (Phần I cổng đổ sẵn th
 
 Thêm so với cấp đổi: người in trên Giấy chứng nhận (GCN_NguoiSuDung) khác hẳn chủ hồ sơ ở Đơn mà Đơn mục 2 không nhắc tên
 đó (không phải đính chính tên) -> cảnh báo Đơn và GCN có thể không cùng một hồ sơ.
+Bật "Lấy người nộp theo tờ khai" (options.submitterMode, submitter_is_declarant): Phần I khai chủ hồ sơ cá nhân, bỏ bên
+được ủy quyền.
 """
 
 from __future__ import annotations
@@ -36,6 +38,7 @@ from app.pipelines.dang_ky_dat_dai_lan_dau_khanh_hoa.process.mapper import (
     _province,
     _text,
     _ward,
+    submitter_is_declarant,
 )
 from app.pipelines._shared.area_remap import canonical_ward
 
@@ -114,6 +117,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     authorized = bool(owner_name and applicant_name and _fold(owner_name) != _fold(applicant_name))
     if not authorized and owner_name:
         applicant_name = owner_name  # cùng một người: hai khối ghi tên giống hệt nhau
+    # Bật "Lấy người nộp theo tờ khai": Phần I = chủ hồ sơ cá nhân, không lấy bên được ủy quyền.
+    owner_submits = submitter_is_declarant(options, owner_name, values.get("ChuHoSo_LoaiChuThe"))
+    if owner_submits:
+        applicant_name = owner_name
 
     def owner_val(key: str) -> Any:
         value = values.get(f"ChuHoSo_{key}")
@@ -122,7 +129,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         return value
 
     def applicant_val(key: str) -> Any:
-        if not authorized:
+        if owner_submits or not authorized:
             return owner_val(key)  # cùng một người: hai khối lấy đúng một nguồn, ghi giống hệt nhau
         return values.get(f"NguoiNop_{key}")
 

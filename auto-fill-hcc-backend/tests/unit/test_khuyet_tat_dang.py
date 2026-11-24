@@ -26,7 +26,7 @@ def test_o_co_khong_do_ma_tach_tu_dong_ocr_that():
     ]}
     rows = D.rows_from(data, _OCR)
     assert rows == {"1.1": "khong", "1.4": "co", "6": "khong"}
-    assert D.to_fields(rows) == {"KhuyetTat_DanhMuc": ["kt1"], "KhuyetTat_ChiTiet": ["kt1_4"]}
+    assert D.to_fields(rows) == {"KhuyetTat_DanhMuc": ["kt1"], "KhuyetTat_ChiTiet": ["kt1_4"], "KhuyetTat_KhongNhom": []}
 
 
 def test_bang_khong_co_dau_thi_khong_tich_gi_va_bo_ket_qua_luot_chinh():
@@ -64,3 +64,16 @@ def test_stt_dinh_dau_nhay_ocr_van_doc_duoc_dong_nhom():
                                    {"so": "6.1", "dong_ocr": ""}]}, ocr)
     assert rows == {"5": "khong", "6": "co", "6.1": "trong"}
     assert dkt.to_fields(rows)["KhuyetTat_DanhMuc"] == ["kt6"]
+
+
+def test_bang_toan_khong_thi_tich_khong_o_nhom_co_dau():
+    """Đơn đánh dấu toàn cột "Không": nhóm có dấu "Không" (dòng nhóm hoặc dòng con) tích "Không", nhóm OCR mất dấu để trống."""
+    from app.pipelines.khuyet_tat.process import mapper
+    rows = {"1": "khong", "1.1": "khong", "2": "trong", "2.1": "khong", "3": "trong", "3.1": "trong"}
+    fields = D.to_fields(rows)
+    assert fields["KhuyetTat_KhongNhom"] == ["kt1", "kt2"] and not fields["KhuyetTat_DanhMuc"]
+    res = {"fields": []}
+    D.apply(res, rows)
+    ui = {f["name"]: f["value"] for f in mapper.enrich(res["fields"], {})}
+    radios = {k: v for k, v in ui.items() if "khuyetTat" in k}
+    assert radios == {"data[khuyetTat1Obj][khuyetTatRadio]": "khong", "data[khuyetTat2Obj][khuyetTatRadio]": "khong"}

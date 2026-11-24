@@ -8,7 +8,7 @@ from app.pipelines._shared.compact_agent.issuer import default_issuer, id_doc_ty
 from app.pipelines._shared.area_remap import canonical_province, canonical_ward, city_province_area, remap_area
 from app.pipelines._shared.ethnic_normalize import ethnicity_for_form
 from app.pipelines._shared.formatting import prefer_printed_street, upper_person_name
-from app.pipelines._shared.tai_khoan import account_context, apply_account_marriage
+from app.pipelines._shared.tai_khoan import account_context, apply_account_marriage, is_account_person, matches_account
 from app.pipelines._shared.foreign_id import (
     normalize_nationality,
     normalize_id_type,
@@ -464,8 +464,34 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     else:
         add("CapBanSao", _copy_value(values.get("CopyRequest_WantsCopy")))
 
-    return apply_account_marriage(out, _without_bad_issue_date(options), _ui_field, _area,
-                                  lambda issuer: id_doc_type("Căn cước công dân", issuer))
+    out = apply_account_marriage(out, _without_bad_issue_date(options), _ui_field, _area,
+                                 lambda issuer: id_doc_type("Căn cước công dân", issuer))
+    return _clear_account_issue_date(out, values, options)
+
+
+_SIDE_BY_GENDER = {"Nam": "BenNam", "Nữ": "BenNu"}
+
+
+def _clear_account_issue_date(out: list[dict], values: dict, options: dict | None) -> list[dict]:
+    """Cổng đổ sẵn nhân thân tài khoản đăng nhập vào khối bên cùng giới. Khối đó điền theo NGƯỜI KHÁC (người nộp hộ)
+    mà giấy tờ không có ngày cấp (thiếu mặt sau thẻ) → ô ngày cấp còn ngày của tài khoản, ghép nhầm sang người này:
+    gửi lệnh xoá cho ô trống. Chỉ xoá khi KHÔNG giấy nào của bên đó (thẻ, tờ khai) khớp chủ tài khoản — tờ khai viết
+    tay hay lệch vài chữ số / ngày sinh, thẻ đúng tài khoản mà ô họ tên lại theo tờ khai."""
+    account = account_context(options)
+    side = _SIDE_BY_GENDER.get(account.get("GioiTinh"))
+    if not side or not account.get("NgayCap"):
+        return out
+    filled = {f["name"]: f.get("value") for f in out}
+    name, number = filled.get(f"HoTen{side}"), filled.get(f"SoDinhDanh_{side}")
+    issue = f"NgayCapDD_{side}"
+    if not (name or number) or filled.get(issue) or is_account_person(account, name, number, filled.get(f"NgaySinh{side}")):
+        return out
+    declaration = "ToKhaiNam" if side == "BenNam" else "ToKhaiNu"
+    if any((values.get(f"{p}_HoTen") or values.get(f"{p}_SoDinhDanh"))
+           and matches_account(account, values.get(f"{p}_HoTen"), values.get(f"{p}_SoDinhDanh"), values.get(f"{p}_NgaySinh"))
+           for p in (side, declaration)):
+        return out
+    return [*out, {"name": issue, "comp": UI_COMP_BY_NAME[issue], "value": "", "clear": True}]
 
 
 def _account_as_divorce_party(values: dict, options: dict | None) -> None:

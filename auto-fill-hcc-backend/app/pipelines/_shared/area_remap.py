@@ -1817,8 +1817,32 @@ def _remap_thon(tinh: object, xa: object, dia_chi: object) -> object:
             return m.group(1) + ten
         return f"{tien_to} {ten}"
 
-    moi = pattern.sub(_doi, unicodedata.normalize("NFC", dia_chi))
+    moi = _bo_to_trung(pattern, tien_to, bang, pattern.sub(_doi, unicodedata.normalize("NFC", dia_chi)))
     return moi if moi != unicodedata.normalize("NFC", dia_chi) else dia_chi
+
+
+def _bo_to_trung(pattern: re.Pattern, tien_to: str, bang: dict[str, str], dia_chi: str) -> str:
+    """Bỏ đoạn lặp cùng một tổ dân phố mới sau khi đổi tên.
+
+    Địa chỉ tài khoản cổng hay ghi cả tên cũ lẫn tên mới ("Khu dân cư Ngọc Tỉnh, TDP Liễu Khê"); đổi
+    xong hai đoạn cùng ra Liễu Khê thì chỉ giữ một, ưu tiên cách viết đủ ("Tổ dân phố Liễu Khê"). Chỉ
+    gộp đoạn mà cả đoạn là [tiền tố] + tên ("Số 5 Liễu Khê" là số nhà, giữ nguyên).
+    """
+    doan = [d.strip() for d in dia_chi.split(",")]
+    giu: list[str] = []
+    vi_tri: dict[str, int] = {}
+    for d in doan:
+        m = pattern.fullmatch(d)
+        if not m:
+            giu.append(d)
+            continue
+        ten = bang.get(_thon_key(m.group(3)), m.group(3))
+        if ten not in vi_tri:
+            vi_tri[ten] = len(giu)
+            giu.append(d)
+        elif d == f"{tien_to} {ten}":
+            giu[vi_tri[ten]] = d
+    return ", ".join(giu) if len(giu) < len(doan) else dia_chi
 
 
 _build_thon_index()  # chay 1 lan luc import

@@ -12,7 +12,7 @@ nằm trong danh sách hỏi: công dân nói một giá trị ngoài các lựa
 ``NESTED`` (tên khối x-select-area chứa thông tin một người — ô con không có thẻ x-* riêng: extension tách từng ô con,
 ô chọn không tên mang khóa "<khối>#<nhãn>"; cần extension có cờ supportsFieldReviewNested, trừ khi khai thêm
 ``NESTED_OPTIONAL = True``: bản đọc cũ coi cả khối là một ô vẫn dùng được), ``HMONG`` + ``HMONG_LABELS`` (bật vòng hỏi ở
-chế độ tiếng Mông; {tên ô: (nhãn Mông, tên phần Mông)} cho lời đọc).
+chế độ tiếng Mông; {tên ô: (nhãn Mông, tên phần Mông)} cho lời đọc), ``REQUIRED_ONLY`` (chỉ bổ sung ô bắt buộc).
 Vòng bổ sung bản 2 (``FIELD_REVIEW_V2 = True``) thêm ``VOCABULARY`` (cách người dân gọi các phần) và ``GROUPS`` (cụm ô hỏi
 liền nhau, hỏi gộp một câu; khối địa chỉ tự là một cụm).
 Thủ tục không có file này thì không bật vòng bổ sung. Lỗi cấu hình hoặc trùng key được phát hiện ngay lúc khởi động.
@@ -71,6 +71,13 @@ def _discover() -> dict[str, dict]:
             raise RuntimeError(f"{module_name}.OTHER_TEXT phải là {{ô tích: (lựa chọn Khác, ô ghi chữ)}}")
         if other_text:
             config["otherText"] = {k: tuple(v) for k, v in other_text.items()}
+        # REQUIRED_ONLY = True: chỉ bổ sung ô bắt buộc — ô không bắt buộc còn trống không đếm, không hỏi; hết ô bắt buộc là
+        # xong vòng bổ sung.
+        required_only = getattr(module, "REQUIRED_ONLY", False)
+        if not isinstance(required_only, bool):
+            raise RuntimeError(f"{module_name}.REQUIRED_ONLY phải là True/False")
+        if required_only:
+            config["requiredOnly"] = True
         # Vòng bổ sung bản 2 (agent điều phối + agent chuyên môn) bật theo từng thủ tục.
         v2 = getattr(module, "FIELD_REVIEW_V2", False)
         if not isinstance(v2, bool):

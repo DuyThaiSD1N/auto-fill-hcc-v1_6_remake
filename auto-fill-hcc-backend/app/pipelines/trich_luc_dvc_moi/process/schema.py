@@ -40,11 +40,12 @@ FIELDS: list[dict] = [
      "desc": "Họ, chữ đệm, tên CHA của người được cấp, chép đúng dòng người cha trên giấy hộ tịch cần cấp bản sao "
              "(giấy khai sinh: \"Họ, chữ đệm, tên người cha\") hoặc trên tờ khai nếu tờ khai ghi. Giấy không có dòng "
              "cha / dòng để trống → bỏ field; không suy từ họ của người được cấp, không lấy tên người đi khai thay "
-             "cho dòng cha."},
+             "cho dòng cha. Người cha cũng là người đi khai / người nộp → vẫn chép dòng cha."},
     {"name": "GiayTo_HoTenMe",
      "desc": "Họ, chữ đệm, tên MẸ của người được cấp, chép đúng dòng người mẹ trên giấy hộ tịch cần cấp bản sao "
              "(giấy khai sinh: \"Họ, chữ đệm, tên người mẹ\") hoặc trên tờ khai nếu tờ khai ghi. Giấy không có dòng "
-             "mẹ / dòng để trống → bỏ field; không lấy tên người đi khai thay cho dòng mẹ."},
+             "mẹ / dòng để trống → bỏ field; không lấy tên người đi khai thay cho dòng mẹ. Người mẹ cũng là người đi "
+             "khai / người nộp → vẫn chép dòng mẹ."},
     {"name": "GiayTo_So", "desc": "Số đăng ký của sự kiện hộ tịch (dòng 'Số:' / 'Số đăng ký')."},
     {"name": "GiayTo_QuyenSo",
      "desc": "Quyển số đăng ký, CHỈ khi nhãn 'Quyển số' có giá trị thật ngay sau nhãn."},

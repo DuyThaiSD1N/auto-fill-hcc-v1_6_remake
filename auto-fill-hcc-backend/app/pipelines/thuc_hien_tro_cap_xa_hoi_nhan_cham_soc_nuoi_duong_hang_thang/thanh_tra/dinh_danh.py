@@ -74,7 +74,9 @@ nhau thì theo hạng: giấy in cơ quan cấp (CCCD, giấy khai sinh) > văn 
 cách viết chỉ khác DẤU là chuyện thường (OCR đọc lệch dấu chữ viết tay), KHÔNG phải lý do giữ A. Dòng trích dẫn là họ tên
 của người khác (không phải người nêu ở tên mục) → KHONG_DU_CAN_CU. Họ tên A chỉ có trên đơn viết tay còn thẻ của chính
 người đó (mã nhận theo ngày sinh in ở MRZ trùng ngày sinh A, cùng họ và chữ đệm, số gần số A) ghi B → chọn B: OCR đọc sai
-chữ viết tay của đơn.
+chữ viết tay của đơn. Tín hiệu mã ghi "tờ khai ghi họ tên của người này ở nhiều mục … không giấy in nào mang tên": cùng
+một người được ghi ở nhiều mục của tờ khai (người giám hộ, người nhận, chủ tài khoản), B ở nhiều dòng hơn A → chọn B: OCR
+đọc lệch dấu chữ viết tay ở một mục.
 </ho_ten>
 
 <so_ngay>
@@ -154,6 +156,66 @@ def name_finding(person: Person, values: dict, page_list: list[dict], card: dict
                     f"quan cấp, {best['the']} dòng họ tên thẻ, {best['tu_lap']} giấy tự lập, {best['don']} văn bản đề "
                     f"nghị; A: {mine['ban_in']} giấy in cơ quan cấp, {mine['the']} dòng thẻ, {mine['tu_lap']} giấy tự "
                     f"lập, {mine['don']} văn bản đề nghị")
+
+
+_PRINTED_HEAD = ("cong hoa xa hoi", "mau ct")
+
+
+def _own_page(page: dict, values: dict, person: Person) -> bool:
+    """Trang mang số định danh hoặc ngày sinh của chính người này."""
+    text = " ".join(page["lines"])
+    number = trang.digits(values.get(person.number))
+    if len(number) >= 9 and number in trang.digits(text):
+        return True
+    born = parse_date(values.get(person.birth))
+    return bool(born and re.search(rf"(?<!\d)0?{born.day}\s*[/.-]\s*0?{born.month}\s*[/.-]\s*{born.year}(?!\d)", text))
+
+
+def _printed_page(page: dict) -> bool:
+    """Giấy in đứng riêng (quốc hiệu / số mẫu ở đầu trang, ngoài tờ khai). Trang nối tiếp của tờ khai không có đầu trang
+    riêng dù phân loại theo nhãn "Số căn cước" có thể xếp nó vào giấy in."""
+    head = " ".join(fold(line) for line in page["lines"][:3])
+    return page["kind"] != "don" and any(marker in head for marker in _PRINTED_HEAD)
+
+
+def accent_finding(person: Person, values: dict, page_list: list[dict]) -> Finding | None:
+    """Họ tên chỉ khác DẤU, mọi lần ghi đều trên tờ khai do người dân tự viết (không giấy in nào mang tên): cùng một
+    người được ghi ở nhiều mục (người giám hộ, người nhận, chủ tài khoản) nên OCR đọc lệch dấu ở một mục thì các mục còn
+    lại cùng nét chữ cho cách viết đúng. Có giấy in mang tên thì không xét ở đây — OCR giấy in hay "nắn" tên dân tộc thiểu
+    số về chữ thông dụng."""
+    current = " ".join(str(values.get(person.name) or "").split())
+    target = fold(current).split()
+    if len(target) < 2:
+        return None
+    counts: dict[str, dict] = {}
+    for page in page_list:
+        for line in page["lines"]:
+            if "<" in line:
+                continue
+            tokens = trang.WORD_RE.findall(line)
+            for start in range(len(tokens) - len(target) + 1):
+                window = " ".join(tokens[start:start + len(target)])
+                if fold(window).split() != target:
+                    continue
+                if _printed_page(page) or trang.card_line(line):
+                    return None
+                if _own_page(page, values, person):
+                    hit = counts.setdefault(trang.name_key(window), {"name": window.upper(), "lines": 0,
+                                                                     "quote": line, "doc": page["doc"]})
+                    hit["lines"] += 1
+                break
+    mine = counts.get(trang.name_key(current), {"lines": 0})["lines"]
+    if not mine:
+        return None  # cách viết của lượt trích không do OCR đọc ra (vd đơn vị quen ghi không dấu) → không phải lệch dấu
+    ranked = sorted((hit for key, hit in counts.items() if key != trang.name_key(current)),
+                    key=lambda hit: hit["lines"], reverse=True)
+    if not ranked or ranked[0]["lines"] < 2 or ranked[0]["lines"] <= mine or (
+            len(ranked) > 1 and ranked[1]["lines"] == ranked[0]["lines"]):
+        return None
+    best = ranked[0]
+    return _finding(person, "ho_ten", best["name"], best["quote"], best["doc"], f"tờ khai ghi họ tên {person.label}",
+                    f"tờ khai ghi họ tên của người này ở nhiều mục (cùng trang có số định danh / ngày sinh của người "
+                    f"này), không giấy in nào mang tên: B ở {best['lines']} dòng, A ở {mine} dòng")
 
 
 def _card(person: Person, values: dict, documents: list[dict]) -> dict | None:
@@ -240,8 +302,8 @@ def findings_from(case: Case) -> list[Finding]:
     out = []
     for person in PERSONS:
         card = _card(person, case.values, case.documents)
-        name = name_finding(person, case.values, page_list, card)
-        out += [*([name] if name else []), *card_findings(person, case.values, case.documents)]
+        name = name_finding(person, case.values, page_list, card) or accent_finding(person, case.values, page_list)
+        out +=[*([name] if name else []), *card_findings(person, case.values, case.documents)]
     return out
 
 

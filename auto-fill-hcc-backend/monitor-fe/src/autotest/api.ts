@@ -263,9 +263,13 @@ export function useLabAvailable(): boolean | null {
   return ok;
 }
 
-/** Tạo ca nếu lượt chưa có ca, rồi chạy riêng ca đó trên bản đang phát triển. Trả số lần chạy. */
+/** Tạo ca nếu lượt chưa có ca, rồi chạy riêng ca đó trên bản đang phát triển (máy không có cây đó, như server
+ * production chỉ có khu làm việc, thì chạy trên bản production). Trả số lần chạy. */
 export async function rerunRequest(requestId: string, caseId: string | null, procedure?: string | null): Promise<number> {
   const id = caseId ?? (await labApi.createCase(requestId)).caseId;
-  const run = await labApi.startRun(`lab:${(procedure ?? "khac").replace(/[^\w.-]/g, "_")}`, "dev", [id]);
+  const { targets } = await labApi.suites();
+  const target = targets.find((t) => t.key === "dev" && t.ok)?.key ?? targets.find((t) => t.ok)?.key;
+  if (!target) throw new Error("Máy chạy dịch vụ agent không có cây backend nào để chạy ca.");
+  const run = await labApi.startRun(`lab:${(procedure ?? "khac").replace(/[^\w.-]/g, "_")}`, target, [id]);
   return run.no;
 }

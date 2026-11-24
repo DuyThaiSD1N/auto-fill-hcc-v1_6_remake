@@ -259,6 +259,7 @@ def test_o_ngay_dang_chu_bo_goi_y_dinh_dang_va_nhan_thang_nam():
 def test_cau_hinh_trich_luc_khong_hoi_kinh_gui_tai_va_ngay_lap_to_khai():
     config = dict(field_review.registry.get("trich-luc-ks"))
     assert config.pop("hmong") is True and config.pop("hmongLabels"), "vòng hỏi chế độ Mông (test_field_review_hmong.py)"
+    assert config.pop("requiredOnly") is True, "chỉ bổ sung ô bắt buộc (test_trich_luc_chi_bo_sung_o_bat_buoc_*)"
     assert config == {
         "required": (), "noSection": (),
         "noAsk": ("citizenField27", "citizenField37", "citizenField50", "citizenField52", "citizenField53"),
@@ -344,3 +345,64 @@ async def test_di_buoc_sau_ma_bo_phan_loai_ra_nut_cua_vong_hoi_thi_doc_ket_luan_
     assert not field_review.asking(conv)
     assert "Chọn hình thức nhận kết quả" in reply.display_md
     assert "voice_submit_confirm" not in conv
+
+
+# ── Trích lục: chỉ bổ sung ô bắt buộc (registry REQUIRED_ONLY) ──
+
+TL = "trich-luc-ks"
+TL_REVIEW = {"filled": 11, "optional": 7, "required": 2}
+
+
+def _tl_conv(state="done", **extra):
+    conv = _conv(state, {**CAPS, field_review.FLOW_V2_CAPABILITY: True}, **extra)
+    conv["procedure_key"] = TL
+    return conv
+
+
+def test_trich_luc_chi_bo_sung_o_bat_buoc_va_bao_extension():
+    from app.channels.handfree.chat.field_review import registry
+
+    assert registry.get(TL)["requiredOnly"] is True
+    assert "requiredOnly" not in registry.get(KEY), "thủ tục khác giữ nguyên"
+    proc = flow.get_procedure(TL)
+    conv = _tl_conv()
+    # Ô không bắt buộc vẫn tô cam: không gửi requiredOnly cho extension, chỉ xin tìm ô bắt buộc trước.
+    assert "requiredOnly" not in field_review.fill_action_extra(conv, proc)
+    action = field_review._next_action(proc, {})
+    assert "requiredOnly" not in action and action["requiredFirst"] is True
+
+
+def test_trich_luc_khong_dem_o_khong_bat_buoc_ke_ca_extension_cu_van_dem():
+    assert field_review._stats(TL_REVIEW, TL) == {"filled": 11, "optional": 0, "required": 2, "empty": 2}
+    assert field_review._stats(TL_REVIEW, KEY)["optional"] == 7
+
+
+def test_trich_luc_bao_so_o_sau_khi_dien_khong_nhac_o_khong_bat_buoc():
+    from app.channels.handfree.chat.flow import Reply
+
+    conv, reply = _tl_conv("filling"), Reply("x", "x")
+    field_review.decorate_single_page_fill(conv, flow.get_procedure(TL), reply, TL_REVIEW, offer=True)
+    md = "".join(a["md"] for a in reply.actions if a.get("type") == "trail_message")
+    assert "🟥 **2** ô bắt buộc" in md and "không bắt buộc" not in md and "🟧" not in md
+    # Chỉ còn ô không bắt buộc trống → không báo số ô, không mời bổ sung.
+    conv, reply = _tl_conv("filling"), Reply("x", "x")
+    field_review.decorate_single_page_fill(conv, flow.get_procedure(TL), reply, {**TL_REVIEW, "required": 0},
+                                           offer=True)
+    assert not reply.actions and "__action:field_review_start" not in _sends(reply)
+
+
+async def test_trich_luc_het_o_bat_buoc_thi_xong_bo_sung_khong_hoi_o_khong_bat_buoc(spawned):
+    stats = {"filled": 11, "optional": 7, "required": 1}
+    conv = _tl_conv(attach_done=True, result_method="counter",
+                    field_review={"chips": [], "stats": field_review._stats(stats, TL)})
+    await _turn(conv, "action", "field_review_start")
+    reply = await _turn(conv, "event", "field_review_focus",
+                        {"field": _field("citizenPhone__1", "Số Điện thoại"), "stats": stats})
+    assert field_review.asking(conv) and "Số Điện thoại" in reply.display_md
+    # Extension điền xong ô bắt buộc rồi đưa tới ô không bắt buộc → kết thúc luôn.
+    reply = await _turn(conv, "event", "field_review_focus", {
+        "field": _field("citizenNDK_NoiCap__1", "Cơ quan cấp", required=False),
+        "stats": {"filled": 12, "optional": 6, "required": 0}, "applied": {"key": "citizenPhone__1", "ok": True}})
+    assert not field_review.asking(conv)
+    assert "Cơ quan cấp" not in reply.display_md and "không bắt buộc" not in reply.display_md
+    assert "field_review_stop" in [a.get("type") for a in reply.actions]

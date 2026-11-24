@@ -118,9 +118,13 @@ def to_fields(rows: dict[str, str]) -> dict:
     marked = [key for key in ROWS if rows.get(key) == "co"]
     # Dòng con "Có" mà dòng nhóm để trống: cổng chỉ hiện dòng con khi nhóm "Có".
     groups = list(dict.fromkeys([key for key in marked if "." not in key] + [key.split(".")[0] for key in marked]))
+    # Bảng đánh dấu toàn cột "Không": nhóm có dấu "Không" (ở dòng nhóm hoặc dòng con) tích "Không"; nhóm OCR không còn
+    # dấu nào để trống cho cán bộ tích.
+    denied = [] if marked else list(dict.fromkeys(key.split(".")[0] for key in ROWS if rows.get(key) == "khong"))
     return {
         "KhuyetTat_DanhMuc": [f"kt{key}" for key in groups],
         "KhuyetTat_ChiTiet": [f"kt{key.replace('.', '_')}" for key in marked if "." in key],
+        "KhuyetTat_KhongNhom": [f"kt{key}" for key in denied],
     }
 
 
@@ -152,7 +156,7 @@ def apply(res: dict, rows: dict[str, str] | None) -> None:
     (mọi dòng con "Có") → bỏ hẳn + cảnh báo. ``rows`` None (lỗi / không có bảng) → giữ lượt chính."""
     if rows is None:
         return
-    names = ("KhuyetTat_DanhMuc", "KhuyetTat_ChiTiet")
+    names = ("KhuyetTat_DanhMuc", "KhuyetTat_ChiTiet", "KhuyetTat_KhongNhom")
     res["fields"] = [f for f in res["fields"] if f.get("name") not in names]
     if is_degenerate(rows):
         res.setdefault("errors", []).append(WARNING)

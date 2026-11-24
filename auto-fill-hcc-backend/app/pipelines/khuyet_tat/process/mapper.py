@@ -256,14 +256,21 @@ _RELATION_HEAD_ASCII = {
 }
 
 
-def _account_spelling(person: dict, account_name: str, account_identity: str, identity_enough: bool = False) -> dict:
+def _account_spelling(person: dict, account_name: str, account_identity: str, identity_enough: bool = False,
+                      others: tuple = ()) -> dict:
     """Người trên giấy là chủ tài khoản VNeID → họ tên + số định danh theo tài khoản (nguồn đúng chữ, đúng số).
     Tên chỉ khác hoa/thường thì giữ chữ trên giấy; tài khoản không dấu thì không thay tên có dấu.
-    identity_enough: trùng hẳn số định danh là đủ (mục II — số người đại diện ghi cạnh tên, không lẫn với ai)."""
+    identity_enough: trùng hẳn số định danh là đủ (mục II — số người đại diện ghi cạnh tên, không lẫn với ai).
+    others: họ tên những người KHÁC trong hồ sơ. Mốc mang tên một người khác mà số của người này là mốc lai (điền lại
+    trên form đã điền: cổng đổ lại tên tài khoản vào ô họ tên khoá, ô số còn số lượt trước ghi) → không theo mốc."""
     own_identity = _identity(person.get("identity"))
     same_identity = bool(account_identity) and own_identity == account_identity
-    if not (_is_account(account_name, account_identity, person.get("name"), own_identity)
-            or (identity_enough and same_identity)):
+    # Tên mốc trùng hẳn tên người khác mà không trùng tên người này → kể cả nhánh khớp gần cũng không nhận (người nhà
+    # cùng họ hay chỉ lệch một hai chữ cái).
+    foreign = (bool(_norm_text(account_name)) and _norm_text(account_name) != _norm_text(person.get("name"))
+               and _norm_text(account_name) in {_norm_text(n) for n in others if n})
+    if foreign or not (_is_account(account_name, account_identity, person.get("name"), own_identity)
+                       or (identity_enough and same_identity)):
         return person
     name = str(person.get("name") or "")
     account = str(account_name or "").strip()
@@ -473,7 +480,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         # mục II trống tức người khuyết tật tự đứng đơn → người nộp là chủ hồ sơ.
         submitter = _representative_profile(values, ocr_text)
         if submitter is not None:
-            submitter = _account_spelling(submitter, applicant_name, applicant_identity, identity_enough=True)
+            submitter = _account_spelling(submitter, applicant_name, applicant_identity, identity_enough=True,
+                                          others=(owner_name, values.get("Nkt_HoTen")))
         self_submit = submitter is None
         if self_submit:
             submitter = owner if owner_present else None
@@ -597,6 +605,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         applicant_name,
         applicant_identity,
         identity_enough=True,
+        others=(owner_name, values.get("Nkt_HoTen")),
     )
     add("data[NddHoTen]", ndd["name"])
     add("data[NddSoDinhdanh]", ndd["identity"])
@@ -611,7 +620,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     # Đơn có ít nhất một dòng "Có" thì mọi radio đang hiện phải có giá trị: nhóm không "Có" → "Không" ở dòng
     # nhóm (radio con ẩn, không tích); nhóm "Có" có ít nhất một dòng con "Có" → các dòng con còn lại tích "Không";
     # nhóm "Có" mà không dòng con nào "Có" → tích "Có" mọi dòng con (đơn chỉ đánh dấu ở dòng nhóm).
-    # Không dòng nào "Có" (Mục III bỏ trống) → không tích gì.
+    # Không dòng nào "Có": chỉ tích "Không" ở dòng nhóm có dấu "Không" (KhuyetTat_KhongNhom); bảng trống → không tích gì.
     if categories:
         for code, name in sorted(DISABILITY_RADIO_FIELDS.items()):
             if "_" not in code:
@@ -621,6 +630,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
             group = code.split("_", 1)[0]
             if "_" in code and group in categories:
                 add(name, "co" if code in details or group not in groups_with_detail else "khong")
+    else:
+        for code in sorted({_compact_code(v) for v in _as_list(values.get("KhuyetTat_KhongNhom"))}):
+            if code in DISABILITY_RADIO_FIELDS and "_" not in code:
+                add(DISABILITY_RADIO_FIELDS[code], "khong")
 
     muc_do = values.get("MucDo_HoatDong")
     if isinstance(muc_do, dict):

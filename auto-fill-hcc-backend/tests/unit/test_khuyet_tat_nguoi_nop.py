@@ -247,3 +247,14 @@ def test_ho_ten_nguoi_trong_ho_so_in_hoa_nguoi_nop_theo_tai_khoan_giu_nguyen():
     assert d["data[NddHoTen]"] == "NGUYỄN VĂN CHA"
     assert d["data[fullname]"] == "Nguyễn Văn Cha"  # tên VNeID cổng đổ sẵn
     assert _values(mapper.enrich(_fields(_MUC_I, _MUC_II), _TO_KHAI))["data[fullname]"] == "NGUYỄN VĂN CHA"
+
+
+def test_moc_lai_ten_nguoi_khac_so_nguoi_dai_dien_thi_khong_doi_ten():
+    """Điền lại trên form đã điền: ô họ tên khoá được cổng đổ lại tên tài khoản (người khuyết tật), ô số còn số người đại
+    diện lượt trước ghi → mốc lai hai người, không đổi tên người đại diện / người nộp theo mốc."""
+    moc_lai = {"formContext": {"applicantFullname": "NGUYỄN VĂN CON", "applicantIdentityNumber": "001080000002"}}
+    for options in (moc_lai, {**moc_lai, **_TO_KHAI}):
+        d = _values(mapper.enrich(_fields(_MUC_I, _MUC_II), options))
+        assert d["data[NddHoTen]"] == "NGUYỄN VĂN CHA"
+    d = _values(mapper.enrich(_fields(_MUC_I, _MUC_II), {**moc_lai, **_TO_KHAI}))
+    assert d["data[fullname]"] == "NGUYỄN VĂN CHA"

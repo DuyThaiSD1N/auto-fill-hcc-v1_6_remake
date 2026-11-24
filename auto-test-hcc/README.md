@@ -8,7 +8,18 @@ gọi backend thử với giấy tờ của req (OCR mới mỗi lần) và ch�
 trị gì, mô phỏng trên form đã khai của thủ tục (`web/src/simulations`) như web trace, có thêm "Lượt gốc (req)" để so. Agent chỉ sửa
 backend: lỗi ở extension (backend trả đúng mà form không nhận) thì báo cáo, vì không chạy extension nên không kiểm chứng được.
 
-Đội tester đọc [KE-HOACH.md](KE-HOACH.md): cách bật hệ thống, cách chạy một ca, kịch bản kiểm thử. Team F19 cài máy mới theo [HUONG-DAN-F19.md](HUONG-DAN-F19.md). Cài lên server trolyhoso theo [HUONG-DAN-SERVER.md](HUONG-DAN-SERVER.md). File này dành cho người sửa code.
+Đội tester đọc [KE-HOACH.md](KE-HOACH.md): cách bật hệ thống, cách chạy một ca, kịch bản kiểm thử. Team F19 cài máy mới theo [HUONG-DAN-F19.md](HUONG-DAN-F19.md). Cài lên server production theo [HUONG-DAN-SERVER.md](HUONG-DAN-SERVER.md) mục B. File này dành cho người sửa code.
+
+## Trong Monitor (từ 23/11/2026)
+
+Nhóm menu **Auto test** của Monitor 12007 gồm Agent tự sửa (`monitor-fe/src/autotest/agent/`, chép từ `web/src/lab/auto/` + `Results`
++ `engine`; đổi lớp `lab-dot`/`lab-step` thành `fix-dot`/`fix-step` vì trùng `autotest.css`) và 5 màn lab (`agents/lab.py`, API
+`/agent-api/lab/*`). Monitor gọi dịch vụ qua nginx (`AGENT_URL`), dùng chung phiên super_admin của Monitor. Web 12008 vẫn giữ: dùng
+riêng được, và trên server là cầu nối Monitor → `127.0.0.1:12009`. Sửa giao diện Agent tự sửa ở một bên thì chép sang bên kia.
+
+Hai bố cục: monorepo (thư mục này cạnh `auto-fill-hcc-backend/`) và repo backend `dev-f19/auto-fill-hcc-backend` nhánh `auto-fix`
+(thư mục này nằm trong gốc repo backend, cách cài lên server). `config.BE_REPO_LAYOUT` tự nhận ra; bố cục repo backend luôn dùng khu
+làm việc vì không có code extension.
 
 ## Khu làm việc, ca hồi quy, nhánh PR (mặc định trên máy local, từ 17/11/2026)
 

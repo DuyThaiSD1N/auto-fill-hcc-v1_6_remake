@@ -34,7 +34,7 @@ import regression_case
 import replay
 import scoring
 import verify
-from config import BE, MAIN_BE, REGRESSION, REGRESSION_CASES, RUNS, SERVER_MODE, SOURCE_SSH, USE_WORKSPACE
+from config import BE, BE_REPO_LAYOUT, MAIN_BE, REGRESSION, REGRESSION_CASES, RUNS, SERVER_MODE, SOURCE_SSH, USE_WORKSPACE
 
 LAB = RUNS / "_lab"
 SUITES = LAB / "suites"
@@ -834,7 +834,9 @@ def suites() -> dict:
 
 
 def targets() -> list[dict]:
-    out = [{"key": "dev", "label": "Bản đang phát triển (máy này)", "ok": (MAIN_BE / "app").is_dir(), **_tree_info(MAIN_BE)}]
+    # Server cài từ repo backend: "dev" là bản clone nhánh đang cài (vd auto-fix), không phải máy người phát triển.
+    label = "Bản nhánh đang cài trên máy chủ" if BE_REPO_LAYOUT else "Bản đang phát triển (máy này)"
+    out = [{"key": "dev", "label": label, "ok": (MAIN_BE / "app").is_dir(), **_tree_info(MAIN_BE)}]
     if USE_WORKSPACE:
         out.append({"key": "release", "label": "Bản production (tag release)", "ok": (BE / "app").is_dir(), **_tree_info(BE)})
     return out

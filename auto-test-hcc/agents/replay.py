@@ -74,7 +74,7 @@ def shadow_account(account: dict) -> dict:
         cmd.append(f"--xa={account['xa']}")
     if account.get("tinh"):
         cmd.append(f"--tinh={account['tinh']}")
-    env = verify._compose_env() if verify.USE_WORKSPACE else None
+    env = verify._compose_env()
     code, output = verify.run(cmd, cwd, 180, threading.Event(), env)
     if code != 0:
         raise LoginError(f"Không tạo được tài khoản chạy lại {username} trên backend thử: {output.strip()[-300:]}")

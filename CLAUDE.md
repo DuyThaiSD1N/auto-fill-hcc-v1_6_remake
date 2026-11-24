@@ -106,7 +106,9 @@ Script build image, `docker save` rồi `scp` sang đích. Sau đó phải vào 
 
 ## Web Agent tự sửa (auto-test-hcc, cổng 12008)
 
-Tách riêng khỏi backend theo yêu cầu người dùng, mã nằm ở `auto-test-hcc/`, ĐỪNG đưa web Agent tự sửa (ca / job) lại vào `monitor-fe`. Compose riêng, nối vào
+Tách riêng khỏi backend theo yêu cầu người dùng, mã dịch vụ nằm ở `auto-test-hcc/`. Ngày 23/11/2026 người dùng yêu cầu đưa Agent tự sửa
+vào nhóm menu Auto test của Monitor (`monitor-fe/src/autotest/agent/`, chép từ `auto-test-hcc/web/src/lab/auto/`), web 12008 vẫn giữ;
+sửa giao diện ở một bên thì chép sang bên kia. Compose riêng, nối vào
 mạng `autofill_hcc_net`, nên `docker compose` của phần này dùng `-f auto-test-hcc/compose.yml` chứ không phải `compose.prod.yml`.
 Người sửa code đọc `auto-test-hcc/README.md`, đội tester đọc `auto-test-hcc/KE-HOACH.md`, team F19 cài máy mới theo `auto-test-hcc/HUONG-DAN-F19.md`.
 
@@ -122,7 +124,12 @@ Người sửa code đọc `auto-test-hcc/README.md`, đội tester đọc `auto
 - Bộ công cụ Auto test trong Monitor 12007 (người dùng chọn ngày 22/11/2026): nhóm menu "Auto test" gồm 5 màn ở
   `monitor-fe/src/autotest/` (Tái hiện lượt, Nội dung đã điền, Bộ ca test, Lần chạy, Cấu hình ghi). Giao diện gọi `/agent-api/lab/*`
   của dịch vụ 12009 qua nginx Monitor (`AGENT_URL`); logic nằm ở `auto-test-hcc/agents/lab.py`, không thêm gì vào `app/`. Dịch vụ
-  không chạy (server production) thì nhóm menu tự ẩn. Ca test dựng từ lượt thật (ẩn danh) để ở `auto-test-hcc/runs/_lab` (gitignore),
+  không chạy thì nhóm menu tự ẩn.
+- Đưa lên production (người dùng chốt 23/11/2026): cả lab lẫn Agent tự sửa, gồm Bộ ca test / Lần chạy; kho lưu trữ dùng tài khoản dịch
+  vụ riêng do đơn vị cấp. Code đẩy lên repo `dev-f19/auto-fill-hcc-backend` nhánh `auto-fix` (bố cục repo backend: `auto-test-hcc/`
+  nằm trong gốc repo backend, `config.BE_REPO_LAYOUT`, luôn bật khu làm việc). Cài server theo mục B của `auto-test-hcc/HUONG-DAN-SERVER.md`
+  (`setup.sh` mặc định clone nhánh này). Monitor production gọi dịch vụ qua web 12008: `AGENT_URL=http://host.docker.internal:12008`
+  trong `.env` production. Ca test dựng từ lượt thật (ẩn danh) để ở `auto-test-hcc/runs/_lab` (gitignore),
   khác `regression/cases` (ca của Agent tự sửa, phải luôn đạt). Đợt 2 chưa làm: extension ghi nhật ký thao tác, HTML eform từng bản,
   bật / tắt cấu hình ghi theo đơn vị.
 - Req của trolysoao (người dùng chốt lại 17/11/2026): Agent tự sửa CHẠY TRÊN MÁY LOCAL, chỉ đọc req của server `nlp@<ip-trolysoao>`
@@ -197,6 +204,10 @@ riêng. Chỉ đẩy lên thai_dev khi người dùng yêu cầu.
 Chỉ chạy hai cây `tests/unit` và `tests/integration`. Cây `tests/handfree` lỗi collect sẵn, bỏ qua.
 Baseline hiện tại có sẵn một số test đỏ không liên quan đến code mới; so số fail trước và sau khi
 sửa thay vì cố đưa về 0.
+
+Baseline ngày 2026-11-23, sau khi kéo BE thai_dev 9b368bef (cây = main 786eefa2) về monorepo (máy local, plugin win_socketpair, có
+PYTHONUTF8=1): `17 failed, 6061 passed, 42 skipped, 12 errors`. Vẫn đúng 17 đỏ môi trường của bản 2026-11-18 (4 heic, 9 v2 422,
+3 dashboard `strftime`, 1 glob `\` khai sinh liên thông tách trang); 12 lỗi collect như cũ (thiếu `mongomock`).
 
 Baseline ngày 2026-11-20, sau khi thêm 1.001445 trình báo mất hộ chiếu cấp tỉnh (máy local, plugin win_socketpair, có
 PYTHONUTF8=1): `17 failed, 5810 passed, 41 skipped, 12 errors` (gồm 3 test chặn tài khoản khác người thêm cùng ngày). Vẫn

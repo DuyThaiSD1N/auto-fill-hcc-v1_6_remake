@@ -10,6 +10,8 @@ Không có văn bản ủy quyền (tên người nộp trùng chủ hồ sơ) t
 được lấy từ vai kia. Có ủy quyền thì mỗi khối chỉ dùng facts của đúng vai, không mượn chéo.
 ⚑ Cờ theo tài khoản `ownerAsApplicant` (phường Nam Nha Trang, xem with_account_process_options): Phần I khai luôn
 chủ hồ sơ (người ủy quyền / người đứng Đơn), kể cả khi hồ sơ có văn bản ủy quyền.
+⚑ Cài đặt "Lấy người nộp theo tờ khai" (`options.submitterMode="owner_as_submitter"`, xem submitter_is_declarant): như
+cờ Nam Nha Trang nhưng cho mọi tài khoản và cả 7 thủ tục Khánh Hòa; chủ hồ sơ là tổ chức thì giữ mặc định.
 Ô chữ/ngày giấy tờ không có dữ liệu thì trả về TRỐNG (clear_blank_fields), không bỏ qua — dùng chung cho cả 5 thủ tục
 Khánh Hòa cùng template.
 """
@@ -85,6 +87,25 @@ def with_account_process_options(options: dict | None, user: dict | None, proced
 
 def owner_as_applicant(options: dict | None) -> bool:
     return (options or {}).get(OWNER_AS_APPLICANT_OPTION) is True
+
+
+# Cài đặt "Lấy người nộp theo tờ khai" (Auto Fill: settings.html của extension; trợ lý: cài đặt tài khoản
+# submitterFromDeclaration) → options.submitterMode. Bảy thủ tục Khánh Hòa vốn không so khớp tài khoản (Phần I luôn theo
+# hồ sơ, mặc định là bên được ủy quyền), nên bật cài đặt nghĩa là Phần I khai NGƯỜI ĐỨNG ĐƠN — như cờ Nam Nha Trang — bỏ
+# bên được ủy quyền (theo yêu cầu người dùng 23/11/2026). Tổ chức không đứng Phần I được (form đòi ngày sinh, CCCD) →
+# giữ mặc định.
+SUBMITTER_MODE_OPTION = "submitterMode"
+SUBMITTER_FROM_DECLARATION = "owner_as_submitter"
+
+
+def submitter_from_declaration(options: dict | None) -> bool:
+    return str((options or {}).get(SUBMITTER_MODE_OPTION) or "") == SUBMITTER_FROM_DECLARATION
+
+
+def submitter_is_declarant(options: dict | None, declarant_name: Any, declarant_kind: Any = None) -> bool:
+    """Bật "Lấy người nộp theo tờ khai" và người đứng Đơn là CÁ NHÂN có tên → Phần I khai chính người đó."""
+    return (submitter_from_declaration(options) and bool(_text(declarant_name))
+            and not _is_to_chuc(declarant_kind, declarant_name))
 
 
 # Đơn Mẫu 19 mục 1 ghi chung nhiều người cùng sử dụng đất trên một dòng ("A SN: … – B SN: …", "b) <số A> - <số B>").
@@ -295,9 +316,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     if not owner_name:
         warnings.append("Thiếu tên chủ hồ sơ (người sử dụng đất đứng Đơn đăng ký đất đai).")
 
-    # Phường Nam Nha Trang (cờ ownerAsApplicant): Phần I chép đúng chủ hồ sơ như Phần II, bỏ bên được ủy quyền. Thiếu
-    # tên chủ hồ sơ thì giữ cách mặc định.
-    owner_applicant = owner_as_applicant(options) and bool(owner_name)
+    # Phường Nam Nha Trang (cờ ownerAsApplicant) hoặc bật "Lấy người nộp theo tờ khai" (options.submitterMode, chủ hồ sơ
+    # cá nhân): Phần I chép đúng chủ hồ sơ như Phần II, bỏ bên được ủy quyền. Thiếu tên chủ hồ sơ thì giữ cách mặc định.
+    owner_applicant = bool(owner_name) and (
+        owner_as_applicant(options) or submitter_is_declarant(options, owner_name, values.get("ChuHoSo_LoaiChuThe")))
     person_val = owner_val if owner_applicant else applicant_val
 
     # --- Phần I: người nộp ---

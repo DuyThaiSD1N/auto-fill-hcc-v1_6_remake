@@ -4,6 +4,8 @@ import { GROUPS } from "../stages";
 import type { MonitorUser } from "../types";
 import { useLabAvailable } from "../autotest/api";
 import "../autotest/autotest.css";
+import "../autotest/agent/results.css";
+import "../autotest/agent/agent.css";
 import Icon from "./Icon";
 
 const NAV = [
@@ -12,8 +14,9 @@ const NAV = [
   { to: "/dossiers", label: "Hồ sơ", icon: "folder" as const, match: (p: string) => p.startsWith("/dossiers") },
 ];
 
-// Auto test (dịch vụ agent auto-test-hcc trên máy host): chỉ hiện khi dịch vụ chạy, server production không có.
+// Auto test (dịch vụ agent auto-test-hcc trên máy host): chỉ hiện khi dịch vụ 12009 chạy và Monitor gọi tới được (AGENT_URL).
 const LAB_NAV = [
+  { to: "/autotest/agent", label: "Agent tự sửa", icon: "wrench" as const, match: (p: string) => p.startsWith("/autotest/agent") },
   { to: "/autotest/replay", label: "Tái hiện lượt", icon: "play" as const, match: (p: string) => p.startsWith("/autotest/replay") },
   { to: "/autotest/fill", label: "Nội dung đã điền", icon: "document" as const, match: (p: string) => p.startsWith("/autotest/fill") },
   { to: "/autotest/suites", label: "Bộ ca test", icon: "flask" as const, match: (p: string) => p.startsWith("/autotest/suites") },

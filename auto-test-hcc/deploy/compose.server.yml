@@ -1,14 +1,18 @@
 # Web Agent tự sửa trên server trolyhoso. Chạy bằng setup.sh, hoặc:
 #   docker compose -f auto-test-hcc/deploy/compose.server.yml up -d --build
 #
-# Gồm 3 service, KHÔNG đụng stack production (/opt/autofill-hcc, mạng autofill_hcc_net, volume autofill_hcc_mongo_data):
-#   test-fe   web 12008, mạng host: nginx gọi được dịch vụ agent (127.0.0.1:12009) chỉ nghe
-#             loopback. /auth/ đi tới backend production để đăng nhập super_admin.
-#   app       backend THỬ dựng từ bản clone GitHub, chạy code agent đang sửa, chỉ nghe 127.0.0.1:12015. Dịch vụ agent build
-#             lại service này sau khi người duyệt đồng ý. Tên image riêng (autotest) để không đè image production.
-#   be-mongo  Mongo riêng của backend thử, không auth, chỉ nghe 127.0.0.1:12014. Tài khoản test tạo bằng seed_user.
+# Gồm 3 service, KHÔNG đụng stack production (thư mục production, mạng autofill_hcc_net, volume autofill_hcc_mongo_data):
+#   test-fe       web 12008, mạng host: nginx gọi được dịch vụ agent (127.0.0.1:12009) chỉ nghe loopback. /auth/ đi tới
+#                 backend production để đăng nhập super_admin. Monitor production (nhóm menu Auto test) cũng gọi dịch vụ agent
+#                 qua cổng này: AGENT_URL=http://host.docker.internal:12008 trong .env production (HUONG-DAN-SERVER.md mục B).
+#   autotest-app  backend THỬ, chạy code agent đang sửa (khu làm việc: clone 3 repo thật ở tag release), chỉ nghe
+#                 127.0.0.1:12015. Dịch vụ agent build lại service này sau khi người duyệt đồng ý. Image tag riêng (autotest)
+#                 để không đè image production. KHÔNG đặt tên `app`: trùng tên service của stack production.
+#   be-mongo      Mongo riêng của backend thử, không auth, chỉ nghe 127.0.0.1:12014. Tài khoản test tạo bằng seed_user.
 #
-# Biến ${...} đọc từ deploy/.env (setup.sh ghi): AUTH_BACKEND_URL, TEST_JWT_ACCESS_SECRET, TEST_JWT_REFRESH_SECRET.
+# Biến ${...} đọc từ deploy/.env (setup.sh ghi): AUTH_BACKEND_URL, TEST_JWT_ACCESS_SECRET, TEST_JWT_REFRESH_SECRET, và 3 đường
+# dẫn AUTOTEST_BE_DIR / AUTOTEST_MAIN_ENV / AUTOTEST_DATA_DIR cho lần build đầu; dịch vụ agent truyền lại 3 biến này mỗi lần
+# build (cây backend trong khu làm việc).
 name: auto-test-hcc-server
 
 services:
@@ -35,11 +39,11 @@ services:
       start_period: 20s
     restart: unless-stopped
 
-  app:
-    build: ../../auto-fill-hcc-backend
+  autotest-app:
+    build: ${AUTOTEST_BE_DIR:?thiếu đường dẫn backend cần build (setup.sh ghi vào deploy/.env, dịch vụ agent truyền khi build)}
     image: autofill-hcc-be:autotest
     # Bản chép .env production (OCR, LLM...). Các dòng environment dưới đây ghi đè để bản thử không ghi vào production.
-    env_file: ../../auto-fill-hcc-backend/.env
+    env_file: ${AUTOTEST_MAIN_ENV:?thiếu .env cho backend thử (setup.sh chép từ production)}
     environment:
       - MONGO_URI=mongodb://be-mongo:27017
       - MONGO_HOST=be-mongo
@@ -57,7 +61,7 @@ services:
     ports:
       - "127.0.0.1:12015:12015"
     volumes:
-      - ../../auto-fill-hcc-backend/data:/app/data
+      - ${AUTOTEST_DATA_DIR:?thiếu thư mục dữ liệu riêng của backend thử}:/app/data
     depends_on:
       be-mongo:
         condition: service_healthy

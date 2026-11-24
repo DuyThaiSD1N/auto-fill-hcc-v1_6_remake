@@ -10,6 +10,8 @@ Người nộp khác tên chủ hồ sơ = có ủy quyền: mỗi khối chỉ 
 Ô giấy tờ không có dữ liệu thì TRẢ VỀ TRỐNG (clear, ô bắt buộc tô đỏ + nhắc trong cảnh báo), không bỏ qua: Phần I cổng
 đổ sẵn theo tài khoản đăng nhập, sai người khi cán bộ nộp thay. Chỉ giữ Phần I của cổng khi formContext cho thấy tài khoản
 chính là người nộp (cùng số định danh) — finish_blank_fields. Ô chọn Tỉnh/Phường-xã không xoá (xem clear_blank_fields).
+Bật "Lấy người nộp theo tờ khai" (options.submitterMode, submitter_is_declarant): Phần I khai chủ hồ sơ cá nhân, bỏ bên
+được ủy quyền.
 """
 
 from __future__ import annotations
@@ -34,6 +36,7 @@ from app.pipelines.dang_ky_dat_dai_lan_dau_khanh_hoa.process.mapper import (
     _ward,
     account_is_applicant,
     clear_blank_fields,
+    submitter_is_declarant,
 )
 
 from .schema import UI_COMP_BY_NAME
@@ -140,6 +143,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     authorized = bool(owner_name and applicant_name and _fold(owner_name) != _fold(applicant_name))
     if not authorized and owner_name:
         applicant_name = owner_name  # cùng một người: hai khối ghi tên giống hệt nhau (LLM hay trả hai kiểu hoa/thường)
+    # Bật "Lấy người nộp theo tờ khai": Phần I = chủ hồ sơ cá nhân, không lấy bên được ủy quyền.
+    owner_submits = submitter_is_declarant(options, owner_name, values.get("ChuHoSo_LoaiChuThe"))
+    if owner_submits:
+        applicant_name = owner_name
 
     def owner_val(key: str) -> Any:
         value = values.get(f"ChuHoSo_{key}")
@@ -148,7 +155,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         return value
 
     def applicant_val(key: str) -> Any:
-        if not authorized:
+        if owner_submits or not authorized:
             return owner_val(key)  # cùng một người: hai khối lấy đúng một nguồn, ghi giống hệt nhau
         return values.get(f"NguoiNop_{key}")
 

@@ -8,6 +8,8 @@ Cùng template ba khối với cấp đổi GCN Khánh Hòa nên dùng lại cá
 Số thửa/số tờ sau đo đạc chỉnh lý ghi kèm số cũ theo cách tờ khai thuế ghi: "1016 (257 cũ)".
 Thẻ căn cước cấp từ 01/07/2024 do Bộ Công an cấp: ngày cấp từ mốc đó thì nơi cấp là "Bộ Công an" — văn bản công chứng/
 quyết định hay chép tên cơ quan cấp thẻ CCCD cũ kèm ngày cấp thẻ mới.
+Bật "Lấy người nộp theo tờ khai" (options.submitterMode, submitter_is_declarant): Phần I khai chủ hồ sơ cá nhân (bên
+nhận), bỏ bên được ủy quyền.
 """
 
 from __future__ import annotations
@@ -35,6 +37,7 @@ from app.pipelines.dang_ky_dat_dai_lan_dau_khanh_hoa.process.mapper import (
     _province,
     _text,
     _ward,
+    submitter_is_declarant,
 )
 
 from .schema import UI_COMP_BY_NAME
@@ -134,6 +137,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     authorized = bool(owner_name and applicant_name and _fold(owner_name) != _fold(applicant_name))
     if not authorized and owner_name:
         applicant_name = owner_name  # cùng một người: hai khối ghi tên giống hệt nhau
+    # Bật "Lấy người nộp theo tờ khai": Phần I = chủ hồ sơ cá nhân, không lấy bên được ủy quyền.
+    owner_submits = submitter_is_declarant(options, owner_name, values.get("ChuHoSo_LoaiChuThe"))
+    if owner_submits:
+        applicant_name = owner_name
 
     def owner_val(key: str) -> Any:
         value = values.get(f"ChuHoSo_{key}")
@@ -142,7 +149,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         return value
 
     def applicant_val(key: str) -> Any:
-        if not authorized:
+        if owner_submits or not authorized:
             return owner_val(key)  # cùng một người: hai khối lấy đúng một nguồn, ghi giống hệt nhau
         return values.get(f"NguoiNop_{key}")
 

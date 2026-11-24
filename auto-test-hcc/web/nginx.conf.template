@@ -21,14 +21,16 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # Dịch vụ agent chạy trên máy host (cần claude, repo, docker) nên không nằm trong mạng compose.
+    # Dịch vụ agent chạy trên máy host (cần claude, repo, docker) nên không nằm trong mạng compose. Trên server, Monitor
+    # production (nhóm menu Auto test) cũng đi qua đây (AGENT_URL=http://host.docker.internal:12008), vì dịch vụ chỉ nghe
+    # 127.0.0.1 mà container Monitor không gọi được loopback của host. Tái hiện lượt đọc kho lưu trữ có thể lâu → 300s.
     location /agent-api/ {
         set $agent "${AGENT_URL}";
         proxy_pass $agent$request_uri;
         proxy_set_header Host $host;
         proxy_set_header Authorization $http_authorization;
         proxy_connect_timeout 5s;
-        proxy_read_timeout 120s;
+        proxy_read_timeout 300s;
     }
 
     location /assets/ {

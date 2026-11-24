@@ -633,7 +633,9 @@ _PAGE_BREAK_RE = re.compile(
 # này là phần nối tiếp (mặt sau CCCD, trang trắng) nên phải gộp vào giấy tờ ngay trước nó —
 # nếu không, ngày cấp in ở mặt sau bị tách rời khỏi họ tên in ở mặt trước.
 _UNIT_NAME_LINE_RE = re.compile(
-    r"^\s*H[oọ][,.]?\s*(?:v[aà]\s+)?(?:ch[uữ]\s*[dđ][eệ]m[,.]?\s*(?:v[aà]\s+)?)?t[eê]n",
+    # Trích lục đánh máy hay để dấu cách trước dấu phẩy ("Họ, chữ đệm , tên :"); không nhận thì trang đó bị nối vào
+    # giấy đứng trước, rồi chữ "TRÍCH LỤC KHAI TỬ" biến người trên giấy trước thành người đã chết.
+    r"^\s*H[oọ]\s*[,.]?\s*(?:v[aà]\s+)?(?:ch[uữ]\s*[dđ][eệ]m\s*[,.]?\s*(?:v[aà]\s+)?)?t[eê]n",
     flags=re.IGNORECASE | re.MULTILINE,
 )
 
@@ -701,8 +703,8 @@ def _person_from_document(document: dict) -> dict | None:
         # Giấy chứng tử mẫu cũ: "Họ và tên người chết:".
         r"^\s*Họ\s+(?:và\s+)?tên\s+người\s+chết\s*:\s*([^\n\r]+)",
         r"^\s*Họ\s+và\s+tên(?:\s*/\s*Full\s*name)?\s*:\s*([^\n\r]+)",
-        r"^\s*Họ,\s*chữ\s*đệm(?:,\s*|\s+và\s+)tên(?:\s+khai\s+sinh)?(?:\s*/\s*Full\s*name)?\s*:\s*([^\n\r]+)",
-        r"^\s*Họ,\s*chữ\s*đệm,\s*tên\s*:\s*([^\n\r]+)",
+        r"^\s*Họ\s*,\s*chữ\s*đệm(?:\s*,\s*|\s+và\s+)tên(?:\s+khai\s+sinh)?(?:\s*/\s*Full\s*name)?\s*:\s*([^\n\r]+)",
+        r"^\s*Họ\s*,\s*chữ\s*đệm\s*,\s*tên\s*:\s*([^\n\r]+)",
     ))
     # Thẻ BHYT, sổ hộ khẩu... in cả tấm trên MỘT dòng ("Họ và tên: X Giới tính: Nữ Ngày sinh: ...
     # Địa chỉ: ..."); không cắt ở nhãn kế tiếp thì nguyên dòng thành họ tên (req_ce5b69530bb6).
@@ -1774,9 +1776,17 @@ def _override_family_by_generation(
     """
     if _declaration_source_names(documents):
         return sections
+    # Thẻ của người được ủy quyền đi nộp hộ cũng làm hồ sơ thành bốn người (anh chị em cùng thế hệ với người được
+    # đăng ký lại) — bỏ thẻ đó ra như thẻ của người đăng nhập. Giấy ủy quyền thường không ghi năm sinh, số viết tay
+    # hay bị OCR chèn thêm chữ số: nhận thẻ khi trùng họ tên và số thẻ nằm trọn trong dãy số trên giấy ủy quyền.
+    on_paper = _authorized_identity(documents)
+    authorized = next((person for person in _people_from_documents(documents)
+                       if on_paper and person.get("is_identity") and len(person.get("id") or "") in (9, 12)
+                       and person["id"] in on_paper["id"] and _names_align(on_paper["name"], person.get("name"))),
+                      None)
     family = _family_from_documents(documents, strict=True) or (
         applicant_card and _family_from_documents(documents, strict=True, exclude=applicant_card)
-    )
+    ) or (authorized and _family_from_documents(documents, strict=True, exclude=authorized))
     # Luật thế hệ xếp người được ủy quyền làm con → không đủ căn cứ đè, giữ phân vai của agent.
     if not family or _child_is_authorized(family, documents):
         return sections

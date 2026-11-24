@@ -188,7 +188,7 @@ def test_enrich_chu_ho_page_normalizes_name_and_phone():
 def test_business_contact_sources_are_independent_and_submitter_has_no_contact_field():
     fields = [
         {"name": "TruSo_DienThoai", "value": "0901000001"},
-        {"name": "ChuHo_DienThoai", "value": "0902000002"},
+        {"name": "ChuHo_DienThoai", "value": "0912345678"},
         {"name": "Thue_DienThoai", "value": "0903000003"},
         # Khóa hồi quy: kể cả dữ liệu compact cũ còn key này, mapper cũng không đưa sang trang người nộp.
         {"name": "NguoiNop_DienThoai", "value": "0904000004"},
@@ -201,7 +201,7 @@ def test_business_contact_sources_are_independent_and_submitter_has_no_contact_f
     submitter_names = {f["name"] for f in pages["nguoi-nop-ho-so"]}
 
     assert address_values["ctl00$C$DCONTClt$HO_PHONEFld"] == "0901000001"
-    assert owner_values["ctl00$C$OWN_PCtl$PERSCtl$PHONEFld"] == "0902000002"
+    assert owner_values["ctl00$C$OWN_PCtl$PERSCtl$PHONEFld"] == "0912345678"
     assert tax_values["ctl00$C$UC_DW_TAXEditCtl$REP_RECEIVER_PHONEFld"] == "0903000003"
     assert "ctl00$C$PERSCtl$PHONEFld" not in submitter_names
 
@@ -302,3 +302,16 @@ def test_khong_thay_khoi_tru_so_thi_khong_dung():
     fields = _llm_cop_tinh_cccd()
     assert mapper.fix_addresses_from_ocr(fields, "Giấy tờ khác không có mục trụ sở") == []
     assert fields[0]["value"]["xa"] == "Tân Lợi"
+
+
+def test_so_tru_so_lech_1_2_chu_so_voi_so_chu_ho_thi_lay_so_chu_ho():
+    """Một số viết hai lần trên đơn (chủ hộ + trụ sở), OCR đọc lệch chữ số viết đè ở một chỗ → lấy số chủ hộ. Khác hẳn
+    (≥3 chữ số) là hai số khác nhau → giữ số trụ sở."""
+    def phone(tru_so):
+        fields = [{"name": "TruSo_DienThoai", "value": tru_so}, {"name": "ChuHo_DienThoai", "value": "0900000123"}]
+        return {f["name"].split("$")[-1]: f["value"] for f in mapper.enrich(fields, page="dia-chi")}["HO_PHONEFld"]
+
+    assert phone("0900000923") == "0900000123"
+    assert phone("0900000953") == "0900000123"
+    assert phone("0900000123") == "0900000123"
+    assert phone("0911222333") == "0911222333"

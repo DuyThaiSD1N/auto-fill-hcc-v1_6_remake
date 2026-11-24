@@ -185,7 +185,6 @@ def test_bhyt_me_chi_bat_dung_phuong_nha_trang():
     from app.pipelines.khai_sinh_lien_thong.process import mapper
 
     for user in ({"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Nam Nha Trang"},
-                 {"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Bắc Nha Trang"},
                  {"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Tây Nha Trang"},
                  {"tinh": "Tỉnh Lai Châu", "xa": "Phường Đoàn Kết"}, None):
         options = mapper.with_account_process_options({}, user, mapper.PROCEDURE_KEY)
@@ -196,6 +195,25 @@ def test_bhyt_me_chi_bat_dung_phuong_nha_trang():
         {mapper.NHA_TRANG_BHYT_OPTION: True}, {"tinh": "Tỉnh Lai Châu", "xa": "Phường Đoàn Kết"}, mapper.PROCEDURE_KEY)
     assert mapper.NHA_TRANG_BHYT_OPTION not in mapper.with_account_process_options(
         {}, {"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Nha Trang"}, "khai-tu")
+
+
+def test_phuong_bac_nha_trang_bo_mac_dinh_giam_ho_tren_the_bhyt():
+    from app.pipelines.khai_sinh_lien_thong.process import mapper
+
+    bac_nha_trang = {"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Bắc Nha Trang"}
+    options = mapper.with_account_process_options({}, bac_nha_trang, mapper.PROCEDURE_KEY)
+    assert options[mapper.BAC_NHA_TRANG_NO_GUARDIAN_OPTION] is True
+    assert mapper.NHA_TRANG_BHYT_OPTION not in options
+    assert "NguoiGiamHo" not in _by_name_opts(options)  # cán bộ tự chọn
+    # Phường khác vẫn giữ mặc định chung; client tự gửi cờ bị server gỡ; thủ tục khác không bật.
+    for user in ({"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Nam Nha Trang"},
+                 {"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Nha Trang"}, None):
+        options = mapper.with_account_process_options(
+            {mapper.BAC_NHA_TRANG_NO_GUARDIAN_OPTION: True}, user, mapper.PROCEDURE_KEY)
+        assert mapper.BAC_NHA_TRANG_NO_GUARDIAN_OPTION not in options
+        assert _by_name_opts(options)["NguoiGiamHo"] == "Thông tin mẹ"
+    assert mapper.BAC_NHA_TRANG_NO_GUARDIAN_OPTION not in mapper.with_account_process_options(
+        {}, bac_nha_trang, "khai-tu")
 
 
 def _by_name_opts(options: dict) -> dict:

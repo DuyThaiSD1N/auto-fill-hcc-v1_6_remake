@@ -450,9 +450,52 @@ def _subject_birth_date(values: dict):
     """
     return (
         _full_date(values.get("Subject_BirthDateFromId"))
-        or _full_date(values.get("Subject_BirthDate"))
+        or _month_from_words(_full_date(values.get("Subject_BirthDate")), values.get("Subject_BirthDateInWords"))
         or values.get("Subject_BirthDate")
     )
+
+
+_UNIT_WORDS = {"mot": 1, "hai": 2, "ba": 3, "bon": 4, "tu": 4, "nam": 5, "lam": 5, "nham": 5, "sau": 6, "bay": 7,
+               "tam": 8, "chin": 9}
+# Cụm tháng phải đứng ngay trước chữ "năm" hoặc cuối câu: "tháng mười một chín sáu bảy" là tháng mười + năm đọc từng
+# chữ số, không phải tháng mười một.
+_MONTH_WORDS_RE = re.compile(r"\bthang (muoi hai|muoi mot|chap|gieng|muoi|mot|hai|ba|tu|bon|nam|sau|bay|tam|chin)(?= nam\b|$)")
+_MONTH_WORDS = {"muoi hai": 12, "chap": 12, "muoi mot": 11, "muoi": 10, "gieng": 1, **_UNIT_WORDS}
+
+
+def _day_from_words(words: list[str]) -> int | None:
+    """Ngày ghi bằng chữ ("hai mươi bảy", "mười tám", "hai bảy", "mùng chín") → số; không đọc được → None."""
+    words = [w for w in words if w not in ("ngay", "mung", "mong")]
+    if not words or any(w != "muoi" and w not in _UNIT_WORDS for w in words):
+        return None
+    if words == ["muoi"]:
+        return 10
+    if len(words) == 1:
+        return _UNIT_WORDS[words[0]]
+    if words[0] == "muoi" and len(words) == 2:
+        return 10 + _UNIT_WORDS[words[1]]
+    if words[0] != "muoi" and words[1] == "muoi":
+        return _UNIT_WORDS[words[0]] * 10 + (_UNIT_WORDS[words[2]] if len(words) == 3 else 0)
+    if len(words) == 2 and "muoi" not in words:
+        return _UNIT_WORDS[words[0]] * 10 + _UNIT_WORDS[words[1]]
+    return None
+
+
+def _month_from_words(date_text: str, words_text) -> str:
+    """Tờ khai viết tay: OCR hay đọc sai chữ số tháng ("27-4-1966") trong khi dòng "ghi bằng chữ" vẫn đúng ("Hai bảy
+    tháng một"). Phần chữ ghi tháng khác và NGÀY ở phần chữ khớp ngày ở phần số → tháng theo phần chữ."""
+    if not date_text or not words_text:
+        return date_text
+    folded = re.sub(r"[^a-z ]+", " ", _fold(words_text))
+    folded = re.sub(r"\s+", " ", folded).strip()
+    match = _MONTH_WORDS_RE.search(folded)
+    if not match:
+        return date_text
+    day, month, year = date_text.split("/")
+    if _day_from_words(folded[:match.start()].split()) != int(day):
+        return date_text
+    words_month = _MONTH_WORDS[match.group(1)]
+    return date_text if words_month == int(month) else f"{day}/{words_month:02d}/{year}"
 
 
 # Số định danh Việt Nam chỉ có ĐÚNG 9 chữ số (CMND cũ) hoặc 12 chữ số (CCCD/căn cước).

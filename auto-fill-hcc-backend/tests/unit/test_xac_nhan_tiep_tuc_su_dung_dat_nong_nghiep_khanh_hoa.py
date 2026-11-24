@@ -214,6 +214,35 @@ def test_authorized_submitter_takes_part_one_owner_stays_second_land_user():
     assert any("bên được ủy quyền Nguyễn Văn Nam" in warning and "Trần Văn Bình" in warning for warning in warnings)
 
 
+def test_lay_nguoi_nop_theo_to_khai_phan_i_la_nguoi_thu_nhat_dung_don():
+    # Cài đặt "Lấy người nộp theo tờ khai" (options.submitterMode): có ủy quyền vẫn khai Phần I = người thứ nhất đứng
+    # Đơn, Phần II giữ người thứ hai; không ô nào của Phần I còn dữ liệu bên được ủy quyền.
+    facts = _facts(
+        **_TWO_PEOPLE, **_PARCEL,
+        UyQuyen_HoTen="Nguyễn Văn Nam",
+        UyQuyen_SoDinhDanh="056090012345",
+        UyQuyen_DiaChi={"tinh": "Khánh Hòa", "xa": "xã Diên Khánh", "chiTietDuoiXa": "Thôn A"},
+    )
+    fields, warnings = mapper.enrich(facts, {"submitterMode": "owner_as_submitter"})
+    values = _values(fields)
+    assert values["data[fullname]"] == "Trần Văn Bình" and values["data[identityNumber]"] == "056065012345"
+    assert values["data[phoneNumber]"] == "0905123456" and values["data[address]"] == "12 Đường Số 5"
+    assert values["data[ownerFullname]"] == "Lê Thị Hoa"
+    assert not {"Nguyễn Văn Nam", "056090012345", "Xã Diên Khánh", "Thôn A"} & set(values.values())
+    assert not any("bên được ủy quyền" in warning for warning in warnings)
+
+    # Tài khoản chính là người thứ nhất: ô Phần I giấy tờ không có giữ giá trị cổng (không xoá).
+    fields, _warnings = mapper.enrich(facts, {"submitterMode": "owner_as_submitter",
+                                              "formContext": {"applicantIdentityNumber": "056065012345"}})
+    assert not {"data[email]", "data[identityDate]"} & {item["name"] for item in fields}
+
+    # Người đứng Đơn là tổ chức: không đứng Phần I được -> giữ bên được ủy quyền như mặc định.
+    org = _facts(NSD1_HoTen="Công ty TNHH Ví Dụ", NSD_LoaiChuThe="Tổ chức", UyQuyen_HoTen="Nguyễn Văn Nam",
+                 UyQuyen_SoDinhDanh="056090012345")
+    values = _values(mapper.enrich(org, {"submitterMode": "owner_as_submitter"})[0])
+    assert values["data[fullname]"] == "Nguyễn Văn Nam"
+
+
 def test_handwritten_contact_matching_parcel_takes_printed_address():
     """Đơn viết tay: "12 Đường Số 5 - phường Nam Nha Trang" OCR thành "125 Đường Sổ 6 - phường Nha Trang"; cùng số nhà và
     tên đường gần giống địa chỉ thửa đất IN trên Phiếu đo đạc → lấy bản in (số nhà, đường, phường) + cảnh báo."""

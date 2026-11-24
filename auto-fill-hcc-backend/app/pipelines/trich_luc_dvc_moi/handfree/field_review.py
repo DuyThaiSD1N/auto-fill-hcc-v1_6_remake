@@ -9,6 +9,9 @@ PROCEDURE_KEYS = ("trich-luc-ks",)
 
 REQUIRED = ()
 
+# Chỉ bổ sung ô bắt buộc: ô không bắt buộc còn trống vẫn tô cam nhưng không đếm, không hỏi; hết ô bắt buộc là xong.
+REQUIRED_ONLY = True
+
 # Kính gửi / Tại (engine dựng theo cơ quan đã chọn hoặc tài khoản quầy) và Ngày / Tháng / Năm lập tờ khai (cổng tự điền).
 NO_ASK = ("citizenField27", "citizenField37", "citizenField50", "citizenField52", "citizenField53")
 

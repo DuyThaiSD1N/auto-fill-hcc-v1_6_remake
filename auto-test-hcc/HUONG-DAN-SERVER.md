@@ -1,10 +1,10 @@
-# Chạy web Agent tự sửa với req của trolysoao
+# Chạy Auto test + Agent tự sửa với req production
 
-Có hai cách. Người dùng chốt ngày 17/11/2026 dùng **cách A**.
+Có hai cách. Ngày 17/11/2026 người dùng chốt dùng **cách A**. Ngày 23/11/2026 người dùng quyết định đưa lên production theo **cách B**: Auto test cùng Agent tự sửa nằm trong Monitor, cài từ repo backend nhánh `auto-fix`.
 
-- **A. Máy local đọc req từ server qua SSH.** Web, agent, Claude, cửa sổ bot và backend thử (Docker local 12025, build từ khu làm việc) đều nằm trên máy local.
+- **A. Máy local đọc req từ server qua SSH.** Web, agent, Claude và backend thử (Docker local 12025, build từ khu làm việc) đều nằm trên máy local.
   Server chỉ cần một khoá SSH bị giới hạn và một tài khoản Mongo chỉ đọc. Không cài gì, không deploy gì lên server.
-- **B. Cài cả hệ thống lên server.** Xem từ mục "Sơ đồ" trở xuống.
+- **B. Cài cả hệ thống lên server production.** Xem mục B.
 
 ## A. Đọc req trolysoao từ máy local
 
@@ -82,33 +82,39 @@ Máy local tắt hoặc dịch vụ agent dừng thì địa chỉ này trả l�
 
 ---
 
-Từ đây trở xuống là **cách B**: cài cả hệ thống lên server.
+## B. Cài Auto test + Agent tự sửa lên server production (từ repo backend, nhánh `auto-fix`)
 
-Tài liệu cho người cài đặt. Cài trên máy đang chạy backend production (`/opt/autofill-hcc`). Hệ thống lấy req thật từ production, nhưng mọi bản sửa đều build và chạy thử trên một backend riêng. Backend production không bị build lại hay đổi code.
+Tài liệu cho người cài đặt. Cài trên máy đang chạy backend production (thư mục production, gọi là `PROD_DIR`, ví dụ `/opt/autofill-hcc`). Hệ thống chỉ ĐỌC req thật của production. Mọi bản sửa đều build và chạy thử trên một backend riêng. Backend production không bị build lại, cũng không bị đổi code.
 
-## Sơ đồ
+Người dùng vào từ **Monitor production** (cổng 12007), nhóm menu **Auto test**: Agent tự sửa, Tái hiện lượt, Nội dung đã điền, Bộ ca test, Lần chạy, Cấu hình ghi. Web 12008 vẫn chạy, vừa dùng riêng được, vừa là cầu nối để Monitor gọi được dịch vụ agent.
+
+### Sơ đồ
 
 | Thành phần | Cổng | Chạy ở đâu | Việc |
 | --- | --- | --- | --- |
-| Web Agent tự sửa (`test-fe`) | 12008 | Docker, mạng host | Giao diện; `/auth/` đi tới backend production để đăng nhập super_admin |
-| Dịch vụ agent | 127.0.0.1:12009 | systemd `autotest-agent` | Hội đồng agent, chạy test, build backend thử, đẩy nhánh lên GitHub |
-| Backend thử (`app`) | 127.0.0.1:12015 | Docker, `deploy/compose.server.yml` | Chạy code agent đang sửa; chạy lại 5 lần trên đây |
+| Monitor production (`monitor-fe`) | 12007 | Stack production (`compose.prod.yml`) | Nhóm menu Auto test; `/agent-api/` đi tới `AGENT_URL` |
+| Web Agent tự sửa (`test-fe`) | 12008 | Docker, mạng host | Giao diện riêng + cầu nối `/agent-api/` → `127.0.0.1:12009` |
+| Dịch vụ agent | 127.0.0.1:12009 | systemd `autotest-agent` | Hội đồng agent, lab, chạy test, build backend thử, đẩy nhánh lên GitHub |
+| Backend thử (`autotest-app`) | 127.0.0.1:12015 | Docker, `deploy/compose.server.yml` | Chạy code agent đang sửa; chạy lại 5 lần trên đây |
 | Mongo thử (`be-mongo`) | 127.0.0.1:12014 | Docker | Dữ liệu và tài khoản test của backend thử |
 | Mongo production | 127.0.0.1:12004 | Stack production | Dịch vụ chỉ ĐỌC req (tài khoản `autotest_ro`, role `read`) |
-| Uploads production | `/opt/autofill-hcc/data/uploads` | Đĩa | Dịch vụ chỉ đọc tệp gốc của req |
+| Uploads production | `PROD_DIR/data/uploads` | Đĩa | Dịch vụ chỉ đọc tệp gốc của req |
+| Kho lưu trữ | (đơn vị cấp) | Ngoài server | Đọc req đã bị archive (~30 phút sau lượt cuối), tài khoản dịch vụ chỉ đọc |
 
-Code được sửa nằm trong bản clone `~/test-auto-test-and-fix` của repo `dev-f19/test-auto-test-and-fix`. Bản sửa được duyệt và chạy lại đạt sẽ thành một commit trên nhánh `agent/<mã ca>`, push lên GitHub. `main` không bị đụng, ai muốn gộp thì mở PR.
+Bản clone `~/autotest-hcc` (repo `dev-f19/auto-fill-hcc-backend`, nhánh `auto-fix`) chỉ chứa code của dịch vụ. Agent **không sửa** bản clone này. Mỗi ca, agent sửa trong khu làm việc `~/.autotest-hcc/workspace`: clone riêng 3 repo thật (backend, Auto Fill, trợ lý), đặt đúng tag release đang chạy production. Bản sửa được duyệt và chạy lại đạt sẽ thành nhánh `agent/<mã ca>` trên đúng repo bị sửa, kèm link mở PR. `main` không bị đụng.
 
-## Các chốt an toàn
+### Các chốt an toàn
 
-- Dịch vụ từ chối khởi động nếu cấu hình server có thể đụng vào production: build bằng `compose.prod.yml`, Mongo thử trùng Mongo production, backend thử trùng backend production.
-- Backend thử dùng image `autofill-hcc-be:autotest`, project compose riêng, volume riêng, JWT secret riêng, tắt vault form snapshot.
-- Agent không có Bash. Ngoài các luật cũ, agent còn bị chặn Read `/opt/autofill-hcc/**` (`.env` production, uploads của mọi người dân), `server.env`, `~/.ssh`.
-- Không mở cổng, không chạy Chromium (từ 18/11/2026): mọi lần chạy lại gọi backend thử, không có gì gửi lên cổng dịch vụ công.
+- Dịch vụ từ chối khởi động nếu cấu hình có thể đụng vào production: build bằng `compose.prod.yml` hoặc `compose.local.yml`, Mongo thử trùng Mongo production, backend thử trùng backend production, cài từ repo backend mà tắt khu làm việc.
+- Backend thử dùng image `autofill-hcc-be:autotest`, project compose riêng, service tên `autotest-app` (không trùng `app` của production), volume riêng, JWT secret riêng, tắt vault form snapshot.
+- Agent không có Bash. Agent bị chặn Read `PROD_DIR/**` (`.env` production, uploads của mọi người dân), `server.env`, `~/.ssh`, và bản clone `~/autotest-hcc` (có bản chép `.env` production).
+- Bot không nộp hồ sơ, không mở cổng, không chạy Chromium (từ 18/11/2026): mọi lần chạy lại gọi backend thử.
+- Mọi thao tác ở lab (mở lượt, tải gói ghi thô, tạo ca) đều ghi nhật ký ở `auto-test-hcc/runs/_lab/access.jsonl`, xem ở màn Cấu hình ghi.
+- `auto-test-hcc/` nằm trong `.dockerignore` của backend: `runs/` chứa giấy tờ thật, không được vào image.
 
 **Lưu ý dữ liệu:** req lấy từ production là hồ sơ thật của người dân. Mỗi ca, agent gửi OCR và ảnh giấy tờ của req đó lên Anthropic qua tài khoản Claude cắm vào server. Đơn vị phải cho phép việc này trước khi dùng.
 
-## 1. Chuẩn bị (làm một lần, có quyền sudo)
+### B1. Chuẩn bị (làm một lần, có quyền sudo)
 
 ```bash
 # User riêng cho dịch vụ, KHÔNG dùng root
@@ -116,87 +122,96 @@ sudo adduser autotest
 sudo usermod -aG docker,sudo autotest
 # Cho đọc tệp gốc của req (chỉ đọc)
 sudo apt-get install -y acl
-sudo setfacl -R -m u:autotest:rX /opt/autofill-hcc/data/uploads
-sudo setfacl -R -d -m u:autotest:rX /opt/autofill-hcc/data/uploads
-sudo setfacl -m u:autotest:r /opt/autofill-hcc/.env
+sudo setfacl -R -m u:autotest:rX <PROD_DIR>/data/uploads
+sudo setfacl -R -d -m u:autotest:rX <PROD_DIR>/data/uploads
+sudo setfacl -m u:autotest:r <PROD_DIR>/.env
 ```
 
-Deploy key để server push được nhánh lên GitHub:
+Quyền GitHub cho user `autotest`: đọc repo `dev-f19/auto-fill-hcc-backend` để clone nhánh `auto-fix`, và đọc + push 3 repo thật
+(`auto-fill-hcc-backend`, `auto-fill-hcc-extension`, `tro-ly-nguoi-dan-extension`) để khu làm việc clone tag release và đẩy nhánh
+`agent/<mã ca>`. Cách đơn giản: một token GitHub (fine-grained, 3 repo, quyền Contents read/write) lưu bằng
+`git config --global credential.helper store`. Dùng deploy key thì mỗi repo một khoá, đặt `AUTOTEST_*_GIT_URL` sang URL ssh trong `server.env`.
+
+### B2. Cài đặt
 
 ```bash
 sudo -iu autotest
-ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N "" -C "auto-test-hcc server"
-cat ~/.ssh/id_ed25519.pub
+PROD_DIR=<PROD_DIR> bash -c 'git clone --branch auto-fix git@github.com:dev-f19/auto-fill-hcc-backend.git ~/autotest-hcc \
+  && bash ~/autotest-hcc/auto-test-hcc/deploy/setup.sh install'
 ```
 
-Dán khoá vào GitHub: repo `dev-f19/test-auto-test-and-fix`, mục Settings, Deploy keys, Add deploy key, tích **Allow write access**.
-
-## 2. Cài đặt
-
-```bash
-sudo -iu autotest
-git clone git@github.com:dev-f19/test-auto-test-and-fix.git ~/test-auto-test-and-fix
-bash ~/test-auto-test-and-fix/auto-test-hcc/deploy/setup.sh install
-```
-
-Production nằm ở thư mục khác thì thêm `PROD_DIR=/duong/dan` trước lệnh. Script lần lượt:
+Script lần lượt:
 
 1. Cài gói hệ thống, Node 22, Claude Code.
-2. Tạo venv Python.
+2. Tạo venv Python, cài thư viện backend (để chạy test và bộ ca test).
 3. Chép `.env` production cho backend thử.
-4. Đổi extension trong bản clone sang `localhost:12015`, chỉ trên server, không commit.
-5. Tạo tài khoản Mongo chỉ đọc và sinh `auto-test-hcc/server.env`.
-6. Build và bật compose, cài và bật dịch vụ systemd `autotest-agent`.
-7. Chạy kiểm tra.
+4. Tạo tài khoản Mongo chỉ đọc và sinh `auto-test-hcc/server.env` (bật khu làm việc).
+5. Build và bật compose (web 12008, backend thử 12015, Mongo thử 12014), cài và bật dịch vụ systemd `autotest-agent`.
+6. Chạy kiểm tra, in các việc còn thiếu.
 
-## 3. Cắm tài khoản Claude của bạn
+### B3. Cắm tài khoản Claude và tài khoản kho lưu trữ
 
 ```bash
 claude setup-token          # đăng nhập tài khoản Claude của bạn, in ra token
-nano ~/test-auto-test-and-fix/auto-test-hcc/server.env   # dán vào CLAUDE_CODE_OAUTH_TOKEN=
+nano ~/autotest-hcc/auto-test-hcc/server.env
+#   CLAUDE_CODE_OAUTH_TOKEN=<token>
+#   AUTOTEST_ARCHIVE_URL=<địa chỉ kho>   AUTOTEST_ARCHIVE_USER=<tài khoản dịch vụ>   AUTOTEST_ARCHIVE_PASSWORD=<mật khẩu>
 sudo systemctl restart autotest-agent
-bash ~/test-auto-test-and-fix/auto-test-hcc/deploy/setup.sh check
+bash ~/autotest-hcc/auto-test-hcc/deploy/setup.sh check
 ```
 
-Chi phí agent tính vào tài khoản này. Một ca thường tốn 2 đến 6 USD theo giá niêm yết, trần 30 USD.
+Tài khoản kho là **tài khoản dịch vụ riêng do đơn vị cấp**, chỉ đọc. Không dùng tài khoản cá nhân. Thiếu tài khoản này thì chỉ mở được những lượt còn trong Mongo production (chưa bị archive).
 
-## 4. Tạo tài khoản test trên backend thử
+Chi phí agent tính vào tài khoản Claude này. Một ca thường tốn 2 đến 6 USD theo giá niêm yết, trần 30 USD.
 
-Mongo thử trống. Mỗi đơn vị cần chạy lại phải có một tài khoản test đúng tỉnh và xã của req:
+### B4. Nối Monitor production với dịch vụ agent
 
-```bash
-cd ~/test-auto-test-and-fix/auto-test-hcc/deploy
-docker compose -f compose.server.yml exec app python -m scripts.seed_user \
-  --username <ten-test> --password "<mat-khau>" --name "<ten hien thi>" --tinh "Tỉnh ..." --xa "Xã ..."
-```
+Monitor build từ nhánh có thư mục `monitor-fe/src/autotest/` (nhánh `auto-fix` sau khi gộp vào `main` và phát hành tag). Dịch vụ agent chỉ nghe `127.0.0.1:12009`, container Monitor không gọi được loopback của máy host, nên Monitor đi qua web 12008 (mạng host):
 
-Đăng nhập web 12008 bằng tài khoản super_admin của **production**. Khi tạo ca, dịch vụ tự dựng tài khoản chạy lại trên backend thử, không cần nhập.
+1. Trong `compose.prod.yml` của server, service `monitor-fe` phải có `AGENT_URL=${AGENT_URL:-...}` và `extra_hosts: ["host.docker.internal:host-gateway"]` (bản trong repo đã có).
+2. Thêm vào `<PROD_DIR>/.env`: `AGENT_URL=http://host.docker.internal:12008`
+3. Tạo lại Monitor: `cd <PROD_DIR> && docker compose -f compose.prod.yml up -d monitor-fe`
+4. Kiểm tra: `curl -s http://127.0.0.1:12007/agent-api/health` phải ra JSON có `"lab": true`. Tải lại Monitor là thấy nhóm menu Auto test.
 
-## 5. Mở web ra ngoài
+Lúc khởi động, Monitor tự đổi `host.docker.internal` thành IP ghi trong `/etc/hosts` (`monitor-fe/docker-entrypoint.d/18-agent-url.envsh`), vì resolver DNS của Docker mà nginx dùng không đọc `extra_hosts`. Server có bật firewall (ufw) thì phải cho mạng Docker vào cổng 12008, ví dụ `sudo ufw allow from 172.16.0.0/12 to any port 12008 proto tcp`.
 
-Web nghe cổng 12008 trên mọi giao diện mạng. Chỉ mở cho mạng nội bộ hoặc VPN, hoặc đặt sau reverse proxy HTTPS đang dùng cho trolyhoso. Đừng mở 12008 thẳng ra Internet: web này đọc được hồ sơ thật.
+Dịch vụ agent tắt thì `/agent-api/` trả 502 và Monitor tự ẩn nhóm menu Auto test. Các màn khác của Monitor không bị ảnh hưởng.
 
-## 6. Chạy một ca
+### B5. Tài khoản test trên backend thử
 
-1. Mở web, đăng nhập super_admin, nhập mã req của production và mô tả lỗi.
-2. Duyệt kế hoạch và patch như ở máy local. Đạt thì web hiện tên nhánh `agent/<mã ca>` trên GitHub.
+Khi tạo ca, dịch vụ tự dựng tài khoản chạy lại cùng tỉnh, xã với req trên backend thử (`replay.shadow_account`). Không cần tạo tay. Đăng nhập Monitor / web 12008 bằng tài khoản super_admin của **production**.
 
-## 7. Cập nhật code mới
+### B6. Mở web ra ngoài
+
+Monitor 12007 và web 12008 đọc được hồ sơ thật. Chỉ mở cho mạng nội bộ hoặc VPN, hoặc đặt sau reverse proxy HTTPS đang dùng. Đừng mở thẳng ra Internet.
+
+### B7. Chạy một ca
+
+1. Monitor › Auto test › **Agent tự sửa** › Tạo ca mới: nhập mã req của production và mô tả lỗi. Hoặc mở một lượt ở **Tái hiện lượt** rồi bấm **Gửi Agent tự sửa**, mã req được điền sẵn.
+2. Duyệt kế hoạch, rồi duyệt patch. Đạt thì trang ca hiện nhánh `agent/<mã ca>` của từng repo bị sửa, kèm link mở PR.
+3. **Bộ ca test**: tạo ca từ lượt thật (ẩn danh) ở Tái hiện lượt, chạy trên bản production (tag release, khu làm việc) hoặc bản nhánh đang cài.
+
+### B8. Cập nhật code mới
 
 Khi agent đang rảnh:
 
 ```bash
-bash ~/test-auto-test-and-fix/auto-test-hcc/deploy/setup.sh update
+bash ~/autotest-hcc/auto-test-hcc/deploy/setup.sh update
 ```
 
-Lệnh này kéo `main` mới nhất, build lại web và backend thử, restart dịch vụ. Nếu thư mục làm việc còn bản sửa của ca trước mà chưa ai gộp, lệnh kéo có thể từ chối. Khi đó bấm **Hoàn tác bản sửa** trên web, vì bản sửa đã nằm trên nhánh GitHub, rồi chạy lại lệnh.
+Lệnh này kéo nhánh `auto-fix` mới nhất (đổi bằng `BRANCH=main` khi đã gộp), cài lại thư viện, build lại web và backend thử, restart dịch vụ. Bản sửa của agent nằm trong khu làm việc nên không chặn lệnh kéo. Phần Monitor cập nhật theo đường phát hành bình thường của backend (tag `v20*`).
 
-## 8. Lỗi hay gặp
+### B9. Lỗi hay gặp
 
 | Hiện tượng | Xử lý |
 | --- | --- |
-| `autotest-agent` không lên, log ghi "Không khởi động: cấu hình server…" | Sửa đúng biến mà log nêu trong `server.env` |
-| Web báo "Không thấy req trong Mongo nguồn" | Kiểm tra `AUTOTEST_SOURCE_MONGO_URI` và `AUTOTEST_SOURCE_DB`; chạy lại `setup.sh install` để tạo lại tài khoản chỉ đọc |
-| "Tệp gốc của req không còn trên đĩa" | User `autotest` chưa đọc được uploads: chạy lại lệnh `setfacl` ở mục 1 |
-| Không push được nhánh | Deploy key chưa tích Allow write access; thử `git -C ~/test-auto-test-and-fix push --dry-run origin HEAD:refs/heads/agent/thu` |
-| Xem log | `journalctl -u autotest-agent -f`, `docker compose -f deploy/compose.server.yml logs -f app` |
+| `autotest-agent` không lên, log ghi "Không khởi động: cấu hình server…" | Sửa đúng biến mà log nêu trong `server.env` (`journalctl -u autotest-agent`) |
+| Monitor không có nhóm menu Auto test | `curl http://127.0.0.1:12007/agent-api/health`: 502 là thiếu `AGENT_URL` (mục B4), dịch vụ tắt, hoặc firewall chặn 12008 |
+| Web báo "Không thấy req trong Mongo nguồn, kho lưu trữ…" | Req đã bị archive mà chưa có tài khoản kho (mục B3); hoặc sai `AUTOTEST_SOURCE_MONGO_URI` / `AUTOTEST_SOURCE_DB` |
+| "Tệp gốc của req không còn trên đĩa" | User `autotest` chưa đọc được uploads: chạy lại lệnh `setfacl` ở mục B1 |
+| Khu làm việc không clone / không push được | Thiếu quyền GitHub của user `autotest` (mục B1); thử `git ls-remote https://github.com/dev-f19/auto-fill-hcc-extension.git` |
+| Bộ ca test báo "Không có cây backend này" | Bản production dùng khu làm việc, khu này chỉ được clone khi bắt đầu một ca: chạy một ca Agent tự sửa trước |
+
+### Cài từ bản clone monorepo cũ (`dev-f19/test-auto-test-and-fix`)
+
+Vẫn chạy được: `REPO_URL=git@github.com:dev-f19/test-auto-test-and-fix.git APP_DIR=~/test-auto-test-and-fix BRANCH=main bash setup.sh install`. Ở bố cục này, mặc định agent sửa thẳng bản clone (không khu làm việc), bản sửa đạt đẩy lên `AUTOTEST_GIT_REMOTE`.

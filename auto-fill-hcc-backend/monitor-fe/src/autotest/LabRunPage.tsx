@@ -122,6 +122,11 @@ function RunHeader({ run, view, reveal, onReveal, onChanged }: {
               {busy === "rerun" ? <Spinner label="Đang chạy…" /> : <><Icon name="play" size={14} /> Chạy lại với bản mới</>}
             </button>
           ) : null}
+          <a className="btn btn--sm" href={`/autotest/agent?req=${encodeURIComponent(id)}`}
+             onClick={(e) => onLinkClick(e, `/autotest/agent?req=${encodeURIComponent(id)}`)}
+             title="Tạo ca Agent tự sửa với mã req này: hội đồng agent tìm nguyên nhân, sửa code, chờ duyệt rồi chạy lại để chấm">
+            <Icon name="wrench" size={14} /> Gửi Agent tự sửa
+          </a>
           <button className="btn btn--sm" type="button" disabled={!!busy}
                   onClick={() => act("raw", async () => downloadJson(`${id}.json`, await labApi.raw(id)))}>
             {busy === "raw" ? <Spinner label="Đang tải…" /> : <><Icon name="download" size={14} /> Tải gói ghi (.json)</>}

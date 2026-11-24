@@ -28,7 +28,9 @@ export type IconName =
   | "play"
   | "pause"
   | "download"
-  | "flask";
+  | "flask"
+  | "plus"
+  | "wrench";
 
 interface Props extends SVGProps<SVGSVGElement> {
   name: IconName;
@@ -78,6 +80,8 @@ export default function Icon({ name, size = 18, ...props }: Props) {
     pause: <path d="M8 5v14M16 5v14" />,
     download: <><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M4 20h16" /></>,
     flask: <><path d="M9 3h6" /><path d="M10 3v6L4.6 18.2A2 2 0 0 0 6.3 21h11.4a2 2 0 0 0 1.7-2.8L14 9V3" /><path d="M7.5 14h9" /></>,
+    plus: <path d="M12 5v14M5 12h14" />,
+    wrench: <path d="M14.7 6.3a4 4 0 0 0 5 5L21 13a6 6 0 0 1-8.2 1.6L6.5 21a2.1 2.1 0 0 1-3-3l6.4-6.3A6 6 0 0 1 11.5 3.5l1.6 1.3a4 4 0 0 0 1.6 1.5Z" />,
   };
 
   return <svg {...common} {...props}>{paths[name]}</svg>;

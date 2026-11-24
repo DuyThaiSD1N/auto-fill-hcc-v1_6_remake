@@ -47,6 +47,8 @@ def _server(monkeypatch, tmp_path, **overrides):
         "SERVER_MODE": True, "SOURCE_MONGO_URI": "mongodb://ro@127.0.0.1:12004/", "SOURCE_UPLOADS": str(tmp_path),
         "TEST_MONGO_URI": "mongodb://127.0.0.1:12014/", "COMPOSE_FILE": str(tmp_path / "compose.server.yml"),
         "BACKEND_URL": "http://127.0.0.1:12015", "AUTH_BACKEND_URL": "http://127.0.0.1:12005",
+        # Cố định bố cục: test chạy cả trong monorepo lẫn trong repo backend (nhánh auto-fix).
+        "BE_REPO_LAYOUT": False,
     }
     for key, value in {**values, **overrides}.items():
         monkeypatch.setattr(config, key, value)
@@ -84,3 +86,29 @@ def test_compose_server_build_dung_file_va_service(monkeypatch, tmp_path):
     monkeypatch.setattr(verify, "COMPOSE_FILE", str(tmp_path / "compose.server.yml"))
     cmd, cwd, service = verify._compose()
     assert cmd[-1].endswith("compose.server.yml") and cwd == tmp_path.resolve() and service == "app"
+
+
+def test_server_khong_build_bang_compose_local(monkeypatch, tmp_path):
+    """compose.local.yml nối mạng autofill_hcc_net và dùng chung Mongo của stack đang chạy: trên server đó là production."""
+    config = _server(monkeypatch, tmp_path, COMPOSE_FILE=str(tmp_path / "compose.local.yml"))
+    assert any("compose.server.yml" in p for p in config.server_problems())
+
+
+def test_repo_backend_tren_server_phai_bat_khu_lam_viec(monkeypatch, tmp_path):
+    """Cài từ repo backend (nhánh auto-fix) thì không có code extension: tắt khu làm việc là agent sửa nhầm chỗ."""
+    config = _server(monkeypatch, tmp_path, BE_REPO_LAYOUT=True, USE_WORKSPACE=False)
+    assert any("khu làm việc" in p for p in config.server_problems())
+    config = _server(monkeypatch, tmp_path, BE_REPO_LAYOUT=True, USE_WORKSPACE=True)
+    assert config.server_problems() == []
+
+
+def test_bien_compose_chi_truyen_khi_build_bang_file_rieng(monkeypatch, tmp_path):
+    monkeypatch.setattr(verify, "COMPOSE_FILE", "")
+    assert verify._compose_env() is None
+    monkeypatch.setattr(verify, "COMPOSE_FILE", str(tmp_path / "compose.server.yml"))
+    monkeypatch.setattr(verify, "BE", tmp_path / "workspace" / "auto-fill-hcc-backend")
+    monkeypatch.setattr(verify, "MAIN_BE", tmp_path / "clone")
+    env = verify._compose_env()
+    assert env["AUTOTEST_BE_DIR"].endswith("auto-fill-hcc-backend")
+    assert env["AUTOTEST_MAIN_ENV"] == str(tmp_path / "clone" / ".env")
+    assert env["AUTOTEST_DATA_DIR"].endswith("_backend_data")
