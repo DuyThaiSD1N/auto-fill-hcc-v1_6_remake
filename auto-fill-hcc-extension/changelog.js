@@ -3,6 +3,35 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.28.35",
+    date: "24/11/2026",
+    items: [
+      "Đăng ký xe lần đầu đối với xe nhập khẩu (1.013066): bấm Điền hoặc Đính kèm, hệ thống tự gắn Ảnh phương tiện và ảnh hai mặt chứng từ nguồn gốc (tờ khai hàng hóa nhập khẩu) vào ba ô tải ảnh đầu trang kê khai.",
+      "Trang tạm trú Cổng DVC Bộ Công an: điền được ô Ghi chú của dòng giấy tờ đính kèm.",
+    ],
+  },
+  {
+    version: "1.28.34",
+    date: "24/11/2026",
+    items: [
+      "Đăng ký thành lập hộ kinh doanh: sau khi điền trang Tên hộ kinh doanh, tự kiểm tra trùng tên trên cổng (tên tiếng Việt, tên nước ngoài, tên viết tắt) và cảnh báo nếu có hộ trùng hoặc tương tự.",
+    ],
+  },
+  {
+    version: "1.28.33",
+    date: "24/11/2026",
+    items: [
+      "Đăng ký thành lập hộ kinh doanh: tự đính kèm hồ sơ trước, trong lúc đó hệ thống soát lại thông tin (xã/phường, tên thôn, số định danh, ngày sinh, mã ngành, dấu tên hộ) rồi mới điền 8 trang bằng thông tin đã soát.",
+    ],
+  },
+  {
+    version: "1.28.32",
+    date: "24/11/2026",
+    items: [
+      "Thống kê thời gian làm hồ sơ: sau khi nộp, các lần bấm nộp tiếp theo trên cùng tab (bấm lại, hồ sơ làm tay không dùng trợ lý) không còn tính vào hồ sơ trước — thời gian làm và số lần nộp đúng với hồ sơ trợ lý đã làm.",
+    ],
+  },
+  {
     version: "1.28.31",
     date: "23/11/2026",
     items: [

@@ -960,6 +960,28 @@ REVIEW_ATTACHMENT_SAME_PAGE_BCA = {
         "Chưa đúng thì nói điền lại tờ khai ạ."
     ),
 }
+# Đăng ký xe nhập khẩu 1.013066 (registry bcaPagePhotos, user 24/11): phần đính kèm là ba ô tải ảnh ĐẦU trang kê khai,
+# không có bảng Thành phần hồ sơ; đính xong bấm "Đồng ý và tiếp tục" là sang thẳng trang Xác nhận.
+REVIEW_ATTACHMENT_PAGE_PHOTOS_BCA = {
+    "md": (
+        "\n\nCông dân rà lại tờ khai trên trang. Đúng rồi thì bấm **Đính kèm giấy tờ**, tôi gắn **ảnh phương tiện** và "
+        "**ảnh hai mặt chứng từ nguồn gốc** (tờ khai hàng hóa nhập khẩu) vào các ô tải ảnh **đầu trang**; chưa đúng thì "
+        "nói **«điền lại tờ khai»** ạ."
+    ),
+    "tts": (
+        " Công dân rà lại tờ khai. Đúng rồi thì bấm Đính kèm giấy tờ, tôi gắn ảnh phương tiện và ảnh hai mặt chứng từ "
+        "nguồn gốc vào các ô tải ảnh đầu trang. Chưa đúng thì nói điền lại tờ khai ạ."
+    ),
+}
+ATTACH_DONE_PAGE_PHOTOS_BCA = {
+    "md": (
+        "✓ Đã gắn **{attached} ảnh** vào các ô tải ảnh **đầu trang** (Ảnh phương tiện, Ảnh chứng từ nguồn gốc mặt trước / "
+        "mặt sau).\n\n👉 Công dân kiểm tra đúng ảnh; chưa bấm **Tra cứu** thì nhập Mã bảo mật rồi bấm **Tra cứu** để cổng "
+        "lấy dữ liệu lệ phí trước bạ, hóa đơn, hải quan. Xong bấm **Đồng ý và tiếp tục** sang trang Xác nhận ạ."
+    ),
+    "tts": ("Dạ, tôi gắn ảnh xong. Công dân kiểm tra ảnh, nhập mã bảo mật rồi bấm Tra cứu nếu chưa làm, xong bấm Đồng ý "
+            "và tiếp tục ạ."),
+}
 
 # Trang kê khai có mục Nhận kết quả để công dân tự chọn (registry resultMethodHint, vd đăng ký mẫu con dấu — cổng DVC
 # Bộ Công an): nhắc chọn trước khi bấm "Đồng ý và tiếp tục" sang trang đính kèm.
@@ -2755,8 +2777,45 @@ LC_CASE_UNREAD_AUTO = {
 }
 LC_CASE_ASK_AUTO = {
     "md": ("Công dân chọn {fields_md} ở thẻ trên (cổng bắt buộc chọn; chọn xong cổng có thể hiện thêm ô, tôi đọc lại "
-           "ngay), rồi bấm **Đồng ý và tiếp tục** ạ."),
-    "tts": " Công dân chọn {fields_tts} ở thẻ trên, rồi bấm Đồng ý và tiếp tục ạ.",
+           "ngay). "),
+    "tts": " Công dân chọn {fields_tts} ở thẻ trên.",
+}
+# Còn ô bắt buộc chưa chọn thì nút cam ẩn (user 24/11) — nói ở cuối câu mời chọn.
+LC_CASE_WAIT = {
+    "md": "Chọn đủ các ô thì nút **Đồng ý và tiếp tục** mới hiện ạ.",
+    "tts": " Chọn đủ các ô thì nút Đồng ý và tiếp tục mới hiện ạ.",
+}
+# Ô Điểm đăng ký (đăng ký xe): nút đăng ký tại Công an xã/phường của tài khoản (user 24/11).
+LC_WARD_POINT_AT = "Đăng ký tại {ward}"
+LC_WARD_POINT_ANY = "Đăng ký tại Công an xã/phường"
+LC_WARD_POINT_MISSING = {
+    "md": ("Danh sách **Điểm đăng ký** của cổng không có **Công an {ward}** (xã/phường của tài khoản): cổng chỉ liệt kê "
+           "Công an xã/phường theo địa chỉ thường trú / tạm trú của công dân. Công dân chọn điểm PC08 ở thẻ trên, hoặc "
+           "chọn Công an xã/phường trực tiếp trên trang giúp tôi ạ."),
+    "tts": (" Danh sách điểm đăng ký của cổng không có Công an {ward} của tài khoản. Công dân chọn điểm PC08 ở thẻ trên, "
+            "hoặc chọn Công an xã, phường trực tiếp trên trang giúp tôi ạ."),
+}
+LC_WARD_POINT_NO_ACCOUNT = {
+    "md": ("Tài khoản chưa ghi xã/phường nên tôi chưa chọn được Công an xã/phường. Công dân chọn điểm PC08 ở thẻ trên, "
+           "hoặc chọn Công an xã/phường trực tiếp trên trang giúp tôi ạ."),
+    "tts": (" Tài khoản chưa ghi xã, phường nên tôi chưa chọn được. Công dân chọn điểm PC08 ở thẻ trên, hoặc chọn trực "
+            "tiếp trên trang giúp tôi ạ."),
+}
+# Ô Phường/Xã của trang chọn trường hợp: trợ lý tự chọn theo xã/phường của tài khoản (user 24/11, lai_chau._ward_followup).
+LC_WARD_PICKING = {
+    "md": "\n\n⏳ Tôi đang chọn **{label}**: **{value}** theo xã/phường của tài khoản…",
+    "tts": " Tôi đang chọn {label} {value} theo xã, phường của tài khoản.",
+}
+LC_WARD_PICKED = {
+    "md": ("\n\n📌 Tôi đã chọn sẵn **{label}**: **{value}** theo xã/phường của tài khoản. Muốn nộp ở xã, phường khác thì "
+           "chọn lại ở thẻ bên dưới hoặc trên trang."),
+    "tts": " Tôi đã chọn sẵn {label} {value} theo xã, phường của tài khoản.",
+}
+LC_WARD_NOT_LISTED = {
+    "md": ("\n\n⚠️ Danh sách **{label}** của cổng không có **{ward}** (xã/phường của tài khoản) nên tôi chưa chọn, công "
+           "dân chọn nơi nộp ở thẻ bên dưới hoặc trực tiếp trên trang ạ."),
+    "tts": (" Danh sách {label} của cổng không có {ward} của tài khoản nên tôi chưa chọn, công dân chọn nơi nộp ở thẻ "
+            "bên dưới hoặc trên trang ạ."),
 }
 LC_CASE_STUCK = {
     "md": "Ô {fields_md} tôi chưa đọc được danh sách lựa chọn, công dân chọn trực tiếp trên trang giúp tôi. ",

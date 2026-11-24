@@ -632,15 +632,22 @@ def test_registered_procedures_use_their_declared_flow_family():
     # trang chọn trường hợp, luồng trang 1 Lai Châu, cùng cờ extension); detect thêm mã in trên trang.
     bca_xe_nk = procedures.pop("dang-ky-xe-lan-dau-nhap-khau")
     for field in ("flowProfile", "bcaPortal", "wizard", "maePortal", "needsAgencySelect", "provinceOnly",
-                  "hasAttachmentStep", "requiresCapability", "laiChauFeeStep", "agencyDirectSubmit"):
+                  "laiChauFeeStep", "agencyDirectSubmit"):
         assert bca_xe_nk.get(field) == bca_xe.get(field), field
     assert bca_xe_nk["detect"]["urlScope"] == bca_xe["detect"]["urlScope"] and bca_xe_nk["detect"]["codeOnPage"] is True
+    # Khác (user 24/11): có bước "Đính kèm giấy tờ" = ba ô ảnh đầu trang kê khai, cùng trang (như thị thực, hỏi trước khi
+    # đính), không có bảng Thành phần hồ sơ; cờ extension riêng biết gắn ô ảnh ở bước đính kèm.
+    assert bca_xe_nk["hasAttachmentStep"] is True and bca_xe_nk["bcaPagePhotos"] is True
+    assert bca_xe_nk["askBeforeAttach"] is True and bca_xe_nk["docsAdjustRefill"] is True
+    assert bca_xe_nk["supportsSplitDocuments"] is True and bca_xe_nk["requiresCapability"] == "supportsBcaPagePhotos"
     # Đăng ký sang tên, di chuyển xe 2.000076 (20/11): cùng khuôn trợ lý với xe nhập khẩu (mở thẳng trang chọn trường
-    # hợp, luồng trang 1 Lai Châu, cùng cờ extension, không đính kèm).
+    # hợp, luồng trang 1 Lai Châu), nhưng không đính kèm, cờ extension như xe lắp ráp trong nước.
     bca_sang_ten = procedures.pop("dang-ky-sang-ten-di-chuyen-xe-cap-tinh")
     for field in ("flowProfile", "bcaPortal", "wizard", "maePortal", "needsAgencySelect", "provinceOnly",
-                  "hasAttachmentStep", "requiresCapability", "agencyDirectSubmit"):
+                  "agencyDirectSubmit"):
         assert bca_sang_ten.get(field) == bca_xe_nk.get(field), field
+    for field in ("hasAttachmentStep", "requiresCapability"):
+        assert bca_sang_ten.get(field) == bca_xe.get(field), field
     assert bca_sang_ten["detect"]["urlScope"] == bca_xe["detect"]["urlScope"]
     # Thêm: ô "Cơ quan giải quyết hồ sơ" hiện sau khi chọn Loại xe → trợ lý tự chọn theo tỉnh (user 20/11).
     assert {k: v for k, v in bca_sang_ten["laiChauFeeStep"].items()
@@ -654,12 +661,14 @@ def test_registered_procedures_use_their_declared_flow_family():
         assert bca_thu_hoi.get(field) == bca_sang_ten.get(field), field
     assert bca_thu_hoi["detect"]["urlScope"] == bca_xe["detect"]["urlScope"]
     # Thu hồi cấp xã 1.010919 / tại Cục 2.000311 (20/11): cùng mẫu kê khai, pipeline riêng; khuôn trợ lý như xe nhập khẩu
-    # (không tự chọn cơ quan theo tỉnh — cơ quan là công an xã / Cục CSGT).
+    # (không tự chọn cơ quan theo tỉnh — cơ quan là công an xã / Cục CSGT); không đính kèm như xe lắp ráp trong nước.
     for key in ("thu-hoi-chung-nhan-dang-ky-bien-so-xe-cap-xa", "thu-hoi-chung-nhan-dang-ky-bien-so-xe-tai-cuc"):
         level = procedures.pop(key)
         for field in ("flowProfile", "bcaPortal", "wizard", "maePortal", "needsAgencySelect", "provinceOnly",
-                      "hasAttachmentStep", "requiresCapability", "agencyDirectSubmit", "laiChauFeeStep"):
+                      "agencyDirectSubmit", "laiChauFeeStep"):
             assert level.get(field) == bca_xe_nk.get(field), (key, field)
+        for field in ("hasAttachmentStep", "requiresCapability"):
+            assert level.get(field) == bca_xe.get(field), (key, field)
         assert level["detect"] == bca_thu_hoi["detect"]
     # Đăng ký mẫu con dấu mới (cùng cổng, cùng khuôn đăng ký xe): mở thẳng trang chọn trường hợp, cờ riêng của extension.
     bca_con_dau = procedures.pop("dang-ky-mau-con-dau")

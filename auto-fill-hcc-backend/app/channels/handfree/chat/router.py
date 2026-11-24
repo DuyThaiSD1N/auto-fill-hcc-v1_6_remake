@@ -239,6 +239,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # eForm Nth cổng dichvucong.bocongan.gov.vn: content/bca/field-review.js tô ô + vòng "Bổ sung các thông tin còn
         # thiếu" trên host này; nút "Đồng ý và tiếp tục" chỉ hiện khi đủ ô bắt buộc. Thiếu cờ → luồng cũ.
         "supportsBcaNthReview": raw.get("supportsBcaNthReview") is True,
+        # eForm Nth Bộ Công an: bước đính kèm gắn ô tải ảnh đầu trang kê khai (mục kế hoạch target "bca-photo", ảnh tải
+        # từ phiên theo fid — đăng ký xe nhập khẩu 1.013066). Thiếu cờ → thủ tục khai requiresCapability này không dẫn vào.
+        "supportsBcaPagePhotos": raw.get("supportsBcaPagePhotos") is True,
         # Cổng DVC Bộ Công an dichvucong.bocongan.gov.vn: trang "Chọn trường hợp hồ sơ" (Loại xe…) dẫn bằng luồng trang 1
         # của Lai Châu (content/laichau/portal.js chạy thêm host bocongan, tự dò ô). Thiếu cờ → công dân tự chọn như cũ.
         "supportsBcaCaseStep": raw.get("supportsBcaCaseStep") is True,

@@ -239,9 +239,14 @@ def test_tro_ly_cung_key_mo_thang_trang_chon_truong_hop_hien_moi_tinh():
     # Nút "Nộp hồ sơ" trên trang thủ tục (link Auto Fill) trỏ trang chọn trường hợp cùng số matt.
     assert proc["keKhaiUrl"].endswith("chon-truong-hop-ho-so?ma-thu-tuc-public=" + link["url"].rsplit("=", 1)[1])
     assert proc["detect"] == registry.get_procedure(KEY)["detect"] and proc["label"] == link["label"]
-    for field in ("requiresCapability", "hasAttachmentStep", "flowProfile", "bcaPortal", "agencyDirectSubmit",
-                  "provinceOnly"):
+    for field in ("flowProfile", "bcaPortal", "agencyDirectSubmit", "provinceOnly"):
         assert proc.get(field) == sibling.get(field), field
+    # Xe nhập khẩu có bước gắn ô ảnh đầu trang từ 24/11 (cờ extension riêng); sang tên vẫn KHÔNG đính kèm như xe lắp ráp
+    # trong nước 1.012575.
+    no_attach = hf.get_procedure("dang-ky-xe-lan-dau-san-xuat-lap-rap-trong-nuoc")
+    for field in ("requiresCapability", "hasAttachmentStep"):
+        assert proc.get(field) == no_attach.get(field), field
+    assert proc["hasAttachmentStep"] is False and "bcaPagePhotos" not in proc
     assert hf.get_pipeline(KEY) is registry.get_pipeline(KEY)
     # Khác xe nhập khẩu: ô "Cơ quan giải quyết hồ sơ" hiện sau khi chọn Loại xe → trợ lý tự chọn theo tỉnh (afterPick).
     assert {k: v for k, v in proc["laiChauFeeStep"].items() if k != "caseAgencyByProvince"} == sibling["laiChauFeeStep"]

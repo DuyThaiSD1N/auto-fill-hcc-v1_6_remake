@@ -3919,7 +3919,8 @@ async function fillAttachPageFields(procedure, fields) {
   if (!list.length) return null;
   const photos = list.filter((f) => f.comp === "bca-photo");
   const labels = { filename46: "ảnh chân dung", filenamehc: "ảnh trang nhân thân hộ chiếu" };
-  const label = (f) => labels[f.name] || "ảnh";
+  // Ô khác (đăng ký xe nhập khẩu 1.013066: Ảnh phương tiện, Ảnh chứng từ nguồn gốc mặt trước / mặt sau) BE gửi kèm nhãn.
+  const label = (f) => labels[f.name] || (f.label ? String(f.label).toLowerCase() : "") || "ảnh";
   setStatus(photos.length ? `Đang gắn ${photos.map(label).join(" + ")} vào biểu mẫu...`
     : "Đang điền biểu mẫu từ giấy tờ đính kèm...", "info");
   let res = null;

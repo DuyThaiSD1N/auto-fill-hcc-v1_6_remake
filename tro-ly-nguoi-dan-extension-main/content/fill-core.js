@@ -2420,13 +2420,46 @@ async function fillBcaGuest(guest) {
 // đó mở hộp chọn tệp của Windows). Cổng đọc tệp lúc change (kiểm .jpg + dung lượng, hiện tên / ảnh xem trước) — SUY theo
 // DOM đã ghi ở attach-core.js, chưa chạy cổng thật.
 // Bản copy của auto-fill-hcc-extension/content.js (fillBcaPhotoField) — sửa một bên thì port bên kia.
-function findBcaPhotoInput(name) {
+// Chữ của RIÊNG một ô tải ảnh (chữ + placeholder / title / aria-label): khung = tổ tiên lớn nhất (tối đa 5 cấp) chỉ
+// chứa đúng một input file. Cha đã chứa nhiều ô (ba ô đứng phẳng một hàng) → lấy các phần tử anh em đứng trước input,
+// dừng ở ô tải ảnh liền trước.
+function bcaPhotoSlotText(input) {
+  const FILE = 'input[type="file"]';
+  const hasFile = (el) => !!(el?.matches?.(FILE) || el?.querySelector?.(FILE));
+  let parts = [];
+  let box = input.parentElement;
+  if (box && box.querySelectorAll(FILE).length > 1) {
+    for (let el = input.previousElementSibling; el && !hasFile(el); el = el.previousElementSibling) parts.push(el);
+  } else {
+    for (let up = box?.parentElement, level = 0; up && up !== document.body && level < 4; up = up.parentElement, level++) {
+      if (up.querySelectorAll(FILE).length > 1) break;
+      box = up;
+    }
+    parts = box ? [box] : [];
+  }
+  const attrs = (el) => ["placeholder", "title", "aria-label"].map((a) => el?.getAttribute?.(a) || "");
+  const text = [input, ...parts].flatMap((el) => [
+    el === input ? "" : el.textContent || "", ...attrs(el),
+    ...Array.from(el?.querySelectorAll?.("[placeholder], [title], [aria-label]") || []).flatMap(attrs),
+  ]);
+  return foldChoiceText(text.filter(Boolean).join(" "));
+}
+
+function findBcaPhotoInput(name, match) {
   const key = String(name || "");
   const byName = key ? document.querySelector(`input[type="file"][name="${CSS.escape(key)}"]`) : null;
   if (byName) return byName;
   const suffix = key.replace(/^filename/i, "");
   const byId = suffix ? document.getElementById(`custom-file-input-${suffix}`) : null;
   if (byId) return byId;
+  // Ô không biết trước name (đăng ký xe nhập khẩu 1.013066, ảnh 24/11: "Ảnh phương tiện (*)", "Ảnh chứng từ nguồn gốc
+  // mặt trước / mặt sau (*)" + nút Tải ảnh): BE gửi `match` = cụm chữ đã bỏ dấu trên ô → input file có cụm đó trong chữ
+  // của riêng ô. Không rơi xuống dò "chân dung" bên dưới để khỏi gắn nhầm ô.
+  const want = foldChoiceText(match || "");
+  if (want) {
+    return Array.from(document.querySelectorAll('input[type="file"]'))
+      .find((input) => bcaPhotoSlotText(input).includes(want)) || null;
+  }
   // Trang biến thể đổi name: ô ảnh có chữ "chân dung" (ô trang hộ chiếu filenamehc của thẻ tạm trú 1.003460: "nhân
   // thân") quanh nó trong khối tải ảnh đầu trang.
   const inputs = Array.from(document.querySelectorAll('#A08-checkimg input[type="file"], input[type="file"][typeimg]'));
@@ -2450,7 +2483,7 @@ function bcaPhotoFile(payload) {
 }
 
 async function fillBcaPhotoField(f, result) {
-  const input = findBcaPhotoInput(f.name) || await waitFor(() => findBcaPhotoInput(f.name), 2500, 100);
+  const input = findBcaPhotoInput(f.name, f.match) || await waitFor(() => findBcaPhotoInput(f.name, f.match), 2500, 100);
   const file = input ? bcaPhotoFile(f.value) : null;
   if (!input || !file) {
     result.notFound.push(f.name);
@@ -3795,6 +3828,29 @@ function handleFillMessage(msg, _sender, sendResponse) {
   return true; // giữ kênh phản hồi bất đồng bộ (cascade địa danh cần chờ)
 }
 chrome.runtime.onMessage.addListener(handleFillMessage);
+
+// Bước "Đính kèm giấy tờ" của trợ lý (đăng ký xe nhập khẩu 1.013066, user 24/11): gắn ô tải ảnh đầu trang kê khai (comp
+// bca-photo, ảnh BE đưa qua phiên — sidebar.js attachPagePhotos). Lệnh riêng chứ không qua fillFields: fillFields chạy cả
+// vòng điền (xoá dấu tô ô của lượt điền, tô đỏ ô trống), ở đây chỉ gắn ảnh. Chỉ khung trên cùng trả lời (ô ảnh nằm trên
+// trang kê khai; popup iframe của cổng không có).
+function handleBcaPagePhotos(msg, _sender, sendResponse) {
+  if (msg?.action !== "bcaPagePhotos" || window.top !== window) return;
+  const fields = (Array.isArray(msg.fields) ? msg.fields : []).filter((f) => f?.comp === "bca-photo" && f?.name);
+  (async () => {
+    const result = { filled: 0, notFound: [] };
+    for (const f of fields) {
+      try {
+        await fillBcaPhotoField(f, result);
+      } catch (e) {
+        console.warn(`[TLND] gắn ảnh ${f.name} lỗi:`, e);
+        if (!result.notFound.includes(f.name)) result.notFound.push(f.name);
+      }
+    }
+    return result;
+  })().then(sendResponse, (e) => sendResponse({ filled: 0, notFound: fields.map((f) => f.name), error: String(e) }));
+  return true;
+}
+chrome.runtime.onMessage.addListener(handleBcaPagePhotos);
 
 Object.assign(H, {
   sleep, norm, setNativeValue, dispatchInputEvent, dispatchKeyboardEvent, isVisible, waitFor,

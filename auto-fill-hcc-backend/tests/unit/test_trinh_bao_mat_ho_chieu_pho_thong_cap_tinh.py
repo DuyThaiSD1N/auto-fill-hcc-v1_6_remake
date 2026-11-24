@@ -172,6 +172,34 @@ def test_ocr_du_phong_muc_8_9_va_so_ho_chieu():
     assert mapper.ocr_fallback({}, [{"text": "TỜ KHAI\n9. Hoàn cảnh và lý do cụ thể bị mất hộ chiếu: x"}]) == {}
 
 
+def test_muc_7_viet_chen_dau_cham_va_so_khong_theo_khuon():
+    # Chạy thật 24/11: mục 7 ghi "....<9 chữ số>.... ngày cấp ...dd/mm/yyyy" + "Cơ quan cấp: Cục quản lý XNC" mà LLM bỏ
+    # cả ba field → dự phòng OCR đọc lại trong mục 7, mapper nhận số đúng như người viết ghi.
+    ocr = ("Mẫu TK05\nĐƠN TRÌNH BÁO MẤT HỘ CHIẾU PHỔ THÔNG\n4. Số định danh cá nhân:\n| 0 | 1 | 2 |\n"
+           "7. Thông tin về hộ chiếu bị mất(4):\nSố hộ chiếu: ....012345678.... ngày cấp ...15/06/2023\n"
+           "Cơ quan cấp: Cục quản lý XNC\n8. Hộ chiếu trên đã bị mất vào hồi ....9... giờ ...10.... phút, ngày "
+           "03/11/2026\n9. Hoàn cảnh và lý do cụ thể bị mất hộ chiếu:\nĐể quên trên xe khách.\nLàm tại Lai Châu")
+    fields = mapper.ocr_fallback([{"name": "DonTrinhBao_Ho", "value": "LÊ"}], [{"text": ocr}])
+    assert fields["DonTrinhBao_SoHoChieu"] == "012345678"
+    assert fields["DonTrinhBao_NgayCapHoChieu"] == "15/06/2023"
+    assert fields["DonTrinhBao_CoQuanCapHoChieu"] == "Cục quản lý XNC"
+    by = _by(_enrich({**HO_SO, **{k: fields[k] for k in fields if k.startswith("DonTrinhBao_") and "HoChieu" in k}})[0])
+    assert by["CongDan__fs_BCASoHoChieu"] == "012345678"
+    assert by["CongDan__fs_BCANgayCapHoChieu"] == "15/06/2023"
+    assert by["CongDan__fs_BCACoQuanCap"] == "Cục quản lý XNC"
+    # LLM trả nguyên chuỗi kẹp dấu chấm → mapper bỏ dấu chấm; khuôn chữ + 7 số vẫn qua sửa chữ OCR như cũ.
+    by = _by(_enrich({**HO_SO, "DonTrinhBao_SoHoChieu": "....C 1234567....", "DonTrinhBao_NgayCapHoChieu": "...15/06/2023",
+                      "DonTrinhBao_CoQuanCapHoChieu": "Cục Quản lý xuất nhập cảnh ...."})[0])
+    assert by["CongDan__fs_BCASoHoChieu"] == "C1234567" and by["CongDan__fs_BCANgayCapHoChieu"] == "15/06/2023"
+    assert by["CongDan__fs_BCACoQuanCap"] == "Cục Quản lý xuất nhập cảnh"
+    # Mục 7 để trống → không bịa; "ngày cấp" ngoài mục 7 (của CCCD) không lấy làm ngày cấp hộ chiếu.
+    blank = ("ĐƠN TRÌNH BÁO MẤT HỘ CHIẾU PHỔ THÔNG\n4. Số ĐDCN: 012085000123 Ngày cấp: 10/05/2022\n"
+             "7. Thông tin về hộ chiếu bị mất:\nSố hộ chiếu: ………… ngày cấp ……/……/……\nCơ quan cấp: ……………\n"
+             "8. Hộ chiếu trên đã bị mất vào hồi …… giờ …… phút, ngày 03/11/2026")
+    fields = mapper.ocr_fallback({}, [{"text": blank}])
+    assert not {"DonTrinhBao_SoHoChieu", "DonTrinhBao_NgayCapHoChieu", "DonTrinhBao_CoQuanCapHoChieu"} & set(fields)
+
+
 def test_schema_registry_link_va_detect():
     assert {"DonTrinhBao_LyDo", "DonTrinhBao_NgayMat", "ToKhai_NgayCap", "Cccd_NoiCap"} <= ALLOWED
     assert COMPACT_COMP_BY_NAME["DonTrinhBao_NoiCuTru"] == "x-select-area"

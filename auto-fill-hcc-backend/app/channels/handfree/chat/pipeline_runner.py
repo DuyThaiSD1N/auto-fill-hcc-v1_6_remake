@@ -315,13 +315,16 @@ async def _fit_attach_message(files: list[dict], replace_files: dict | None, err
     return replaced or None
 
 
-async def _store_shrunk_files(sid: str, fids: list[str], replace_files: dict | None) -> dict | None:
+async def _store_shrunk_files(sid: str, fids: list[str], replace_files: dict | None,
+                              extra_metas: list[dict] | None = None) -> dict | None:
     """Bản nén của planner (`replaceFiles`, khóa = fileIndex) → lưu vào phiên, trả {fid gốc: {fid, name, type}}.
 
     Extension trợ lý tự kéo tệp từ phiên theo fid, nên bản nén phải nằm trong phiên chứ không đi kèm lệnh
     (lệnh được lưu vào hội thoại trên Mongo, nhét base64 vài MB vào đó là phình doc).
+    `extra_metas`: tệp khác của cùng lượt cần tải được theo fid (ảnh ô đầu trang — _store_page_photos); đăng ký chung
+    một lần vì set_shrunk_files thay nguyên danh sách.
     """
-    metas, by_source = [], {}
+    metas, by_source = list(extra_metas or []), {}
     for index, item in (replace_files or {}).items():
         i = int(index)
         if not (0 <= i < len(fids)) or not item.get("dataUrl"):
@@ -336,6 +339,47 @@ async def _store_shrunk_files(sid: str, fids: list[str], replace_files: dict | N
         by_source[fids[i]] = {k: meta[k] for k in ("fid", "name", "type")}
     await up_store.set_shrunk_files(sid, metas)
     return by_source or None
+
+
+def _store_page_photos(sid: str, raw_files: list[dict], fids: list[str],
+                       page_fields: list | None) -> tuple[list[dict], list[dict]]:
+    """Ô tải ảnh đầu trang kê khai (``pageFields`` comp ``bca-photo`` của planner, registry ``bcaPagePhotos`` — đăng ký
+    xe nhập khẩu 1.013066) → (mục kế hoạch ``target: "bca-photo"`` cho bước "Đính kèm giấy tờ" của trợ lý, meta tệp).
+
+    Ảnh JPEG lưu vào phiên như bản nén (extension tải theo ``photoFid``; meta phải đăng ký vào shrunk_files cùng lượt —
+    _store_shrunk_files ``extra_metas``); kế hoạch + trace chỉ giữ fid, không giữ base64. ``fileIndex`` = tệp gốc của
+    ảnh (để câu kế hoạch nói đúng tệp)."""
+    names = [str(f.get("name") or "") for f in raw_files]
+    items, metas = [], []
+    for field in page_fields or []:
+        value = field.get("value") if isinstance(field, dict) else None
+        if field.get("comp") != "bca-photo" or not isinstance(value, dict) or not value.get("dataUrl"):
+            continue
+        data_url = str(value["dataUrl"])
+        raw = base64.b64decode(data_url.split(",", 1)[1] if "," in data_url else data_url)
+        file_name = str(value.get("name") or f"{field.get('name') or 'anh'}.jpg")
+        fid = up_store.new_file_id(file_name)
+        up_store.save_file_bytes(sid, fid, raw)
+        source = str(field.get("sourceFileName") or "")
+        index = names.index(source) if source in names else 0
+        label = str(field.get("label") or field.get("name") or "Ảnh")
+        photo_type = str(value.get("type") or "image/jpeg")
+        metas.append({"fid": fid, "name": file_name, "type": photo_type, "size": len(raw),
+                      "source_fid": fids[index] if index < len(fids) else ""})
+        items.append({
+            "target": "bca-photo",
+            "fileIndex": index,
+            "fileName": source or file_name,
+            "documentName": label,
+            "componentName": label,
+            "slotName": label,
+            "fieldName": str(field.get("name") or ""),
+            "match": str(field.get("match") or ""),
+            "photoFid": fid,
+            "photoName": file_name,
+            "photoType": photo_type,
+        })
+    return items, metas
 
 
 # Tác vụ nền chạy ngay trong tiến trình BE (4 worker uvicorn): BE khởi động lại là tác vụ mất mà hồ sơ vẫn ghi
@@ -444,6 +488,10 @@ async def run_process(conv_id: str, sid: str, procedure_key: str) -> None:
             # Trường hợp giải quyết công dân đã chốt (vd nhà ở riêng lẻ / công trình) → ép nhánh
             # form cho mapper thay vì để nó tự đoán từ giấy tờ.
             options.update(case_pipeline_options(proc, conv))
+            # Ô ảnh đầu trang là phần đính kèm (bcaPagePhotos, 1.013066): trợ lý gắn ở nút "Đính kèm giấy tờ", lượt điền
+            # không gắn (user 24/11 — tách điền / đính như thị thực).
+            if proc.get("bcaPagePhotos"):
+                options["pagePhotosAtAttach"] = True
             # Thủ tục trên form cũ cần bản extension biết ghi lại ô trên form cũ (cờ riêng, xem second_pass.capability).
             needed = second_pass.capability(core_procedure(procedure_key))
             options["_secondPass"] = second_pass.wanted(
@@ -870,13 +918,18 @@ async def run_attach(conv_id: str, sid: str, procedure_key: str,
             result = await attach_fn(files, attach_options, session=None)
         _note_result(rec, result)
         # Ô trang kê khai của bước đính kèm (ảnh chân dung hộ chiếu, base64) chỉ dành cho Auto Fill — trợ lý gắn ảnh ở
-        # bước điền; bỏ đi để không ghi ảnh vào trace / phiên.
-        result.pop("pageFields", None)
+        # bước điền; bỏ đi để không ghi ảnh vào trace / phiên. Thủ tục bcaPagePhotos (ô ảnh LÀ phần đính kèm, 1.013066):
+        # ảnh lưu vào phiên, thành mục kế hoạch target "bca-photo" (ghép sau bước Ví cá nhân bên dưới).
+        page_fields = result.pop("pageFields", None)
+        page_photos, photo_metas = (_store_page_photos(sid, raw_files, raw_fids, page_fields)
+                                    if proc_cfg.get("bcaPagePhotos") else ([], []))
+        if page_photos:
+            result.pop("nothingToAttach", None)
         # Cổng giới hạn dung lượng (DVC quốc gia mới < 2 MB): lấy bản nén ra khỏi result trước khi ghi trace.
         async with mon.span("post.shrunk"):
             replace_files = await _fit_attach_message(raw_files, result.pop("replaceFiles", None),
                                                       result.setdefault("errors", []))
-            replace_by_fid = await _store_shrunk_files(sid, raw_fids, replace_files)
+            replace_by_fid = await _store_shrunk_files(sid, raw_fids, replace_files, photo_metas)
 
         conv = await conv_store.get(conv_id)
         if not conv:
@@ -891,6 +944,9 @@ async def run_attach(conv_id: str, sid: str, procedure_key: str,
         files_by_fid = {f.get("fid"): f for f in sess.get("files", [])}
         result["attachments"] = wallet_reuse.apply_picks(
             conv, result.get("attachments") or [], [files_by_fid.get(fid) or {} for fid in raw_fids])
+        # Ô ảnh đầu trang không đi qua nút "Chọn" của Ví (ảnh đã đổi JPEG nằm trong phiên) → ghép SAU apply_picks.
+        if page_photos:
+            result["attachments"] = [*page_photos, *result["attachments"]]
         if rec is not None:
             rec.output("plan", result.get("attachments"))
             rec.output("extracted", result.get("extracted"))

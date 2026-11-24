@@ -550,9 +550,12 @@ def _bca_form_before_attach(conv: dict | None, proc: dict, page_context: dict | 
 
 
 def _bca_same_page(proc: dict, page_context: dict | None) -> bool:
-    """eForm Nth Bộ Công an mà trang vừa báo form kê khai VÀ bảng Thành phần hồ sơ cùng HIỆN (thị thực 1.001194)."""
+    """eForm Nth Bộ Công an mà trang vừa báo form kê khai VÀ bảng Thành phần hồ sơ cùng HIỆN (thị thực 1.001194).
+    ``bcaPagePhotos`` (đăng ký xe nhập khẩu 1.013066, user 24/11): chỗ đính kèm là các ô tải ảnh đầu trang kê khai, không
+    có bảng (extension không báo attachmentTarget) → cứ còn form kê khai là đính cùng trang."""
     ctx = _docs_page_context(page_context)
-    return _bca_nth(proc) and ctx["bcaKeKhaiForm"] is True and ctx["attachmentTarget"]
+    return (_bca_nth(proc) and ctx["bcaKeKhaiForm"] is True
+            and bool(ctx["attachmentTarget"] or proc.get("bcaPagePhotos")))
 
 
 def _bca_nth_next_to_attach(conv: dict, proc: dict) -> bool:
@@ -1014,8 +1017,9 @@ def _attachment_page_reached(conv: dict, proc: dict, page_context: dict | None) 
     current = _docs_page_context(page_context)
     if _bca_nth(proc) and current["bcaKeKhaiForm"] is True:
         # Form kê khai eForm Nth Bộ Công an còn hiện: đã tới chỗ đính kèm chỉ khi bảng Thành phần hồ sơ HIỆN cùng trang
-        # (thị thực 1.001194); bảng ẩn / chưa có thì chờ công dân bấm "Đồng ý và tiếp tục" sang trang đính kèm.
-        return bool(current["attachmentTarget"])
+        # (thị thực 1.001194); bảng ẩn / chưa có thì chờ công dân bấm "Đồng ý và tiếp tục" sang trang đính kèm. Chỗ đính
+        # kèm là ô ảnh đầu trang (bcaPagePhotos) thì form còn hiện là đã tới.
+        return bool(current["attachmentTarget"] or proc.get("bcaPagePhotos"))
     if proc.get("samePageAttach"):
         # Cổng 2-tab cùng trang (Bắc Ninh): ô đính kèm nằm ngay trên trang kê khai, engine FE
         # tự bấm tab "Tải thành phần hồ sơ" — chỉ cần trang còn báo có ô đính kèm là đủ.
@@ -5457,6 +5461,9 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
             if auto_wait_attachment
             # eForm Nth Bộ Công an hỏi trước khi đính (askBeforeAttach) mà bảng Thành phần hồ sơ cùng trang: hỏi đính kèm,
             # nhắc nói "điền lại tờ khai" nếu form chưa đúng (user 19/11/2026).
+            # Chỗ đính kèm là ô ảnh đầu trang (bcaPagePhotos, 1.013066): nói đúng ô ảnh, không nói bảng bên dưới.
+            else vi.REVIEW_ATTACHMENT_PAGE_PHOTOS_BCA if (proc.get("bcaPagePhotos")
+                                                          and _bca_same_page(proc, conv.get("docs_page_context")))
             else vi.REVIEW_ATTACHMENT_SAME_PAGE_BCA if _bca_same_page(proc, conv.get("docs_page_context"))
             # Bảng đính kèm ở trang sau: bấm "Đính kèm giấy tờ" là trợ lý tự sang trang rồi đính (user 20/11/2026).
             else (vi.REVIEW_RESULT_METHOD_NEXT_BCA if result_hint else vi.REVIEW_ATTACHMENT_NEXT_BCA)
@@ -6021,7 +6028,10 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
                             note=recap, **{**recap_kw, "attached": attached}))
         else:
             done_tpl, commit = _attach_done_template(proc_done)
-            if not commit and proc_done.get("resultMethodHint") and _bca_same_page(proc_done, conv.get("docs_page_context")):
+            if proc_done.get("bcaPagePhotos") and _bca_same_page(proc_done, conv.get("docs_page_context")):
+                # Ô ảnh đầu trang (1.013066): báo đã gắn ảnh, không có bảng Thành phần hồ sơ; kết luận số ô theo sau.
+                done_tpl = vi.ATTACH_DONE_PAGE_PHOTOS_BCA
+            elif not commit and proc_done.get("resultMethodHint") and _bca_same_page(proc_done, conv.get("docs_page_context")):
                 # eForm Nth Bộ Công an cùng trang: còn chọn Nơi nhận (cùng trang, trên bảng) rồi "Đồng ý và tiếp tục".
                 done_tpl = vi.ATTACH_DONE_SAME_PAGE_BCA
             r = Reply(*_fmt(done_tpl, note=recap, commit=commit, **{**recap_kw, "attached": attached}))

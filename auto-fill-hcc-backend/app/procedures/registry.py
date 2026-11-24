@@ -71,6 +71,7 @@ from app.pipelines.dang_ky_xe_lan_dau_san_xuat_lap_rap_trong_nuoc.process import
     run as dang_ky_xe_lan_dau_san_xuat_lap_rap_trong_nuoc_process,
 )
 from app.pipelines.dang_ky_xe_lan_dau_nhap_khau.process import run as dang_ky_xe_lan_dau_nhap_khau_process
+from app.pipelines.dang_ky_xe_lan_dau_nhap_khau.attach import plan as dang_ky_xe_lan_dau_nhap_khau_attach
 from app.pipelines.dang_ky_sang_ten_di_chuyen_xe_cap_tinh.process import (
     run as dang_ky_sang_ten_di_chuyen_xe_cap_tinh_process,
 )
@@ -11408,7 +11409,10 @@ PROCEDURES: list[dict] = [
         # bcaSubmit: Auto Fill bấm "Nộp hồ sơ" bên đó sang trang chọn trường hợp hồ sơ). Trang nhập thông tin không mang
         # mã trên URL: khớp mã in trên trang (codeOnPage) hoặc chữ "đối với xe nhập khẩu" — cụm dài hơn "lắp ráp trong
         # nước" của 1.012575 để thắng khi ô "Xe nhập khẩu" của trang liệt kê cả option xe lắp ráp trong nước. Điền theo
-        # file mapping "Mapping_DK_xe_lan_dau_nhap_khau_1.013066". Không có bước đính kèm. Chưa chạy thử trên cổng thật.
+        # file mapping "Mapping_DK_xe_lan_dau_nhap_khau_1.013066". Không có bảng Thành phần hồ sơ; ba ô tải ảnh đầu trang
+        # (Ảnh phương tiện, hai mặt chứng từ nguồn gốc = tờ khai hàng hóa nhập khẩu — user 24/11/2026) gắn ngay ở lượt
+        # điền (process/runner.py → comp bca-photo) và ở lượt "Đính kèm" (attach/planner.py trả pageFields, kế hoạch không
+        # có mục bảng). Sau trang kê khai là thẳng trang Xác nhận (user 24/11). Chưa chạy thử trên cổng thật.
         "key": "dang-ky-xe-lan-dau-nhap-khau",
         "detect": {
             "urlScope": ["dichvucong.bocongan.gov.vn"],
@@ -11427,17 +11431,20 @@ PROCEDURES: list[dict] = [
         "collectFormContext": True,
         "roles": [],
         "useDangKyBy": False,
-        "hasAttachmentStep": False,
+        # Bước "Đính kèm" = ba ô ảnh đầu trang kê khai (attach/planner.py); tách hay không tách ra cùng kế hoạch.
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,
         "uploadHint": (
             "Giấy tờ cần tải lên (chủ xe tự nộp bằng tài khoản VNeID của mình):\n"
             "1. Dữ liệu điện tử về lệ phí trước bạ / Thông báo nộp lệ phí trước bạ — mã hồ sơ LPTB dùng để Tra cứu, "
             "số điện thoại chủ xe.\n"
             "2. Hóa đơn bán xe hoặc Hợp đồng mua bán xe.\n"
-            "3. Tờ khai hàng hóa nhập khẩu (nếu có) — số tờ khai, cơ quan hải quan, đơn vị nhập khẩu.\n"
+            "3. Tờ khai hàng hóa nhập khẩu, đủ 2 mặt — số tờ khai, cơ quan hải quan, đơn vị nhập khẩu; hệ thống tự gắn vào "
+            "ô Ảnh chứng từ nguồn gốc mặt trước / mặt sau.\n"
             "4. Giấy tờ xe có số khung, số máy, đặc điểm xe (Giấy khai đăng ký xe, Giấy chứng nhận thu hồi đăng ký…).\n"
             "5. Thẻ căn cước của chủ xe (ngày cấp, nơi cấp, giới tính).\n"
-            "Sau khi điền: nhập Mã bảo mật rồi bấm 'Tra cứu'; tự tải ảnh phương tiện và ảnh hai mặt chứng từ nguồn gốc; "
-            "nhập Email nếu giấy tờ không có."
+            "6. Ảnh chụp phương tiện (xe, tệp ảnh) — hệ thống tự gắn vào ô Ảnh phương tiện.\n"
+            "Sau khi điền: nhập Mã bảo mật rồi bấm 'Tra cứu'; nhập Email nếu giấy tờ không có."
         ),
     },
     {
@@ -12373,6 +12380,7 @@ _ATTACH_PIPELINE = {
         dang_ky_cap_giay_chung_nhan_doi_voi_toan_bo_dien_tich_dat_lai_chau_attach,
     "chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau": chuyen_muc_dich_su_dung_dat_mien_nui_lai_chau_attach,
     "dang-ky-mau-con-dau": dang_ky_mau_con_dau_attach,
+    "dang-ky-xe-lan-dau-nhap-khau": dang_ky_xe_lan_dau_nhap_khau_attach,
     "cap-ho-chieu-pho-thong-o-trong-nuoc": cap_ho_chieu_pho_thong_o_trong_nuoc_attach,
     "trinh-bao-mat-ho-chieu-pho-thong-cap-xa": trinh_bao_mat_ho_chieu_cap_xa_attach,
     "trinh-bao-mat-ho-chieu-pho-thong-cap-tinh": trinh_bao_mat_ho_chieu_cap_tinh_attach,

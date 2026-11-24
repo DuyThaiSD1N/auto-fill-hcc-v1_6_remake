@@ -50,7 +50,7 @@
   // header hiện "1.17 · 8/9" trong khi manifest đã là 1.17.0.6. Đúng lúc cần trả
   // lời "bản vá đã tới máy này chưa?" thì nhãn lại nói sai.
   // NGÀY vẫn ghi tay (để hỗ trợ), đổi cùng mục đầu changelog.js — tests/release-version.test.js kiểm.
-  const APP_RELEASE_DATE = "23/11";
+  const APP_RELEASE_DATE = "24/11";
   const APP_VERSION_LABEL = (() => {
     let v = "?";
     try { v = chrome.runtime.getManifest().version; } catch (e) { /* context đã mất */ }
@@ -5167,7 +5167,8 @@
     return row ? (row.closest("table") || row.parentElement) : null;
   }
 
-  // Ô phụ của dòng giấy tờ — Loại giấy tờ (cboKIND_OF_FILE<i>), Số lượng (txtNUM_OF_DOC<i>), Ghi chú (txtNOTE_OF_DOC<i>):
+  // Ô phụ của dòng giấy tờ — Loại giấy tờ (cboKIND_OF_FILE<i>), Số lượng (txtNUM_OF_DOC<i>), Ghi chú (txtNOTE_OF_DOC<i>
+  // trang thường trú, txtFILE_NOTE<i> trang tạm trú):
   // BE gửi `rowFields` {kind, count, note}. Ô không có trên dòng thì bỏ qua; Số lượng / Ghi chú chỉ ghi khi đang trống
   // (đính kèm lại không ghi đè chữ cán bộ đã sửa).
   function bcaFillRowFields(row, fields) {
@@ -5181,8 +5182,8 @@
         kind.dispatchEvent(new Event("change", { bubbles: true }));
       }
     }
-    for (const [prefix, value] of [["txtNUM_OF_DOC", fields.count], ["txtNOTE_OF_DOC", fields.note]]) {
-      const input = row.querySelector(`input[id^="${prefix}"], textarea[id^="${prefix}"]`);
+    for (const [prefixes, value] of [[["txtNUM_OF_DOC"], fields.count], [["txtNOTE_OF_DOC", "txtFILE_NOTE"], fields.note]]) {
+      const input = row.querySelector(prefixes.map((p) => `input[id^="${p}"], textarea[id^="${p}"]`).join(", "));
       // Cổng điền sẵn Số lượng "0" — coi như trống.
       const current = String(input?.value || "").trim();
       if (input && value && !input.disabled && (!current || current === "0")) {
@@ -8882,13 +8883,46 @@
   // đó mở hộp chọn tệp của Windows). Cổng đọc tệp lúc change (kiểm .jpg + dung lượng, hiện tên / ảnh xem trước) — SUY theo
   // DOM đã ghi ở attach-core.js, chưa chạy cổng thật.
   // Bản copy ở tro-ly-nguoi-dan-extension-main/content/fill-core.js (fillBcaPhotoField) — sửa một bên thì port bên kia.
-  function findBcaPhotoInput(name) {
+  // Chữ của RIÊNG một ô tải ảnh (chữ + placeholder / title / aria-label): khung = tổ tiên lớn nhất (tối đa 5 cấp) chỉ
+  // chứa đúng một input file. Cha đã chứa nhiều ô (ba ô đứng phẳng một hàng) → lấy các phần tử anh em đứng trước input,
+  // dừng ở ô tải ảnh liền trước.
+  function bcaPhotoSlotText(input) {
+    const FILE = 'input[type="file"]';
+    const hasFile = (el) => !!(el?.matches?.(FILE) || el?.querySelector?.(FILE));
+    let parts = [];
+    let box = input.parentElement;
+    if (box && box.querySelectorAll(FILE).length > 1) {
+      for (let el = input.previousElementSibling; el && !hasFile(el); el = el.previousElementSibling) parts.push(el);
+    } else {
+      for (let up = box?.parentElement, level = 0; up && up !== document.body && level < 4; up = up.parentElement, level++) {
+        if (up.querySelectorAll(FILE).length > 1) break;
+        box = up;
+      }
+      parts = box ? [box] : [];
+    }
+    const attrs = (el) => ["placeholder", "title", "aria-label"].map((a) => el?.getAttribute?.(a) || "");
+    const text = [input, ...parts].flatMap((el) => [
+      el === input ? "" : el.textContent || "", ...attrs(el),
+      ...Array.from(el?.querySelectorAll?.("[placeholder], [title], [aria-label]") || []).flatMap(attrs),
+    ]);
+    return foldChoiceText(text.filter(Boolean).join(" "));
+  }
+
+  function findBcaPhotoInput(name, match) {
     const key = String(name || "");
     const byName = key ? document.querySelector(`input[type="file"][name="${CSS.escape(key)}"]`) : null;
     if (byName) return byName;
     const suffix = key.replace(/^filename/i, "");
     const byId = suffix ? document.getElementById(`custom-file-input-${suffix}`) : null;
     if (byId) return byId;
+    // Ô không biết trước name (đăng ký xe nhập khẩu 1.013066, ảnh 24/11: "Ảnh phương tiện (*)", "Ảnh chứng từ nguồn gốc
+    // mặt trước / mặt sau (*)" + nút Tải ảnh): BE gửi `match` = cụm chữ đã bỏ dấu trên ô → input file có cụm đó trong chữ
+    // của riêng ô. Không rơi xuống dò "chân dung" bên dưới để khỏi gắn nhầm ô.
+    const want = foldChoiceText(match || "");
+    if (want) {
+      return Array.from(document.querySelectorAll('input[type="file"]'))
+        .find((input) => bcaPhotoSlotText(input).includes(want)) || null;
+    }
     // Trang biến thể đổi name: ô ảnh có chữ "chân dung" (ô trang hộ chiếu filenamehc của thẻ tạm trú 1.003460: "nhân
     // thân") quanh nó trong khối tải ảnh đầu trang.
     const inputs = Array.from(document.querySelectorAll('#A08-checkimg input[type="file"], input[type="file"][typeimg]'));
@@ -8912,7 +8946,7 @@
   }
 
   async function fillBcaPhotoField(f, result) {
-    const input = findBcaPhotoInput(f.name) || await waitFor(() => findBcaPhotoInput(f.name), 2500, 100);
+    const input = findBcaPhotoInput(f.name, f.match) || await waitFor(() => findBcaPhotoInput(f.name, f.match), 2500, 100);
     const file = input ? bcaPhotoFile(f.value) : null;
     if (!input || !file) {
       result.notFound.push(f.name);

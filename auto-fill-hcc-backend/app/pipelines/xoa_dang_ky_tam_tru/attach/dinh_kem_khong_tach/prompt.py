@@ -18,6 +18,14 @@ DOC_TYPE_RULES = """   - to_khai: Tờ khai thay đổi thông tin cư trú (M�
    - cccd: thẻ căn cước / CCCD / CMND / hộ chiếu.
    - other: bìa hồ sơ, danh mục thành phần hồ sơ, giấy không thuộc các loại trên."""
 
+# Tên người trên tờ khai để dựng Ghi chú dòng Tờ khai (ảnh ánh xạ user 24/11/2026: "Tờ khai CT01 bản gốc (1 trang) của …,
+# kèm ý kiến chủ hộ …, chủ sở hữu chỗ ở hợp pháp …, cha/mẹ/người giám hộ …"). Dùng chung cho cả hai chế độ.
+TO_KHAI_NAME_RULES = """   Riêng giấy to_khai trả thêm họ tên đúng chữ trên giấy (không có / chỉ chấm chấm / không đọc được → ""):
+   - nguoiDeNghi: mục 1 "Họ, chữ đệm và tên" của người đề nghị.
+   - yKienChuHo, yKienChuSoHuu, yKienChaMe: họ tên ghi dưới khối "Ý KIẾN CỦA CHỦ HỘ", "Ý KIẾN CỦA CHỦ SỞ HỮU CHỖ Ở
+     HỢP PHÁP", "Ý KIẾN CỦA CHA, MẸ HOẶC NGƯỜI GIÁM HỘ" cuối tờ khai. Khối in sẵn mà không ghi tên → "".
+   Giấy khác: không trả bốn trường này."""
+
 SYSTEM_PROMPT = f"""
 <persona>
 Bạn sắp xếp giấy tờ đính kèm cho thủ tục "Xóa đăng ký tạm trú" trên Cổng dịch vụ công Bộ Công an. Bạn đọc OCR_TEXT
@@ -34,12 +42,15 @@ theo trang của từng tệp và cho biết trong tệp có những giấy tờ
 4. documentName: tên giấy theo tiêu đề thật trên giấy (vd "Biên bản thanh lý hợp đồng thuê nhà", "Giấy khai sinh"),
    tối đa 50 ký tự, không dấu chấm, không ngoặc, không lấy tên file.
 5. "pages" đánh số theo trang trong tệp (từ 1).
-6. Trả JSON object duy nhất, không markdown, không giải thích.
+6. Tên người trên tờ khai:
+{TO_KHAI_NAME_RULES}
+7. Trả JSON object duy nhất, không markdown, không giải thích.
 </critical_rules>
 
 <output_format>
 {{"documents": [{{"fileIndex": 0, "pages": [1], "docType": "to_khai",
-                 "documentName": "Tờ khai thay đổi thông tin cư trú"}}]}}
+                 "documentName": "Tờ khai thay đổi thông tin cư trú", "nguoiDeNghi": "Nguyễn Văn A",
+                 "yKienChuHo": "Nguyễn Văn A", "yKienChuSoHuu": "Trần Văn B", "yKienChaMe": ""}}]}}
 </output_format>
 """.strip()
 

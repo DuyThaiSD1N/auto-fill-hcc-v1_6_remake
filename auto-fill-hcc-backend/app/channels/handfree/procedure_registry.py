@@ -7371,7 +7371,9 @@ PROCEDURES: list[dict] = [
         # thẳng trang "Chọn trường hợp hồ sơ" ?ma-thu-tuc-public=58712 (href nút, đọc từ trang thủ tục 20/11) nên trợ lý
         # mở luôn trang này như 1.012575 — engine trang thủ tục BCA của trợ lý (bca_tthc_submit) chỉ nhận URL có MaTTHC. Trang
         # chọn trường hợp đi luồng trang 1 Lai Châu (caseOnly), trang nhập thông tin đi luồng chung. Toàn quốc. Detect y
-        # hệt lõi. Không có mục đính kèm. Chưa chạy thử trên cổng thật.
+        # hệt lõi. Không có bảng Thành phần hồ sơ; ba ô tải ảnh đầu trang (Ảnh phương tiện + hai mặt chứng từ nguồn gốc =
+        # tờ khai hàng hóa nhập khẩu, user 24/11) gắn ở bước điền như ảnh chân dung hộ chiếu (runner → comp bca-photo).
+        # Chưa chạy thử trên cổng thật.
         "key": "dang-ky-xe-lan-dau-nhap-khau",
         "detect": {
             "urlScope": ["dichvucong.bocongan.gov.vn"],
@@ -7388,20 +7390,32 @@ PROCEDURES: list[dict] = [
         "subtitle": "Đăng ký, cấp biển số lần đầu cho ô tô, xe máy nhập khẩu",
         "icon": "🚗",
         "keKhaiUrl": "https://dichvucong.bocongan.gov.vn/bo-cong-an/tiep-nhan-online/chon-truong-hop-ho-so?ma-thu-tuc-public=58712",
-        "requiresCapability": "supportsBcaDangKyXe",
+        # Luồng như thị thực 1.001194 (user 24/11): điền → báo số ô trống / Bổ sung → "Đính kèm giấy tờ" gắn ba ô ảnh
+        # đầu trang ngay trên trang kê khai (bcaPagePhotos: chỗ đính kèm là ô ảnh, không có bảng Thành phần hồ sơ) →
+        # "Đồng ý và tiếp tục" → thẳng trang Xác nhận → Nộp hồ sơ. Bản extension chưa biết gắn ô ảnh ở bước đính kèm
+        # (cờ supportsBcaPagePhotos) thì không dẫn vào, kẻo kẹt giữa chừng.
+        "requiresCapability": "supportsBcaPagePhotos",
         "laiChauFeeStep": {"capability": "supportsBcaCaseStep", "caseOnly": True, "caseGroups": "auto"},
-        "hasAttachmentStep": False,
+        "hasAttachmentStep": True,
+        "bcaPagePhotos": True,
+        "askBeforeAttach": True,
+        # "Điều chỉnh giấy tờ" chốt xong ĐIỀN LẠI tờ khai, không đính lại ("đính kèm lại" là lệnh riêng).
+        "docsAdjustRefill": True,
+        "supportsSplitDocuments": True,  # attach/planner.py: tách hay không tách ra cùng kế hoạch (chỉ ô ảnh)
         "hideRepeatableHint": True,
         "requiredDocs": [
             {"key": "le_phi", "name": "Lệ phí trước bạ (dữ liệu điện tử / thông báo nộp)", "icon": "💵", "sides": 1,
              "repeatable": True},
             {"key": "hoa_don", "name": "Hóa đơn hoặc hợp đồng mua bán xe", "icon": "🧾", "sides": 1,
              "repeatable": True},
-            {"key": "to_khai_hai_quan", "name": "Tờ khai hàng hóa nhập khẩu", "icon": "🚢", "sides": 1,
-             "optional": True, "repeatable": True},
+            {"key": "to_khai_hai_quan", "name": "Tờ khai hàng hóa nhập khẩu (chứng từ nguồn gốc — đủ 2 mặt)",
+             "icon": "🚢", "sides": 1, "optional": True, "repeatable": True},
             {"key": "giay_to_xe", "name": "Giấy tờ xe (giấy khai đăng ký xe, giấy thu hồi đăng ký…)", "icon": "📄",
              "sides": 1, "optional": True, "repeatable": True},
             {"key": "cccd", "name": "Thẻ căn cước của chủ xe", "icon": "🪪", "sides": 2, "optional": True},
+            # Cổng bắt buộc ô "Ảnh phương tiện" đầu trang (.jpg / .png dưới 2 MB): bộ phân loại nhận ảnh ít chữ
+            # (classify._vehicle_photo_indexes), runner đổi JPEG rồi extension gắn vào ô (comp bca-photo).
+            {"key": "anh_phuong_tien", "name": "Ảnh chụp phương tiện (xe)", "icon": "📷", "sides": 1},
         ],
         "mode": "agent",
         "review": False,
@@ -7411,9 +7425,10 @@ PROCEDURES: list[dict] = [
             "Giấy tờ cần tải lên (chủ xe tự nộp bằng tài khoản VNeID của mình):\n"
             "1. Dữ liệu điện tử / thông báo nộp lệ phí trước bạ — mã hồ sơ lệ phí trước bạ.\n"
             "2. Hóa đơn bán xe hoặc hợp đồng mua bán xe.\n"
-            "3. Tờ khai hàng hóa nhập khẩu (nếu có).\n"
+            "3. Tờ khai hàng hóa nhập khẩu, chụp đủ 2 mặt (chứng từ nguồn gốc — tự gắn vào ô ảnh mặt trước / mặt sau).\n"
             "4. Giấy tờ xe có số khung, số máy (giấy khai đăng ký xe, giấy thu hồi đăng ký…).\n"
             "5. Thẻ căn cước của chủ xe.\n"
+            "6. Ảnh chụp phương tiện (xe) — tự gắn vào ô Ảnh phương tiện.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
     },
@@ -7917,12 +7932,14 @@ PROCEDURES: list[dict] = [
         "bcaTthcCode": "1.010386",
         "requiresCapability": "supportsBcaThiThuc",
         # Trang chọn trường hợp (ảnh 19/11): ô "Tỉnh/Thành phố" option "Công an Tỉnh …" / "Công an Thành phố …". User
-        # 19/11: trợ lý TỰ chọn ô này theo tỉnh của công dân như hộ chiếu, không hỏi; ô cổng hiện thêm sau đó mới hỏi.
+        # 19/11: trợ lý TỰ chọn ô này theo tỉnh của công dân như hộ chiếu, không hỏi; ô cổng hiện thêm sau đó mới hỏi. Ô
+        # "Phường/Xã" hiện sau khi chọn tỉnh: user 24/11 — trợ lý tự chọn theo xã/phường của tài khoản (lai_chau, mọi ô
+        # Phường/Xã của trang chọn trường hợp), danh sách không có xã đó mới để công dân chọn.
         "laiChauFeeStep": {
             "capability": "supportsBcaCaseStep", "caseOnly": True, "caseGroups": "auto",
             "caseAgencyByProvince": {"label": "Tỉnh/Thành phố", "prefer": "cong an"},
-            "caseHint": "**Phường/Xã** nơi muốn nộp (Công an xã, phường thuận tiện) và **Trường hợp giải quyết** nếu cổng "
-                        "hiện; ô Tỉnh/Thành phố tôi chọn theo tỉnh của công dân",
+            "caseHint": "**Trường hợp giải quyết** nếu cổng hiện; ô Tỉnh/Thành phố và Phường/Xã tôi chọn theo tỉnh, xã/phường "
+                        "của tài khoản (muốn nộp ở Công an xã, phường khác thì chọn lại)",
         },
         # Điền xong DỪNG ở rà soát, công dân bấm "Đính kèm giấy tờ" mới đính — như hộ chiếu / thị thực (user 20/11/2026).
         "askBeforeAttach": True,

@@ -63,7 +63,14 @@ _REASON_RE = re.compile(
 )
 _LOST_DATE_RE = re.compile(r"8\.\s*H[ộo]\s+chi[ếe]u\s+tr[êe]n\s+đ[ãa]\s+b[ịi]\s+m[ấa]t.{0,80}?ng[àa]y\s*:?\s*"
                            r"(\d{1,2}\s*/\s*\d{1,2}\s*/\s*\d{4})", re.IGNORECASE | re.DOTALL)
-_LOST_NUMBER_RE = re.compile(r"S[ốo]\s+h[ộo]\s+chi[ếe]u\s*:?\s*([A-Z]\s?\d{7,8})\b")
+# Mục 7 đơn TK05 (tới mục 8): số / ngày cấp / cơ quan cấp hộ chiếu bị mất, giá trị hay viết chen dấu chấm
+# ("Số hộ chiếu: ....C1234567.... ngày cấp ...31/12/2023", req chạy thật 24/11/2026).
+_LOST_SECTION_RE = re.compile(r"7\.\s*Th[ôo]ng\s+tin\s+v[ềe]\s+h[ộo]\s+chi[ếe]u\s+b[ịi]\s+m[ấa]t(.*?)(?=\n\s*8\.|\Z)",
+                              re.IGNORECASE | re.DOTALL)
+_FILLER = r"[\s.…·_:]*"
+_LOST_NUMBER_RE = re.compile(r"S[ốo]\s+h[ộo]\s+chi[ếe]u" + _FILLER + r"((?:[A-Z][ ]?)?\d(?:[ ]?\d){6,8})(?!\d)")
+_LOST_ISSUED_RE = re.compile(r"ng[àa]y\s+c[ấa]p" + _FILLER + r"(\d{1,2}\s*/\s*\d{1,2}\s*/\s*\d{4})", re.IGNORECASE)
+_LOST_ISSUER_RE = re.compile(r"C[ơo]\s+quan\s+c[ấa]p" + _FILLER + r"([^\n]+)", re.IGNORECASE)
 _REPORT_TITLE_RE = re.compile(r"đ[ơo]n\s+tr[ìi]nh\s+b[áa]o\s+m[ấa]t\s+h[ộo]\s+chi[ếe]u", re.IGNORECASE)
 # "Kính gửi: Công an xã …" — đơn gửi cấp xã trong khi thủ tục này nộp tại Phòng Quản lý XNC Công an tỉnh.
 _COMMUNE_AGENCY_RE = re.compile(r"\bcong an (xa|phuong|thi tran|dac khu)\b")
@@ -81,6 +88,25 @@ def _text(value) -> str | None:
 
 def _not_remember(value) -> bool:
     return "khong nho" in fold(_plain(value) or "")
+
+
+def _lost_passport_number(value) -> str | None:
+    """Số hộ chiếu bị mất ở mục 7 đơn: khuôn chuẩn chữ cái + 7 số (``_passport_number``, sửa chữ OCR đọc nhầm) → không
+    khớp thì vẫn lấy đúng chuỗi người viết ghi (7–9 ký tự chữ / số, ít nhất 7 chữ số; vd đơn ghi 9 chữ số) — ô này là ô
+    chữ, không ép khuôn để khỏi bỏ trống khi đơn có ghi số."""
+    number = _passport_number(value)
+    if number:
+        return number
+    compact = re.sub(r"[\s.…\-_·]", "", _plain(value) or "").upper()
+    if re.fullmatch(r"[A-Z0-9]{7,9}", compact) and sum(ch.isdigit() for ch in compact) >= 7:
+        return compact
+    return None
+
+
+def _issuer_text(value) -> str | None:
+    """Cơ quan cấp hộ chiếu: bỏ dấu chấm chấm / dấu câu thừa hai đầu, giữ nguyên chữ (kể cả viết tắt)."""
+    text = _text(value)
+    return _text(text.strip(" .…·_:;,")) if text else None
 
 
 def _paragraph(value) -> str | None:
@@ -212,10 +238,22 @@ def ocr_fallback(raw_fields, documents: list[dict]) -> dict:
             match = _LOST_DATE_RE.search(text)
             if match:
                 fields["DonTrinhBao_NgayMat"] = re.sub(r"\s", "", match.group(1))
-        if not _text(fields.get("DonTrinhBao_SoHoChieu")):
-            match = _LOST_NUMBER_RE.search(text)
+        section = _LOST_SECTION_RE.search(text)
+        section = section.group(1) if section else None
+        reported = fields.get("DonTrinhBao_SoHoChieu")
+        if not _lost_passport_number(reported) and not _not_remember(reported):
+            match = _LOST_NUMBER_RE.search(section or text)
+            if match and _lost_passport_number(match.group(1)):
+                fields["DonTrinhBao_SoHoChieu"] = _lost_passport_number(match.group(1))
+        # Ngày cấp / cơ quan cấp chỉ đọc trong mục 7 (ngoài mục đó "ngày cấp" là của CCCD, tờ khai).
+        if section and not _date(fields.get("DonTrinhBao_NgayCapHoChieu")):
+            match = _LOST_ISSUED_RE.search(section)
             if match:
-                fields["DonTrinhBao_SoHoChieu"] = match.group(1).replace(" ", "")
+                fields["DonTrinhBao_NgayCapHoChieu"] = re.sub(r"\s", "", match.group(1))
+        if section and not _issuer_text(fields.get("DonTrinhBao_CoQuanCapHoChieu")):
+            match = _LOST_ISSUER_RE.search(section)
+            if match and _issuer_text(match.group(1)):
+                fields["DonTrinhBao_CoQuanCapHoChieu"] = _issuer_text(match.group(1))
     return fields
 
 
@@ -302,8 +340,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
 
     # ── Thông tin trình báo (đơn mục 7–9, dự phòng tờ khai mục 13 – 14) ──
     report_no = values.get("DonTrinhBao_SoHoChieu")
-    passport = _passport_number(report_no)
-    form_passport = _passport_number(values.get("ToKhai_HoChieuCu_So"))
+    passport = _lost_passport_number(report_no)
+    form_passport = _lost_passport_number(values.get("ToKhai_HoChieuCu_So"))
     number = passport or (None if _not_remember(report_no) else form_passport)
     add("CongDan__fs_BCASoHoChieu", number)
     if _not_remember(report_no) and not number:
@@ -315,7 +353,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     if not issued and number and form_passport == number:  # ngày cấp mục 13 tờ khai chỉ khi cùng cuốn hộ chiếu
         issued = _date(values.get("ToKhai_HoChieuCu_NgayCap"))
     add("CongDan__fs_BCANgayCapHoChieu", issued)
-    add("CongDan__fs_BCACoQuanCap", _text(values.get("DonTrinhBao_CoQuanCapHoChieu")))
+    add("CongDan__fs_BCACoQuanCap", _issuer_text(values.get("DonTrinhBao_CoQuanCapHoChieu")))
     add("CongDan__fs_BCAThoiGianMatHC", _date(values.get("DonTrinhBao_NgayMat")))
 
     reason = _paragraph(values.get("DonTrinhBao_LyDo"))

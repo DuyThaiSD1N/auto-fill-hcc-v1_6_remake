@@ -171,6 +171,9 @@
     // field-review.js tô ô + vòng "Bổ sung các thông tin còn thiếu" trên host này (bootstrap-select). Thiếu cờ → BE giữ
     // luồng cũ (nút "Đồng ý và tiếp tục" hiện ngay sau khi đính kèm).
     supportsBcaNthReview: true,
+    // eForm Nth Bộ Công an: bước "Đính kèm giấy tờ" gắn ô tải ảnh đầu trang kê khai (mục kế hoạch target "bca-photo", ảnh
+    // JPEG tải từ phiên theo photoFid → lệnh bcaPagePhotos của content/fill-core.js) — đăng ký xe nhập khẩu 1.013066.
+    supportsBcaPagePhotos: true,
     // Cổng DVC Bộ Công an dichvucong.bocongan.gov.vn (đăng ký xe): trang "Chọn trường hợp hồ sơ" (Loại xe…) dẫn như trang 1
     // của Lai Châu — content/laichau/portal.js chạy thêm host này, tự dò ô chọn. Thiếu cờ → công dân tự chọn như cũ.
     supportsBcaCaseStep: true,
@@ -5152,6 +5155,37 @@
     return out;
   }
 
+  /** Ô tải ảnh đầu trang kê khai (BE: mục kế hoạch target "bca-photo" — đăng ký xe nhập khẩu 1.013066, user 24/11): tải
+   *  ảnh JPEG BE đã lưu trong phiên theo `photoFid`, gửi lệnh bcaPagePhotos (content/fill-core.js) gắn vào ô theo
+   *  `match` (chữ trên ô). Không qua bảng Thành phần hồ sơ. → {filled, errors}. */
+  async function attachPagePhotos(sid, items) {
+    const fields = [];
+    const errors = [];
+    for (const item of items) {
+      const label = item.componentName || item.fieldName || "ảnh";
+      try {
+        const { dataUrl } = await readEntryToDataUrl(sid, { fid: item.photoFid, name: item.photoName }, null);
+        if (!dataUrl) throw new Error("empty");
+        fields.push({
+          name: item.fieldName || label, comp: "bca-photo", match: item.match || "", label,
+          value: { name: item.photoName || "anh.jpg", type: item.photoType || "image/jpeg", dataUrl },
+        });
+      } catch (_) {
+        errors.push(`Chưa tải được ảnh cho ô ${label} — công dân bấm Đính kèm lại giúp tôi ạ.`);
+      }
+    }
+    if (!fields.length) return { filled: 0, errors };
+    const res = await sendToContent({ action: "bcaPagePhotos", fields });
+    if (!res) {
+      return { filled: 0, errors: [...errors, "Trang chưa nhận lệnh gắn ảnh — tải lại trang (F5) rồi bấm Đính kèm lại ạ."] };
+    }
+    const missed = new Set(res.notFound || []);
+    for (const f of fields) {
+      if (missed.has(f.name)) errors.push(`Không thấy ô ${f.label} trên trang — công dân bấm Tải ảnh trên cổng để chọn ảnh ạ.`);
+    }
+    return { filled: Number(res.filled) || 0, errors };
+  }
+
   /** Đổi MỌI lỗi (kể cả DOMException tiếng Anh của trình duyệt) thành câu TIẾNG VIỆT người dân
    *  hiểu được, đúng tình huống. Câu ta tự ném (đã có dấu tiếng Việt) thì giữ nguyên. */
   function viAttachError(e) {
@@ -5823,8 +5857,27 @@
       }
       setStatus("📎 Đang đính kèm giấy tờ vào hồ sơ…");
       const attachSid = a.session_id || uploadSid;
+      // Ô tải ảnh đầu trang kê khai (target "bca-photo"): gắn trước, không qua engine bảng Thành phần hồ sơ. Kế hoạch chỉ
+      // có ô ảnh (1.013066 — trang không có bảng) thì báo kết quả luôn, không gửi attachFilesByPlan rỗng.
+      const photoItems = (a.attachments || []).filter((x) => x?.target === "bca-photo");
+      const tableItems = (a.attachments || []).filter((x) => x?.target !== "bca-photo");
+      const photoReport = photoItems.length ? await attachPagePhotos(attachSid, photoItems) : null;
+      if (photoReport && !tableItems.length) {
+        setStatus("");
+        const report = { attached: photoReport.filled, skipped: 0, errors: photoReport.errors };
+        if (a.fieldReview) {
+          // Đếm lại ô của form sau lượt gắn ảnh để BE chỉ hiện "Đồng ý và tiếp tục" khi đủ ô bắt buộc.
+          const marked = await sendToContent({ ...a.fieldReview, action: "fieldReviewMark" });
+          if (marked?.stats) report.review = marked.stats;
+        }
+        await heartbeatPromise;
+        ask(`__action:attach_report:${JSON.stringify({
+          ...report, mode: a.mode || "merge", ...(dispatchId ? { dispatch_id: dispatchId } : {}),
+        })}`, "system");
+        return;
+      }
       const raw = await applyShrunkFiles(attachSid, await fetchSessionFilesAsPayload(attachSid), a.replaceFiles);
-      const { files, attachments } = await preparePdfPayload(raw, a.attachments);
+      const { files, attachments } = await preparePdfPayload(raw, photoItems.length ? tableItems : a.attachments);
       if (a.mode === "split" && supportsSplitAttach(a.procedure)) {
         const split = await runSplitAttachPlan(a, files, attachments);
         if (split?.queued) return;
@@ -5871,6 +5924,10 @@
           ? ["Trang không nhận lệnh đính kèm — chưa thấy bảng Thành phần hồ sơ hoặc trang vừa tải lại"]
           : res.error ? [res.error] : (res.errors || []),
       };
+      if (photoReport) {
+        report.attached += photoReport.filled;
+        report.errors = [...report.errors, ...photoReport.errors];
+      }
       if (a.fieldReview && res) {
         // eForm Nth Bộ Công an (form + bảng Thành phần hồ sơ cùng trang): đếm lại ô của form sau lượt đính để BE chỉ hiện
         // "Đồng ý và tiếp tục" khi đủ ô bắt buộc (content/bca/field-review.js).

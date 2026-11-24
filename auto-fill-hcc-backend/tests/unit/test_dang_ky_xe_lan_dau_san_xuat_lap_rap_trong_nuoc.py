@@ -151,6 +151,7 @@ def test_registry_link_va_detect():
 
 # ── Trợ lý người dân (handfree) ──
 from app.channels.handfree.chat import flow  # noqa: E402
+from app.channels.handfree.chat import script_vi as vi  # noqa: E402
 from app.channels.handfree.chat.intents import Intent  # noqa: E402
 
 CAPS = {"supportsBcaDangKyXe": True}
@@ -216,14 +217,15 @@ def test_tro_ly_trang_chon_truong_hop_doc_o_tu_do_va_hien_the_chon():
     r = _turn(conv, "event", "page_status", {"loggedIn": True, "formKind": "", "lcStep": 1})
     assert "Chọn trường hợp hồ sơ" in r.display_md
     assert r.actions == [{"type": "lc_result_scan", "groups": [{"name": "*"}]}] and conv["state"] == "guide_login"
-    # Đọc được ô Loại xe (bắt buộc, chưa chọn) → thẻ chọn + mời chọn Loại xe + nút cam Đồng ý và tiếp tục.
+    # Đọc được ô Loại xe (bắt buộc, chưa chọn) → thẻ chọn + mời chọn Loại xe; user 24/11: chưa chọn đủ thì ẩn nút cam
+    # Đồng ý và tiếp tục, câu đuôi báo chọn đủ nút mới hiện.
     r = _turn(conv, "action", "lc_result_report", {"groups": [LOAI_XE], "prepared": []})
     rows = r.cards[0]["rows"]
     assert [row["label"] for row in rows] == ["Loại xe"]
     assert [o["label"] for o in rows[0]["options"]] == ["Ô tô", "Xe mô tô"]
     trail = r.actions[0]["md"]
-    assert "**Loại xe**" in trail and "Đồng ý và tiếp tục" in trail
-    assert r.chips == [lai_chau.next_chip()]
+    assert "**Loại xe**" in trail and trail.endswith(vi.LC_CASE_WAIT["md"])
+    assert not r.chips
     # Bấm "Xe mô tô" trên thẻ → extension chọn ô đó (tự dò lại ô sau khi chọn).
     r = _turn(conv, "action", "lc_result_pick", {"name": "maLoaiXe", "value": "Xe mô tô"})
     assert r.actions == [{"type": "lc_result_set", "name": "maLoaiXe", "value": "Xe mô tô", "groups": [{"name": "*"}]}]
@@ -238,10 +240,13 @@ def test_tro_ly_trang_chon_truong_hop_doc_o_tu_do_va_hien_the_chon():
     assert [row["label"] for row in r.cards[0]["rows"]] == ["Loại xe", "Cơ quan giải quyết", "Trường hợp đăng ký"]
     assert "chọn sẵn" in r.display_md and "**Trường hợp đăng ký**" in r.actions[0]["md"]
     assert "**Loại xe**" not in r.actions[0]["md"]
-    # Đủ ô → câu hướng dẫn bấm Đồng ý và tiếp tục; bấm nút cam → trợ lý bấm nút cổng.
+    # Cổng hiện thêm ô bắt buộc còn trống (ảnh 24/11: chọn Ô tô xong còn Loại biển số) → vẫn ẩn nút.
+    assert not r.chips
+    # Đủ ô → câu hướng dẫn bấm Đồng ý và tiếp tục + hiện nút cam; bấm nút cam → trợ lý bấm nút cổng.
     groups[2]["value"] = "Đăng ký lần đầu"
     r = _turn(conv, "action", "lc_result_report", {"groups": groups, "prepared": []})
-    assert "Thông tin người" in r.actions[0]["md"]
+    assert "Thông tin người" in r.actions[0]["md"] and vi.LC_CASE_WAIT["md"] not in r.actions[0]["md"]
+    assert r.chips == [lai_chau.next_chip()]
     assert _turn(conv, "action", "lc_next").actions == [{"type": "lc_next"}]
     # Nói "bước tiếp theo" ở trang này cũng bấm Đồng ý và tiếp tục.
     assert flow.next_step_by_voice(conv, "bước tiếp theo", {"lcStep": 1}).value == "lc_next"
@@ -251,6 +256,73 @@ def test_tro_ly_trang_chon_truong_hop_doc_o_tu_do_va_hien_the_chon():
     assert lai_chau.voice_intent(conv, "bước tiếp theo", {"lcStep": 0}) is None
     reply = flow.Reply("x", "x")
     assert lai_chau.fill_report_reply(conv, proc, reply) is reply and not reply.chips
+
+
+PC08 = ["PC08-Điểm ĐK Đường Láng", "PC08-Điểm ĐK Thái Hà", "PC08-Điểm ĐK Hà Đông"]
+CONG_AN_XA = [f"Công an {x}" for x in ("Xã Hương Sơn", "Xã Hồng Sơn", "Phường Yên Sở", "Phường Hoàng Liệt",
+                                         "Phường Láng", "Phường Ngọc Hà", "Phường Ba Đình", "Xã Ba Đình")]
+DIEM_DANG_KY = {"name": "diemDangKy", "present": True, "value": "", "options": PC08 + CONG_AN_XA, "fixed": False,
+                "label": "Điểm đăng ký", "required": True}
+
+
+def _diem_row(r):
+    return next(row for row in r.cards[0]["rows"] if row["name"] == "diemDangKy")
+
+
+def test_tro_ly_diem_dang_ky_chi_bay_pc08_va_cong_an_xa_phuong_cua_tai_khoan():
+    """User 24/11: ô Điểm đăng ký chỉ hiện các điểm PC08 + một nút đăng ký tại Công an xã/phường của tài khoản."""
+    import json
+
+    from app.channels.handfree.chat import lai_chau
+
+    conv = _case_conv()
+    conv["auth_user"] = {"id": "u1", "tinh": "Thành phố Hà Nội", "xa": "Phường Ba Đình"}
+    _turn(conv, "event", "page_status", {"loggedIn": True, "formKind": "", "lcStep": 1})
+    loai_xe = {**LOAI_XE, "value": "Xe mô tô"}
+    r = _turn(conv, "action", "lc_result_report", {"groups": [loai_xe, DIEM_DANG_KY], "prepared": []})
+    row = _diem_row(r)
+    assert [o["label"] for o in row["options"]] == [*PC08, "Đăng ký tại Công an Phường Ba Đình"]
+    assert not r.chips
+    # Bấm nút xã/phường → extension chọn đúng lựa chọn của cổng (không kèm chữ "Đăng ký tại").
+    picked = json.loads(row["options"][-1]["send"].split("lc_result_pick:", 1)[1])
+    r = _turn(conv, "action", "lc_result_pick", picked)
+    assert r.actions[0]["type"] == "lc_result_set" and r.actions[0]["value"] == "Công an Phường Ba Đình"
+    # Cổng đã chọn → nút xã/phường sáng, đủ ô nên hiện nút cam.
+    chosen = {**DIEM_DANG_KY, "value": "Công an Phường Ba Đình"}
+    r = _turn(conv, "action", "lc_result_report", {
+        "groups": [loai_xe, chosen], "changed": {"name": "diemDangKy", "value": "Công an Phường Ba Đình", "ok": True}})
+    assert [o["selected"] for o in _diem_row(r)["options"]] == [False, False, False, True]
+    assert r.chips == [lai_chau.next_chip()]
+    # Công dân tự chọn xã khác trên trang → thẻ hiện thêm đúng xã đang chọn.
+    other = {**DIEM_DANG_KY, "value": "Công an Phường Láng"}
+    r = _turn(conv, "action", "lc_result_report", {"groups": [loai_xe, other], "prepared": []})
+    assert [o["label"] for o in _diem_row(r)["options"]][-2:] == ["Đăng ký tại Công an Phường Ba Đình",
+                                                                 "Công an Phường Láng"]
+
+    # Tài khoản chỉ ghi tên xã trùng cả phường lẫn xã → không đoán; tài khoản thiếu xã thì theo nơi làm thủ tục.
+    conv["auth_user"]["xa"] = "Ba Đình"
+    conv["location"]["ward"] = "Phường Ngọc Hà"
+    r = _turn(conv, "action", "lc_result_report", {"groups": [loai_xe, DIEM_DANG_KY], "prepared": []})
+    assert [o["label"] for o in _diem_row(r)["options"]][-1] == "Đăng ký tại Công an Phường Ngọc Hà"
+    # Ảnh 24/11: tài khoản Khánh Hòa, cổng liệt kê xã của Hà Nội (thường trú của công dân) → vẫn đúng 4 nút; nút xã/phường
+    # bấm thì nói rõ không có trong danh sách, gửi lại thẻ (sidebar khoá nút khi bấm), không chọn gì trên cổng.
+    conv["auth_user"]["xa"], conv["location"]["ward"] = "Phường Nam Nha Trang", "Phường Nam Nha Trang"
+    r = _turn(conv, "action", "lc_result_report", {"groups": [loai_xe, DIEM_DANG_KY], "prepared": []})
+    row = _diem_row(r)
+    assert [o["label"] for o in row["options"]] == [*PC08, vi.LC_WARD_POINT_ANY]
+    card = r.cards
+    picked = json.loads(row["options"][-1]["send"].split("lc_result_pick:", 1)[1])
+    r = _turn(conv, "action", "lc_result_pick", picked)
+    assert "**Công an Phường Nam Nha Trang**" in r.display_md and "trực tiếp trên trang" in r.display_md
+    assert not r.actions and r.cards == card and not r.chips
+    # Tài khoản không ghi xã nào → câu riêng.
+    conv["auth_user"]["xa"], conv["location"]["ward"] = "", ""
+    _turn(conv, "action", "lc_result_report", {"groups": [loai_xe, DIEM_DANG_KY], "prepared": []})
+    assert "chưa ghi xã/phường" in _turn(conv, "action", "lc_result_pick", picked).display_md
+    # Danh sách không có điểm PC08 (cổng khác) → giữ danh sách cũ.
+    plain = {**DIEM_DANG_KY, "options": CONG_AN_XA}
+    r = _turn(conv, "action", "lc_result_report", {"groups": [loai_xe, plain], "prepared": []})
+    assert [o["label"] for o in _diem_row(r)["options"]] == CONG_AN_XA
 
 
 def test_tro_ly_ban_cu_chua_co_co_trang_chon_truong_hop_thi_giu_luong_cu():
@@ -281,13 +353,16 @@ def test_tro_ly_trang_chon_truong_hop_cong_hien_them_o_va_chan_nut_tiep_tuc():
     assert [o["label"] for o in rows["loaiBienSo"]["options"]] == groups[1]["options"]
     assert rows["tinh"]["fixed"] and rows["tinh"]["value"] == "Công an Thành phố Hà Nội"
     assert "**Điểm đăng ký**" in r.actions[0]["md"] and "chọn trực tiếp trên trang" in r.actions[0]["md"]
+    # Ô bắt buộc trống mà chưa đọc được lựa chọn cũng tính là chưa chọn → ẩn nút, chọn trên trang xong mới hiện.
+    assert r.actions[0]["md"].endswith(vi.LC_CASE_WAIT["md"]) and not r.chips
     # Có danh sách → mời chọn trên thẻ.
     groups[3] = {**groups[3], "options": ["Đội CSGT số 1", "Công an phường Từ Liêm"], "fixed": False}
     r = _turn(conv, "action", "lc_result_report", {"groups": groups, "prepared": []})
-    assert "Công dân chọn **Điểm đăng ký**" in r.actions[0]["md"]
-    # Bấm Đồng ý và tiếp tục mà cổng chặn → báo lời chặn + đọc lại thẻ (không làm sẵn gì).
+    assert "Công dân chọn **Điểm đăng ký**" in r.actions[0]["md"] and not r.chips
+    # Bấm Đồng ý và tiếp tục (nói "tiếp tục") mà cổng chặn → báo lời chặn + đọc lại thẻ (không làm sẵn gì), không kèm nút
+    # bấm lại: lượt đọc lại tự hiện nút khi đủ ô.
     r = _turn(conv, "action", "lc_step_report", {"clicked": True, "message": "Còn trống: Điểm đăng ký"})
-    assert "Còn trống: Điểm đăng ký" in r.display_md
+    assert "Còn trống: Điểm đăng ký" in r.display_md and not r.chips
     assert r.actions == [{"type": "lc_result_scan", "groups": [{"name": "*"}], "prepare": False}]
     # Ô trên trang đổi sau lượt đọc (cổng tải chậm / công dân tự chọn) → đọc lại.
     assert _turn(conv, "action", "lc_case_changed").actions == r.actions

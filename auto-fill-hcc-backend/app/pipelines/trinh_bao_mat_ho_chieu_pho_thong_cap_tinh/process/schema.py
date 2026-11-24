@@ -30,11 +30,14 @@ FIELDS: list[dict] = [
              "xã/phường (số nhà, đường, tổ dân phố, thôn, bản)."},
     {"name": "DonTrinhBao_DienThoai", "desc": "Mục 6 — Số điện thoại, chỉ chữ số."},
     {"name": "DonTrinhBao_SoHoChieu",
-     "desc": "Mục 7 — \"Số hộ chiếu\" bị mất: một chữ cái + 7–8 chữ số (vd \"C1234567\"). Ghi \"không nhớ\" thì trả "
-             "\"không nhớ\". Để trống / chấm chấm → bỏ field."},
+     "desc": "Mục 7 — \"Số hộ chiếu\" bị mất: chép đúng các chữ cái / chữ số người viết ghi (vd \"C1234567\"), KHÔNG tự "
+             "kiểm khuôn số; số viết chen giữa dấu chấm (\"....C1234567....\") vẫn là có ghi → bỏ dấu chấm. Ghi "
+             "\"không nhớ\" thì trả \"không nhớ\". Chỉ có chấm chấm, không chữ số → bỏ field."},
     {"name": "DonTrinhBao_NgayCapHoChieu",
-     "desc": "Mục 7 — \"ngày cấp\" của hộ chiếu bị mất, dd/mm/yyyy. Để trống \"…/…/…\" → bỏ field."},
-    {"name": "DonTrinhBao_CoQuanCapHoChieu", "desc": "Mục 7 — \"Cơ quan cấp\" hộ chiếu, chép nguyên văn."},
+     "desc": "Mục 7 — \"ngày cấp\" của hộ chiếu bị mất, dd/mm/yyyy (ngày viết chen dấu chấm \"...31/12/2023\" vẫn lấy). "
+             "Để trống \"…/…/…\" → bỏ field."},
+    {"name": "DonTrinhBao_CoQuanCapHoChieu",
+     "desc": "Mục 7 — \"Cơ quan cấp\" hộ chiếu bị mất, chép nguyên văn (kể cả viết tắt như \"Cục quản lý XNC\")."},
     {"name": "DonTrinhBao_NgayMat",
      "desc": "Mục 8 — \"Hộ chiếu trên đã bị mất vào hồi … giờ … phút, ngày …\": CHỈ phần ngày, dd/mm/yyyy."},
     {"name": "DonTrinhBao_LyDo",

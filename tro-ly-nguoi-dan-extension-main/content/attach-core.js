@@ -3088,7 +3088,8 @@ function bcaVisibleTable() {
   return row ? (row.closest("table") || row.parentElement) : null;
 }
 
-// Ô phụ của dòng giấy tờ — Loại giấy tờ (cboKIND_OF_FILE<i>), Số lượng (txtNUM_OF_DOC<i>), Ghi chú (txtNOTE_OF_DOC<i>):
+// Ô phụ của dòng giấy tờ — Loại giấy tờ (cboKIND_OF_FILE<i>), Số lượng (txtNUM_OF_DOC<i>), Ghi chú (txtNOTE_OF_DOC<i>
+// trang thường trú, txtFILE_NOTE<i> trang tạm trú):
 // BE gửi `rowFields` {kind, count, note}. Ô không có trên dòng thì bỏ qua; Số lượng / Ghi chú chỉ ghi khi đang trống
 // (đính kèm lại không ghi đè chữ cán bộ đã sửa).
 function bcaFillRowFields(row, fields) {
@@ -3102,8 +3103,8 @@ function bcaFillRowFields(row, fields) {
       kind.dispatchEvent(new Event("change", { bubbles: true }));
     }
   }
-  for (const [prefix, value] of [["txtNUM_OF_DOC", fields.count], ["txtNOTE_OF_DOC", fields.note]]) {
-    const input = row.querySelector(`input[id^="${prefix}"], textarea[id^="${prefix}"]`);
+  for (const [prefixes, value] of [[["txtNUM_OF_DOC"], fields.count], [["txtNOTE_OF_DOC", "txtFILE_NOTE"], fields.note]]) {
+    const input = row.querySelector(prefixes.map((p) => `input[id^="${p}"], textarea[id^="${p}"]`).join(", "));
     // Cổng điền sẵn Số lượng "0" — coi như trống.
     const current = String(input?.value || "").trim();
     if (input && value && !input.disabled && (!current || current === "0")) {
