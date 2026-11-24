@@ -16,7 +16,7 @@ export default function PickerPage({ target }: { target: "replay" | "fill" }) {
   const [text, setText] = useState("");
   const { procLabel } = useFacets();
   const { data, error, loading, reload } = useAsync(() => labApi.recent(edited), `recent:${edited}`);
-  const title = target === "fill" ? "Nội dung trợ lý điền" : "Tái hiện lượt";
+  const title = "Xem lượt";
   const open = (id: string) => navigate(`/autotest/${target}/${encodeURIComponent(id.trim())}`);
 
   function submit(event: FormEvent) {
@@ -33,8 +33,8 @@ export default function PickerPage({ target }: { target: "replay" | "fill" }) {
         <h1>{title}</h1>
         <span className="page-head__meta">
           {target === "fill"
-            ? "Từng ô trợ lý điền gì, lấy từ đâu, người dân nộp gì — đáp án để dựng ca test."
-            : "Dựng lại một lượt theo thời gian: công đoạn backend, hội thoại, các lần chụp form."}
+            ? "Mở một lượt ở tab Nội dung trợ lý điền: từng ô trợ lý điền gì, lấy từ đâu, người dân nộp gì — đáp án để dựng ca test."
+            : "Mở một lượt: tái hiện theo thời gian (công đoạn backend, hội thoại, ảnh chụp form), từng ô trợ lý điền, tệp và gói ghi thô."}
         </span>
       </div>
       <form className="lab-pick" onSubmit={submit}>

@@ -30,7 +30,7 @@ export default function LabRunPage({ requestId, view }: { requestId: string; vie
     return () => { document.title = "Monitor — Trợ lý nhân dân"; };
   }, [requestId, view]);
 
-  const crumbs = [{ label: "Tái hiện lượt", href: "/autotest/replay" }, { label: requestId, mono: true }];
+  const crumbs = [{ label: "Xem lượt", href: "/autotest/replay" }, { label: requestId, mono: true }];
   if (lab === false) return <><LabNotice /><LabCrumbs items={crumbs} /><Unavailable /></>;
   if (loading && !data) return <><LabNotice /><PageLoading label="Đang dựng lại lượt (đọc Mongo nguồn / kho lưu trữ)…" /></>;
   if (error && !data) return <><LabNotice /><LabCrumbs items={crumbs} /><ErrorNotice message={error} onRetry={reload} /></>;
@@ -83,7 +83,7 @@ function RunHeader({ run, view, reveal, onReveal, onChanged }: {
 
   return (
     <>
-      <LabCrumbs items={[{ label: "Tái hiện lượt", href: "/autotest/replay" }, { label: id, mono: true },
+      <LabCrumbs items={[{ label: "Xem lượt", href: "/autotest/replay" }, { label: id, mono: true },
                          { label: view === "fill" ? "Nội dung trợ lý điền" : view === "files" ? "Tệp" : view === "raw" ? "Gói ghi thô" : "Tái hiện" }]} />
       <section className="lab-head">
         <div className="lab-head__title">

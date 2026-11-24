@@ -6,7 +6,7 @@ import { formatDateTime, formatMs, formatWhen, pct } from "../format";
 import { useAsync, useFacets } from "../hooks";
 import { navigate, onLinkClick } from "../router";
 import { labApi, useLabAvailable, type CaseResult, type CaseStatus, type RunBrief, type RunDetailLab } from "./api";
-import { downloadJson, humanDuration, LabCrumbs, LabNotice, Masked, Section, STATUS, StatusBadge, Unavailable, VerdictBadge } from "./parts";
+import { CaTestTabs, downloadJson, humanDuration, LabCrumbs, LabNotice, Masked, Section, STATUS, StatusBadge, Unavailable, VerdictBadge } from "./parts";
 import "./autotest.css";
 
 function treeText(run: RunBrief) {
@@ -24,17 +24,18 @@ export function LabRunsPage() {
     return () => window.clearTimeout(handle);
   }, [data, reload]);
 
-  if (lab === false) return <><LabNotice /><LabCrumbs items={[{ label: "Lần chạy" }]} /><Unavailable /></>;
+  if (lab === false) return <><LabNotice /><LabCrumbs items={[{ label: "Ca test", href: "/autotest/suites" }, { label: "Lần chạy" }]} /><Unavailable /></>;
   if (loading && !data) return <><LabNotice /><PageLoading label="Đang tải lần chạy…" /></>;
   const runs = data?.runs ?? [];
   return (
     <>
       <LabNotice />
-      <LabCrumbs items={[{ label: "Lần chạy" }]} />
+      <LabCrumbs items={[{ label: "Ca test", href: "/autotest/suites" }, { label: "Lần chạy" }]} />
       <div className="page-head">
-        <h1>Lần chạy</h1>
+        <h1>Ca test</h1>
         <span className="page-head__meta">Mỗi lần chạy phát lại một bộ ca trên một bản backend. Bấm một dòng để xem từng ca, từng ô.</span>
       </div>
+      <CaTestTabs active="runs" />
       {error ? <ErrorNotice message={error} onRetry={reload} /> : null}
       <div className="table-wrap">
         <table className="grid">
@@ -57,7 +58,7 @@ export function LabRunsPage() {
             })}
           </tbody>
         </table>
-        {!runs.length ? <EmptyState title="Chưa có lần chạy nào" hint="Vào Bộ ca test, chọn một bộ rồi bấm Chạy." /> : null}
+        {!runs.length ? <EmptyState title="Chưa có lần chạy nào" hint="Vào tab Bộ ca, chọn một bộ rồi bấm Chạy." /> : null}
       </div>
     </>
   );
@@ -101,9 +102,9 @@ export function LabRunResultPage({ no }: { no: number }) {
   const shown = results.filter((r) => filter === "all" || (filter === "bad" ? r.status !== "pass" : changed(r)));
   const selected = useMemo(() => results.find((r) => r.id === picked) ?? results.find((r) => r.status !== "pass") ?? results[0] ?? null, [results, picked]);
 
-  if (lab === false) return <><LabNotice /><LabCrumbs items={[{ label: "Lần chạy", href: "/autotest/runs" }, { label: `#${no}` }]} /><Unavailable /></>;
+  if (lab === false) return <><LabNotice /><LabCrumbs items={[{ label: "Ca test", href: "/autotest/suites" }, { label: "Lần chạy", href: "/autotest/runs" }, { label: `#${no}` }]} /><Unavailable /></>;
   if (loading && !data) return <><LabNotice /><PageLoading label="Đang tải lần chạy…" /></>;
-  if (error && !data) return <><LabNotice /><LabCrumbs items={[{ label: "Lần chạy", href: "/autotest/runs" }, { label: `#${no}` }]} /><ErrorNotice message={error} onRetry={reload} /></>;
+  if (error && !data) return <><LabNotice /><LabCrumbs items={[{ label: "Ca test", href: "/autotest/suites" }, { label: "Lần chạy", href: "/autotest/runs" }, { label: `#${no}` }]} /><ErrorNotice message={error} onRetry={reload} /></>;
   if (!data) return null;
 
   const suiteName = data.suite === "agent" ? data.suiteLabel : procLabel(data.suite.replace(/^lab:/, ""), data.suiteLabel);

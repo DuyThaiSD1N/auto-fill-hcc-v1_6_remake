@@ -17,11 +17,12 @@ const NAV = [
 // Auto test (dịch vụ agent auto-test-hcc trên máy host): chỉ hiện khi dịch vụ 12009 chạy và Monitor gọi tới được (AGENT_URL).
 const LAB_NAV = [
   { to: "/autotest/agent", label: "Agent tự sửa", icon: "wrench" as const, match: (p: string) => p.startsWith("/autotest/agent") },
-  { to: "/autotest/replay", label: "Tái hiện lượt", icon: "play" as const, match: (p: string) => p.startsWith("/autotest/replay") },
-  { to: "/autotest/fill", label: "Nội dung đã điền", icon: "document" as const, match: (p: string) => p.startsWith("/autotest/fill") },
-  { to: "/autotest/suites", label: "Bộ ca test", icon: "flask" as const, match: (p: string) => p.startsWith("/autotest/suites") },
-  { to: "/autotest/runs", label: "Lần chạy", icon: "clock" as const, match: (p: string) => p.startsWith("/autotest/runs") },
-  { to: "/autotest/config", label: "Cấu hình ghi", icon: "shield" as const, match: (p: string) => p.startsWith("/autotest/config") },
+  // Xem lượt = Tái hiện lượt + Nội dung trợ lý điền (cùng một màn, khác tab).
+  { to: "/autotest/replay", label: "Xem lượt", icon: "play" as const,
+    match: (p: string) => p === "/autotest" || p.startsWith("/autotest/replay") || p.startsWith("/autotest/fill") },
+  // Ca test = Bộ ca test + Lần chạy + Cấu hình ghi (tab ở đầu trang, CaTestTabs trong autotest/parts.tsx).
+  { to: "/autotest/suites", label: "Ca test", icon: "flask" as const,
+    match: (p: string) => ["/autotest/suites", "/autotest/runs", "/autotest/config"].some((x) => p.startsWith(x)) },
 ];
 
 const THEME_KEY = "hcc_monitor_theme";

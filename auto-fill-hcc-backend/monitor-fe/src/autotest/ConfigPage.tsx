@@ -5,7 +5,7 @@ import { formatWhen } from "../format";
 import { useAsync } from "../hooks";
 import { onLinkClick } from "../router";
 import { labApi, useLabAvailable } from "./api";
-import { LabCrumbs, LabNotice, Section, Unavailable } from "./parts";
+import { CaTestTabs, LabCrumbs, LabNotice, Section, Unavailable } from "./parts";
 import "./autotest.css";
 
 type Item = { name: string; detail: string; on: boolean; must?: boolean };
@@ -13,7 +13,7 @@ type Item = { name: string; detail: string; on: boolean; must?: boolean };
 const GROUPS: { title: string; sub: string; items: Item[] }[] = [
   {
     title: "1. Nhật ký luồng",
-    sub: "Màn Tái hiện lượt dựng dòng thời gian từ các nguồn dưới, theo mốc giờ.",
+    sub: "Màn Xem lượt dựng dòng thời gian từ các nguồn dưới, theo mốc giờ.",
     items: [
       { name: "Công đoạn backend", detail: "trace_steps: từng span (nhận tệp, OCR, gọi mô hình, mapper), thời gian, lỗi", on: true },
       { name: "Kết quả OCR từng tệp", detail: "Văn bản, số trang, cache; OCR lưu theo sha256 của tệp", on: true },
@@ -58,8 +58,8 @@ const GROUPS: { title: string; sub: string; items: Item[] }[] = [
 ];
 
 const VAULT_MAP: [string, string][] = [
-  ["Lượt xử lý", "Tái hiện lượt (công đoạn backend, OCR, lần gọi mô hình), Gói ghi thô"],
-  ["Hội thoại handfree", "Tái hiện lượt › hội thoại"],
+  ["Lượt xử lý", "Xem lượt (công đoạn backend, OCR, lần gọi mô hình), Gói ghi thô"],
+  ["Hội thoại handfree", "Xem lượt › hội thoại"],
   ["“Có ảnh chụp form”", "Mốc S1–Sn trên dòng thời gian, bảng Ảnh chụp form"],
   ["Người dùng sửa, Lượt bị sửa", "Nội dung trợ lý điền (bảng từng ô), đáp án của ca test, danh sách chọn lượt"],
   ["Tệp lẻ của lượt", "Tab Tệp (văn bản OCR; tệp gốc không tải từ đây)"],
@@ -69,19 +69,20 @@ const VAULT_MAP: [string, string][] = [
 export default function ConfigPage() {
   const lab = useLabAvailable();
   const { data, error, loading, reload } = useAsync(() => labApi.config(), "lab-config");
-  if (lab === false) return <><LabNotice /><LabCrumbs items={[{ label: "Cấu hình ghi" }]} /><Unavailable /></>;
+  if (lab === false) return <><LabNotice /><LabCrumbs items={[{ label: "Ca test", href: "/autotest/suites" }, { label: "Cấu hình ghi" }]} /><Unavailable /></>;
   if (loading && !data) return <><LabNotice /><PageLoading label="Đang tải cấu hình…" /></>;
   return (
     <>
       <LabNotice />
-      <LabCrumbs items={[{ label: "Cấu hình ghi" }]} />
+      <LabCrumbs items={[{ label: "Ca test", href: "/autotest/suites" }, { label: "Cấu hình ghi" }]} />
       <div className="page-head">
-        <h1>Cấu hình ghi</h1>
+        <h1>Ca test</h1>
         <span className="page-head__meta">
           Mỗi lượt xử lý đang được ghi những phần dưới đây, đủ để tái hiện lượt và dùng lượt làm ca test. Bật / tắt từng phần ghi theo
           đơn vị là đợt 2 (cần sửa extension và backend); trang này chỉ hiện hiện trạng.
         </span>
       </div>
+      <CaTestTabs active="config" />
       {error ? <ErrorNotice message={error} onRetry={reload} /> : null}
 
       {data ? (

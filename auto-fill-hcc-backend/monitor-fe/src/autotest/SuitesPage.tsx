@@ -8,7 +8,7 @@ import { formatWhen } from "../format";
 import { useAsync, useFacets } from "../hooks";
 import { navigate, onLinkClick, useLocation } from "../router";
 import { labApi, useLabAvailable, type Suite, type Target } from "./api";
-import { LabCrumbs, LabNotice, Section, StatusBadge, Unavailable } from "./parts";
+import { CaTestTabs, LabCrumbs, LabNotice, Section, StatusBadge, Unavailable } from "./parts";
 import "./autotest.css";
 
 export default function SuitesPage() {
@@ -21,24 +21,25 @@ export default function SuitesPage() {
   const selected = suites.find((s) => s.key === asked) ?? suites[0] ?? null;
   const select = (key: string) => navigate(`/autotest/suites?suite=${encodeURIComponent(key)}`, { replace: true });
 
-  if (lab === false) return <><LabNotice /><LabCrumbs items={[{ label: "Bộ ca test" }]} /><Unavailable /></>;
+  if (lab === false) return <><LabNotice /><LabCrumbs items={[{ label: "Ca test", href: "/autotest/suites" }, { label: "Bộ ca test" }]} /><Unavailable /></>;
   if (loading && !data) return <><LabNotice /><PageLoading label="Đang tải bộ ca…" /></>;
   return (
     <>
       <LabNotice />
-      <LabCrumbs items={[{ label: "Bộ ca test" }]} />
+      <LabCrumbs items={[{ label: "Ca test", href: "/autotest/suites" }, { label: "Bộ ca test" }]} />
       <div className="page-head">
-        <h1>Bộ ca test</h1>
+        <h1>Ca test</h1>
         <span className="page-head__meta">
           Mỗi ca test là một lượt thật đã ghi. Hệ thống phát lại đúng giấy tờ (OCR đã ghi) và câu trả lời mô hình đã ghi trên bản
           backend cần thử, rồi so kết quả với tờ khai người dân đã nộp.
         </span>
       </div>
+      <CaTestTabs active="suites" />
       {error ? <ErrorNotice message={error} onRetry={reload} /> : null}
       <AddCase onDone={(key) => { reload(); if (key) select(key); }} />
 
       {!suites.length ? (
-        <EmptyState title="Chưa có ca test nào" hint="Mở một lượt (Tái hiện lượt) rồi bấm “Tạo ca test từ lượt này”, hoặc nhập mã req ở ô trên." />
+        <EmptyState title="Chưa có ca test nào" hint="Mở một lượt (Xem lượt) rồi bấm “Tạo ca test từ lượt này”, hoặc nhập mã req ở ô trên." />
       ) : (
         <div className="lab-suites">
           <div className="lab-suites__list" role="list">

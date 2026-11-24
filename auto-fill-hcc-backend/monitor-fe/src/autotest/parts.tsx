@@ -1,6 +1,6 @@
 import { createContext, useContext, type ReactNode } from "react";
 import Icon from "../components/Icon";
-import { onLinkClick } from "../router";
+import { navigate, onLinkClick } from "../router";
 import type { CaseStatus } from "./api";
 
 // ---- che số giấy tờ ---------------------------------------------------------------------------------------------------
@@ -134,6 +134,25 @@ export function LabNotice() {
     <div className="lab-notice" role="note">
       <Icon name="shield" size={16} />
       <div><strong>Lưu ý</strong> Đây là giấy tờ thật của người dân. Mọi lượt mở, tái hiện, xem và tải gói đều được ghi lại.</div>
+    </div>
+  );
+}
+
+// Tab chung của mục menu "Ca test": Bộ ca / Lần chạy / Cấu hình ghi (mỗi tab vẫn là một đường dẫn riêng).
+const CA_TEST_TABS = [
+  { key: "suites", label: "Bộ ca", href: "/autotest/suites" },
+  { key: "runs", label: "Lần chạy", href: "/autotest/runs" },
+  { key: "config", label: "Cấu hình ghi", href: "/autotest/config" },
+] as const;
+
+export function CaTestTabs({ active }: { active: (typeof CA_TEST_TABS)[number]["key"] }) {
+  return (
+    <div className="tabs" role="tablist" aria-label="Phần của Ca test">
+      {CA_TEST_TABS.map((t) => (
+        <button key={t.key} role="tab" type="button" aria-selected={active === t.key} onClick={() => navigate(t.href)}>
+          {t.label}
+        </button>
+      ))}
     </div>
   );
 }
