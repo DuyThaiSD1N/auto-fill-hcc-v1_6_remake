@@ -26,7 +26,10 @@ FIELDS: list[dict] = [
              '"Khác" (ông, bà, anh, chị, em, con, cháu, người được ủy quyền...). Không có tờ khai thì bỏ field.'},
     {"name": "Requester_FullName", "desc": "Họ tên người yêu cầu ghi trên TỜ KHAI đăng ký khai sinh (dòng 'Họ, chữ đệm, tên người yêu cầu')."},
     {"name": "Requester_IdNumber", "desc": "Số định danh/CCCD/CMND của người yêu cầu (từ tờ khai/CCCD của chính người yêu cầu), chỉ trả khi có."},
-    {"name": "Requester_IdIssueDate", "desc": "Ngày cấp giấy tờ định danh người yêu cầu, dd/mm/yyyy."},
+    {"name": "Requester_IdIssueDate",
+     "desc": "Ngày cấp giấy tờ định danh người yêu cầu, dd/mm/yyyy — chỉ lấy ngày in trên chính tấm thẻ / hộ chiếu, "
+             "hoặc tờ khai ghi rõ 'cấp ngày' cạnh số giấy tờ. Tờ khai chỉ ghi số giấy tờ thì bỏ field; KHÔNG lấy "
+             "ngày sinh của người yêu cầu."},
     {"name": "Requester_IdIssuePlace", "desc": "Nơi cấp giấy tờ định danh người yêu cầu."},
     {"name": "Requester_ResidenceDomestic", "desc": "Nơi cư trú người yêu cầu, object {quocGia,tinh,xa,chiTietDuoiXa}."},
     {"name": "Requester_Relationship",

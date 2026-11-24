@@ -2162,6 +2162,9 @@ FR_FILL_STATS_WAIT = {
     "md": "Daim foos tseem tshuav {empty} lub thawv tsis tau sau. Muab ntaub ntawv tso tiav, kuv mam nug pej xeem sau ntxiv.",
     "tts": " Daim foos tseem tshuav {empty} lub thawv tsis tau sau. Muab ntaub ntawv tso tiav, kuv mam nug pej xeem sau ntxiv.",
 }
+# Bản Mông của hai câu đếm ô không nhắc ô không bắt buộc → dùng chung cho thủ tục chỉ bổ sung ô bắt buộc.
+FR_FILL_STATS_REQUIRED_ONLY = FR_FILL_STATS
+FR_FILL_STATS_WAIT_REQUIRED_ONLY = FR_FILL_STATS_WAIT
 FR_OFFER_AFTER_ATTACH = {
     "md": ("Daim foos tseem tshuav {empty} lub thawv tsis tau sau ({required} lub yuav tsum sau). Pej xeem nias lub pob "
            "Sau ntxiv cov uas tshuav kom kuv nug ib lub zuj zus."),
@@ -2267,6 +2270,7 @@ FLOW2_NEED_REQUIRED = {
     "tts": (" Daim foos tseem tshuav {required} lub thawv yuav tsum sau. Pej xeem sau kiag rau daim foos, los yog nias "
             "lub pob Sau ntxiv cov uas tshuav kom kuv nug thiab sau ib lub zuj zus."),
 }
+FLOW2_NEED_REQUIRED_ONLY = FLOW2_NEED_REQUIRED
 FLOW2_OPTIONAL_ONLY = {
     "md": ("Cov thawv yuav tsum sau puv lawm, tshuav {optional} lub thawv tsis yuav tsum sau. Xav sau ntxiv ces nias lub "
            "pob Sau ntxiv cov uas tshuav; tsis xav ces nias lub pob Xaiv txoj kev txais txiaj ntsig, los yog lub pob Xa "

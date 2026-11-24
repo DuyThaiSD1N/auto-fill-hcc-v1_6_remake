@@ -7,9 +7,10 @@ Thêm: cách viết tên thôn / tổ trong chi tiết nơi cư trú cha / mẹ 
 import re
 import unicodedata
 
+from app.pipelines._shared import area_remap
 from app.pipelines._shared.hospital_lookup import hospital_area
 from app.pipelines._shared.thanh_tra import ten_xa
-from app.pipelines._shared.thanh_tra.ho_so import Case, Field, Finding, Inspector, Unit
+from app.pipelines._shared.thanh_tra.ho_so import Case, Field, Finding, Inspector, Unit, fold
 from app.pipelines._shared.thanh_tra.ten_xa import Slot
 
 from ..process import mapper
@@ -51,6 +52,13 @@ Vụ có tín hiệu mã "cách viết tên thôn / tổ": A và B là CÙNG m�
 cái do OCR. B là cách viết ghi trên NHIỀU trang giấy hơn (có giấy in), kể cả dòng nơi cư trú của người kia trong hồ sơ
 (cha mẹ ở cùng thôn) → chọn B dù dòng trích dẫn là của người kia: chỉ sửa chữ, không đổi nơi ở.
 </chi_tiet>
+<dia_gioi_moi>
+Vụ có tín hiệu mã "địa giới mới": A là nơi cư trú đọc trên CCCD ghi theo địa giới CŨ (xã / tỉnh trước sáp nhập); B là nơi
+cư trú của CHÍNH người đó trên giấy chứng sinh (khối mẹ) hoặc giấy chứng nhận kết hôn (cột vợ = mẹ, cột chồng = cha), ghi
+theo địa giới MỚI (chỉ còn xã / phường + tỉnh, xã có trong danh mục hiện hành). Giấy mới hơn ghi nơi ở hiện tại → chọn B,
+kể cả khi thôn / số nhà khác A (người dân đã chuyển nơi ở, CCCD chưa cập nhật). Dòng trích dẫn là nơi cư trú của người
+khác (cột kia của giấy kết hôn) → KHONG_DU_CAN_CU.
+</dia_gioi_moi>
 """
 # Cấp dưới xã đứng đầu chi tiết: so tên thôn / tổ phải bỏ phần này (giấy khác hay ghi "Khu phố" thay "Tổ dân phố").
 _UNIT_PREFIX = re.compile(r"(?i)^\s*(?:th[oô]n|t[oổ]\s*d[aâ]n\s*ph[oố]|tdp|t[oổ]|x[oó]m|b[aả]n|khu\s*ph[oố]|khu|[aấ]p|"
@@ -162,6 +170,119 @@ def detail_fix(detail, page_list: list[dict]) -> dict | None:
                    f'({len(stat["ban_in"])} trang giấy in) ghi "{spelled}", chỉ lệch vài chữ cái / dấu — OCR đọc lệch'}
 
 
+# Nơi cư trú cha / mẹ trên form: mapper lấy tờ khai trước, rồi nguồn ngoài tờ khai (CCCD đứng đầu) — chỉ soát nguồn
+# ngoài tờ khai khi tờ khai không ghi.
+_BOUNDARY_SLOTS = (("mẹ", "Tk_NoiCuTruMe", "ThongTinMe_NoiCuTru"), ("cha", "Tk_NoiCuTruCha", "ThongTinBo_NoiCuTru"))
+_SEGMENT_SPLIT = re.compile(r"\s*,\s*|\s+-\s*|\s*-\s+|(?<=[a-zà-ỹ])-(?=[A-ZĐÀ-Ỹ])")
+# Cấp huyện chen giữa xã và tỉnh → địa chỉ kiểu cũ ba cấp.
+_DISTRICT_HEAD = re.compile(r"(?i)^\s*(?:huy[eệ]n|qu[aậ]n|th[iị]\s*x[aã]|tx\.?|tp\.?)\b")
+_WARD_HEAD = re.compile(r"(?i)^\s*(?:x[aã]|ph[uư][oờ]ng|th[iị]\s*tr[aấ]n|đ[aặ]c\s*khu)\b")
+
+
+def _ward_in(segment: str, wards: tuple[str, ...]) -> str:
+    """Xã hiện hành mà cụm này ghi (chữ của tên xã nằm trọn, theo thứ tự, trong cụm — OCR hay đọc lặp chữ: "Phường Tây
+    Nha Nha Trang"); nhiều xã khớp thì lấy tên dài nhất, hoà thì không đoán."""
+    words = fold(segment).split()
+
+    def inside(ward: str) -> bool:
+        key = fold(ten_xa._bare(ward)).split()
+        at = 0
+        for word in words:
+            if at < len(key) and word == key[at]:
+                at += 1
+        return bool(key) and at == len(key)
+
+    hits = sorted((ward for ward in wards if inside(ward)), key=lambda ward: len(ten_xa._bare(ward)), reverse=True)
+    if not hits or (len(hits) > 1 and len(ten_xa._bare(hits[0])) == len(ten_xa._bare(hits[1]))):
+        return ""
+    return hits[0]
+
+
+def _new_boundary_area(text: str) -> dict | None:
+    """Chuỗi nơi cư trú ghi theo địa giới MỚI "[chi tiết], xã / phường, tỉnh" (không cấp huyện, xã có trong danh mục
+    hiện hành của tỉnh) → {tinh, xa, diaChi}; kiểu cũ ba cấp / không nhận ra → None."""
+    parts = [part.strip(" .") for part in _SEGMENT_SPLIT.split(str(text or "").strip()) if part.strip(" .")]
+    if len(parts) < 2:
+        return None
+    province = area_remap.canonical_province(parts[-1])
+    wards = ten_xa.wards_of(province) if province else ()
+    # Cụm ngay trước tỉnh phải là cụm "xã / phường ..." và là cụm xã DUY NHẤT: "phường A, Nha Trang, tỉnh B" còn cấp
+    # thành phố chen giữa là kiểu cũ.
+    if (not wards or any(_DISTRICT_HEAD.match(part) for part in parts[:-1]) or not _WARD_HEAD.match(parts[-2])
+            or any(_WARD_HEAD.match(part) for part in parts[:-2])):
+        return None
+    ward = _ward_in(parts[-2], wards)
+    if not ward:
+        return None
+    return {"quocGia": "Việt Nam", "tinh": province, "xa": ward, "diaChi": ", ".join(parts[:-2])}
+
+
+def _residence_values(line: str) -> list[str]:
+    return [part.strip() for part in _RESIDENCE_LABEL.split(line)[1:] if part.strip()]
+
+
+def _newer_residences(page_list: list[dict], person: str):
+    """(địa chỉ mới, dòng, doc, giấy) nơi cư trú của cha / mẹ trên giấy chứng sinh (chỉ khối mẹ) rồi giấy chứng nhận kết
+    hôn (dòng hai cột: vợ trước, chồng sau — đổi chỗ khi dòng họ tên ghi chồng trước)."""
+    for kind in ("giay chung sinh", "chung nhan ket hon"):
+        if kind == "giay chung sinh" and person != "mẹ":
+            continue
+        for page in page_list:
+            head = " ".join(fold(line) for line in page["lines"][:12])
+            if kind not in head:
+                continue
+            order = ("vo", "chong")
+            for line in page["lines"]:
+                folded = fold(line)
+                if "ten vo" in folded and "ten chong" in folded and folded.index("ten chong") < folded.index("ten vo"):
+                    order = ("chong", "vo")
+            for line in page["lines"]:
+                values = _residence_values(line)
+                if kind == "chung nhan ket hon":
+                    if len(values) != 2:
+                        continue
+                    values = [values[order.index("vo" if person == "mẹ" else "chong")]]
+                for value in values[:1]:
+                    area = _new_boundary_area(value)
+                    if area:
+                        yield area, line, page["doc"], "giấy chứng sinh" if kind == "giay chung sinh" else "giấy kết hôn"
+
+
+def boundary_fix(values: dict, page_list: list[dict]) -> list[tuple[str, dict, str, int, str]]:
+    """(field, địa chỉ mới, dòng, doc, lý do) khi nơi cư trú cha / mẹ trên form lấy từ nguồn ngoài tờ khai ghi địa giới CŨ
+    (mapper phải đổi xã / tỉnh khi sáp nhập) mà giấy chứng sinh / giấy kết hôn ghi nơi cư trú của chính người đó theo địa
+    giới MỚI, ở xã khác xã đang điền."""
+    out = []
+    for person, declared, name in _BOUNDARY_SLOTS:
+        value = values.get(name)
+        if _area_given(values.get(declared)) or not _area_given(value) or "chet" in fold(value.get("diaChi")):
+            continue
+        shown = mapper._area(value) or {}
+        same_ward = fold(ten_xa._bare(value.get("xa"))) == fold(ten_xa._bare(shown.get("xa")))
+        same_province = area_remap.canonical_province(value.get("tinh")) == area_remap.canonical_province(shown.get("tinh"))
+        if same_ward and same_province and not value.get("huyen"):
+            continue
+        found = list(_newer_residences(page_list, person))
+        if not found:
+            continue
+        # Giấy chứng sinh (mới nhất) quyết xã; cùng xã thì lấy dòng có ghi thôn / số nhà.
+        ward = found[0][0]["xa"]
+        found = next((item for item in found if item[0]["xa"] == ward and item[0]["diaChi"]), found[0])
+        area, line, doc, paper = found
+        # Cùng xã sau sáp nhập thì chỉ khác cách viết chi tiết — không đổi (giấy mới hay ghi thiếu thôn / tổ).
+        if fold(area["xa"]) == fold(shown.get("xa")):
+            continue
+        out.append((name, area, line, doc,
+                    f"A ({value.get('diaChi') or ''}, {value.get('xa') or ''}, {value.get('tinh') or ''}) ghi theo địa "
+                    f"giới cũ — trên form thành {shown.get('xa') or '(xã trống)'}, {shown.get('tinh') or ''}; {paper} ghi "
+                    f"nơi cư trú của {person} theo địa giới mới: {area['diaChi']}, {area['xa']}, {area['tinh']}"))
+    return out
+
+
+def _area_given(value) -> bool:
+    return isinstance(value, dict) and any(str(value.get(key) or "").strip() for key in ("tinh", "xa", "diaChi"))
+
+
 def mapped(name: str, value: dict):
     if name in ("Tk_NoiSinh", "Gcs_NoiSinh"):
         area = mapper._area(mapper._norm_birth_place(value))
@@ -172,8 +293,18 @@ def mapped(name: str, value: dict):
 async def find(inspector: Inspector, case: Case, title: str) -> list[Finding]:
     slots = {name: slot for name, (slot, _) in SLOTS.items()}
     wards = await ten_xa.fixes(case.values, slots, case.documents, case.options, title=TITLE, mapped=mapped)
+    page_list = trang.pages(case.documents)
     out = []
+    # Địa giới mới thay TRỌN địa chỉ (thôn + xã + tỉnh) theo giấy mới hơn; sửa tên xã chỉ đổi ô xã, giữ thôn cũ của CCCD
+    # → cùng một ô thì địa giới mới thắng.
+    moved = set()
+    for name, area, line, doc, why in boundary_fix(case.values, page_list):
+        moved.add(name)
+        out.append(Finding(INSPECTOR, _UNIT[name], {name: area}, line, doc, "dòng nơi cư trú trên giấy mới hơn",
+                           SLOTS[name][1], backed=True, evidence=(f"địa giới mới: {why}",)))
     for name, fix in wards.items():
+        if name in moved:
+            continue
         read = str((case.values.get(name) or {}).get("xa") or "")
         out.append(Finding(INSPECTOR, _UNIT[name], {name: fix["value"]}, fix["quote"], fix["doc"],
                            "dòng giấy ghi tên xã của địa chỉ", SLOTS[name][1], backed=True,
@@ -181,10 +312,9 @@ async def find(inspector: Inspector, case: Case, title: str) -> list[Finding]:
                                      f"hành nên trên cổng sẽ TRỐNG; B là tên xã trong danh mục hiện hành của tỉnh "
                                      f"{fix['value'].get('tinh')}, có trên dòng trích dẫn "
                                      f"({'model chọn' if fix['by'] == 'llm' else 'mã chọn'}: {fix['why']})",)))
-    page_list = trang.pages(case.documents)
     for name in _DETAIL_SLOTS:
         value = case.values.get(name)
-        if name in wards or not isinstance(value, dict):
+        if name in wards or name in moved or not isinstance(value, dict):
             continue
         fix = detail_fix(value.get("diaChi"), page_list)
         if not fix:

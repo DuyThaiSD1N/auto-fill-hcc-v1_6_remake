@@ -9,6 +9,9 @@ PROCEDURE_KEYS = ("trich-luc-ks",)
 
 REQUIRED = ()
 
+# Chỉ bổ sung ô bắt buộc: ô không bắt buộc còn trống vẫn tô cam nhưng không đếm, không hỏi; hết ô bắt buộc là xong.
+REQUIRED_ONLY = True
+
 # Kính gửi / Tại (engine dựng theo cơ quan đã chọn hoặc tài khoản quầy) và Ngày / Tháng / Năm lập tờ khai (cổng tự điền).
 NO_ASK = ("citizenField27", "citizenField37", "citizenField50", "citizenField52", "citizenField53")
 
@@ -51,6 +54,8 @@ HMONG_LABELS = {
     "citizenHoSo_CoQuanDangKy": ("qhov chaw tau cuv npe", _RECORD),
     "citizenHotenCha": ("npe txiv", _PERSON),
     "citizenHotenMe": ("npe niam", _PERSON),
+    "citizenHotenVohoacChong": ("npe tus poj niam los tus txiv", _PERSON),
+    "citizenNgaysinhVohoacChong": ("hnub yug tus poj niam los tus txiv", _PERSON),
     "citizenTenGiayToHoTich": ("lub npe daim ntawv", _RECORD),
     "citizencauhoi3": ("tus lej cuv npe", _RECORD),
     "citizencauhoi4": ("tus lej phau ntawv", _RECORD),

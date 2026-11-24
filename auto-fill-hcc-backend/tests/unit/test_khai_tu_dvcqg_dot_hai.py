@@ -23,6 +23,15 @@ def test_ho_ten_nhieu_trang_ghi_hon_thi_doi_dau():
     assert finding and finding.values["NguoiMat_HoTen"] == "TRẦN THỊ MẬN"
 
 
+def test_ho_ten_bang_trang_giay_co_quan_cap_thang_to_khai_ghi_ro_trong_bang_chung():
+    case = _case({"NguoiMat_HoTen": "TRẦN VĂN MĂNG"},
+                 "TỜ KHAI ĐĂNG KÝ KHAI TỬ\nHọ, chữ đệm, tên: TRẦN VĂN MĂNG",
+                 "GIẤY BÁO TỬ\nHọ, chữ đệm, tên người chết: TRẦN VĂN MÀNG")
+    finding = dinh_danh.name_finding(case, dinh_danh.trang.pages(case.documents))
+    assert finding and finding.values["NguoiMat_HoTen"] == "TRẦN VĂN MÀNG"
+    assert "Số trang bằng nhau → theo hạng nguồn" in finding.evidence[0]
+
+
 def test_ho_ten_khong_doi_sang_ban_roi_dau_hoac_bang_trang():
     rơi = _case({"NguoiMat_HoTen": "ĐINH VĂN HẺ"}, "GIẤY BÁO TỬ\nHọ tên: DINH VAN HE", "BẢN CAM ĐOAN\nDinh Van He")
     assert dinh_danh.name_finding(rơi, dinh_danh.trang.pages(rơi.documents)) is None

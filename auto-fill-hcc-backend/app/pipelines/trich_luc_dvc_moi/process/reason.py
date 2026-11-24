@@ -304,10 +304,36 @@ def labeled_value(block: str, label: str) -> str:
     return "" if _fold(value) in {"", "...", "khong xac dinh", "khong co", "khong ro"} else value
 
 
+def _marriage_holder_is_submitter(blocks: dict) -> dict:
+    """Giấy kết hôn là giấy CHUNG của hai vợ chồng: không có tờ khai nêu người được cấp mà người nộp là vợ / chồng
+    trên giấy thì người được cấp là chính người nộp (quy tắc c). Phân vai hay vẫn chọn người kia rồi ghi quan hệ
+    "Vợ" / "Chồng" — tự mâu thuẫn với chính quy tắc đó → chỉnh về người nộp, quan hệ "Bản thân"."""
+    quan_he = blocks["quan_he"]
+    role = _fold(labeled_value(quan_he, "Vai người nộp trên giấy"))
+    if (role not in {"vo", "chong"} or _fold(labeled_value(quan_he, "Kết luận")) not in {"vo", "chong"}
+            or "ket hon" not in _fold(labeled_value(blocks["giay_to_ho_tich"], "Loại trích lục cần cấp"))
+            or not _fold(labeled_value(quan_he, "Người yêu cầu tờ khai") or "khong co").startswith("khong co")):
+        return blocks
+    nop = blocks["nguoi_nop"]
+    name = labeled_value(nop, "Họ tên")
+    if not name:
+        return blocks
+    return {
+        **blocks,
+        "nguoi_duoc_cap": (
+            f"Họ tên: {name}\nSố định danh: {labeled_value(nop, 'Số định danh') or 'Không xác định'}\n"
+            f"Trạng thái: còn sống\nNguồn: giấy chứng nhận kết hôn (cột {'vợ' if role == 'vo' else 'chồng'})\n"
+            "Căn cứ phân vai: giấy kết hôn chung của hai vợ chồng, người nộp là một bên trên giấy"
+        ),
+        "quan_he": re.sub(r"(?im)^([ \t]*Kết luận[ \t]*:).*$", r"\1 Bản thân", quan_he, count=1),
+    }
+
+
 def _render_context(raw: str, options: dict | None) -> str:
     blocks = {tag: section(raw, tag) for tag in ("nguoi_nop", "nguoi_duoc_cap", "giay_to_ho_tich", "quan_he")}
     if not blocks["nguoi_duoc_cap"] and not blocks["giay_to_ho_tich"]:
         return ""
+    blocks = _marriage_holder_is_submitter(blocks)
     name, number = requester_context(options)
     body = "\n".join(
         f"<{tag}>\n{value or 'Không xác định'}\n</{tag}>" for tag, value in blocks.items()

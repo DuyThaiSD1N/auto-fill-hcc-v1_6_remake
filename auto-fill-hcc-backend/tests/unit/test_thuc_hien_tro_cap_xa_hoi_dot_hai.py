@@ -102,3 +102,28 @@ def test_dia_chi_chi_con_so_nha_la_chi_tiet_bi_cat():
     assert not dia_chi._cut_detail("12/3", "12/3 Mẫu Xã", "Phường Mẫu Xã")
     # Chi tiết trọn tên, dòng còn chữ phía sau → giữ như cũ.
     assert not dia_chi._cut_detail("Tổ 4 Đường Mẫu", "Tổ 4 Đường Mẫu Cũ", "Phường Mẫu Xã")
+
+
+_TO_KHAI_LECH_DAU = (
+    "Mẫu số 01\nTỜ KHAI ĐỀ NGHỊ TRỢ CẤP XÃ HỘI\n───── Trang 2/3 ─────\n2.1. Họ và tên: Lê Thị Mẫu\n"
+    "Số căn cước/Số định danh cá nhân: 012185000444\nNgày sinh: 05/06/1985 Giới tính: nữ\n───── Trang 3/3 ─────\n"
+    "Họ và tên: Lê Thị Mầu\n- Số căn cước/Số định danh cá nhân: 01218500044\n- Ngày sinh: 05 / 06 / 1985\n"
+    "Tên chủ tài khoản: Lê Thị Mầu\n"
+)
+_NGUOI_NOP_LECH_DAU = {"NguoiNop_HoTen": "LÊ THỊ MẪU", "NguoiNop_SoDinhDanh": "012185000444", "NguoiNop_NgaySinh": "05/06/1985"}
+
+
+def test_dinh_danh_ten_lech_dau_giua_cac_muc_to_khai_lay_cach_viet_nhieu_dong_hon():
+    found = [f for f in dinh_danh.findings_from(Case([{"text": _TO_KHAI_LECH_DAU}], "", _NGUOI_NOP_LECH_DAU))
+             if f.unit.key == "nguoi_nop.ho_ten"]
+    assert [f.values for f in found] == [{"NguoiNop_HoTen": "LÊ THỊ MẦU"}]
+
+
+def test_dinh_danh_ten_lech_dau_co_giay_in_mang_ten_thi_giu():
+    printed = "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nGIẤY XÁC NHẬN\nHọ và tên: Lê Thị Mầu\nNgày sinh: 05/06/1985"
+    docs = [{"text": _TO_KHAI_LECH_DAU}, {"text": printed}]
+    assert not [f for f in dinh_danh.findings_from(Case(docs, "", _NGUOI_NOP_LECH_DAU)) if f.unit.key.endswith("ho_ten")]
+    # Cách viết của lượt trích không có trên giấy (đơn vị quen ghi không dấu) → không đổi.
+    values = {**_NGUOI_NOP_LECH_DAU, "NguoiNop_HoTen": "LE THI MAU"}
+    assert not [f for f in dinh_danh.findings_from(Case([{"text": _TO_KHAI_LECH_DAU}], "", values))
+                if f.unit.key.endswith("ho_ten")]

@@ -39,7 +39,7 @@ const chrome = {
       return tab;
     },
     async update(tabId, options) { order.push("tab-navigate"); return { id: tabId, ...options }; },
-    async get(tabId) { return { id: tabId }; },
+    async get(tabId) { return { id: tabId, windowId: 5 }; },
     async reload() {},
     async remove() {},
     async sendMessage() {},
@@ -119,6 +119,7 @@ function bundle(ordinal) {
   assert.equal(storage.tro_ly_split_attach_queue_stage, undefined);
   assert.equal(createdTabs.length, 1, "khởi động chỉ mở một tab");
   assert.equal(createdTabs[0].active, true, "tab xử lý phải active");
+  assert.equal(createdTabs[0].windowId, 5, "tab tách phải mở trong cửa sổ của tab gốc (ẩn danh)");
   assert.ok(order.lastIndexOf("storage-set") < order.lastIndexOf("tab-navigate"),
     "pending và queue phải được lưu trước khi điều hướng");
   assert.equal(storage.tro_ly_split_attach_queue.activeTabId, createdTabs[0].id);
@@ -135,6 +136,7 @@ function bundle(ordinal) {
 
   await dispatch({ action: "clearPendingAttach" }, createdTabs[0].id);
   assert.equal(createdTabs.length, 2, "xong tab trước mới mở tab sau");
+  assert.equal(createdTabs[1].windowId, 5, "tab tách phải mở trong cửa sổ của tab gốc (ẩn danh)");
   assert.equal(storage.tlnd_split_tab_info?.[createdTabs[1].id]?.label, "Sổ hộ khẩu",
     "nhận ra loại giấy thì nhãn đọc theo loại, không phải tên tệp");
   await dispatch({ action: "failPendingAttach", code: "test", error: "lỗi thử" }, createdTabs[1].id);

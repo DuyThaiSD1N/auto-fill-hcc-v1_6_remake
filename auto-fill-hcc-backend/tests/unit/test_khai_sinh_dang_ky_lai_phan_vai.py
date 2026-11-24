@@ -232,3 +232,54 @@ def test_the_ocr_thieu_dau_hai_cham_van_la_mot_nguoi_khi_phan_vai():
     ]
     # Hai thẻ người còn sống → không phải ca "thẻ duy nhất của người góa", người con không bị hạ vai.
     assert reason._single_card_spouse(documents) is None
+
+
+_TAP_SCAN = """───── Trang 1/3 ─────
+GIẤY KHAI SINH
+Họ, chữ đệm, tên: NGUYỄN THỊ CHỊ
+Ngày, tháng, năm sinh: 01/01/1960
+Giới tính: Nữ
+Họ, chữ đệm, tên người mẹ: NGUYỄN VĂN BỐ
+Họ, chữ đệm, tên người cha: TRẦN THỊ MẸ
+───── Trang 2/3 ─────
+TRÍCH LỤC KHAI TỬ
+(BẢN SAO)
+Họ, chữ đệm , tên : TRẦN THỊ MẸ
+Ngày, tháng, năm sinh : 1935
+Giới tính: Nữ Dân tộc: Kinh Quốc tịch: Việt Nam
+───── Trang 3/3 ─────
+TRÍCH LỤC KHAI TỬ
+(BẢN SAO)
+Họ, chữ đệm , tên : NGUYỄN VĂN BỐ
+Ngày, tháng, năm sinh : 1930
+Giới tính: Nam Dân tộc: Kinh Quốc tịch: Việt Nam
+"""
+
+_UY_QUYEN = """GIẤY ỦY QUYỀN
+1. Bên Ủy quyền:
+- Họ tên: Nguyễn Văn Con
+- Số CMND/CCCD/Hộ chiếu: 001065000001
+2. Bên được Ủy quyền:
+- Họ tên: Nguyễn Thị Chị
+- Số CMND/CCCD/Hộ chiếu: 0271 001160000002
+3. Nội dung Ủy quyền: Làm thủ tục đăng ký lại khai sinh
+"""
+
+
+def test_trich_luc_dau_cach_truoc_dau_phay_la_giay_rieng_khong_nuot_vao_giay_truoc():
+    people = {p["name"]: p for p in reason._people_from_documents([{"name": "ho-so.pdf", "text": _TAP_SCAN}])}
+    assert set(people) == {"TRẦN THỊ MẸ", "NGUYỄN VĂN BỐ"}
+    assert all(reason._is_dead(p) for p in people.values())
+
+
+def test_bo_the_nguoi_duoc_uy_quyen_de_luat_the_he_chot_gia_dinh():
+    documents = [
+        {"name": "ho-so.pdf", "text": _TAP_SCAN},
+        {"name": "uy-quyen.pdf", "text": _UY_QUYEN},
+        _card("NGUYỄN VĂN CON", "001065000001", "01/01/1965", "Nam"),
+        _card("NGUYỄN THỊ CHỊ", "001160000002", "01/01/1960", "Nữ"),
+    ]
+    unknown = {tag: reason._unknown_role_section("x") for tag in ("con", "cha", "me")}
+    result = reason._override_family_by_generation(unknown, documents)
+    assert [reason._role_name(result[tag]) for tag in ("con", "cha", "me")] == [
+        "NGUYỄN VĂN CON", "NGUYỄN VĂN BỐ", "TRẦN THỊ MẸ"]

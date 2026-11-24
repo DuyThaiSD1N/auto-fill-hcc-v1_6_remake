@@ -4,7 +4,9 @@ EXTRA_RULES = """<ho_so>
 Hồ sơ cấp bản sao trích lục hộ tịch / bản sao giấy khai sinh: tờ khai cấp bản sao (nếu có), giấy ủy quyền,
 CCCD/CMND, và giấy hộ tịch đã đăng ký trước đây (giấy khai sinh / trích lục khai sinh, giấy chứng nhận
 kết hôn / trích lục kết hôn, trích lục khai tử), đôi khi chỉ có giấy chứng sinh hoặc tờ khai cư trú CT01.
-Khối người nộp trên cổng đã khóa theo tài khoản → KHÔNG trích người nộp.
+Khối người nộp trên cổng đã khóa theo tài khoản → KHÔNG trích nhân thân người nộp (trừ số điện thoại theo
+<nguoi_nop>). Họ tên cha / mẹ in trên giấy hộ tịch vẫn chép vào GiayTo_HoTenCha / GiayTo_HoTenMe dù người đó cũng là
+người nộp hoặc người đi khai.
 </ho_so>
 
 <phan_vai>

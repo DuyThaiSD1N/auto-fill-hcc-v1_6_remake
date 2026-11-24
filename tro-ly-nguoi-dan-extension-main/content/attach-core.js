@@ -671,42 +671,149 @@ async function closeWalletListDialog() {
   await closeDocumentWalletDialogs();
 }
 
-async function listWalletDocuments(limit) {
+const WALLET_TAB_LABELS = { uploaded: "Tài liệu tải lên", issued: "Tài liệu được cấp" };
+
+function walletTabButton(dialog, tab) {
+  return findButtonByText(dialog, [WALLET_TAB_LABELS[tab] || WALLET_TAB_LABELS.uploaded]);
+}
+
+// tabs (bản BE có supportsWalletPick): đọc thêm tab "Tài liệu được cấp" sau tab tải lên. Tab được cấp không trả danh
+// sách (trống / cổng gọi API khác) thì chỉ trả tab tải lên.
+async function listWalletDocuments(limit, tabs) {
   const want = Math.max(1, Math.min(Number(limit) || 20, 50));
-  const pages = new Map();
+  const withIssued = Array.isArray(tabs) && tabs.includes("issued");
+  const pages = { uploaded: new Map(), issued: new Map() };
+  const total = { uploaded: 0, issued: 0 };
   let origin = "";
-  let total = 0;
   const onList = (event) => {
     try {
       const data = JSON.parse(event.detail || "{}");
-      if (!data || !Array.isArray(data.items)) return;
-      pages.set(Number(data.page) || 1, data.items);
+      if (!data || !Array.isArray(data.items) || data.keyword) return;
+      const tab = data.tab === "issued" ? "issued" : "uploaded";
+      pages[tab].set(Number(data.page) || 1, data.items);
       origin = data.origin || origin;
-      total = Number(data.total) || total;
+      total[tab] = Number(data.total) || total[tab];
     } catch (_) { /* sự kiện lạ */ }
   };
-  const collected = () => Array.from(pages.values()).reduce((n, items) => n + items.length, 0);
+  const collected = (tab) => Array.from(pages[tab].values()).reduce((n, items) => n + items.length, 0);
   document.addEventListener(WALLET_LIST_EVENT, onList);
   try {
     const row = findCopyCertificationAttachmentRow();
     if (!row) return { ok: false, error: "attachment-row-not-found" };
     const opened = await openDocumentWalletForRow(row, {});
     if (opened?.error) return { ok: false, error: opened.code || "wallet-modal-not-opened" };
-    if (!(await waitFor(() => pages.has(1), 8000, 150))) return { ok: false, error: "wallet-list-timeout" };
-    let page = 1;
-    while (collected() < want && collected() < total) {
-      const next = Array.from(opened.dialog.querySelectorAll("button"))
-        .find((b) => isVisible(b) && !b.disabled && foldedNodeText(b) === "sau");
-      if (!next) break;
-      next.click();
-      page += 1;
-      if (!(await waitFor(() => pages.has(page), 6000, 150))) break;
+    const readTab = async (tab, timeout) => {
+      if (!(await waitFor(() => pages[tab].has(1), timeout, 150))) return false;
+      let page = 1;
+      while (collected(tab) < want && collected(tab) < total[tab]) {
+        const next = Array.from(opened.dialog.querySelectorAll("button"))
+          .find((b) => isVisible(b) && !b.disabled && foldedNodeText(b) === "sau");
+        if (!next) break;
+        next.click();
+        page += 1;
+        if (!(await waitFor(() => pages[tab].has(page), 6000, 150))) break;
+      }
+      return true;
+    };
+    if (!(await readTab("uploaded", 8000))) return { ok: false, error: "wallet-list-timeout" };
+    if (withIssued) {
+      const button = walletTabButton(opened.dialog, "issued");
+      if (button) {
+        button.click();
+        await readTab("issued", 6000);
+      }
     }
-    const items = Array.from(pages.keys()).sort((a, b) => a - b).flatMap((p) => pages.get(p)).slice(0, want);
-    return { ok: true, origin, total, items };
+    const items = ["uploaded", "issued"].flatMap((tab) =>
+      Array.from(pages[tab].keys()).sort((a, b) => a - b).flatMap((p) => pages[tab].get(p)).slice(0, want)
+        .map((item) => ({ ...item, tab })));
+    return { ok: true, origin, total: total.uploaded + total.issued, items };
   } finally {
     document.removeEventListener(WALLET_LIST_EVENT, onList);
     await closeWalletListDialog();
+  }
+}
+
+// ── Đính giấy có sẵn trong ví bằng nút "Chọn" của đúng dòng (mục kế hoạch có walletPick) ──
+// Cổng chỉ tính "dùng lại giấy tờ" khi chọn từ ví; tải lên lại là tạo tệp mới. Ví có thể hàng nghìn tệp, nhiều tệp
+// trùng tên → tìm theo ô "Tìm kiếm tài liệu" rồi khớp ĐÚNG id qua danh sách API trả về (thứ tự dòng bảng = thứ tự
+// danh sách). Không nghe được danh sách (trang chưa có hook) mới khớp theo tên trên dòng.
+function walletTableRows(dialog) {
+  return Array.from(dialog.querySelectorAll("tbody tr")).filter((tr) => tr.cells?.length > 1);
+}
+
+function walletRowName(tr) {
+  return String(tr.cells[0]?.querySelector("span")?.textContent || "").trim();
+}
+
+function walletRowChooseButton(tr) {
+  return Array.from(tr.querySelectorAll("button")).find((b) => isVisible(b) && !b.disabled && foldedNodeText(b) === "chon")
+    || null;
+}
+
+async function pickExistingWalletDocument(dialog, pick) {
+  const wantName = String(pick?.name || "").trim();
+  const wantId = String(pick?.id || "");
+  const tab = pick?.tab === "issued" ? "issued" : "uploaded";
+  let latest = null;
+  const onList = (event) => {
+    try {
+      const data = JSON.parse(event.detail || "{}");
+      if (data && Array.isArray(data.items) && (data.tab === "issued" ? "issued" : "uploaded") === tab) latest = data;
+    } catch (_) { /* sự kiện lạ */ }
+  };
+  const findRow = () => {
+    const rows = walletTableRows(dialog);
+    if (latest) {
+      const index = latest.items.findIndex((item) => String(item?.id || "") === wantId);
+      const row = index >= 0 ? rows[index] : null;
+      return row && attachmentKeyEquals(walletRowName(row), latest.items[index].name) ? row : null;
+    }
+    return rows.find((row) => attachmentKeyEquals(walletRowName(row), wantName)) || null;
+  };
+  const settle = async (timeout) => {
+    await waitFor(() => latest, timeout, 120);
+    await sleep(250); // bảng dựng lại sau khi danh sách về
+  };
+  document.addEventListener(WALLET_LIST_EVENT, onList);
+  try {
+    const tabButton = walletTabButton(dialog, tab);
+    if (tabButton) {
+      latest = null;
+      tabButton.click();
+      await settle(4000);
+    }
+    // Chưa nghe được danh sách sau khi đổi tab (tab đang mở sẵn thì cổng không gọi lại) → chưa khớp theo tên vội: tìm
+    // kiếm để có danh sách mang id, tránh chọn nhầm tệp trùng tên.
+    let row = latest ? findRow() : null;
+    const keyword = dialog.querySelector('input[name="keyword"]');
+    if (!row && keyword && wantName) {
+      latest = null;
+      setNativeValue(keyword, wantName, { typing: true, commit: true });
+      await sleep(150);
+      const submit = Array.from(dialog.querySelectorAll('button[type="submit"]')).find(isVisible)
+        || findButtonByText(dialog, ["Tìm kiếm"]);
+      if (submit) submit.click();
+      else keyword.form?.requestSubmit?.();
+      await settle(6000);
+      row = findRow();
+      // Nhiều tệp trùng tên quá một trang kết quả → lật thêm vài trang.
+      for (let page = 2; !row && latest && page <= 5; page++) {
+        const next = Array.from(dialog.querySelectorAll("button"))
+          .find((b) => isVisible(b) && !b.disabled && foldedNodeText(b) === "sau");
+        if (!next) break;
+        latest = null;
+        next.click();
+        await settle(6000);
+        row = findRow();
+      }
+    }
+    const button = row ? walletRowChooseButton(row) : null;
+    attachDebug("wallet pick", { tab, wantName, found: !!row, button: !!button, listed: latest?.items?.length ?? null });
+    if (!button) return { code: "wallet-pick-not-found", error: `Không tìm thấy "${wantName}" trong Ví cá nhân.` };
+    button.click(); // một lần: clickLikeUser bắn thêm click thứ hai
+    return { ok: true };
+  } finally {
+    document.removeEventListener(WALLET_LIST_EVENT, onList);
   }
 }
 
@@ -793,6 +900,8 @@ function attachmentPlanLabels(planItem = {}, payloadFile = {}) {
   const ownNames = renameAttachmentFiles || planItem.virtualCopy === true
     ? [attachmentDocumentName(payloadFile), payloadFile.name]
     : [safeAttachmentFileName(payloadFile, planItem.documentName)];
+  // Đính bằng nút "Chọn" của ví thì dòng mang tên tệp trong ví.
+  if (planItem.walletPick?.name) ownNames.push(planItem.walletPick.name);
   return uniqueElements([
     isCopyCertificationDefaultComponentName(componentName) ? "" : componentName,
     planItem.detectedType,
@@ -1258,7 +1367,8 @@ async function attachOneFileViaDocumentWallet(row, payloadFile, planItem = {}) {
   row = await resolveLiveAttachmentRow(row, planItem);
   if (!row) return { error: `Không tìm thấy dòng hồ sơ "${planItem.componentName || ""}".`, fileNames: [payloadFile.name] };
   const existingName = rowAttachedFileName(row);
-  if (existingName && foldChoiceText(existingName).includes(foldChoiceText(intendedDocumentName))) {
+  if (existingName && (foldChoiceText(existingName).includes(foldChoiceText(intendedDocumentName))
+    || attachmentKeyEquals(existingName, planItem.walletPick?.name))) {
     markAttachmentResult(row, true);
     return { ok: true, attached: 1, fileNames: [existingName], skipped: true };
   }
@@ -1300,6 +1410,25 @@ async function attachOneFileViaDocumentWallet(row, payloadFile, planItem = {}) {
   }
   const dialog = openResult.dialog;
   row = openResult.row || row;
+
+  if (planItem.walletPick) {
+    const pickName = String(planItem.walletPick.name || payloadFile.name || "");
+    const picked = await pickExistingWalletDocument(dialog, planItem.walletPick);
+    if (picked?.ok) {
+      await waitForWalletDialogClosed(dialog);
+      if (document.documentElement.contains(dialog) && isVisible(dialog)) await closeWalletListDialog();
+      const persisted = await waitForPersistedAttachment(row, planItem, existingName, 8000);
+      if (!persisted) {
+        markAttachmentResult((await resolveLiveAttachmentRow(row, planItem)) || row, false);
+        return { code: "wallet-file-not-persisted", error: `Cổng chưa ghi nhận ${pickName} vào dòng hồ sơ.`,
+          fileNames: [pickName] };
+      }
+      markAttachmentResult(persisted.row, true);
+      return { ok: true, attached: 1, fileNames: [pickName], walletPicked: true };
+    }
+    // Không thấy đúng tệp trong ví (đã xoá / đổi tên trên cổng) → vẫn đính bằng bản đã tải về, không bỏ sót giấy.
+    console.warn("[AutoFill-AttachPlan] Không chọn được tệp trong ví, tải lên thay thế", { pickName, error: picked?.error });
+  }
 
   const firstUploadButton = findButtonByText(dialog, ["Tải lên từ thiết bị"]);
   if (firstUploadButton) {
@@ -2415,6 +2544,44 @@ function filesNotOnRow(row, files) {
   });
 }
 
+// Cổng tải tệp lên File Service rồi mới vẽ tên tệp lên dòng. Cùng mốc với "dòng nhận file" của ví: hụt mà tệp lên
+// muộn thì lượt đính lại thấy tên trên dòng, không gắn trùng.
+const FIXED_SLOT_LAND_TIMEOUT_MS = 8000;
+
+// Bằng chứng tệp đã lên cổng ở ô input cố định: tên tệp hiện trên dòng — chữ trên chip/link của ô, hoặc ô readonly
+// kiểu bootstrap-filestyle (tên tệp nằm trong value, không trong textContent).
+function fixedSlotFilesLanded(row, files) {
+  const missing = filesNotOnRow(row, files);
+  if (!missing.length) return true;
+  const shown = Array.from(row?.querySelectorAll?.("input[readonly]") || [])
+    .map((el) => attpDocFingerprint(String(el.value || "").split(/[\\/]/).pop()))
+    .filter((fp) => fp.length >= 6);
+  const memory = readUploadedNames();
+  return missing.every((file) => shownIndexForFile(shown, file, memory) >= 0);
+}
+
+const ATTACH_LANDED_STYLE_ID = "tlnd-attach-landed-style";
+
+// Tô xanh + dấu ✓ đúng chip tên tệp đã lên cổng (viền <tr> không hiện trên bảng của cổng nên tô ô chứa chip).
+function markLandedFileChips(row, files) {
+  if (!document.getElementById(ATTACH_LANDED_STYLE_ID)) {
+    const st = document.createElement("style");
+    st.id = ATTACH_LANDED_STYLE_ID;
+    st.textContent = ".tlnd-attach-landed{color:#2e7d32 !important;font-weight:600 !important}"
+      + ".tlnd-attach-landed::before{content:\"\\2713  \";color:#2e7d32;font-weight:700}";
+    (document.head || document.documentElement).appendChild(st);
+  }
+  const memory = readUploadedNames();
+  const fileRe = /\.(pdf|jpe?g|png|webp|docx?|xlsx?)\b/i;
+  const chips = Array.from(row?.querySelectorAll?.("*") || []).filter((el) => !el.children.length
+    && fileRe.test(el.textContent || "")
+    && files.some((file) => shownIndexForFile([attpDocFingerprint(el.textContent)], file, memory) >= 0));
+  chips.forEach((el) => el.classList.add("tlnd-attach-landed"));
+  const cells = new Set(chips.map((el) => el.closest("td") || row));
+  if (!cells.size) cells.add(row);
+  cells.forEach((cell) => markAttachmentResult(cell, true));
+}
+
 // Đính kèm cho thủ tục có ô upload cố định: bơm thẳng file vào input ẩn của đúng hàng, không qua
 // modal "ví giấy tờ". Hỗ trợ 2 dạng: (1) input cạnh .btn_upload (vd mai táng); (2) bảng + menu
 // "Chọn tệp tin" (vd khai sinh liên thông). Gom nhiều file cùng 1 ô (input multiple) nếu có.
@@ -2464,12 +2631,26 @@ async function attachFilesByFixedSlot(payloadFiles, attachments) {
       await chooseBootstrapFileOptionForInput(input);
       // assumeConsumed: form mai táng reset input.files sau khi đọc → lấy kết quả gán trước dispatch.
       const ok = setFilesOnInput(input, pending, { assumeConsumed: true });
-      await sleep(600);
-      markAttachmentResult(markTarget, ok);
-      if (ok && untick && input.closest("tr")) await tickAttpRowCheckbox(input.closest("tr"));
-      if (ok) rememberUploadedFiles(pending);
-      if (ok) attachedNames.push(...pending.map((f) => f.name));
-      else errors.push(`Không gắn được file vào ô "${slotLabel}".`);
+      if (!ok) {
+        markAttachmentResult(markTarget, false);
+        errors.push(`Không gắn được file vào ô "${slotLabel}".`);
+        continue;
+      }
+      // Gán được vào input chưa phải là đã lên cổng: cổng tải tệp lên File Service bất đồng bộ và có thể hỏng
+      // im lặng. Chỉ nhận thành công khi tên tệp hiện trên dòng. Nhớ tệp nguồn trước để so khớp chịu được tên
+      // bị cổng cắt ngắn khi hiển thị.
+      rememberUploadedFiles(pending);
+      const liveRow = () => (markTarget.isConnected ? markTarget
+        : findFixedSlotInput(item, new Set())?.closest("tr") || markTarget);
+      const landed = await waitFor(() => fixedSlotFilesLanded(liveRow(), pending), FIXED_SLOT_LAND_TIMEOUT_MS, 300);
+      if (!landed) {
+        markAttachmentResult(liveRow(), false);
+        errors.push(`Cổng chưa ghi nhận tệp ở ô "${slotLabel}" — tên tệp không hiện trên dòng.`);
+        continue;
+      }
+      markLandedFileChips(liveRow(), pending);
+      if (untick && liveRow().matches?.("tr")) await tickAttpRowCheckbox(liveRow());
+      attachedNames.push(...pending.map((f) => f.name));
       continue;
     }
 
@@ -2523,7 +2704,7 @@ async function attachFilesByFixedSlot(payloadFiles, attachments) {
       }
       if (untick && trigger.closest("tr")) await tickAttpRowCheckbox(trigger.closest("tr"));
       rememberUploadedFiles(pending);
-      markAttachmentResult(markTarget, true);
+      markLandedFileChips(markTarget, pending);
       return { found: true, ok: true, attached: pendingNames, skipped };
     };
 
@@ -3439,7 +3620,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.action === "listWalletDocuments") {
     // Chỉ frame có dòng hồ sơ chứng thực trả lời (all_frames).
     if (!findCopyCertificationAttachmentRow()) return;
-    listWalletDocuments(msg.limit)
+    listWalletDocuments(msg.limit, msg.tabs)
       .then(sendResponse)
       .catch((e) => sendResponse({ ok: false, error: String(e?.message || e).slice(0, 200) }));
     return true; // async

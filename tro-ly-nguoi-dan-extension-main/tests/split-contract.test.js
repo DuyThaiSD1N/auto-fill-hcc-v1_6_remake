@@ -24,7 +24,7 @@ assert.doesNotMatch(sidebar, /openDossierTabAndAttach/);
 const openStart = background.indexOf("async function openNextSplitQueueItemUnlocked");
 const openEnd = background.indexOf("async function finishSplitQueueTabUnlocked", openStart);
 const open = background.slice(openStart, openEnd);
-assert.ok(open.indexOf('chrome.tabs.create({ url: "about:blank", active: true })') >= 0);
+assert.ok(open.indexOf("await createSplitTab(state.windowId)") >= 0);
 assert.ok(open.indexOf("await setPendingMap(pending)") < open.indexOf("await chrome.tabs.update"));
 assert.match(background, /getSplitAttachQueueStatus/);
 assert.match(background, /status = "done"/);

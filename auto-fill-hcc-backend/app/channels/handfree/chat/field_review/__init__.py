@@ -352,9 +352,12 @@ def _count(value) -> int:
         return 0
 
 
-def _stats(raw) -> dict:
+def _stats(raw, procedure_key: str = "") -> dict:
     raw = raw if isinstance(raw, dict) else {}
     stats = {key: _count(raw.get(key)) for key in ("filled", "optional", "required")}
+    if (registry.get(procedure_key) or {}).get("requiredOnly"):
+        # Thủ tục chỉ bổ sung ô bắt buộc: ô không bắt buộc còn trống không mời, không nhắc (extension vẫn đếm).
+        stats["optional"] = 0
     stats["empty"] = stats["optional"] + stats["required"]
     return stats
 
@@ -382,7 +385,7 @@ def _go_chip(proc: dict | None, conv: dict | None = None) -> dict:
 
 def begin(conv: dict, review) -> dict:
     """Lượt điền mới = vòng bổ sung mới (luồng bản 2): ghi số ô extension vừa đếm sau khi điền."""
-    stats = _stats(review)
+    stats = _stats(review, conv.get("procedure_key") or "")
     conv["field_review"] = {"stats": stats}
     return stats
 
@@ -390,7 +393,7 @@ def begin(conv: dict, review) -> dict:
 def update_stats(conv: dict, raw) -> dict:
     """Số ô vừa đếm lại trên trang (cổng chặn chuyển bước, ô bắt buộc trống hiện ra) — giữ nút đã lưu của lượt điền."""
     st = conv.setdefault("field_review", {})
-    st["stats"] = _stats(raw)
+    st["stats"] = _stats(raw, conv.get("procedure_key") or "")
     st["ready_said"] = not st["stats"]["required"] and bool(st.get("ready_said"))
     return st["stats"]
 
@@ -511,7 +514,8 @@ def conclusion(conv: dict, proc: dict | None, keep: list[dict]) -> tuple[str, st
     stats = st.get("stats") or _stats({})
     if stats["required"]:
         st["ready_said"] = False
-        md, tts = _say(vi.FLOW2_NEED_REQUIRED, **stats)
+        md, tts = _say(vi.FLOW2_NEED_REQUIRED_ONLY if (config(proc) or {}).get("requiredOnly")
+                       else vi.FLOW2_NEED_REQUIRED, **stats)
         if liz_commit_self(conv, proc) and not st.get("liz_commit_ok"):
             # Cổng liz: điền + đính xong là dặn tích ô cam kết luôn, không đợi đủ ô bắt buộc.
             _ask_commit(st)
@@ -573,7 +577,7 @@ def _status_reply(conv: dict, proc: dict | None, st: dict, payload: dict):
 
     if not flow_v2(conv, proc) or st.get("running") or not isinstance(payload.get("stats"), dict):
         return Reply()
-    st["stats"] = _stats(payload["stats"])
+    st["stats"] = _stats(payload["stats"], (proc or {}).get("key") or "")
     if st["stats"]["required"] or st.get("ready_said") or not _waiting_ready(conv, proc, st):
         return Reply()
     md, tts = _ready(proc, st, conv)
@@ -599,7 +603,7 @@ def decorate_fill_report(conv: dict, proc: dict | None, reply, review, tail: dic
     theo. Lượt điền mới = vòng bổ sung mới."""
     if not reviewing_fill(conv, proc, review):
         return
-    stats = _stats(review)
+    stats = _stats(review, (proc or {}).get("key") or "")
     conv["field_review"] = {"chips": [dict(c) for c in reply.chips], "stats": stats}
     trails = [_say(vi.FR_FILL_STATS, **stats)] if stats["empty"] else []
     if tail:
@@ -614,11 +618,15 @@ def decorate_single_page_fill(conv: dict, proc: dict | None, reply, review, *, o
     bổ sung — con trỏ hỏi ô và lượt tải tệp cùng cuộn một trang — offer_after_attach mời khi đính xong."""
     if not reviewing_fill(conv, proc, review):
         return
-    stats = _stats(review)
+    stats = _stats(review, (proc or {}).get("key") or "")
     conv["field_review"] = {"chips": [dict(c) for c in reply.chips], "stats": stats}
     if not stats["empty"]:
         return
-    md, tts = _say(vi.FR_FILL_STATS if offer else vi.FR_FILL_STATS_WAIT, **stats)
+    if (config(proc) or {}).get("requiredOnly"):
+        template = vi.FR_FILL_STATS_REQUIRED_ONLY if offer else vi.FR_FILL_STATS_WAIT_REQUIRED_ONLY
+    else:
+        template = vi.FR_FILL_STATS if offer else vi.FR_FILL_STATS_WAIT
+    md, tts = _say(template, **stats)
     # Đứng TRƯỚC lệnh đính kèm: sidebar vẽ bong bóng phụ khi nhận reply, không chờ lệnh đính chạy xong.
     reply.actions = [{"type": "trail_message", "md": md}, *reply.actions]
     reply.tts_text += tts
@@ -758,7 +766,7 @@ def _field(raw, no_section: set[str] = frozenset(), copy_pair: tuple[str, ...] =
 def _next_action(proc: dict | None, st: dict, apply: dict | None = None, focus: str = "") -> dict:
     action = {"type": "field_review_next", "required": _required(proc), "skip": list(st.get("skip") or []),
               **_form_rules(proc)}
-    if st.get("required_first"):
+    if st.get("required_first") or (config(proc) or {}).get("requiredOnly"):
         action["requiredFirst"] = True  # luồng bản 2: hỏi hết ô bắt buộc trống trước rồi mới tới ô không bắt buộc
     if apply:
         action["apply"] = apply
@@ -1259,11 +1267,15 @@ async def handle(conv: dict, proc: dict | None, intent):
     # field_review_focus: extension đã điền ô trước (nếu có) và tìm xong ô trống kế tiếp.
     payload = intent.payload or {}
     if isinstance(payload.get("stats"), dict):
-        st["stats"] = _stats(payload["stats"])
+        st["stats"] = _stats(payload["stats"], (proc or {}).get("key") or "")
     back = bool(st.get("back_label"))
     field = _field(payload.get("field"), _no_section(proc), _copy_pair(proc), strip_numbers=_bac_ninh_portal(proc))
     if field is not None and bxd(proc):
         field["mobile_only"] = True  # cổng iGate các bộ không nhận số máy bàn
+    if field is not None and not field["required"] and (config(proc) or {}).get("requiredOnly"):
+        # Thủ tục chỉ bổ sung ô bắt buộc: extension tìm ô bắt buộc trước (requiredFirst), hết ô bắt buộc thì đưa tới ô
+        # không bắt buộc → coi như hết ô, kết thúc vòng bổ sung.
+        field = None
     if field is not None:
         _hmong_names(proc, field)
     other = _other_text(conv, proc).get(field["name"]) if field is not None else None
@@ -1349,7 +1361,7 @@ def _preview_step(proc: dict | None, st: dict, intent):
             return r
         st["preview_open"] = False
         if isinstance(payload.get("stats"), dict):
-            st["stats"] = _stats(payload["stats"])
+            st["stats"] = _stats(payload["stats"], (proc or {}).get("key") or "")
         required = (st.get("stats") or {}).get("required") or 0
         if required:
             r = Reply(*_say(vi.FR_PREVIEW_MISSING, count=required))

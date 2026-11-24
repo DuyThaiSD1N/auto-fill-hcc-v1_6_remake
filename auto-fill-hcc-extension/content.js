@@ -50,7 +50,7 @@
   // header hiện "1.17 · 8/9" trong khi manifest đã là 1.17.0.6. Đúng lúc cần trả
   // lời "bản vá đã tới máy này chưa?" thì nhãn lại nói sai.
   // NGÀY vẫn ghi tay (để hỗ trợ), đổi cùng mục đầu changelog.js — tests/release-version.test.js kiểm.
-  const APP_RELEASE_DATE = "22/11";
+  const APP_RELEASE_DATE = "23/11";
   const APP_VERSION_LABEL = (() => {
     let v = "?";
     try { v = chrome.runtime.getManifest().version; } catch (e) { /* context đã mất */ }
@@ -4536,6 +4536,44 @@
     });
   }
 
+  // Cổng tải tệp lên File Service rồi mới vẽ tên tệp lên dòng. Cùng mốc với "dòng nhận file" của ví: hụt mà tệp lên
+  // muộn thì lượt đính lại thấy tên trên dòng, không gắn trùng.
+  const FIXED_SLOT_LAND_TIMEOUT_MS = 8000;
+
+  // Bằng chứng tệp đã lên cổng ở ô input cố định: tên tệp hiện trên dòng — chữ trên chip/link của ô, hoặc ô readonly
+  // kiểu bootstrap-filestyle (tên tệp nằm trong value, không trong textContent).
+  function fixedSlotFilesLanded(row, files) {
+    const missing = filesNotOnRow(row, files);
+    if (!missing.length) return true;
+    const shown = Array.from(row?.querySelectorAll?.("input[readonly]") || [])
+      .map((el) => attpDocFingerprint(String(el.value || "").split(/[\\/]/).pop()))
+      .filter((fp) => fp.length >= 6);
+    const memory = readUploadedNames();
+    return missing.every((file) => shownIndexForFile(shown, file, memory) >= 0);
+  }
+
+  const ATTACH_LANDED_STYLE_ID = "hcc-attach-landed-style";
+
+  // Tô xanh + dấu ✓ đúng chip tên tệp đã lên cổng (viền <tr> không hiện trên bảng của cổng nên tô ô chứa chip).
+  function markLandedFileChips(row, files) {
+    if (!document.getElementById(ATTACH_LANDED_STYLE_ID)) {
+      const st = document.createElement("style");
+      st.id = ATTACH_LANDED_STYLE_ID;
+      st.textContent = ".hcc-attach-landed{color:#2e7d32 !important;font-weight:600 !important}"
+        + ".hcc-attach-landed::before{content:\"\\2713  \";color:#2e7d32;font-weight:700}";
+      (document.head || document.documentElement).appendChild(st);
+    }
+    const memory = readUploadedNames();
+    const fileRe = /\.(pdf|jpe?g|png|webp|docx?|xlsx?)\b/i;
+    const chips = Array.from(row?.querySelectorAll?.("*") || []).filter((el) => !el.children.length
+      && fileRe.test(el.textContent || "")
+      && files.some((file) => shownIndexForFile([attpDocFingerprint(el.textContent)], file, memory) >= 0));
+    chips.forEach((el) => el.classList.add("hcc-attach-landed"));
+    const cells = new Set(chips.map((el) => el.closest("td") || row));
+    if (!cells.size) cells.add(row);
+    cells.forEach((cell) => markAttachmentResult(cell, true));
+  }
+
   // Đính kèm cho thủ tục có ô upload cố định: bơm thẳng file vào input ẩn của đúng hàng, không qua
   // modal "ví giấy tờ". Hỗ trợ 2 dạng: (1) input cạnh .btn_upload (vd mai táng); (2) bảng + menu
   // "Chọn tệp tin" (vd khai sinh liên thông). Gom nhiều file cùng 1 ô (input multiple) nếu có.
@@ -4607,12 +4645,22 @@
           await chooseBootstrapFileOptionForInput(input);
           ok = setFilesOnInput(input, pending, { assumeConsumed: true });
         }
-        await sleep(600);
-        markAttachmentResult(markTarget, ok);
+        // Gán được vào input chưa phải là đã lên cổng: cổng tải tệp lên File Service bất đồng bộ và có thể hỏng
+        // im lặng. Chỉ nhận thành công khi tên tệp hiện trên dòng. Nhớ tệp nguồn trước để so khớp chịu được tên
+        // bị cổng cắt ngắn khi hiển thị.
+        const liveRow = () => (markTarget.isConnected ? markTarget
+          : findFixedSlotInput(item, new Set())?.closest("tr") || markTarget);
+        const assigned = ok;
+        if (ok) {
+          rememberUploadedFiles(pending);
+          ok = !!(await waitFor(() => fixedSlotFilesLanded(liveRow(), pending), FIXED_SLOT_LAND_TIMEOUT_MS, 300));
+        }
+        if (ok) markLandedFileChips(liveRow(), pending);
+        else markAttachmentResult(liveRow(), false);
         if (ok && untick && slotRow) await tickAttpRowCheckbox(slotRow);
         if (ok && item.soBan) setFixedSlotRowCopies(slotRow, item.soBan);
-        if (ok) rememberUploadedFiles(pending);
         if (ok) attachedNames.push(...pending.map((f) => f.name));
+        else if (assigned) fail(item, `Cổng chưa ghi nhận tệp ở ô "${slotLabel}" — tên tệp không hiện trên dòng.`);
         else fail(item, `Không gắn được file vào ô "${slotLabel}".`);
         continue;
       }
@@ -4645,13 +4693,22 @@
           fail(item, `Không mở được ô đính kèm "${slotLabel}".`);
           continue;
         }
-        const ok = setFilesOnInput(menuInput, pending, { assumeConsumed: true });
-        await sleep(600);
+        let ok = setFilesOnInput(menuInput, pending, { assumeConsumed: true });
+        await sleep(500);
         await closeOpenMenu();
+        // Như ô input: chỉ nhận thành công khi tên tệp hiện trên dòng (cổng cập nhật bất đồng bộ nên dò bằng poll).
+        const assigned = ok;
+        if (ok) {
+          rememberUploadedFiles(pending);
+          ok = !!(await waitFor(() => fixedSlotFilesLanded(markTarget, pending)
+            || pending.every((f) => menuSlotRowText(trigger).includes(foldChoiceText(f.name))),
+          FIXED_SLOT_LAND_TIMEOUT_MS, 300));
+        }
         if (ok && untick && trigger.closest("tr")) await tickAttpRowCheckbox(trigger.closest("tr"));
-        markAttachmentResult(markTarget, ok);
-        if (ok) rememberUploadedFiles(pending);
+        if (ok) markLandedFileChips(markTarget, pending);
+        else markAttachmentResult(markTarget, false);
         if (ok) attachedNames.push(...pending.map((f) => f.name));
+        else if (assigned) fail(item, `Cổng chưa ghi nhận tệp ở ô "${slotLabel}" — tên tệp không hiện trên dòng.`);
         else fail(item, `Không gắn được file vào ô "${slotLabel}".`);
         continue;
       }

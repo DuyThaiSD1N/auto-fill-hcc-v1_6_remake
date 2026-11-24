@@ -366,6 +366,8 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         "supportsAttachFileReport": raw.get("supportsAttachFileReport") is True,
         # Dùng lại giấy tờ trong Ví cá nhân của cổng ở bước Thành phần hồ sơ (chat/wallet_reuse.py).
         flow.wallet_reuse.CAPABILITY: raw.get(flow.wallet_reuse.CAPABILITY) is True,
+        # Ví cá nhân: đọc thêm tab "Tài liệu được cấp" + đính giấy lấy từ ví bằng nút "Chọn" của ví.
+        flow.wallet_reuse.PICK_CAPABILITY: raw.get(flow.wallet_reuse.PICK_CAPABILITY) is True,
         # Wizard tư pháp: bấm nút Quay lại của cổng (guided_click_back), kiểm tờ khai khi lùi về Kê khai
         # (step_back_scan) — chat/step_back.py.
         step_back.CAPABILITY: raw.get(step_back.CAPABILITY) is True,
@@ -485,6 +487,9 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
         "role": str(user.get("role") or ""),
         # Cài đặt "Dùng lại giấy tờ trong Ví cá nhân" của tài khoản — flow cần ở cả chỗ dựng nút (đồng bộ).
         flow.wallet_reuse.SETTING: account_settings.resolve(user).get(flow.wallet_reuse.SETTING) is True,
+        # Giá trị tài khoản đã tự lưu (không tính mặc định) — bản extension cũ chỉ hỏi ví khi tài khoản tự bật.
+        flow.wallet_reuse.SETTING_SAVED: isinstance(user.get(account_settings.FIELD), dict)
+        and user[account_settings.FIELD].get(flow.wallet_reuse.SETTING) is True,
     }
 
     # Giữ mỏ neo người yêu cầu trong conversation để lượt "Đã đưa đủ" chạy nền vẫn nhận được

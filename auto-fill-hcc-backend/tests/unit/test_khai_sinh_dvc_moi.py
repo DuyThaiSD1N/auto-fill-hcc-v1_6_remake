@@ -284,8 +284,12 @@ def _docs(*texts):
     return [{"name": f"{i}.pdf", "text": t} for i, t in enumerate(texts)]
 
 
-def test_khong_to_khai_co_cccd_cha_thi_cha_theo_cccd():
-    ctx = reason._render_context(_RAW_KHONG_CHA, {"formContext": _NGUOI_KHAC}, _docs(_CCCD_CHA, _CCCD_ME, _GCS))
+_CHA_NOP = {"applicantFullname": "TRẦN VĂN B", "applicantIdentityNumber": "001088000002"}
+
+
+@pytest.mark.parametrize("account", [_NGUOI_KHAC, _CHA_NOP])
+def test_khong_to_khai_co_cccd_cha_thi_cha_theo_cccd(account):
+    ctx = reason._render_context(_RAW_KHONG_CHA, {"formContext": account}, _docs(_CCCD_CHA, _CCCD_ME, _GCS))
     cha = reason.section(ctx, "cha")
     assert reason.labeled_value(cha, "Họ tên") == "TRẦN VĂN B"
     assert reason.labeled_value(cha, "Số định danh") == "001088000002"
@@ -296,10 +300,25 @@ def test_khong_to_khai_co_cccd_cha_thi_cha_theo_cccd():
 
 @pytest.mark.parametrize("extra, account", [
     ("TỜ KHAI ĐĂNG KÝ KHAI SINH\nHọ, chữ đệm, tên người cha:\n", _NGUOI_KHAC),  # tờ khai để trống cha
-    ("", {"applicantFullname": "TRẦN VĂN B", "applicantIdentityNumber": "001088000002"}),  # thẻ nam là người nộp
     ("GIẤY ỦY QUYỀN\nBên được ủy quyền: TRẦN VĂN B\n", _NGUOI_KHAC),  # tên nam có ở giấy khác
 ])
 def test_khong_tu_gan_cha_khi_vai_khong_chac(extra, account):
     ctx = reason._render_context(_RAW_KHONG_CHA, {"formContext": account}, _docs(_CCCD_CHA, _CCCD_ME, _GCS, extra))
     assert reason.labeled_value(reason.section(ctx, "cha"), "Họ tên") == ""
     assert reason.labeled_value(reason.section(ctx, "loai_khai_sinh"), "Kết luận") == "Chưa xác định được cha"
+
+
+def test_cha_tu_nop_thi_quan_he_la_cha():
+    ctx = reason._render_context(_RAW_KHONG_CHA, {"formContext": _CHA_NOP}, _docs(_CCCD_CHA, _CCCD_ME, _GCS))
+    values = {**BASE, "Cha_HoTen": "Trần Văn B", "Cha_SoDinhDanh": "001088000002"}
+    by = _by(_enrich(values, ctx, account=_CHA_NOP)[0])
+    assert by["citizenQuanhevoinguoiduockhaisinh"]["value"] == "Cha"
+    assert by["citizenLoaikhaisinh_NgdcKS"]["value"] == "Đã xác định được cả cha lẫn mẹ"
+
+
+def test_da_co_ten_ca_cha_lan_me_thi_loai_khai_sinh_xac_dinh_ca_hai():
+    raw = _RAW_KHONG_CHA.replace("Họ tên: Không xác định", "Họ tên: Trần Văn B")
+    ctx = reason._render_context(raw, {"formContext": _NGUOI_KHAC}, _docs(_CCCD_ME, _GCS))
+    loai = reason.section(ctx, "loai_khai_sinh")
+    assert reason.labeled_value(loai, "Kết luận") == "Đã xác định được cả cha lẫn mẹ"
+    assert reason.labeled_value(loai, "Đã có hồ sơ, giấy tờ cá nhân") == "Không"

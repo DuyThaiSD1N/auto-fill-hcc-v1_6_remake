@@ -187,6 +187,16 @@ def _clean_phone(value: Any) -> str:
     return prefix + digits
 
 
+def _head_office_phone(values: dict) -> str:
+    """Số trụ sở chỉ lệch 1–2 chữ số với số chủ hộ (cùng độ dài) là một số viết hai lần trên đơn, OCR đọc lệch chữ số
+    viết tay / viết đè ở một chỗ → lấy số của chủ hộ."""
+    office = _clean_phone(values.get("TruSo_DienThoai"))
+    owner = _clean_phone(values.get("ChuHo_DienThoai"))
+    if office and owner and len(office) == len(owner) and 1 <= sum(a != b for a, b in zip(office, owner)) <= 2:
+        return owner
+    return office
+
+
 def _clean_email(value: Any) -> str:
     text = _compact_text(value).lower()
     if not text:
@@ -725,7 +735,7 @@ def enrich(fields: list[dict], *, page: str | None = None, skip_start_date: bool
 
     elif selected_page == "dia-chi":
         add_address("ctl00$C$ADDRCtl", values.get("TruSo_DiaChi"))
-        add("ctl00$C$DCONTClt$HO_PHONEFld", "dom-input", _clean_phone(values.get("TruSo_DienThoai")))
+        add("ctl00$C$DCONTClt$HO_PHONEFld", "dom-input", _head_office_phone(values))
         add("ctl00$C$DCONTClt$HO_FAXFld", "dom-input", values.get("TruSo_Fax"))
         add("ctl00$C$DCONTClt$HO_EMAILFld", "dom-input", _clean_email(values.get("TruSo_Email")))
         add("ctl00$C$DCONTClt$HO_URLFld", "dom-input", values.get("TruSo_Website"))

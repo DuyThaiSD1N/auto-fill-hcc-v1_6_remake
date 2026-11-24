@@ -46,7 +46,7 @@ test("nộp xong KHÔNG xoá khóa ngay — xoay ở lượt kế tiếp", () =>
 
 test("tab tách được gieo khóa để cú bấm nộp báo về được", () => {
   assert.match(popup, /queueItems = rest\.map[\s\S]{0,600}?dossierId,/);
-  assert.match(background, /chrome\.tabs\.create[\s\S]{0,700}?\["autofill_session_" \+ tab\.id\]: \{ dossierId: item\.dossierId \}/);
+  assert.match(background, /createSplitTab\(state\.windowId\)[\s\S]{0,700}?\["autofill_session_" \+ tab\.id\]: \{ dossierId: item\.dossierId \}/);
 });
 
 test("content.js chỉ tính cú bấm trên ĐÚNG trang nộp hồ sơ", () => {

@@ -40,7 +40,9 @@ RULES = """
 Mã đã đếm số TRANG giấy ghi nguyên văn từng cách viết họ tên người chết (dòng "TỔNG số trang" trong tín hiệu mã). B được
 nhiều trang ghi hơn A → chọn B, kể cả khi A có giấy cơ quan cấp mà B không có; số trang bằng nhau thì theo hạng: giấy
 cơ quan cấp (giấy báo tử, trích lục khai tử, CCCD / CMND, sổ hộ khẩu) > tờ khai đăng ký khai tử > giấy người dân tự lập
-(bản cam đoan, đơn, biên bản). Hai cách viết chỉ khác DẤU là chuyện thường (OCR đọc lệch dấu), KHÔNG phải lý do giữ A.
+(bản cam đoan, đơn, biên bản). A ghi đúng nguyên văn tờ khai KHÔNG phải lý do giữ A khi B có trên giấy cơ quan cấp
+với số trang bằng hoặc nhiều hơn: tờ khai do người dân ghi, giấy cơ quan cấp mới là chuẩn. Hai cách viết chỉ khác DẤU
+là chuyện thường (OCR đọc lệch dấu), KHÔNG phải lý do giữ A.
 Mã đã tự loại cách viết là bản rơi dấu của A, chữ Đ đọc thành D, và cách viết đổi chữ cái khi chữ cái của A đã có trên
 giấy ngoài tờ khai — không lấy các lý do này để giữ A. Chọn đúng từng chữ, từng dấu như trên giấy.
 </ho_ten>
@@ -122,11 +124,15 @@ def name_finding(case: Case, page_list: list[dict]) -> Finding | None:
     if not winners or (len(winners) > 1 and winners[0][0] == winners[1][0]):
         return None
     _, _, cand, best = winners[0]
+    # Số trang bằng nhau: toà hay coi "A đúng nguyên văn tờ khai" là lý do giữ A — ghi rõ kết luận theo hạng nguồn.
+    tie = (" Số trang bằng nhau → theo hạng nguồn: B có trên giấy cơ quan cấp / thẻ, A chỉ có trên tờ khai hoặc giấy "
+           "tự lập → B hạng cao hơn." if best["trang"] == mine["trang"]
+           and best["ban_in"] + best["the"] > mine["ban_in"] + mine["the"] else "")
     return _finding("ho_ten", cand["name"], cand["quote"], cand["doc"], "giấy ghi họ tên người chết",
                     f"TỔNG số trang ghi nguyên văn: B {best['trang']}, A {mine['trang']}. B: {best['ban_in']} giấy cơ "
                     f"quan cấp, {best['the']} dòng họ tên thẻ, {best['tu_lap']} giấy tự lập, {best['to_khai']} tờ khai; "
                     f"A: {mine['ban_in']} giấy cơ quan cấp, {mine['the']} dòng thẻ, {mine['tu_lap']} giấy tự lập, "
-                    f"{mine['to_khai']} tờ khai")
+                    f"{mine['to_khai']} tờ khai.{tie}")
 
 
 def _card(case: Case) -> dict | None:

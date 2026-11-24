@@ -166,7 +166,7 @@ def test_enrich_chu_ho_page_normalizes_name_and_phone():
 def test_business_contact_sources_are_independent_and_submitter_has_no_contact_field():
     fields = [
         {"name": "TruSo_DienThoai", "value": "0901000001"},
-        {"name": "ChuHo_DienThoai", "value": "0902000002"},
+        {"name": "ChuHo_DienThoai", "value": "0912345678"},
         {"name": "Thue_DienThoai", "value": "0903000003"},
         # Khóa hồi quy: kể cả dữ liệu compact cũ còn key này, mapper cũng không đưa sang trang người nộp.
         {"name": "NguoiNop_DienThoai", "value": "0904000004"},
@@ -179,7 +179,7 @@ def test_business_contact_sources_are_independent_and_submitter_has_no_contact_f
     submitter_names = {f["name"] for f in pages["nguoi-nop-ho-so"]}
 
     assert address_values["ctl00$C$DCONTClt$HO_PHONEFld"] == "0901000001"
-    assert owner_values["ctl00$C$OWN_PCtl$PERSCtl$PHONEFld"] == "0902000002"
+    assert owner_values["ctl00$C$OWN_PCtl$PERSCtl$PHONEFld"] == "0912345678"
     assert tax_values["ctl00$C$UC_DW_TAXEditCtl$REP_RECEIVER_PHONEFld"] == "0903000003"
     assert "ctl00$C$PERSCtl$PHONEFld" not in submitter_names
 

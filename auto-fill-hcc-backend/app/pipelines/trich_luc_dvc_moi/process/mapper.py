@@ -150,6 +150,14 @@ def _card_birth_year_mismatch(number, birth) -> bool:
     return bool(card_year and birth_year and card_year != int(birth_year[1]))
 
 
+def _card_number(values: dict) -> str:
+    """Số giấy tờ tùy thân: thẻ / CMND chỉ có chữ số; số hộ chiếu có chữ cái đầu (vd "C1234567") → giữ nguyên."""
+    raw = values.get("NguoiDuocCap_SoGiayTo")
+    if "ho chieu" in _fold(values.get("NguoiDuocCap_LoaiGiayTo")):
+        return re.sub(r"[^0-9A-Za-z]+", "", str(raw or "")).upper()
+    return _digits(raw)
+
+
 def _card_not_recipient(number, birth, gender, issue_date, event: str, event_date,
                         on_declaration: bool = False) -> bool:
     """Thẻ đọc ra mâu thuẫn với chính người được cấp → thẻ của người khác trong hồ sơ bị gán nhầm.
@@ -625,7 +633,7 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     issue_date = values.get("NguoiDuocCap_NgayCap")
     # Số căn cước/CCCD chính là số định danh 12 số → thiếu số giấy tờ thì lấy số định danh (trẻ dưới 14 tuổi
     # chưa có thẻ được chặn ở dưới).
-    card_number = _digits(values.get("NguoiDuocCap_SoGiayTo")) or (personal_id if len(personal_id) == 12 else "")
+    card_number = _card_number(values) or (personal_id if len(personal_id) == 12 else "")
     # Số trùng tài khoản mà người được cấp đã chết hoặc khác tên chủ tài khoản → thẻ của người nộp bị gán nhầm
     # (hay gặp: trích lục khai tử kèm CCCD người thân, giấy hộ tịch để trống giấy tờ tùy thân) → bỏ cả cụm.
     account_name, account_id = requester_context(options)
@@ -718,6 +726,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     add("citizenHoSo_CoQuanDangKy", registrar)
     add("citizenHotenCha", upper_person_name(values.get("GiayTo_HoTenCha")))
     add("citizenHotenMe", upper_person_name(values.get("GiayTo_HoTenMe")))
+    spouse = values.get("GiayTo_HoTenVoChong")
+    # Hai ô chỉ hiện sau khi chọn loại trích lục kết hôn. Tên trùng người được cấp là lấy nhầm cột của chính người đó.
+    if event == "marriage" and spouse and _fold(spouse) != _fold(values.get("NguoiDuocCap_HoTen")):
+        add("citizenHotenVohoacChong", upper_person_name(spouse))
+        spouse_birth = values.get("GiayTo_NgaySinhVoChong")
+        add("citizenNgaysinhVohoacChong", spouse_birth if _date_key(spouse_birth) else "")  # ô lịch: đủ dd/mm/yyyy
     add("citizenTenGiayToHoTich", values.get("GiayTo_TenGiayTo") or _EVENT_TO_DOCUMENT_NAME.get(event))
     # Ô "Số:" góc trên giấy hộ tịch viết tay OCR hay không ra chữ số, LLM vớ sang dòng "Số:" của khối CMND
     # ngay trong thân giấy → số đăng ký trùng số thẻ là đọc nhầm, bỏ trống để cán bộ nhập.

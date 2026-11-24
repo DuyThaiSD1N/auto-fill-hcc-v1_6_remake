@@ -85,8 +85,10 @@ def test_detect_phrases_and_ui_keys_exist_in_snapshot():
     # Ô "Quan hệ khác" và bốn ô địa chỉ người được cấp chỉ render theo điều kiện → không có trong snapshot.
     # "citizenPhone" (SĐT khối người nộp): cổng thêm sau ngày chụp snapshot này, có trong snapshot TTHN mới hơn.
     # "citizenHotenCha" / "citizenHotenMe": cổng thêm sau ngày chụp snapshot này.
+    # Hai ô vợ / chồng chỉ render khi chọn loại trích lục kết hôn.
     conditional = {"citizenField8", "citizenField21", "citizenNDK_TinhThanh", "citizenNDK_PhuongXa", "citizenField38",
-                   "citizenPhone", "citizenHotenCha", "citizenHotenMe"}
+                   "citizenPhone", "citizenHotenCha", "citizenHotenMe",
+                   "citizenHotenVohoacChong", "citizenNgaysinhVohoacChong"}
     for name in set(UI_COMP_BY_NAME) - conditional:
         assert name in data_names, name
 
@@ -922,3 +924,34 @@ def test_nhan_giay_to_chu_tai_khoan_ma_nguoi_duoc_cap_khac_tai_khoan_thi_khong_b
                .replace("Trạng thái: còn sống", "Trạng thái: còn sống\nNguồn: giấy tờ chủ tài khoản"))
     out, _ = _enrich(own, context)
     assert {f["name"]: f["value"] for f in out}["citizenQuanhe"] == "Bản thân"
+
+
+_RAW_KET_HON = (
+    "<nguoi_nop>\nHọ tên: Nguyễn Thị A\nSố định danh: 001190000001\nVai trong hồ sơ: Vợ\n</nguoi_nop>\n"
+    "<nguoi_duoc_cap>\nHọ tên: TRAN VAN B\nSố định danh: C1234567\n</nguoi_duoc_cap>\n"
+    "<giay_to_ho_tich>\nLoại trích lục cần cấp: kết hôn\n</giay_to_ho_tich>\n"
+    "<quan_he>\nNgười yêu cầu tờ khai: không có\nVai người nộp trên giấy: vợ\nKết luận: Vợ\n</quan_he>"
+)
+
+
+def test_giay_ket_hon_nguoi_nop_la_vo_thi_nguoi_duoc_cap_la_nguoi_nop():
+    ctx = reason._render_context(_RAW_KET_HON, {})
+    assert reason.labeled_value(reason.section(ctx, "nguoi_duoc_cap"), "Họ tên") == "Nguyễn Thị A"
+    assert reason.labeled_value(reason.section(ctx, "quan_he"), "Kết luận") == "Bản thân"
+
+
+def test_giay_ket_hon_dong_to_khai_ghi_khong_co_kem_chu_van_chinh():
+    raw = _RAW_KET_HON.replace("Người yêu cầu tờ khai: không có", "Người yêu cầu tờ khai: không có — không có")
+    ctx = reason._render_context(raw, {})
+    assert reason.labeled_value(reason.section(ctx, "quan_he"), "Kết luận") == "Bản thân"
+
+
+def test_giay_ket_hon_co_to_khai_thi_giu_phan_vai():
+    raw = _RAW_KET_HON.replace("Người yêu cầu tờ khai: không có", "Người yêu cầu tờ khai: Nguyễn Thị A")
+    ctx = reason._render_context(raw, {})
+    assert reason.labeled_value(reason.section(ctx, "nguoi_duoc_cap"), "Họ tên") == "TRAN VAN B"
+
+
+def test_so_ho_chieu_giu_chu_cai():
+    assert mapper._card_number({"NguoiDuocCap_LoaiGiayTo": "Hộ chiếu", "NguoiDuocCap_SoGiayTo": "c 1234567"}) == "C1234567"
+    assert mapper._card_number({"NguoiDuocCap_LoaiGiayTo": "CCCD", "NguoiDuocCap_SoGiayTo": "001 190 000001"}) == "001190000001"
