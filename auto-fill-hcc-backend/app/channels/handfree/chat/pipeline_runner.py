@@ -9,12 +9,14 @@ extension chạy không sửa.
 """
 import asyncio
 import base64
+import contextvars
 import functools
 import logging
 import time
 from datetime import datetime, timezone
 
 from app.account_settings import service as account_settings
+from app.config import settings
 from app.channels.handfree.chat import store as conv_store
 from app.channels.handfree.chat import tracing
 from app.channels.handfree.chat.resume import replay as resume_replay
@@ -683,6 +685,21 @@ async def apply_bac_ninh_prefill(conv_id: str, sid: str, procedure_key: str) -> 
     await broadcast(sid, {"type": "fields_ready", "count": len(conv["fields"])})
 
 
+# Lượt soát hộ kinh doanh chạy chặn trước business_ready (song song lượt lập kế hoạch đính kèm): hết hạn thì dùng kết quả
+# lượt điền. Thanh tra chờ lượt đọc ảnh tối đa trang.VISION_WAIT_SECONDS.
+_HKD_REVIEW_WAIT_S = 12
+
+
+async def _hkd_review_result(task, conv_id: str) -> dict | None:
+    if not task:
+        return None
+    try:
+        return await task
+    except Exception as e:  # noqa: BLE001 — lớp soát là phần thêm, hỏng / quá hạn thì giữ kết quả lượt điền
+        logger.warning("[pipeline] soát hộ kinh doanh bỏ qua (%s): %r", conv_id, e)
+        return None
+
+
 @_tracked("business")
 async def run_business_registration(conv_id: str, sid: str, procedure_key: str,
                                     attach_options: dict | None = None) -> None:
@@ -711,6 +728,20 @@ async def run_business_registration(conv_id: str, sid: str, procedure_key: str,
         workflow = str(proc.get("businessWorkflow") or "create")
         process_options = ({"allPages": True, "returnFacts": True} if workflow == "create"
                            else {"page": f"__{workflow}__"})
+        if workflow == "create":
+            owner_user = await _load_owner_user(await conv_store.get(conv_id), sess)
+            # Cấu hình theo tài khoản như lượt điền Auto Fill (phường Phương Liễu không điền ngày bắt đầu hoạt động) —
+            # trợ lý hỏi đáp cũng dùng lại business_pages dựng ở đây.
+            process_options = with_hkd_account_process_options(process_options, owner_user, procedure_key)
+        if workflow == "create" and settings.second_pass_enabled:
+            # Lớp soát hộ kinh doanh (thanh tra, điền đợt 2 của Auto Fill) chạy NGAY ở đây, song song lượt lập kế hoạch đính
+            # kèm, kết quả thay vào trang + facts trước khi phát business_ready — extension nhận dữ liệu đã soát như dữ
+            # liệu thường nên không cần năng lực mới. Bật / tắt theo cấu hình đợt 2 của tài khoản.
+            if second_pass.wanted(owner_user, True):
+                owner = owner_user if isinstance(owner_user, dict) else {}
+                process_options["_secondPass"] = True
+                # Xã / phường của tài khoản quầy: gợi ý cho thanh tra khi tên xã trên giấy đọc lệch.
+                process_options["counterWard"] = str(owner.get("xa") or owner.get("name") or "")
         t_process = time.monotonic()
         async with mon.span("pipeline", procedure=procedure_key):
             process_result = await pipeline({"": raw_files}, process_options)
@@ -718,14 +749,35 @@ async def run_business_registration(conv_id: str, sid: str, procedure_key: str,
                 rec.close_gap("agent_end", "post.mapper")
         process_ms = int((time.monotonic() - t_process) * 1000)
         business_facts = process_result.pop("facts", None)
+        second = process_result.pop("_second_pass", None)
+        # Context rỗng: lượt soát không ghi span / lượt LLM vào bản ghi Monitor của lượt điền.
+        review_task = asyncio.create_task(
+            asyncio.wait_for(second(process_result.get("fields") or []), _HKD_REVIEW_WAIT_S),
+            context=contextvars.Context()) if second else None
         _note_result(rec, process_result)
 
         # Lượt đính kèm là một trace riêng (kind=attach) → recorder riêng, mốc 0 = lúc bắt đầu lập kế hoạch.
         rec_attach = _start_recorder("attach", conv_id, sid, procedure_key)
         file_items = [FileItem(**item) for item in raw_files]
-        async with mon.span("post.plan", procedure=procedure_key):
-            attach_result = await attach_fn(file_items, attach_options or {}, session=None)
+        try:
+            async with mon.span("post.plan", procedure=procedure_key):
+                attach_result = await attach_fn(file_items, attach_options or {}, session=None)
+        except BaseException:
+            if review_task:
+                review_task.cancel()
+            raise
         _note_result(rec_attach, attach_result)
+        reviewed = await _hkd_review_result(review_task, conv_id)
+        if reviewed:
+            pages = process_result.get("pages") or {}
+            for page in {f.get("page") for f in reviewed["fields"]} & set(pages):
+                pages[page] = [{k: v for k, v in f.items() if k != "page"} for f in reviewed["fields"]
+                               if f.get("page") == page]
+            if business_facts is not None and reviewed.get("facts") is not None:
+                business_facts = reviewed["facts"]
+            if rec is not None:
+                rec.output("second_pass", {"rulings": reviewed.get("rulings"), "timing": reviewed.get("timing"),
+                                           "pages": sorted({f.get("page") for f in reviewed["fields"]})})
 
         conv = await conv_store.get(conv_id)
         if not conv:

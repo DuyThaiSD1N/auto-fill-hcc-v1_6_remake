@@ -19,6 +19,7 @@ import json
 import logging
 import re
 import time
+import unicodedata
 from datetime import datetime, timedelta, timezone
 
 from app.channels.handfree.chat import script_vi as vi
@@ -71,7 +72,8 @@ _BLOCKS = [
     (_REG_TYPE_PAGE, []),
     ("dia-chi", ["dia_chi_kd", "dien_thoai", "email", "fax", "website", "khong_kd_tru_so"]),
     (_NGANH_PAGE, []),
-    ("ten-ho-kinh-doanh", ["ten_ho", "ten_ho_giu", "ten_nuoc_ngoai", "ten_nuoc_ngoai_giu", "ten_viet_tat"]),
+    ("ten-ho-kinh-doanh", ["ten_ho", "ten_ho_giu", "ten_nuoc_ngoai", "ten_nuoc_ngoai_giu", "ten_viet_tat",
+                           "ten_viet_tat_giu"]),
     (_OWNER_PAGE, ["chu_the", "chu_ho_la_ban", "chu_ho_ho_ten", "chu_ho_gioi_tinh", "chu_ho_ngay_sinh",
                    "chu_ho_so_dinh_danh", "noi_o"]),
     (MEMBERS_PAGE, []),
@@ -96,6 +98,7 @@ _SLOTS = {
     # Cổng báo có tên trùng / tương tự → hỏi giữ tên hay đổi (true = giữ).
     "ten_ho_giu": {"kind": "yesno"},
     "ten_nuoc_ngoai_giu": {"kind": "yesno"},
+    "ten_viet_tat_giu": {"kind": "yesno"},
     "chu_ho_la_ban": {"kind": "yesno"},
     "chu_ho_ho_ten": {"kind": "text"},
     "chu_ho_gioi_tinh": {"kind": "gender"},
@@ -134,7 +137,13 @@ _FROM_DOCS = {
     "ten_viet_tat": ("HoKinhDoanh_TenVietTat",),
 }
 # Tên kiểm trùng bằng API của nút "Kiểm tra trùng tên" (extension gọi): mục tên → (loại API, field tờ khai).
-_NAME_CHECK = {"ten_ho": ("vi", "HoKinhDoanh_Ten"), "ten_nuoc_ngoai": ("f", "HoKinhDoanh_TenNuocNgoai")}
+# Tên viết tắt: nút kiểm của cổng gọi nhầm hàm kiểm tên tiếng Việt (đọc ô tên chính) → kiểm bằng API tên tiếng Việt với
+# chính tên viết tắt.
+_NAME_CHECK = {"ten_ho": ("vi", "HoKinhDoanh_Ten"), "ten_nuoc_ngoai": ("f", "HoKinhDoanh_TenNuocNgoai"),
+               "ten_viet_tat": ("vi", "HoKinhDoanh_TenVietTat")}
+# Tiền tố loại hình người dân hay nói / ghi kèm tên ("hộ kinh doanh …"): cổng đã có ô chọn "HỘ KINH DOANH" riêng, ô tên
+# chỉ chứa phần sau (mapper cũng bỏ khi điền) — kiểm trùng phải theo đúng chữ trong ô.
+_NAME_PREFIX_RE = re.compile(r"^(?:hộ\s+kinh\s+doanh|hộ\s+kd|hkd)\b[\s:.\-–]*", re.IGNORECASE)
 # Có giấy tờ: hình thức đăng ký đã chọn lúc điền luôn → vòng bổ sung không mở lại. Người nộp vẫn đi đủ bước (sao chép
 # tài khoản, so chủ hộ trên giấy, chọn vai trò, hỏi nơi ở người nộp thay), kéo theo khối Ủy quyền khi cần.
 _NO_REVIEW_PAGES = (_REG_TYPE_PAGE,)
@@ -929,11 +938,22 @@ def _missing_items(st: dict, page: str) -> list[str]:
     return items
 
 
+def _clean_name(value) -> str:
+    text = " ".join(unicodedata.normalize("NFC", str(value or "")).split())
+    text = _NAME_PREFIX_RE.sub("", text).strip(" .,;:-–\"'“”")
+    return text.upper()
+
+
 def _name_value(st: dict, key: str) -> str:
     value = st["values"].get(key)
     if value == "__docs__":
         value = (st.get("base") or {}).get(_NAME_CHECK[key][1])
-    return str(value or "").strip().upper() if isinstance(value, str) else ""
+    # Dấu hiệu nội bộ (vd "__skip__" — công dân bỏ qua mục) không phải tên.
+    return _clean_name(value) if isinstance(value, str) and not value.startswith("__") else ""
+
+
+def _name_key(value) -> str:
+    return " ".join(re.findall(r"[0-9a-z]+", fold(_clean_name(value))))
 
 
 def _name_to_check(st: dict) -> str:
@@ -953,9 +973,16 @@ def _on_name_checked(conv: dict, payload: dict):
     text = str(payload.get("text") or "")
     names = [str(n).strip() for n in payload.get("names") or [] if str(n).strip()][:50]
     m = re.search(r"\bCó\s+(\d+)\s+Hộ", text)
-    count = int(m.group(1)) if m else (0 if "Không có" in text else len(names))
+    # Danh sách có tên mà chữ đếm không đọc được (cổng đổi câu) vẫn là có trùng.
+    count = max(int(m.group(1)) if m else 0, len(names))
     name = str(payload.get("name") or "")
-    exact = sum(1 for n in names if fold(n) == fold(name))
+    key_name = _name_key(name)
+    exact = sum(1 for n in names if _name_key(n) == key_name)
+    # Tên cổng chứa nguyên tên này (hoặc ngược lại) là trùng gần — đọc lên trước các tên chỉ tương tự.
+    contains = [n for n in names if key_name and _name_key(n) and _name_key(n) != key_name
+                and (f" {key_name} " in f" {_name_key(n)} " or f" {_name_key(n)} " in f" {key_name} ")]
+    names = [n for n in names if _name_key(n) == key_name] + contains + [
+        n for n in names if _name_key(n) != key_name and n not in contains]
     st.setdefault("name_check", {})[key] = {"name": name, "count": count if payload.get("ok") else 0,
                                            "names": names, "exact": exact}
     st["phase"] = "ask"

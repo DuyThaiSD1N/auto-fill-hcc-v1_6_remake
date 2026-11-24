@@ -107,6 +107,10 @@ async def submit_click(body: SubmitClickReq, user: dict = Depends(require_auth))
     extension chưa từng điền/đính kèm thì không có gì để chấm — cố ý, vì báo cáo chỉ nên tính
     hồ sơ trợ lý có tham gia.
     """
+    try:
+        quota = await dossiers_repo.autofill_submit_quota(body.dossierId)
+    except Exception:  # noqa: BLE001 — không đọc được trace thì ghi như cũ, không mất mốc nộp
+        quota = None
     await dossiers_repo.add_submit_event(
         dossier_id=body.dossierId,
         clicked_at=(dossiers_repo.client_clicked_at(body.clickedAt)
@@ -118,6 +122,7 @@ async def submit_click(body: SubmitClickReq, user: dict = Depends(require_auth))
         source=body.source or None,
         # Extension lọc mốc dò chữ theo từng tab (background.js reportDossierSubmitSeen).
         text_dedupe_window=False,
+        max_events=quota,
     )
     return {"ok": True}
 

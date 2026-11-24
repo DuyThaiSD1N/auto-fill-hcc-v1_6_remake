@@ -315,3 +315,15 @@ def test_so_tru_so_lech_1_2_chu_so_voi_so_chu_ho_thi_lay_so_chu_ho():
     assert phone("0900000953") == "0900000123"
     assert phone("0900000123") == "0900000123"
     assert phone("0911222333") == "0911222333"
+
+
+def test_ten_nganh_tren_giay_chi_la_ten_chuan_cua_ma_thi_khong_dien_mo_ta():
+    rows = [
+        {"ma": "4933", "ten": "vận tải hàng hoá bằng đường bọ", "chinh": True},  # lệch vài ký tự do OCR
+        {"ma": "5630", "ten": "Dịch vụ phục vụ đồ uống (cà phê)", "chinh": False},  # có chi tiết thêm
+        {"ma": "3102", "ten": "Sản xuất giường, tủ, bàn, ghế bằng gỗ kim loại", "chinh": False},  # thêm chữ "gỗ"
+    ]
+    fields = mapper.enrich([{"name": "NganhNghe_DanhSach", "value": rows}], page="nganh-nghe-kinh-doanh")
+    items = next(f["value"]["items"] for f in fields if f["name"] == "__businessLines")
+    assert [(i["code"], i["name"]) for i in items] == [
+        ("4933", ""), ("5630", "Dịch vụ phục vụ đồ uống (cà phê)"), ("3102", "Sản xuất giường, tủ, bàn, ghế bằng gỗ kim loại")]

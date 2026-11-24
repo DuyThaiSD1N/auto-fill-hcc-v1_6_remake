@@ -980,6 +980,10 @@ PROCEDURES: list[dict] = [
         "label": "Đăng ký thành lập hộ kinh doanh",
         "mode": "agent",
         "hasAttachmentStep": True,
+        # Điền đợt 2 (app/second_pass) theo trang HkdOnline: lớp soát chạy nền trong lúc extension đính kèm trước, đính xong
+        # extension lấy các trang đã sửa rồi mới điền 8 trang. Chỉ chạy khi extension khai fillSupports có "secondPassHkd";
+        # bản khác bỏ qua khoá này (luồng điền từng trang luôn gửi page nên không khai fillSupports).
+        "secondPass": "hkd",
         "roles": [],
         "useDangKyBy": False,
         "uploadHint": (

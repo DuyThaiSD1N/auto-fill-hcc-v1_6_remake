@@ -443,3 +443,75 @@ async def test_thu_tuc_hkd_khac_thanh_lap_khong_co_nut_dien_lai(monkeypatch):
     assert reply.chips == []
     r = await flow._handle_done(conv, Intent("action", "business_refill"))
     assert not r.actions
+
+
+def _review_harness(monkeypatch, conv, events, second):
+    monkeypatch.setattr(pipeline_runner.up_store, "get", AsyncMock(return_value={
+        "_id": "HS-BUSINESS", "files": [{"fid": "f1", "name": "ho-so.pdf", "type": "application/pdf"}]}))
+    monkeypatch.setattr(pipeline_runner.up_store, "file_to_data_url", lambda *_args: "data:application/pdf;base64,AAA")
+    monkeypatch.setattr(pipeline_runner.conv_store, "get", AsyncMock(return_value=conv))
+    monkeypatch.setattr(pipeline_runner.conv_store, "save", AsyncMock())
+    monkeypatch.setattr(pipeline_runner, "get_procedure", lambda _key: {"label": "HKD"})
+    monkeypatch.setattr(pipeline_runner, "_load_owner_user", AsyncMock(return_value={"username": "u", "xa": "Xã Ka Đô"}))
+    monkeypatch.setattr(pipeline_runner.settings, "second_pass_enabled", True)
+    monkeypatch.setattr(pipeline_runner.second_pass.settings, "second_pass_enabled", True)
+    monkeypatch.setattr(pipeline_runner.second_pass.settings, "second_pass_usernames", "")
+    seen = {}
+
+    async def process(_files, options):
+        seen.update(options)
+        return {"fields": [], "extracted": {}, "stats": {}, "_second_pass": second,
+                "pages": {"hinh-thuc-dang-ky": [], "dia-chi": [{"name": "ward", "value": "Ka Pơ"}]},
+                "facts": [{"name": "TruSo_DiaChi", "value": {"xa": "Ka Pơ"}}]}
+
+    async def attach(_files, _options, session=None):
+        return {"attachments": [{"fileIndex": 0, "category": "BUSREGFRM"}], "errors": []}
+
+    monkeypatch.setattr(pipeline_runner, "get_pipeline", lambda _key: process)
+    monkeypatch.setattr(pipeline_runner, "get_attach_pipeline", lambda _key: attach)
+    monkeypatch.setattr(pipeline_runner.tracing, "record_process", AsyncMock(return_value="fill-trace"))
+    monkeypatch.setattr(pipeline_runner.tracing, "record_attach", AsyncMock(return_value="attach-trace"))
+    monkeypatch.setattr(pipeline_runner, "broadcast", AsyncMock(side_effect=lambda _sid, event: events.append(event)))
+    return seen
+
+
+@pytest.mark.asyncio
+async def test_thanh_lap_ho_kinh_doanh_soat_xong_thi_thay_trang_va_facts_truoc_business_ready(monkeypatch):
+    conv, events = _conversation(), []
+
+    async def second(_base):
+        return {"fields": [{"page": "dia-chi", "name": "ward", "value": "Ka Đô"}], "rulings": [], "timing": {},
+                "facts": [{"name": "TruSo_DiaChi", "value": {"xa": "Xã Ka Đô"}}]}
+
+    seen = _review_harness(monkeypatch, conv, events, second)
+    await pipeline_runner.run_business_registration("c-business", "HS-BUSINESS", "dang-ky-kinh-doanh")
+
+    assert seen["_secondPass"] is True and seen["counterWard"] == "Xã Ka Đô"
+    assert conv["business_pages"]["dia-chi"] == [{"name": "ward", "value": "Ka Đô"}]
+    assert conv["business_facts"] == [{"name": "TruSo_DiaChi", "value": {"xa": "Xã Ka Đô"}}]
+    assert events == [{"type": "business_ready", "pages": 2, "attachments": 1}]
+
+
+@pytest.mark.asyncio
+async def test_thanh_lap_ho_kinh_doanh_soat_loi_thi_giu_ket_qua_luot_dien(monkeypatch):
+    conv, events = _conversation(), []
+
+    async def second(_base):
+        raise RuntimeError("LLM lỗi")
+
+    _review_harness(monkeypatch, conv, events, second)
+    await pipeline_runner.run_business_registration("c-business", "HS-BUSINESS", "dang-ky-kinh-doanh")
+
+    assert conv["business_pages"]["dia-chi"] == [{"name": "ward", "value": "Ka Pơ"}]
+    assert conv["pipeline_status"] == "business_ready"
+
+
+@pytest.mark.asyncio
+async def test_thanh_lap_ho_kinh_doanh_phuong_lieu_bo_ngay_bat_dau(monkeypatch):
+    conv, events = _conversation(), []
+    seen = _review_harness(monkeypatch, conv, events, None)
+    monkeypatch.setattr(pipeline_runner, "_load_owner_user",
+                        AsyncMock(return_value={"username": "u", "tinh": "Tỉnh Bắc Ninh", "xa": "Phường Phương Liễu"}))
+    monkeypatch.setattr(pipeline_runner.settings, "second_pass_enabled", False)
+    await pipeline_runner.run_business_registration("c-business", "HS-BUSINESS", "dang-ky-kinh-doanh")
+    assert seen.get("skipBusinessStartDate") is True and "_secondPass" not in seen

@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import re
 import unicodedata
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 from app.pipelines.dang_ky_kinh_doanh.process.schema import DEFAULT_PAGE, PAGES
@@ -649,6 +652,41 @@ def _all_business_codes(values: dict[str, Any]) -> list[str]:
     return out
 
 
+_NGANH_CATALOG = Path(__file__).parents[1] / "data" / "nganh_kinh_te_cap4.json"
+
+
+@lru_cache(maxsize=1)
+def _official_line_names() -> dict[str, str]:
+    """Mã ngành cấp 4 → tên chuẩn (QĐ 36/2025) — cùng danh mục cổng hiện theo mã."""
+    data = json.loads(_NGANH_CATALOG.read_text(encoding="utf-8"))
+    return {str(item.get("ma")): str(item.get("ten") or "") for item in data.get("nganh") or []}
+
+
+def _edit_distance(a: str, b: str) -> int:
+    previous = list(range(len(b) + 1))
+    for i, ca in enumerate(a, start=1):
+        current = [i]
+        for j, cb in enumerate(b, start=1):
+            current.append(min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + (ca != cb)))
+        previous = current
+    return previous[-1]
+
+
+def _same_as_official(code: str, name: Any) -> bool:
+    """Tên ngành trên giấy chỉ là tên chuẩn của mã (trùng, hoặc lệch vài ký tự do OCR / viết tay) → không phải chi tiết
+    riêng: cổng đã hiện tên chuẩn theo mã, ô mô tả không cần ghi lại."""
+    official = _fold_vi(_official_line_names().get(code))
+    written = _fold_vi(name)
+    if not official or not written:
+        return False
+    limit = 1 if len(official) < 12 else 2 if len(official) < 24 else 3
+    if abs(len(official) - len(written)) > limit or _edit_distance(official, written) > limit:
+        return False
+    # Giấy ghi thêm một chữ mà tên chuẩn không có (không phải chữ OCR đọc lệch của chữ nào) là chi tiết thật.
+    words = official.split()
+    return all(any(_edit_distance(word, other) <= 1 for other in words) for word in written.split())
+
+
 def _business_line_items(values: dict[str, Any]) -> list[dict[str, Any]]:
     """Danh sách ngành kèm tên OCR để FE bổ sung mô tả khi tên chính thức của mã quá chung.
 
@@ -685,6 +723,10 @@ def _business_line_items(values: dict[str, Any]) -> list[dict[str, Any]]:
         else:
             out.insert(0, {"code": direct, "name": direct_name, "main": True})
 
+    # Tên trên giấy chỉ là tên chuẩn của mã → bỏ tên (extension không điền ô mô tả của dòng đó).
+    for item in out:
+        if item.get("name") and _same_as_official(item["code"], item["name"]):
+            item["name"] = ""
     return out
 
 

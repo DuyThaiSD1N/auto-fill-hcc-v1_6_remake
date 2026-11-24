@@ -635,6 +635,33 @@ async def test_ten_ho_kiem_trung_tren_cong_trung_thi_hoi_giu_hay_doi(monkeypatch
     assert "không có hộ kinh doanh nào trùng" in r.display_md and conv["hkd"]["field"] == "ten_nuoc_ngoai"
 
 
+async def test_ten_noi_kem_ho_kinh_doanh_thi_kiem_dung_chu_trong_o_ten_va_danh_sach_co_ten_la_trung(monkeypatch):
+    _fake_answers(monkeypatch, {**_ANSWERS, "ten_ho": "Hộ kinh doanh Phở Hùng."})
+    conv = _conv(client_capabilities={hkd.CAPABILITY: True, hkd.NAME_CHECK_CAPABILITY: True})
+    conv["hkd"] = await hkd._base_state(conv, "khong_giay")
+    conv["hkd"].update(block=hkd._blocks(conv["hkd"]).index("ten-ho-kinh-doanh"), phase="ask", field="ten_ho")
+    r = await hkd.handle(conv, PROC, Intent("action", "hkd_answer", {"text": "hộ kinh doanh phở hùng"}))
+    assert next(a for a in r.actions if a["type"] == "hkd_check_name")["name"] == "PHỞ HÙNG"
+    # Câu đếm của cổng không đọc được nhưng bảng có tên → vẫn là trùng; tên chứa nguyên tên này đọc lên trước.
+    r = await hkd.handle(conv, PROC, Intent("event", "hkd_name_checked", {
+        "slot": "ten_ho", "name": "PHỞ HÙNG", "ok": True, "names": ["BÚN BÒ HÙNG", "PHỞ HÙNG 1990", "PHỞ HÙNG"],
+        "text": "Kết quả tìm kiếm"}))
+    assert conv["hkd"]["field"] == "ten_ho_giu" and "3 hộ kinh doanh" in r.display_md
+    assert "PHỞ HÙNG; PHỞ HÙNG 1990; BÚN BÒ HÙNG" in r.display_md
+
+
+async def test_ten_viet_tat_cung_kiem_trung_bang_api_ten_tieng_viet(monkeypatch):
+    _fake_answers(monkeypatch, {**_ANSWERS, "ten_ho": "Phở Hùng"})
+    conv = _conv(client_capabilities={hkd.CAPABILITY: True, hkd.NAME_CHECK_CAPABILITY: True})
+    conv["hkd"] = await hkd._base_state(conv, "khong_giay")
+    conv["hkd"]["values"].update(ten_ho="Phở Hùng", ten_nuoc_ngoai="__skip__", ten_viet_tat="PH")
+    conv["hkd"]["name_check"] = {"ten_ho": {"name": "PHỞ HÙNG", "count": 0}}
+    conv["hkd"].update(block=hkd._blocks(conv["hkd"]).index("ten-ho-kinh-doanh"), phase="ask")
+    r = hkd._ask_next(conv)
+    check = next(a for a in r.actions if a["type"] == "hkd_check_name")
+    assert (check["slot"], check["kind"], check["name"]) == ("ten_viet_tat", "vi", "PH")
+
+
 async def test_extension_cu_khong_khai_kiem_ten_thi_khong_cho_ket_qua(monkeypatch):
     _fake_answers(monkeypatch, {**_ANSWERS, "ten_ho": "Phở Hùng"})
     conv = _conv()
