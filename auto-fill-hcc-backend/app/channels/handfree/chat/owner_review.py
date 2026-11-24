@@ -58,6 +58,9 @@ def asking(conv: dict) -> bool:
 
 
 def _say(tpl: dict, **kw) -> tuple[str, str]:
+    if "error" in kw:
+        from app.channels.handfree.chat.flow import _short_error
+        kw["error"] = _short_error(kw["error"])
     return tpl["md"].format(**kw), tpl["tts"].format(**kw)
 
 

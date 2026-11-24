@@ -39,12 +39,34 @@ def is_bac_ninh_phuong_lieu(user: dict | None) -> bool:
     return "bac ninh" in tinh and "phuong lieu" in names
 
 
+# Ô mô tả từng dòng ngành nghề theo địa bàn (trước đây popup Auto Fill tự quyết): "skip" = không ghi gì, chỉ giữ tên
+# ngành chính thức cổng tự hiện theo mã (phường Yên Bái — Lào Cai, Bắc Nha Trang — Khánh Hòa, Đắk Bla); "paren" = chỉ
+# ghi phần chữ trong ngoặc của tên ngành trên giấy, ghi ĐÈ cả ô (xã Đơn Dương — Lâm Đồng, phường Nam Nha Trang — Khánh
+# Hòa). Áp cho thành lập mới và thay đổi nội dung; server đặt theo tài khoản, client không tự bật.
+LINE_DETAIL_OPTION = "businessLineDetail"
+_LINE_DETAIL_PROCEDURES = {PROCEDURE_KEY, "dang-ky-thay-doi-noi-dung-ho-kinh-doanh"}
+
+
+def line_detail_mode(user: dict | None) -> str:
+    tinh = _fold_vi((user or {}).get("tinh") or "")
+    xa = _fold_vi((user or {}).get("xa") or "")
+    if ("lao cai" in tinh and "yen bai" in xa) or ("khanh hoa" in tinh and "bac nha trang" in xa) or (
+            ("quang ngai" in tinh or "lam dong" in tinh) and "dakbla" in xa.replace(" ", "")):
+        return "skip"
+    if ("lam dong" in tinh and "don duong" in xa) or ("khanh hoa" in tinh and "nam nha trang" in xa):
+        return "paren"
+    return ""
+
+
 def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
-    """Trả bản sao options với cờ bỏ ngày bắt đầu kinh doanh do server quyết theo tài khoản."""
+    """Trả bản sao options với cờ theo tài khoản do server quyết: bỏ ngày bắt đầu kinh doanh, cách ghi ô mô tả ngành."""
     result = dict(options or {})
     result.pop(SKIP_START_DATE_OPTION, None)
+    result.pop(LINE_DETAIL_OPTION, None)
     if procedure == PROCEDURE_KEY and is_bac_ninh_phuong_lieu(user):
         result[SKIP_START_DATE_OPTION] = True
+    if procedure in _LINE_DETAIL_PROCEDURES and (mode := line_detail_mode(user)):
+        result[LINE_DETAIL_OPTION] = mode
     return result
 
 
@@ -687,7 +709,39 @@ def _same_as_official(code: str, name: Any) -> bool:
     return all(any(_edit_distance(word, other) <= 1 for other in words) for word in written.split())
 
 
-def _business_line_items(values: dict[str, Any]) -> list[dict[str, Any]]:
+def _paren_groups(value: Any) -> list[str]:
+    """Các cụm trong ngoặc tròn CẤP NGOÀI CÙNG (ngoặc lồng giữ nguyên bên trong cụm); ngoặc mở không đóng (OCR rơi dấu ")"
+    cuối dòng) → lấy phần còn lại sau dấu "("."""
+    text, groups, depth, start = str(value or ""), [], 0, -1
+    for at, ch in enumerate(text):
+        if ch == "(":
+            if depth == 0:
+                start = at + 1
+            depth += 1
+        elif ch == ")" and depth > 0:
+            depth -= 1
+            if depth == 0 and start >= 0:
+                groups.append(text[start:at])
+                start = -1
+    if depth > 0 and start >= 0:
+        groups.append(text[start:])
+    return [" ".join(g.split()) for g in groups if g.strip()]
+
+
+def line_detail(code: str, name: Any, mode: str = "") -> tuple[str, bool]:
+    """(chữ ghi vào ô mô tả của dòng ngành, ghi đè cả ô hay ghi thêm dòng dưới tên chính thức cổng tự điền). "" = không
+    điền. Mặc định: tên trên giấy, trừ khi chỉ là tên chuẩn của mã (trùng / lệch vài ký tự)."""
+    if mode == "skip":
+        return "", False
+    if mode == "paren":
+        official = _fold_vi(_official_line_names().get(code))
+        extra = [g for g in _paren_groups(name) if _fold_vi(g) and not (official and _fold_vi(g) in official)]
+        return _capitalize_first("; ".join(extra)), True
+    text = _capitalize_first(name)
+    return ("" if not text or _same_as_official(code, text) else text), False
+
+
+def _business_line_items(values: dict[str, Any], line_mode: str = "") -> list[dict[str, Any]]:
     """Danh sách ngành kèm tên OCR để FE bổ sung mô tả khi tên chính thức của mã quá chung.
 
     Cổng HkdOnline thêm ngành theo MÃ VSIC. Sau khi thêm, portal tự hiển thị tên chuẩn theo mã.
@@ -723,8 +777,10 @@ def _business_line_items(values: dict[str, Any]) -> list[dict[str, Any]]:
         else:
             out.insert(0, {"code": direct, "name": direct_name, "main": True})
 
-    # Tên trên giấy chỉ là tên chuẩn của mã → bỏ tên (extension không điền ô mô tả của dòng đó).
     for item in out:
+        # "detail": extension bản mới ghi đúng chữ này vào ô mô tả (rỗng = không điền), không tự so nữa.
+        item["detail"], item["detailReplace"] = line_detail(item["code"], item.get("name"), line_mode)
+        # Bản cũ tự quyết theo "name": tên chỉ là tên chuẩn của mã → bỏ tên để không điền ô mô tả.
         if item.get("name") and _same_as_official(item["code"], item["name"]):
             item["name"] = ""
     return out
@@ -751,7 +807,8 @@ def _main_business_code(values: dict[str, Any]) -> str:
     return ""
 
 
-def enrich(fields: list[dict], *, page: str | None = None, skip_start_date: bool = False) -> list[dict]:
+def enrich(fields: list[dict], *, page: str | None = None, skip_start_date: bool = False,
+           line_mode: str = "") -> list[dict]:
     values = _by_name(fields)
     selected_page = page or DEFAULT_PAGE
     out: list[dict] = []
@@ -783,7 +840,7 @@ def enrich(fields: list[dict], *, page: str | None = None, skip_start_date: bool
         add("ctl00$C$DCONTClt$HO_URLFld", "dom-input", values.get("TruSo_Website"))
 
     elif selected_page == "nganh-nghe-kinh-doanh":
-        items = _business_line_items(values)
+        items = _business_line_items(values, line_mode)
         codes = [item["code"] for item in items] or _all_business_codes(values)
         main_code = _main_business_code(values)
         # Fill-tất-cả (extension) đọc __businessLines để thêm LẦN LƯỢT mọi mã + set ngành chính.
@@ -889,9 +946,10 @@ def enrich(fields: list[dict], *, page: str | None = None, skip_start_date: bool
     return out
 
 
-def enrich_all(fields: list[dict], *, skip_start_date: bool = False) -> dict[str, list[dict]]:
+def enrich_all(fields: list[dict], *, skip_start_date: bool = False, line_mode: str = "") -> dict[str, list[dict]]:
     """Map 1 bộ compact facts thành field cho TẤT CẢ trang (fill 8 trang trong 1 lần).
 
     Trả {page_key: [ui_fields]} theo đúng thứ tự PAGES để extension lặp: fill → lưu → sang trang.
     """
-    return {p["key"]: enrich(fields, page=p["key"], skip_start_date=skip_start_date) for p in PAGES}
+    return {p["key"]: enrich(fields, page=p["key"], skip_start_date=skip_start_date, line_mode=line_mode)
+            for p in PAGES}

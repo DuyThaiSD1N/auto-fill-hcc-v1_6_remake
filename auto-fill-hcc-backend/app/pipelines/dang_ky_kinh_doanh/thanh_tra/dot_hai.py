@@ -24,8 +24,9 @@ async def patch(documents: list[dict], raw_fields: list[dict], options: dict, *,
         # Thanh tra chỉ chờ lượt đọc ảnh có hạn; xong đợt soát thì không ai cần nó nữa.
         if isinstance(vision, asyncio.Future) and not vision.done():
             vision.cancel()
-    before = mapper.enrich_all(_fields(values), skip_start_date=skip_start_date)
-    after = mapper.enrich_all(_fields(verdict.values), skip_start_date=skip_start_date)
+    line_mode = str((options or {}).get(mapper.LINE_DETAIL_OPTION) or "")
+    before = mapper.enrich_all(_fields(values), skip_start_date=skip_start_date, line_mode=line_mode)
+    after = mapper.enrich_all(_fields(verdict.values), skip_start_date=skip_start_date, line_mode=line_mode)
     fields = [{**field, "page": page} for page, items in after.items() if items != before.get(page) for field in items]
     # "facts": field sau phán quyết (trước mapper) — handfree hỏi bổ sung mục thiếu rồi map lại từ đây.
     return {"fields": fields, "rulings": verdict.rulings, "timing": verdict.timing, "facts": _fields(verdict.values)}

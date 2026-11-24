@@ -59,3 +59,35 @@ def test_so_cccd_va_so_nguoi_khac_khong_phai_sdt_nguoi_nop():
 def test_nhan_dien_thoai_so_van_la_sdt():
     text = "Người yêu cầu\n(Ký, ghi rõ họ, chữ đệm, tên)\nNguyễn Văn An\nSố lượng: ....bản\nĐiện thoại số: 0905 123 456"
     assert _find(text) == "0905123456"
+
+
+_TO_KHAI_SO_DAU_TRANG = """0987 654 321
+TỜ KHAI CẤP BẢN SAO TRÍCH LỤC HỘ TỊCH
+Họ, chữ đệm, tên người yêu cầu: Nguyễn Văn An
+Giấy tờ tùy thân: CCCD số 001080000001
+Người yêu cầu
+(Ký, ghi rõ họ, chữ đệm, tên)
+An
+"""
+
+
+def test_so_dung_rieng_tren_to_khai_cua_nguoi_nop_la_so_nguoi_yeu_cau():
+    assert _find(_TO_KHAI_SO_DAU_TRANG) == "0987654321"
+    # Chữ ký chỉ ghi tên gọi, số viết ngay dưới.
+    assert _find(_TO_KHAI_SO_DAU_TRANG.replace("0987 654 321\n", "") + "0987 654 321\n") == "0987654321"
+
+
+def test_so_dung_rieng_tren_to_khai_cua_nguoi_khac_hoac_nguoi_nop_khong_la_nguoi_yeu_cau_thi_bo():
+    other = _TO_KHAI_SO_DAU_TRANG.replace("Nguyễn Văn An", "Trần Thị Bình")
+    assert _find(other) is None
+    assert _find(_TO_KHAI_SO_DAU_TRANG, role="Người được ủy quyền") is None
+
+
+def test_so_ocr_ghep_vao_dong_in_san_tren_to_khai_cua_nguoi_nop():
+    text = _TO_KHAI_SO_DAU_TRANG.replace("0987 654 321\n", "") + "Đề nghị cấp bản sao: Có\nChú thích: 0987654321\n"
+    assert _find(text) == "0987654321"
+
+
+def test_so_cccd_rot_mot_chu_so_tren_to_khai_khong_thanh_sdt():
+    text = _TO_KHAI_SO_DAU_TRANG.replace("0987 654 321\n", "") + "Đề nghị cấp bản sao: Có\nGhi chú 02409700185\n"
+    assert _find(text) is None

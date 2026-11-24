@@ -83,7 +83,8 @@ def test_business_lines_keep_extracted_name_for_description_fill():
     assert raw["value"]["codes"] == ["5630"]
     assert raw["value"]["main"] == "5630"
     assert raw["value"]["items"] == [
-        {"code": "5630", "name": "Dịch vụ phục vụ đồ uống (cà phê)", "main": True}
+        {"code": "5630", "name": "Dịch vụ phục vụ đồ uống (cà phê)", "main": True,
+         "detail": "Dịch vụ phục vụ đồ uống (cà phê)", "detailReplace": False}
     ]
 
 
@@ -103,7 +104,8 @@ def test_business_line_codes_strip_spaces_before_extension_fill():
 
     assert raw["value"]["codes"] == ["5610"]
     assert raw["value"]["main"] == "5610"
-    assert raw["value"]["items"] == [{"code": "5610", "name": "Ăn uống", "main": True}]
+    assert raw["value"]["items"] == [{"code": "5610", "name": "Ăn uống", "main": True, "detail": "Ăn uống",
+                                      "detailReplace": False}]
     assert main_input["value"] == "5610"
 
 

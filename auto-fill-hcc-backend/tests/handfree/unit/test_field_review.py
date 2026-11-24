@@ -709,7 +709,8 @@ def test_cau_hinh_bo_sung_o_moi_thu_tuc_mot_file_rieng_va_key_co_trong_registry(
     assert set(registry._CONFIGS) == {"khai-sinh-dang-ky-lai", "ket-hon", "xac-nhan-tinh-trang-hon-nhan", "khai-tu",
                                      "khai-sinh-dang-ky-thuong", "khai-sinh-nuoc-ngoai", "thay-doi-cai-chinh-ho-tich",
                                      "trich-luc-ks", "dang-ky-lai-ket-hon", "ket-hon-nuoc-ngoai",
-                                     "khai-tu-dang-ky-lai", "dang-ky-giam-ho", "khai-sinh-da-co-ho-so",
+                                     "khai-tu-dang-ky-lai", "khai-tu-nuoc-ngoai", "khai-tu-luu-dong", "dang-ky-giam-ho", "khai-sinh-da-co-ho-so",
+                                     "cap-phieu-ly-lich-tu-phap-cong-an-cap-tinh",
                                      "dang-ky-nhan-cha-me-con", "yeu-cau-tro-giup-phap-ly",
                                      "khai-sinh-dang-ky", "cap-giay-phep-xay-dung-moi-nha-o-rieng-le",
                                      "dieu-chinh-giay-phep-xay-dung", "sua-chua-cai-tao-gpxd-nha-o-rieng-le",
@@ -741,12 +742,14 @@ def test_cau_hinh_bo_sung_o_moi_thu_tuc_mot_file_rieng_va_key_co_trong_registry(
                                      "cung-cap-thong-tin-quy-hoach", "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san",
                                      "cap-phep-long-duong-via-he", "cho-thue-thue-mua-nha-o-xa-hoi",
                                      "cap-giay-phep-chat-ha-cay-xanh", "chap-thuan-dau-noi-tam",
+                                     "cap-giay-phep-thi-cong-cong-trinh-tren-duong-bo-dang-khai-thac",
                                      "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan",
                                      "dang-ky-bien-phap-bao-dam-bac-ninh", "xoa-dang-ky-bien-phap-bao-dam-bac-ninh",
                                      "dang-ky-thay-doi-bien-phap-bao-dam-bac-ninh",
                                      "dinh-chinh-gcn-da-cap-bac-ninh", "dinh-chinh-gcn-da-cap-1115476-bac-ninh",
                                      "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh",
                                      "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-bac-ninh",
+                                     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-bac-ninh",
                                      "dang-ky-bien-dong-dat-dai-bac-ninh", "dang-ky-bien-dong-thoa-thuan-bac-ninh",
                                      "tach-hop-thua-dat-bac-ninh", "cap-doi-gcn-bac-ninh",
                                      "dang-ky-dat-dai-lan-dau-bac-ninh", "thu-hoi-gcn-cap-sai-bac-ninh",
@@ -786,7 +789,8 @@ def test_cau_hinh_bo_sung_o_moi_thu_tuc_mot_file_rieng_va_key_co_trong_registry(
                                      "dang-ky-khuyen-mai-may-rui-mot-tinh", "xoa-dang-ky-phuong-tien-thuy",
                                      "dang-ky-dat-dai-lan-dau-lam-dong", "dang-ky-dien-tich-tang-them-lam-dong",
                                      "giao-thue-dat-giao-rung-gia-han-su-dung-dat",
-                                     "tinh-tien-su-dung-dat-nd-50-2026-lam-dong"}
+                                     "tinh-tien-su-dung-dat-nd-50-2026-lam-dong",
+                                     "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa"}
     assert set(registry._CONFIGS) <= keys
     # Đăng ký lại kết hôn / kết hôn có yếu tố nước ngoài: cùng khuôn eForm với kết hôn → cùng bộ ô bắt buộc.
     assert registry.get("ket-hon-nuoc-ngoai") == registry.get("ket-hon")

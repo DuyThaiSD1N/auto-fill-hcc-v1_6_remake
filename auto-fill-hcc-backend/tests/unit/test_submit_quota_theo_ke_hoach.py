@@ -117,3 +117,23 @@ def test_lay_luot_dinh_kem_cuoi(db, client):
     for i in range(3):
         _click(client, i, i + 2)
     assert _doc(db)["submit_count"] == 2
+
+
+def test_tab_tach_nop_sau_khoang_nghi_dai_van_dem_nhung_khong_keo_thoi_gian(db, client):
+    _dossier(db)
+    _attach_trace(db, 2)
+    _click(client, 0, 4)
+    _click(client, 1, 89)  # tab thứ 2 nộp sau 85 phút
+    doc = _doc(db)
+    assert doc["submit_count"] == 2
+    assert repo._serialize(doc)["durationMs"] == 4 * 60_000
+
+
+def test_cac_tab_nop_lien_mach_thi_moc_cuoi_theo_lan_nop_cuoi(db, client):
+    _dossier(db)
+    _attach_trace(db, 4)
+    for i, minutes in enumerate((1, 10, 29, 70)):  # cách nhau 9, 19 rồi 41 phút
+        _click(client, i, minutes)
+    doc = _doc(db)
+    assert doc["submit_count"] == 4
+    assert repo._utc(doc["submit_clicked_at"]) == _T0 + timedelta(minutes=29)

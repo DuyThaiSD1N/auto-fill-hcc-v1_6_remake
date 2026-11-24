@@ -56,10 +56,11 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         res = await _from_files(files_by_role, read)
     compact = res["fields"]  # facts thô (LLM hoặc tờ khai) — dùng để map cho từng trang
     skip_start_date = bool(opts.get(mapper.SKIP_START_DATE_OPTION))  # server đặt theo tài khoản
+    line_mode = str(opts.get(mapper.LINE_DETAIL_OPTION) or "")  # server đặt theo tài khoản
 
     # Chế độ FILL TẤT CẢ 8 trang trong 1 lần (extension tự lặp fill→lưu→sang trang).
     if all_pages:
-        res["pages"] = mapper.enrich_all(compact, skip_start_date=skip_start_date)
+        res["pages"] = mapper.enrich_all(compact, skip_start_date=skip_start_date, line_mode=line_mode)
         res["fields"] = res["pages"].get(DEFAULT_PAGE, [])
         if opts.get("returnFacts"):
             # Handfree (trợ lý hộ kinh doanh) cần facts thô để hỏi bổ sung mục thiếu rồi map lại; API core không gửi cờ này.
@@ -82,7 +83,7 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
             _cancel(read.get("vision"))
         return res
 
-    res["fields"] = mapper.enrich(compact, page=page, skip_start_date=skip_start_date)
+    res["fields"] = mapper.enrich(compact, page=page, skip_start_date=skip_start_date, line_mode=line_mode)
     res.setdefault("extracted", {})["page"] = page
     return res
 

@@ -57,8 +57,28 @@ def test_thu_tu_va_gia_tri_o_form():
     assert by["cboHH_PERSON_RELATIONSHIP_CODE"]["value"] == "Chủ hộ"
     assert by["txtHH_PERSON_IDENTIFIER_NUMBER"]["value"] == "012192000555"
     # Ô trống / chấm chấm không điền; khối ẩn với TAMTRU_06 không điền.
-    assert not {"txtPHONE_NUMBER", "txtEMAIL", "listNormal", "txtCHANGED_NOTE", "txtSUGGEST_ADDRESS",
+    assert not {"txtPHONE_NUMBER", "txtEMAIL", "txtRECEIVER_EMAIL", "listNormal", "txtCHANGED_NOTE", "txtSUGGEST_ADDRESS",
                 "txtTEMP_RESIDENT_TO", "txtFULLNAME0", "chkCHECK_LIABILITY"} & set(by)
+
+
+def test_khoi_nhan_ket_qua_co_email_thi_qua_email_dien_email():
+    out = _enrich({**PERSON, "NguoiDeNghi_Email": "mai,hoang@gmail,com"})
+    names = [f["name"] for f in out]
+    by = {f["name"]: f for f in out}
+    # Khối "Thông tin nhận thông báo tình trạng hồ sơ, kết quả giải quyết hồ sơ": chọn hình thức TRƯỚC ô email.
+    assert names[-2:] == ["cboRECEIVER_TYPE", "txtRECEIVER_EMAIL"]
+    assert by["cboRECEIVER_TYPE"]["value"] == "Qua email" and by["cboRECEIVER_TYPE"]["comp"] == "dom-select"
+    assert by["cboRECEIVER_TYPE"]["default"] is True  # giấy không ghi hình thức nhận → tô vàng cho công dân xem lại
+    assert by["txtRECEIVER_EMAIL"]["value"] == "mai.hoang@gmail.com" == by["txtEMAIL"]["value"]
+    assert by["txtRECEIVER_EMAIL"]["keepPortalValue"] is True and "default" not in by["txtRECEIVER_EMAIL"]
+    # Hình thức nhận thông báo để mặc định của cổng (select2 nhiều lựa chọn).
+    assert not {"cboNOTIFICATION_TYPE", "txtNOTIFICATION_EMAIL", "txtNOTIFICATION_PHONE"} & set(by)
+
+
+def test_khoi_nhan_ket_qua_khong_co_email_thi_nhan_qua_cong_khong_bo_trong_o_bat_buoc():
+    by = _by(PERSON)
+    assert by["cboRECEIVER_TYPE"]["value"] == "Nhận qua cổng thông tin" and by["cboRECEIVER_TYPE"]["default"] is True
+    assert "txtRECEIVER_EMAIL" not in by
 
 
 def test_truong_hop_theo_ly_do_khi_llm_khong_chon():

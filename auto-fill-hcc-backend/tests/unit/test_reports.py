@@ -425,3 +425,24 @@ def test_report_download_header_carries_utf8_filename_and_ascii_fallback():
     )
     assert "%5BB%E1%BA%AFc%20Ninh%5D%20B%C3%A1o%20c%C3%A1o" in header
     assert "\r" not in header and "\n" not in header
+
+
+def test_ma_thu_tuc_key_cu_va_bien_the_tinh_lay_ma_goc():
+    from app.reports.excel import _procedure_rows
+
+    rows = _procedure_rows(
+        [{"key": "ho-tro-mai-tang", "count": 2}, {"key": "ho-tro-mai-tang-1116910", "count": 3},
+         {"key": "dang-ky-dat-dai-lan-dau-tuyen-quang-ilis", "count": 1}],
+    )
+    by_ma = {row["ma"]: row for row in rows}
+    assert by_ma["1.116910"]["total"] == 5 and len(rows) == 2
+    assert by_ma["1.013978"]["total"] == 1
+
+
+def test_thu_tuc_tach_quy_trinh_gop_mot_dong_ten_day_du():
+    from app.reports.excel import _procedure_rows
+
+    rows = _procedure_rows([{"key": "sua-chua-cai-tao-gpxd-nha-o-rieng-le", "count": 1},
+                            {"key": "sua-chua-cai-tao-gpxd-cong-trinh", "count": 2}])
+    assert len(rows) == 1 and rows[0]["ma"] == "1.013229" and rows[0]["total"] == 3
+    assert rows[0]["ten"].endswith("cấp III, cấp IV và nhà ở riêng lẻ")

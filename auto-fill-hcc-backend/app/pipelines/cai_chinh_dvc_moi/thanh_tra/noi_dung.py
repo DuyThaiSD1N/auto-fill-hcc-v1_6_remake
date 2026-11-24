@@ -31,7 +31,8 @@ mới. Không có cả tờ khai lẫn bản cam đoan → mọi mục null.
   Giấy cần sửa có trong hồ sơ thì giá trị cũ phải đúng chữ in trên giấy đó; chữ viết tay trên tờ khai OCR đọc lệch
   thì lấy theo chữ in của giấy hộ tịch / giấy căn cứ. Giá trị mới là họ tên một người có giấy in của cơ quan (trích lục
   khai tử, giấy khai sinh, CCCD của chính người đó) → đúng chữ in trên giấy đó. So cả dấu thanh: hai cách viết chỉ
-  khác dấu là hai tên khác nhau, chọn đúng cách in.
+  khác dấu là hai tên khác nhau, chọn đúng cách in. Tín hiệu mã báo tên của A chỉ lệch dấu với chữ in trên giấy, B
+  theo chữ in → chọn B.
 - Họ tên ở hai bên viết ĐỦ họ, chữ đệm, tên — kể cả khi chỉ sửa một chữ.
 - BỎ mục mà giá trị cũ và mới giống hệt nhau; bỏ nhãn "Lý do", câu cam đoan, phần lý do lạc vào nội dung.
 - Câu trên giấy đã đủ nghĩa thì GIỮ NGUYÊN câu đó, chỉ sửa lỗi OCR ở từ thông thường (vd "nam sinh" → "năm sinh");
@@ -76,7 +77,8 @@ def _giay_key(value) -> str:
 
 UNITS = (
     Unit("noi_dung", "Nội dung đề nghị thay đổi, cải chính, bổ sung",
-         (Field("NoiDung", "các mục thay đổi, mỗi mục một câu đủ nghĩa", "free", canon=_text_key),)),
+         # So GIỮ dấu: hai cách viết tên chỉ khác dấu là hai tên khác nhau (vụ chữ in của tên mới mở được).
+         (Field("NoiDung", "các mục thay đổi, mỗi mục một câu đủ nghĩa", "free", canon=_spelled),)),
     Unit("ly_do", "Lý do", (Field("LyDo", "câu ngắn nêu lý do", "free", canon=_text_key),)),
     Unit("viec", "Loại việc đăng ký",
          (Field("ViecDangKy", '"Cải chính" / "Thay đổi" / "Bổ sung" / "Xác định lại dân tộc"', "free",
@@ -161,6 +163,72 @@ def faults(unit: Unit, ours, theirs, case: Case) -> list[str]:
     return out
 
 
+def _printed_names(case: Case) -> list[tuple[str, str, int]]:
+    """(cụm chữ IN HOA ≥2 tiếng, dòng, số tài liệu): họ tên in máy trên giấy hộ tịch / giấy căn cứ."""
+    out = []
+    for index, document in enumerate(case.documents, start=1):
+        for line in str(document.get("text") or "").splitlines():
+            run: list[str] = []
+            for word in re.split(r"[\s,.:;()\-]+", unicodedata.normalize("NFC", line)) + [""]:
+                if word.isalpha() and word.isupper():
+                    run.append(word)
+                    continue
+                if len(run) >= 2:
+                    out.append((" ".join(run), line.strip(), index))
+                run = []
+    return out
+
+
+def _printed_hit(value: str, printed: list[tuple[str, str, int]]) -> tuple[str, str, int] | None:
+    """Cách viết in hoa DUY NHẤT trên giấy trùng ``value`` khi bỏ dấu mà khác dấu; None khi chính ``value`` có bản in,
+    không có hoặc có nhiều cách viết in."""
+    words = value.split()
+    if len(words) < 2 or not all(word[:1].isupper() for word in words):
+        return None
+    hits = {}
+    for run, line, index in printed:
+        parts = run.split()
+        for start in range(len(parts) - len(words) + 1):
+            window = " ".join(parts[start:start + len(words)])
+            if fold(window) == fold(value):
+                hits.setdefault(window, (line, index))
+    if len(hits) != 1 or unicodedata.normalize("NFC", value).upper() in hits:
+        return None
+    window, (line, index) = next(iter(hits.items()))
+    return (window if value.isupper() else " ".join(word.capitalize() for word in window.split())), line, index
+
+
+def _shared_kept(old: str, new: str, old_fixed: str, new_fixed: str) -> bool:
+    """Tiếng hai bên cùng ghi (trùng khi bỏ dấu, trùng cả dấu) phải vẫn trùng sau khi thay."""
+    before = {fold(w): w for w in old.split()}
+    after_old = {fold(w): w for w in old_fixed.split()}
+    after_new = {fold(w): w for w in new_fixed.split()}
+    return all(after_old.get(key) == after_new.get(key)
+               for key, word in before.items() if word in new.split())
+
+
+def _printed_spelling(text, case: Case) -> tuple[str, str, int, list[str]] | None:
+    """Họ tên trong mục "từ … thành …" (chữ viết tay trên tờ khai / cam đoan) chỉ lệch DẤU với đúng MỘT cách viết in hoa
+    trên giấy, còn chính nó không có bản in nào → thay bằng chữ in. Mục mà việc sửa chính là đổi dấu (hai bên trùng khi
+    bỏ dấu) không đụng; thay làm lệch tiếng chung của hai bên thì bỏ. Trả (nội dung đã thay, dòng in, tài liệu, ghi chú)."""
+    printed = _printed_names(case)
+    out, quote, doc, notes = str(text or ""), "", 0, []
+    for old, new in _items(text):
+        if fold(old) == fold(new):
+            continue
+        hit_old, hit_new = _printed_hit(old, printed), _printed_hit(new, printed)
+        old_fixed = hit_old[0] if hit_old else old
+        new_fixed = hit_new[0] if hit_new else new
+        if not (hit_old or hit_new) or not _shared_kept(old, new, old_fixed, new_fixed):
+            continue
+        for value, hit in ((old, hit_old), (new, hit_new)):
+            if hit:
+                out = out.replace(value, hit[0], 1)
+                quote, doc = quote or hit[1], doc or hit[2]
+                notes.append(f'"{value}" chỉ lệch dấu với chữ in "{hit[0]}" trên giấy, cách viết của A không có bản in nào')
+    return (out, quote, doc, notes) if notes else None
+
+
 async def find(inspector: Inspector, case: Case, title: str) -> list[Finding]:
     if not _has_source(case):
         return []
@@ -176,6 +244,14 @@ async def find(inspector: Inspector, case: Case, title: str) -> list[Finding]:
         reasons = faults(finding.unit, ours, finding.values.get(spec.name), case)
         out.append(Finding(finding.inspector, finding.unit, finding.values, finding.quote, finding.doc, finding.note,
                            finding.owner, backed=bool(reasons), evidence=tuple(reasons)))
+    # Hai lượt model cùng chép tên theo chữ viết tay / cam đoan dù giấy hộ tịch in rõ: mã thay theo chữ in.
+    ours = case.values.get("NoiDung")
+    printed = None if any(f.unit.key == "noi_dung" and f.backed for f in out) else _printed_spelling(ours, case)
+    if printed:
+        fixed, quote, doc, notes = printed
+        out = [f for f in out if f.unit.key != "noi_dung"]
+        out.append(Finding(inspector, UNITS[0], {"NoiDung": fixed}, quote, doc, "họ tên in trên giấy hộ tịch / giấy căn cứ",
+                           _OWNERS[0], backed=True, evidence=tuple(notes)))
     return out
 
 

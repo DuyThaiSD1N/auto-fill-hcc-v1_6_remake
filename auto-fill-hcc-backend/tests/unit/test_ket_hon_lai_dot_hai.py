@@ -303,3 +303,12 @@ def test_ho_ten_lech_dau_tren_the_thi_theo_da_so_giay_khac_the():
     # Người khác trùng tên bỏ dấu nhưng không trùng số / ngày sinh / vai → không tính.
     stranger = [records[0], _rec("Lê Thị Hào", role="con", tier=4), _rec("Lê Thị Hào", role="người làm chứng", tier=4)]
     assert dinh_danh._printed_spelling_finding(NU, case, stranger) is None
+
+
+def test_mot_trang_giay_trung_so_dinh_danh_khong_du_de_de_ten_tren_the():
+    from app.pipelines.ket_hon_lai.thanh_tra import dinh_danh
+    case = _case({"BenNu_HoTen": "LÊ THỊ HÀO", "BenNu_SoDinhDanh": "001185000007"})
+    # Dòng chủ hộ trên giấy xác nhận cư trú (trùng số định danh nên đủ 2 điểm) mà chỉ một trang → không đè thẻ.
+    one_page = [_rec("LÊ THỊ HÀO", "001185000007", "05/03/1985", "chủ thẻ", tier=2),
+                _rec("LÊ THỊ HAO", "001185000007", role="chủ hộ", doc=3)]
+    assert dinh_danh._printed_spelling_finding(NU, case, one_page) is None

@@ -25,7 +25,7 @@ def test_xac_nhan_tthn_registry_uses_four_repeatable_file_groups():
 
     assert [item["key"] for item in docs] == ["cccd", "to_khai", "chung_minh_tthn", "khac"]
     assert proc["hideRepeatableHint"] is True
-    assert by_key["chung_minh_tthn"]["name"] == "Giấy tờ chứng minh tình trạng hôn nhân (nếu có)"
+    assert by_key["chung_minh_tthn"]["name"] == "Giấy tờ chứng minh tình trạng hôn nhân (nếu có, ví dụ: bản án ly hôn, trích lục khai tử…)"
     assert by_key["khac"]["name"] == "Các giấy tờ khác liên quan"
     assert all(item["sides"] == 1 and item.get("repeatable") for item in docs)
     assert not by_key["cccd"].get("optional")

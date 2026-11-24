@@ -123,6 +123,7 @@ async def submit_click(body: SubmitClickReq, user: dict = Depends(require_auth))
         # Extension lọc mốc dò chữ theo từng tab (background.js reportDossierSubmitSeen).
         text_dedupe_window=False,
         max_events=quota,
+        max_gap=dossiers_repo.AUTOFILL_SUBMIT_GAP,
     )
     return {"ok": True}
 

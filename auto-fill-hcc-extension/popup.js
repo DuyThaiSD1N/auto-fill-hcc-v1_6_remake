@@ -205,6 +205,13 @@ const BAC_NINH_AUTHORIZED_PERSON_CONFIG = new Map([
     sourceLabel: "người ủy quyền (chủ hồ sơ)",
     missingFilesMessage: "Chưa có Đơn Mẫu 18 hoặc CCCD để đọc thông tin chủ hồ sơ.",
   }],
+  // 1.115462 — Xác nhận tiếp tục sử dụng đất NN: khối điền = bên ủy quyền (chủ hồ sơ); BE trả authorizedSubject
+  // "Người cao tuổi" khi chủ hồ sơ từ 60 tuổi.
+  ["xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-bac-ninh", {
+    subjectOption: "Cá nhân khác là Công dân Việt Nam",
+    sourceLabel: "người ủy quyền (chủ hồ sơ)",
+    missingFilesMessage: "Chưa có Giấy ủy quyền, Đơn Mẫu 09 hoặc CCCD để đọc thông tin chủ hồ sơ.",
+  }],
   // 1.011442 — Đăng ký thay đổi BPBĐ: khối điền = bên cấp Giấy giới thiệu (thường ngân hàng → "Doanh nghiệp");
   // BE đọc ra loại khác (Tổ chức / Cá nhân) thì trả authorizedSubject và nút dùng loại đó.
   ["dang-ky-thay-doi-bien-phap-bao-dam-bac-ninh", {
@@ -219,6 +226,7 @@ const BAC_NINH_THREE_STEP_PROCEDURES = new Set([
   "dang-ky-bien-dong-thoa-thuan-bac-ninh",
   "dang-ky-thay-doi-bien-phap-bao-dam-bac-ninh",
   "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-bac-ninh",
+  "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-bac-ninh",
 ]);
 const currentBacNinhAuthorizedPersonConfig = () =>
   BAC_NINH_AUTHORIZED_PERSON_CONFIG.get(currentConfig()?.key) || null;
@@ -5367,6 +5375,11 @@ ocrBtn.addEventListener("click", async () => {
       cfg.key === "khai-sinh-ket-hop-nhan-cha-me-con" ||
       cfg.key === "khai-tu" ||
       cfg.key === "khai-tu-dang-ky-lai" ||
+      // Khai tử có yếu tố nước ngoài (eForm Bộ Tư pháp): mục I đổ theo tài khoản → mốc tài khoản để BE biết nộp thay
+      // (ghi đè theo người yêu cầu trên hồ sơ, xoá ngày sinh / ngày cấp của chủ tài khoản).
+      cfg.key === "khai-tu-nuoc-ngoai" ||
+      // Khai tử lưu động (cùng eForm khai tử Bộ Tư pháp): mốc tài khoản để BE biết nộp thay.
+      cfg.key === "khai-tu-luu-dong" ||
       cfg.key === "thay-doi-cai-chinh-ho-tich" ||
       cfg.key === "trich-luc-ks" ||
       // Khai sinh trên Cổng DVC quốc gia mới: khối người nộp khóa theo tài khoản → cần tên + số định danh để

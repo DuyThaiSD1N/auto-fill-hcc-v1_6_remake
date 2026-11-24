@@ -182,9 +182,11 @@ def test_tro_ly_bang_dinh_kem_an_tren_trang_khong_thanh_buoc_dinh_kem():
         assert flow._resolve_docs_target(proc, page, conv) == "declaration", key
         assert flow._remember_docs_target(conv, proc, page)[0] == "declaration"
         assert flow._docs_done_label_for_conv(conv) == "✅ Đã đưa đủ giấy tờ, điền tờ khai đi"
-    # Thủ tục không đính kèm: trang có bảng ẩn cũng không tính là đã tới trang đính kèm.
-    xac_nhan = handfree.get_procedure("xac-nhan-thong-tin-ve-cu-tru")
-    assert flow._attachment_page_reached({}, xac_nhan, page) is False
+    # Thủ tục không đính kèm: trang có bảng ẩn cũng không tính là đã tới trang đính kèm (xác nhận thông tin cư trú có
+    # đính kèm từ 24/11/2026 → dùng thông báo lưu trú).
+    khong_dinh_kem = handfree.get_procedure("thong-bao-luu-tru")
+    assert khong_dinh_kem["hasAttachmentStep"] is False
+    assert flow._attachment_page_reached({}, khong_dinh_kem, page) is False
     # Thủ tục CÓ đính kèm (trang đính kèm riêng) vẫn nhận trang đính kèm như cũ; chưa khai cờ cũng vậy.
     for proc in ({"key": "x", "mode": "agent", "hasAttachmentStep": True}, {"key": "x", "mode": "agent"},
                  {"key": "x", "mode": "attach", "hasAttachmentStep": False}):
@@ -462,6 +464,66 @@ def test_tro_ly_tich_cam_ket_xong_van_con_nut_dien_lai_dinh_kem_lai():
     conv = _done_conv(state="reviewing", attach_done=False)
     r = asyncio.run(flow._handle_turn_inner(conv, Intent("event", "commit_result", {"ok": True})))
     assert [c["send"] for c in r.chips] == ["__action:bca_submit"]
+
+
+def _cung_trang_cam_ket() -> list[str]:
+    """Thủ tục trợ lý có tờ khai + bảng đính kèm + ô cam kết CÙNG một trang (các thủ tục cư trú cổng Bộ Công an)."""
+    from app.channels.handfree import procedure_registry as handfree
+
+    return [p["key"] for p in handfree.PROCEDURES
+            if flow._commit_box(p)[1] and p.get("hasAttachmentStep") and flow._docs_adjust_refills(p)
+            and not flow._bca_nth(p)]
+
+
+def test_tro_ly_dien_lai_hay_dinh_lai_deu_hien_nut_tich_cam_ket(monkeypatch):
+    # Ảnh 24/11/2026 (tách hộ): đính lại, mọi tệp đã có sẵn ("không đính trùng") → trợ lý hiện thẳng Nộp hồ sơ, bỏ
+    # qua ô cam kết. Ô cam kết nằm cùng trang tờ khai: điền lại (extension bỏ tích ô) hay đính lại đều phải hiện lại nút
+    # tích ô, tích xong mới hiện Nộp hồ sơ — đủ mọi thủ tục cùng mô-típ.
+    from unittest import mock
+
+    from app.channels.handfree.chat import pipeline_runner, tracing
+    from app.channels.handfree.chat.intents import Intent
+
+    async def noop(*_a, **_k):
+        return None
+
+    monkeypatch.setattr(tracing, "set_report", noop)
+    keys = _cung_trang_cam_ket()
+    assert {KEY, "dang-ky-thuong-tru", "dang-ky-tam-tru", "xoa-dang-ky-tam-tru"} <= set(keys)
+    tick = "__action:tick_commit"
+    for key in keys:
+        # Đính lại: đính được tệp mới / mọi tệp đã có sẵn.
+        for attached, skipped in ((0, 8), (8, 0), (3, 5)):
+            conv = _done_conv(procedure_key=key, state="attaching", attach_done=False)
+            r = asyncio.run(flow._handle_turn_inner(conv, Intent("action", "attach_report", {
+                "attached": attached, "skipped": skipped, "errors": []})))
+            sends = [c["send"] for c in r.chips]
+            assert [c["send"] for c in r.chips if c.get("cta")] == [tick], (key, attached, sends)
+            assert "__action:bca_submit" not in sends, (key, attached)
+            assert flow._commit_box(handfree_proc(key))[1] in r.display_md, (key, attached)
+        # Tích xong mới hiện Nộp hồ sơ.
+        r = asyncio.run(flow._handle_turn_inner(conv, Intent("event", "commit_result", {"ok": True})))
+        assert r.chips[0]["send"] == "__action:bca_submit", key
+
+        # Điền lại sau khi đã đính: có số ô / extension không trả số ô / extension chưa có luồng Bộ Công an.
+        cases = (("review", dict(_DONE_CAPS), {"review": {"filled": 9, "optional": 0, "required": 0}}),
+                 ("khong-so-o", dict(_DONE_CAPS), {"reviewMissing": True}),
+                 ("luong-cu", {"supportsTickCommit": True}, {}))
+        for name, caps, extra in cases:
+            conv = _done_conv(procedure_key=key, state="filling", refill_keeps_attach=True,
+                              auto_attach_after_fill=False, docs_target="declaration", client_capabilities=caps)
+            with mock.patch.object(pipeline_runner, "spawn") as spawn:
+                r = asyncio.run(flow._handle_filling(conv, Intent("action", "fill_report", {"filled": 9, **extra})))
+            sends = [c["send"] for c in r.chips]
+            assert not spawn.called and conv["state"] == "done", (key, name)
+            assert tick in sends and "__action:bca_submit" not in sends, (key, name, sends)
+            assert "__action:reattach" in sends, (key, name, sends)
+
+
+def handfree_proc(key: str) -> dict:
+    from app.channels.handfree import procedure_registry as handfree
+
+    return handfree.get_procedure(key)
 
 
 def test_tro_ly_lam_lai_chua_ro_viec_khong_dua_nut_nop_ho_so():

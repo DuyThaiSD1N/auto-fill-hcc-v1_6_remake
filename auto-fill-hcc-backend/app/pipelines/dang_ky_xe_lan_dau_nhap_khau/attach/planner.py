@@ -15,10 +15,17 @@ from app.process.schemas import FileItem
 
 
 async def plan(files: list[FileItem], options: dict | None = None, session: dict | None = None) -> dict:
-    from app.pipelines.dang_ky_xe_lan_dau_nhap_khau.process.runner import missing_photo_note, photo_slots
+    del options
+    return await plan_page_photos(files, session)
+
+
+async def plan_page_photos(files: list[FileItem], session: dict | None = None, *, is_origin=None,
+                           origin: str | None = None) -> dict:
+    """Kế hoạch chỉ có ba ô ảnh đầu trang. ``is_origin`` / ``origin``: trang + tên chứng từ nguồn gốc của thủ tục (mặc
+    định tờ khai hàng hóa nhập khẩu; 1.012575 dùng lại với Phiếu kiểm tra chất lượng xuất xưởng)."""
+    from app.pipelines.dang_ky_xe_lan_dau_nhap_khau.process import runner as xe_runner
     from app.services import ocr
 
-    del options
     raw = [{"name": item.name, "type": item.type, "dataUrl": item.dataUrl} for item in files]
     errors: list[str] = []
     results = await ocr.ocr_per_file(raw) if raw else []
@@ -26,9 +33,10 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
         if item.get("error"):
             errors.append(f"OCR {item.get('name')}: {item['error']}")
     texts = {i: str((results[i] if i < len(results) else {}).get("text") or "") for i in range(len(raw))}
-    photos, done, missing = photo_slots(raw, texts)
+    photos, done, missing = xe_runner.photo_slots(raw, texts, is_origin=is_origin or xe_runner._customs_page)
     if missing:
-        errors.append(missing_photo_note(missing, retry="đính kèm lại"))
+        errors.append(xe_runner.missing_photo_note(missing, retry="đính kèm lại",
+                                                   origin=origin or xe_runner.ORIGIN_LABEL))
     return {
         "attachments": [],
         "nothingToAttach": True,

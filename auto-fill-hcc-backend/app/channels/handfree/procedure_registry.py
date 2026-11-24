@@ -348,6 +348,7 @@ PROCEDURES: list[dict] = [
         "subtitle": "Thủ tục đăng ký kết hôn trong nước",
         "icon": "❤️",
         "flowProfile": "tu-phap",
+        "executionSubjectKeys": ["self", "authorized_person", "other_person"],
         "supportsSplitDocuments": True,
         # Cổng React MỚI dichvucong.gov.vn: trang chi tiết thủ tục → khối "Chọn cơ quan
         # thực hiện" (tỉnh + xã) → Đồng ý → kê khai. Engine: content/portal-dvc.js.
@@ -696,6 +697,50 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        # Mã 3.000333 (Bộ Công an, Công an cấp tỉnh): DVCQG chọn TỈNH (không có ô xã) → "Nộp trực tuyến" vào trang nộp
+        # một trang /nop-ho-so (SurveyJS) như hộ tịch mới. Tài khoản là người yêu cầu → "Cá nhân", người được ủy quyền /
+        # cha mẹ → "Khai hộ" (pipeline tự chọn theo mốc tài khoản).
+        "key": "cap-phieu-ly-lich-tu-phap-cong-an-cap-tinh",
+        "detect": {
+            "urlIncludes": ["formalityId=019d2bf7-bd79-75fb-a4c6-ba1bf85d20ad"],
+            "urlScope": ["://dichvucong.gov.vn/nop-ho-so"],
+            "textIncludes": ["cấp phiếu lý lịch tư pháp", "loại phiếu lý lịch tư pháp"],
+            "textPriority": True,
+            "headingDisabled": True,
+        },
+        "label": "Cấp Phiếu lý lịch tư pháp cho công dân Việt Nam, người nước ngoài đang cư trú tại Việt Nam "
+                 "(thực hiện tại Công an cấp tỉnh)",
+        "shortLabel": "Cấp Phiếu lý lịch tư pháp",
+        "subtitle": "Xin phiếu lý lịch tư pháp số 1, số 2 tại Công an tỉnh",
+        "icon": "📋",
+        "flowProfile": "tu-phap-moi",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf7-bd79-75fb-a4c6-ba1bf85d20ad",
+        # Khối chọn cơ quan của DVCQG chỉ có ô Tỉnh (ke_khai_links provinceOnlyAgency).
+        "agencyProvinceOnly": True,
+        "agencyDeptLabel": "Công an tỉnh",
+        "supportsSplitDocuments": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "cccd", "name": "Căn cước của người yêu cầu cấp phiếu", "icon": "🪪",
+             "sides": 1, "repeatable": True},
+            {"key": "to_khai", "name": "Tờ khai yêu cầu cấp Phiếu lý lịch tư pháp (nếu có)", "icon": "📄",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "mien_giam", "name": "Giấy tờ chứng minh miễn, giảm phí (nếu có)", "icon": "📃",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Căn cước của người yêu cầu cấp phiếu.\n"
+            "2. Tờ khai yêu cầu cấp Phiếu lý lịch tư pháp bản giấy nếu có (mẫu cá nhân hoặc mẫu ủy quyền).\n"
+            "3. Giấy tờ chứng minh miễn, giảm phí nếu có.\n"
+            "Đính kèm: mọi giấy tờ đính chung dòng duy nhất của bảng (giấy miễn, giảm phí đứng đầu)."
+        ),
+    },
+    {
         "key": "khai-tu-lien-thong",
         # Liên thông khai tử nằm trên cổng riêng lienthong.dichvucong.gov.vn (SPA hash-route, Angular)
         # như liên thông khai sinh → nhận diện THEO URL, mã 1.006714 (cùng URL với app/procedures/registry.py
@@ -797,6 +842,85 @@ PROCEDURES: list[dict] = [
             "Không cần chọn trước loại giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
             "Hệ thống tự phân biệt người yêu cầu, người đã chết và thông tin đăng ký trước đây theo nội dung OCR.\n"
             "Bước 3: chỉ giấy chứng tử/giấy tờ chứng minh sự kiện chết vào STT 2; tờ khai, CCCD và giấy tờ khác thêm thành phần hồ sơ mới."
+        ),
+    },
+    {
+        # Khai tử có yếu tố nước ngoài (1.001766) — DVCQG chọn cơ quan xong sang cổng Bộ Tư pháp (wizard 4 bước như
+        # khai sinh có yếu tố nước ngoài, eForm khai tử mẫu 2053). Detect giống hệt lõi (test_flow_profiles so bằng ==).
+        "key": "khai-tu-nuoc-ngoai",
+        "detect": {"urlIncludes": ["maThuTuc=1.001766"]},
+        "label": "Thủ tục khai tử có yếu tố nước ngoài",
+        "shortLabel": "Khai tử có yếu tố nước ngoài",
+        "subtitle": "Người mất là người nước ngoài hoặc mất ở nước ngoài",
+        "icon": "🕯️",
+        "flowProfile": "tu-phap",
+        "supportsSplitDocuments": True,
+        # URL kê khai trong ke_khai_links.json (mã TTHC 1.001766).
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-47da-7259-b8fe-0d5327727234",
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "bao_tu", "name": "Giấy báo tử hoặc giấy tờ thay thế giấy báo tử", "icon": "📃",
+             "sides": 1, "repeatable": True},
+            # Khóa "cccd": bộ phân loại ảnh chỉ dồn thẻ CCCD vào ô có khóa bắt đầu bằng "cccd" (như 1.001193).
+            {"key": "cccd", "name": "CCCD người yêu cầu, hộ chiếu người đã mất (kèm bản dịch nếu là giấy nước ngoài)",
+             "icon": "🪪", "sides": 1, "repeatable": True},
+            {"key": "to_khai", "name": "Tờ khai đăng ký khai tử", "icon": "📄",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Văn bản ủy quyền, giấy tờ liên quan khác", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy báo tử hoặc giấy tờ thay thế giấy báo tử.\n"
+            "2. Hộ chiếu / giấy tờ tùy thân của người đã mất (kèm bản dịch nếu là giấy nước ngoài).\n"
+            "3. CCCD của người yêu cầu; tờ khai đăng ký khai tử nếu có.\n"
+            "4. Văn bản ủy quyền nếu người đi khai là người được ủy quyền.\n"
+            "Không cần chọn trước loại giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Bước 3: giấy báo tử vào dòng 2, chứng cứ sự kiện chết (người chết đã lâu) dòng 3, văn bản ủy quyền dòng 4; "
+            "tờ khai, hộ chiếu, CCCD thêm thành phần hồ sơ mới."
+        ),
+    },
+    {
+        # Khai tử lưu động (1.000419) — DVCQG chọn cơ quan xong sang cổng Bộ Tư pháp (wizard 4 bước như khai tử có yếu
+        # tố nước ngoài, eForm khai tử cùng mẫu 2053). Detect giống hệt lõi (test_flow_profiles so bằng ==).
+        "key": "khai-tu-luu-dong",
+        "detect": {"urlIncludes": ["maThuTuc=1.000419"]},
+        "label": "Thủ tục đăng ký khai tử lưu động",
+        "shortLabel": "Khai tử lưu động",
+        "subtitle": "Cán bộ hộ tịch đến tận nơi đăng ký khai tử",
+        "icon": "🕯️",
+        "flowProfile": "tu-phap",
+        "supportsSplitDocuments": True,
+        # URL kê khai trong ke_khai_links.json (mã TTHC 1.000419).
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-380b-73c4-9566-9e8b26bbfec6",
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "to_khai", "name": "Tờ khai đăng ký khai tử", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            # Khóa "cccd": bộ phân loại ảnh chỉ dồn thẻ CCCD vào ô có khóa bắt đầu bằng "cccd" (như 1.001193).
+            {"key": "cccd", "name": "CCCD người yêu cầu", "icon": "🪪", "sides": 1, "repeatable": True},
+            {"key": "bao_tu", "name": "Giấy báo tử hoặc giấy tờ thay thế giấy báo tử", "icon": "📃",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai đăng ký khai tử.\n"
+            "2. CCCD của người yêu cầu.\n"
+            "3. Giấy báo tử hoặc giấy tờ thay thế giấy báo tử nếu có (người chết đã lâu có thể không có).\n"
+            "4. Giấy tờ liên quan khác nếu có.\n"
+            "Không cần chọn trước loại giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Bước 3: tờ khai vào dòng 1, giấy báo tử vào dòng 2 (không có thì để trống); CCCD và giấy tờ khác thêm "
+            "thành phần hồ sơ mới."
         ),
     },
     {
@@ -1009,7 +1133,8 @@ PROCEDURES: list[dict] = [
              "sides": 1, "repeatable": True},
             {"key": "to_khai", "name": "Tờ khai cấp giấy xác nhận tình trạng hôn nhân (nếu có)",
              "icon": "📄", "sides": 1, "optional": True, "repeatable": True},
-            {"key": "chung_minh_tthn", "name": "Giấy tờ chứng minh tình trạng hôn nhân (nếu có)",
+            {"key": "chung_minh_tthn",
+             "name": "Giấy tờ chứng minh tình trạng hôn nhân (nếu có, ví dụ: bản án ly hôn, trích lục khai tử…)",
              "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
             {"key": "khac", "name": "Các giấy tờ khác liên quan", "icon": "📎",
              "sides": 1, "optional": True, "repeatable": True},
@@ -5127,6 +5252,66 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "cap-giay-phep-thi-cong-cong-trinh-tren-duong-bo-dang-khai-thac",
+        "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
+        # Mã TTHC 1.013061, cổng Bộ Xây dựng (Form.io Phần I người nộp dom-* + attach attp-row 5 dòng, engine tách
+        # trang sourceSegments). Key TRÙNG lõi và ke_khai_links → process/attach + URL tự nối. ke_khai không khai
+        # selectSo → DVCQG chọn đủ Tỉnh + Phường/Xã như "chap-thuan-dau-noi-tam" (cùng nhóm thủ tục đường bộ). Lõi
+        # không khai urlScope; đặt dvc.moc.gov.vn như các thủ tục Bộ Xây dựng khác — chạy thử phải xác nhận host.
+        "flowProfile": "xay-dung",
+        # Cổng Bộ Xây dựng iGate (stepper 4 bước, tờ khai Form.io) → dẫn đủ 4 bước bằng luồng chung chat/bxd.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
+        "detect": {
+            "urlScope": ["dvc.moc.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": [
+                "maThuTuc=1.013061",
+                "019d2bfe-88c8-7734-ad0e-b5e2bc20de96",
+            ],
+            "textIncludes": ["cấp giấy phép thi công công trình trên đường bộ đang khai thác"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp giấy phép thi công công trình trên đường bộ đang khai thác",
+        "shortLabel": "Cấp phép thi công trên đường bộ đang khai thác",
+        "subtitle": "Xin phép đặt đường ống, cáp, công trình băng qua hoặc dọc quốc lộ, lắp lên cầu",
+        "icon": "🚧",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-88c8-7734-ad0e-b5e2bc20de96",
+        # Bảng thành phần hồ sơ 5 dòng cố định (planner lõi attp-row; PDF gộp cả bộ tách về từng dòng) → tắt
+        # hideRepeatableHint mà profile "xay-dung" bật sẵn.
+        "hideRepeatableHint": False,
+        "requiredDocs": [
+            {"key": "don_de_nghi", "name": "Đơn đề nghị cấp phép thi công công trình trên đường bộ đang khai thác "
+             "(mẫu Đơn_TT1.013061) — đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "bptc_bdgt", "name": "Thuyết minh, bản vẽ biện pháp tổ chức thi công, bảo đảm giao thông và bản "
+             "vẽ thiết kế hoàn trả công trình đường bộ", "icon": "🚧", "sides": 1, "repeatable": True},
+            {"key": "thiet_ke_thi_cong", "name": "Bản vẽ thiết kế thi công (vị trí, lý trình, khoảng cách, bộ phận "
+             "đường bộ phải đào, khoan)", "icon": "🗺️", "sides": 1, "repeatable": True},
+            {"key": "khoang_cach_dpc", "name": "Thông tin khoảng cách tới dải phân cách giữa (công trình trong phạm "
+             "vi dải phân cách giữa)", "icon": "📐", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "tham_tra", "name": "Báo cáo thẩm tra thiết kế và tính toán khả năng chịu lực (công trình lắp "
+             "vào cầu, hầm)", "icon": "🌉", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đứng đơn (nếu có) — để điền ngày cấp, nơi cấp",
+             "icon": "🪪", "sides": 2, "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể gộp chung một PDF — hệ thống tự tách theo trang):\n"
+            "1. Đơn đề nghị cấp phép thi công công trình trên đường bộ đang khai thác (mẫu Đơn_TT1.013061), đã ký — "
+            "nguồn chính để điền form.\n"
+            "2. Thuyết minh, bản vẽ biện pháp tổ chức thi công, bảo đảm giao thông và bản vẽ thiết kế hoàn trả "
+            "công trình đường bộ bị ảnh hưởng.\n"
+            "3. Bản vẽ thiết kế thi công (vị trí, lý trình, khoảng cách, bộ phận đường bộ phải đào, khoan).\n"
+            "4. Nếu có: thông tin khoảng cách tới dải phân cách giữa; báo cáo thẩm tra thiết kế và tính toán khả "
+            "năng chịu lực (công trình lắp vào cầu, hầm); căn cước công dân của người đứng đơn.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Phần người nộp cổng lấy theo tài khoản đăng nhập; trợ lý điền phần còn lại.\n"
+            "Bước Thành phần hồ sơ: Đơn → dòng 1; khoảng cách dải phân cách giữa → dòng 2; báo cáo thẩm tra → dòng "
+            "3; biện pháp thi công, bảo đảm giao thông, hoàn trả → dòng 4; bản vẽ thiết kế thi công → dòng 5. Dòng 2 "
+            "/ 3 không có giấy thì bỏ tích."
+        ),
+    },
+    {
         "key": "gia-han-luu-hanh-phuong-tien-lao",
         "supportsSplitDocuments": True,  # attach/planner.py: bật tách → dinh_kem_tach, tắt → dinh_kem_khong_tach (đính nguyên tệp)
         # Mã TTHC 1.002063, cổng Bộ Xây dựng dvc.moc.gov.vn (Form.io key PHẲNG + attach attp-row 2 dòng, engine tách
@@ -5966,6 +6151,61 @@ PROCEDURES: list[dict] = [
             "3. Giấy tờ chứng minh việc thay đổi thông tin (giấy xác nhận thông tin cư trú, xác nhận số CMND cũ, "
             "quyết định thay đổi họ tên…).\n"
             "4. Căn cước công dân của người sử dụng đất; nếu nộp thay: văn bản ủy quyền; nếu có: mảnh trích đo.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
+        "key": "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-bac-ninh",
+        "provinceOnly": ["bacninh"],  # đặc thù Bắc Ninh: chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.115462, cổng dichvucong.bacninh.gov.vn (Liferay eForm Mẫu 09, 4 tab cùng trang). Chép thẻ 1.115460:
+        # ke_khai_links tích Sở (provinceOnlyAgency + selectSo) → DVCQG chọn Tỉnh Bắc Ninh + gạt "Sở", bấm thẻ đầu
+        # (agencySoFirst). Khối ủy quyền = chủ hồ sơ (bên ủy quyền), pipeline lượt purpose="authorized_person" trả
+        # authorizedSubject "Người cao tuổi" khi chủ hồ sơ từ 60 tuổi. Key TRÙNG lõi. Detect y hệt lõi; KHÔNG
+        # textIncludes vì tên trùng thẻ Khánh Hòa / Lào Cai. Chưa chạy cổng thật.
+        "detect": {
+            "urlScope": ["dichvucong.bacninh.gov.vn"],
+            "urlIncludes": ["maThuTucHanhChinh=1.115462"],
+            "headingDisabled": True,
+        },
+        "label": "Xác nhận tiếp tục sử dụng đất nông nghiệp",
+        "shortLabel": "Xác nhận tiếp tục sử dụng đất nông nghiệp",
+        "subtitle": "Mã 1.115462 · Xin xác nhận lại thời hạn sử dụng đất nông nghiệp đã hết hạn tại Bắc Ninh",
+        "icon": "🌾",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f1295-8758-714f-8aa7-330de9b7d93d",
+        "needsAgencySelect": True,
+        "agencyProvinceOnly": True,
+        "agencySoFirst": True,
+        "agencyProvince": "Bắc Ninh",
+        "agencyDeptLabel": "Văn phòng Đăng ký đất đai Bắc Ninh",
+        "samePageAttach": True,
+        "hasAttachmentStep": True,
+        # Planner lõi có nhánh tách theo trang (splitDocuments) → tệp scan chung thành từng giấy riêng.
+        "supportsSplitDocuments": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn xin xác nhận tiếp tục sử dụng đất nông nghiệp (Mẫu số 09) — đã kê khai, ký, "
+             "kèm trang xác nhận của UBND xã; có thể scan chung mọi giấy tờ vào một file", "icon": "📄", "sides": 1,
+             "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận quyền sử dụng đất đã cấp (bìa + trang chứng nhận)",
+             "icon": "📜", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "uy_quyen", "name": "Giấy ủy quyền kèm lời chứng chứng thực (nếu người khác nộp thay)",
+             "icon": "📝", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người sử dụng đất",
+             "icon": "🪪", "sides": 2, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        # Khối "Thông tin trong trường hợp được ủy quyền" = chủ hồ sơ (bên ủy quyền) — loại mặc định "Cá nhân khác là
+        # Công dân Việt Nam", pipeline trả authorizedSubject "Người cao tuổi" khi chủ hồ sơ từ 60 tuổi.
+        "bacNinhAuthorizedPerson": _BN_AUTHORIZED_PERSON,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (mỗi giấy một file hoặc scan chung một file):\n"
+            "1. Đơn xin xác nhận tiếp tục sử dụng đất nông nghiệp (Mẫu số 09) đã kê khai, ký — kèm trang xác nhận của "
+            "UBND xã.\n"
+            "2. Giấy chứng nhận quyền sử dụng đất đã cấp.\n"
+            "3. Nếu người khác nộp thay: Giấy ủy quyền kèm lời chứng chứng thực; nếu có: Căn cước công dân.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
     },
@@ -6903,8 +7143,8 @@ PROCEDURES: list[dict] = [
     },
     {
         # CÙNG trang + cùng bộ id với "dang-ky-thuong-tru" (chỉ khác TT=THUONGTRU_09) → cùng cờ supportsBcaThuongTru,
-        # cùng ô cam kết chkRULE. Thủ tục KHÔNG đính kèm (mapping 16/11/2026): điền xong là nhắc tích cam kết rồi nộp.
-        # Toàn quốc. URL + detect giống hệt ke_khai_links.json / lõi (mã TTHC 1.010041).
+        # cùng ô cam kết chkRULE. Đính kèm (ảnh user 24/11/2026) như tách hộ: bảng giấy tờ CÙNG trang (nhóm "thuộc
+        # quyền sở hữu" / "thuê, mượn, ở nhờ"), điền xong DỪNG hỏi (askBeforeAttach) rồi mới đính. Toàn quốc. URL + detect giống hệt ke_khai_links.json / lõi (mã TTHC 1.010041).
         "key": "xac-nhan-thong-tin-ve-cu-tru",
         "detect": {
             "urlScope": ["dang-ky-thuong-tru.html"],
@@ -6923,13 +7163,20 @@ PROCEDURES: list[dict] = [
         "bcaPortal": True,
         "bcaAgencyPlace": "nơi thường trú",
         "requiresCapability": "supportsBcaThuongTru",
-        "hasAttachmentStep": False,
+        "samePageAttach": True,
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,
+        # Như tách hộ: "Điều chỉnh giấy tờ" / "Điền lại tờ khai" sau khi đính là ĐIỀN LẠI tờ khai, không đính lại.
+        "docsAdjustRefill": True,
+        "askBeforeAttach": True,
         "submitCommitLabel": "Tôi xin chịu trách nhiệm trước pháp luật về lời khai trên",
         "submitCommitCheckbox": "chkRULE",
         "hideRepeatableHint": True,
         "requiredDocs": [
             {"key": "to_khai", "name": "Tờ khai thay đổi thông tin cư trú (Mẫu CT01)", "icon": "📄",
              "sides": 1, "repeatable": True},
+            {"key": "cho_o", "name": "Giấy tờ chỗ ở hợp pháp / hợp đồng cho thuê, cho mượn, cho ở nhờ", "icon": "🏠",
+             "sides": 1, "optional": True, "repeatable": True},
             {"key": "uy_quyen", "name": "Giấy ủy quyền (nếu người khác nộp thay)", "icon": "✍️",
              "sides": 1, "optional": True, "repeatable": True},
             {"key": "cccd", "name": "Căn cước công dân của người đề nghị", "icon": "🪪",
@@ -6942,8 +7189,9 @@ PROCEDURES: list[dict] = [
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
             "1. Tờ khai thay đổi thông tin cư trú (Mẫu CT01) — nguồn chính.\n"
-            "2. Giấy ủy quyền (nếu người khác nộp thay).\n"
-            "3. CCCD của người đề nghị (nếu có).\n"
+            "2. Giấy tờ chỗ ở hợp pháp / hợp đồng cho thuê, cho mượn, cho ở nhờ (nếu có).\n"
+            "3. Giấy ủy quyền (nếu người khác nộp thay).\n"
+            "4. CCCD, giấy chứng nhận kết hôn của người đề nghị (nếu có).\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
     },
@@ -7314,9 +7562,10 @@ PROCEDURES: list[dict] = [
         # 1.012575, Cổng DVC Bộ Công an dichvucong.bocongan.gov.vn (eForm Nth như Lai Châu, KHÁC cổng căn cước
         # dancuquocgia nên không bcaPortal). Link kê khai là trang "chọn trường hợp hồ sơ": công dân tự chọn trường hợp
         # rồi bấm "Đồng ý và tiếp tục"; extension cờ supportsBcaDangKyXe không tính trang đó là form kê khai (formKind
-        # rỗng) nên trợ lý chỉ xin giấy tờ / điền ở trang nhập thông tin. Không có mục đính kèm (ảnh xe, ảnh phiếu kiểm
-        # tra công dân tự tải). Sau khi điền: nhập mã bảo mật, bấm "Tra cứu". Toàn quốc. Detect y hệt lõi. Chưa chạy thử
-        # trên cổng thật.
+        # rỗng) nên trợ lý chỉ xin giấy tờ / điền ở trang nhập thông tin. Không có bảng Thành phần hồ sơ; ba ô tải ảnh
+        # đầu trang (Ảnh phương tiện + hai mặt chứng từ nguồn gốc = Phiếu kiểm tra chất lượng xuất xưởng, user 24/11)
+        # gắn ở bước "Đính kèm giấy tờ" như xe nhập khẩu 1.013066 ngay dưới. Sau khi điền: nhập mã bảo mật, bấm "Tra
+        # cứu". Toàn quốc. Detect y hệt lõi. Chưa chạy thử trên cổng thật.
         "key": "dang-ky-xe-lan-dau-san-xuat-lap-rap-trong-nuoc",
         "detect": {
             "urlScope": ["dichvucong.bocongan.gov.vn"],
@@ -7332,24 +7581,35 @@ PROCEDURES: list[dict] = [
         "subtitle": "Đăng ký, cấp biển số cho xe máy, ô tô mới mua sản xuất trong nước",
         "icon": "🏍️",
         "keKhaiUrl": "https://dichvucong.bocongan.gov.vn/bo-cong-an/tiep-nhan-online/chon-truong-hop-ho-so?ma-thu-tuc-public=56952",
-        "requiresCapability": "supportsBcaDangKyXe",
+        # Luồng như xe nhập khẩu 1.013066 (user 24/11): điền → báo ô trống / Bổ sung → "Đính kèm giấy tờ" gắn ba ô ảnh
+        # đầu trang (bcaPagePhotos) → "Đồng ý và tiếp tục" → trang Xác nhận. Bản extension chưa biết gắn ô ảnh ở bước
+        # đính kèm (cờ supportsBcaPagePhotos) thì không dẫn vào.
+        "requiresCapability": "supportsBcaPagePhotos",
         # Trang "Chọn trường hợp hồ sơ" cùng nền eForm Nth với Lai Châu (chat/lai_chau.py): trợ lý đọc mọi ô chọn đang
         # hiện (Loại xe, rồi các ô cổng hiện thêm sau khi chọn — tên ô chưa biết nên tự dò), hiện thẻ chọn + nút cam
         # "Đồng ý và tiếp tục". Chỉ trang này (caseOnly); trang nhập thông tin đi luồng chung. Extension cờ riêng
         # supportsBcaCaseStep (content/laichau/portal.js chạy thêm host bocongan).
         "laiChauFeeStep": {"capability": "supportsBcaCaseStep", "caseOnly": True, "caseGroups": "auto"},
-        "hasAttachmentStep": False,
+        "hasAttachmentStep": True,
+        "bcaPagePhotos": True,
+        "askBeforeAttach": True,
+        # "Điều chỉnh giấy tờ" chốt xong ĐIỀN LẠI tờ khai, không đính lại ("đính kèm lại" là lệnh riêng).
+        "docsAdjustRefill": True,
+        "supportsSplitDocuments": True,  # attach/planner.py: tách hay không tách ra cùng kế hoạch (chỉ ô ảnh)
         "hideRepeatableHint": True,
         "requiredDocs": [
             {"key": "to_khai", "name": "Giấy khai đăng ký xe (Mẫu ĐKX10)", "icon": "📄", "sides": 1,
              "repeatable": True},
-            {"key": "phieu_xuat_xuong", "name": "Phiếu kiểm tra chất lượng xuất xưởng", "icon": "🏭", "sides": 1,
-             "repeatable": True},
+            {"key": "phieu_xuat_xuong", "name": "Phiếu kiểm tra chất lượng xuất xưởng (chứng từ nguồn gốc — đủ 2 mặt)",
+             "icon": "🏭", "sides": 1, "repeatable": True},
             {"key": "hoa_don", "name": "Hóa đơn bán xe", "icon": "🧾", "sides": 1, "optional": True,
              "repeatable": True},
             {"key": "le_phi", "name": "Thông báo nộp lệ phí trước bạ / giấy nộp tiền lệ phí trước bạ", "icon": "💵",
              "sides": 1, "repeatable": True},
             {"key": "cccd", "name": "Thẻ căn cước của chủ xe", "icon": "🪪", "sides": 2, "optional": True},
+            # Cổng bắt buộc ô "Ảnh phương tiện" đầu trang (.jpg / .png dưới 2 MB): bộ phân loại nhận ảnh ít chữ
+            # (classify._vehicle_photo_indexes), planner đổi JPEG rồi extension gắn vào ô (comp bca-photo).
+            {"key": "anh_phuong_tien", "name": "Ảnh chụp phương tiện (xe)", "icon": "📷", "sides": 1},
         ],
         "mode": "agent",
         "review": False,
@@ -7358,10 +7618,12 @@ PROCEDURES: list[dict] = [
         "uploadHint": (
             "Giấy tờ cần tải lên (chủ xe tự nộp bằng tài khoản VNeID của mình):\n"
             "1. Giấy khai đăng ký xe (Mẫu ĐKX10) — số điện thoại, địa chỉ chủ xe.\n"
-            "2. Phiếu kiểm tra chất lượng xuất xưởng — số seri phiếu, đặc điểm xe.\n"
+            "2. Phiếu kiểm tra chất lượng xuất xưởng, chụp đủ 2 mặt — số seri phiếu, đặc điểm xe (chứng từ nguồn gốc — tự "
+            "gắn vào ô ảnh mặt trước / mặt sau).\n"
             "3. Hóa đơn bán xe.\n"
             "4. Thông báo nộp lệ phí trước bạ / giấy nộp tiền — mã hồ sơ lệ phí trước bạ.\n"
             "5. Thẻ căn cước của chủ xe.\n"
+            "6. Ảnh chụp phương tiện (xe) — tự gắn vào ô Ảnh phương tiện.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
     },
@@ -9265,6 +9527,51 @@ PROCEDURES: list[dict] = [
         "flowProfile": "xay-dung",
         "agencyProvince": "Lâm Đồng",
         "bxdFlow": _LD_BXD_FLOW,
+        "supportsSplitDocuments": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Văn bản / Đơn đề nghị tính hoặc tính lại tiền sử dụng đất — đã ký", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người sử dụng đất", "icon": "🪪", "sides": 2,
+             "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận quyền sử dụng đất (nếu có)", "icon": "📜", "sides": 1,
+             "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Thông báo / chứng từ nộp tiền sử dụng đất, Giấy ủy quyền (nếu nộp thay)",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên (mỗi bộ giấy có thể là một PDF gộp):\n"
+            "1. Văn bản / Đơn đề nghị tính hoặc tính lại tiền sử dụng đất đã ký — nguồn chính điền chủ hồ sơ, thửa đất.\n"
+            "2. Căn cước công dân của người sử dụng đất.\n"
+            "3. Nếu có: Giấy chứng nhận quyền sử dụng đất, thông báo / chứng từ nộp tiền sử dụng đất; nộp thay: giấy ủy "
+            "quyền hoặc CCCD người đi nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: cổng chỉ có một dòng 'Văn bản đề nghị tính hoặc tính lại tiền sử dụng đất' — mọi tệp đính "
+            "vào dòng này."
+        ),
+    },
+    {
+        "key": "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa",
+        "provinceOnly": ["khanhhoa"],  # bản riêng Khánh Hòa (key/label mang tên tỉnh): chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.115148 (24/11/2026), chép theo bản Lâm Đồng ngay trên (cùng bảng đính kèm một dòng, cùng facts). Cổng
+        # iGate Khánh Hòa cấp UBND phường/xã (quy trình 1.115148.01) → ke_khai_links không khai provinceOnlyAgency: DVCQG
+        # chọn đủ Tỉnh + Phường/Xã của tài khoản. Stepper 4 bước như các thủ tục Khánh Hòa → luồng "xay-dung" + _KH_BXD_FLOW.
+        "detect": {
+            "urlScope": ["khanhhoa.gov.vn"],
+            "textIncludes": ["tính lại tiền sử dụng đất", "50/2026/NĐ-CP"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Thủ tục tính hoặc tính lại tiền sử dụng đất theo quy định tại các điểm a, b, c và d khoản 2 Điều 12 Nghị "
+            "định số 50/2026/NĐ-CP"
+        ),
+        "shortLabel": "Tính lại tiền sử dụng đất",
+        "subtitle": "Mã 1.115148 · Đề nghị tính hoặc tính lại tiền sử dụng đất tại Khánh Hòa",
+        "icon": "💰",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019e8732-a3da-753b-85f5-0590fe1e27c7",
+        "flowProfile": "xay-dung",
+        "agencyProvince": "Khánh Hòa",
+        "bxdFlow": _KH_BXD_FLOW,
         "supportsSplitDocuments": True,
         "requiredDocs": [
             {"key": "don", "name": "Văn bản / Đơn đề nghị tính hoặc tính lại tiền sử dụng đất — đã ký", "icon": "📄",
@@ -11698,6 +12005,8 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "khai-tu": _TAT_CA,
     "khai-tu-lien-thong": _TAT_CA,  # STT 110
     "khai-tu-dang-ky-lai": _TAT_CA,
+    "khai-tu-nuoc-ngoai": _TAT_CA,  # 24/11/2026: chưa có trong bảng, mặc định toàn quốc
+    "khai-tu-luu-dong": _TAT_CA,  # 24/11/2026: chưa có trong bảng, mặc định toàn quốc
     "dang-ky-nhan-cha-me-con": _TAT_CA,
     "khai-sinh-ket-hop-nhan-cha-me-con": _TAT_CA,
     "dang-ky-nuoi-con-nuoi-trong-nuoc": _TAT_CA,
@@ -11776,6 +12085,7 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "cap-giay-phep-lien-van-viet-lao-campuchia": _TAT_CA,
     "cap-giay-phep-chat-ha-cay-xanh": _TAT_CA,
     "chap-thuan-dau-noi-tam": _TAT_CA,  # STT 232
+    "cap-giay-phep-thi-cong-cong-trinh-tren-duong-bo-dang-khai-thac": _TAT_CA,  # 24/11/2026: mặc định toàn quốc (1.013061)
     "gia-han-luu-hanh-phuong-tien-lao": _TAT_CA,
     "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan": _TAT_CA,  # STT 233
     "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san": _TAT_CA,
@@ -11812,6 +12122,8 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     # Vắng bảng theo dõi, user không nói phạm vi → toàn quốc (mặc định 16/11/2026), cùng trang tạm trú. 20/11/2026.
     "xoa-dang-ky-tam-tru": _TAT_CA,
     "xoa-dang-ky-thuong-tru": _TAT_CA,
+    # 24/11/2026: ngoài bảng theo dõi, user không nói phạm vi → toàn quốc (Công an tỉnh nào cũng nhận).
+    "cap-phieu-ly-lich-tu-phap-cong-an-cap-tinh": _TAT_CA,
     # Toàn quốc (user 16/11/2026).
     "cap-doi-the-can-cuoc": _TAT_CA,
     # Vắng bảng theo dõi — mặc định toàn quốc như cấp đổi căn cước (cùng trang Bộ Công an), 16/11/2026.
@@ -11845,6 +12157,8 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh": frozenset({"bacninh"}),  # STT 50; 12/11/2026 người dùng mở cho Bắc Ninh
     # 1.115460 (21/11/2026): thủ tục riêng Bắc Ninh ("Bắc Ninh - …"), chưa có trong bảng theo dõi → mở cho Bắc Ninh.
     "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-bac-ninh": frozenset({"bacninh"}),
+    # 1.115462 (24/11/2026): thủ tục riêng Bắc Ninh ("Bắc Ninh - …"), chưa có trong bảng theo dõi → mở cho Bắc Ninh.
+    "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-bac-ninh": frozenset({"bacninh"}),
     "dang-ky-dat-dai-lan-dau-khanh-hoa": _TAT_CA,  # STT 44 + STT 229 (mã 1.013978)
     "giao-thue-chuyen-muc-dich-dat-khanh-hoa": _TAT_CA,
     "cap-doi-gcn-khanh-hoa": _TAT_CA,  # STT 93
@@ -11862,6 +12176,8 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "giao-thue-dat-giao-rung-gia-han-su-dung-dat": frozenset({"lamdong"}),
     # 19/11/2026: 1.115148 bản Lâm Đồng, provinceOnly ["lamdong"] → chỉ mở cho Lâm Đồng như các thủ tục trên.
     "tinh-tien-su-dung-dat-nd-50-2026-lam-dong": frozenset({"lamdong"}),
+    # 24/11/2026: 1.115148 bản Khánh Hòa ("Khánh Hòa - …"), người dùng giới hạn chỉ tài khoản Khánh Hòa.
+    "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa": frozenset({"khanhhoa"}),
     "thong-bao-san-pham-quang-cao-bang-ron": _TAT_CA,
     "cap-giay-phep-xuat-ban-tai-lieu-khong-kinh-doanh": _TAT_CA,
     "cap-the-huong-dan-vien-du-lich-noi-dia": _TAT_CA,

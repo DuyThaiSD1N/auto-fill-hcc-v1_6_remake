@@ -77,6 +77,22 @@ UI_COMP_BY_NAME = {
     "cboROLESID0": "dom-select",
 }
 
+# Khối "Thông tin nhận thông báo tình trạng hồ sơ, kết quả giải quyết hồ sơ" cuối trang tạm trú (DOM chụp 24/11/2026,
+# trang xóa tạm trú TAMTRU_06). "Hình thức nhận kết quả" (cboRECEIVER_TYPE, select2) cổng chọn sẵn "Qua email" kèm ô
+# Email bắt buộc (txtRECEIVER_EMAIL) → giấy có email thì giữ "Qua email" + điền email, không có thì chọn "Nhận qua cổng
+# thông tin" (không đòi ô nào) để không bỏ trống ô bắt buộc. Chọn hình thức TRƯỚC ô email (cổng ẩn/hiện ô theo hình
+# thức). "Hình thức nhận thông báo" (cboNOTIFICATION_TYPE, select2 nhiều lựa chọn) để mặc định "Nhận qua cổng thông tin".
+RECEIVER_TYPE_ID = "cboRECEIVER_TYPE"
+RECEIVER_EMAIL_ID = "txtRECEIVER_EMAIL"
+RECEIVER_DIRECT = "Nhận trực tiếp"
+RECEIVER_BY_EMAIL = "Qua email"
+RECEIVER_PORTAL = "Nhận qua cổng thông tin"
+RECEIVER_UI_COMP_BY_NAME = {
+    RECEIVER_TYPE_ID: "dom-select",
+    RECEIVER_EMAIL_ID: "dom-input",
+}
+UI_COMP_BY_NAME.update(RECEIVER_UI_COMP_BY_NAME)
+
 # Vai trò của người cần xin ý kiến (cboROLESID0) khi đó là chủ sở hữu chỗ ở — nhãn option đúng như trên cổng.
 ROLE_OWNER = "Chủ sở hữu chỗ ở hợp pháp"
 

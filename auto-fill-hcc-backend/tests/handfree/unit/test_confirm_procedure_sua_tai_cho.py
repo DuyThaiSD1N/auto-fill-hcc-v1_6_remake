@@ -149,3 +149,16 @@ def test_router_client_cu_van_them_nhu_truoc(monkeypatch):
     res = _pick_ward(_client(conv, monkeypatch), OLD)
     assert res.json()["replace_last"] is False
     assert len([h for h in conv["history"] if h["role"] == "bot"]) == 2
+
+
+def test_router_luu_ca_bong_bong_phu_dung_truoc_vao_history(monkeypatch):
+    """lead_message là một bong bóng riêng trên màn hình → history cũng có, khôi phục phiên dựng lại đủ."""
+    conv = _conv(OLD)
+    reply = flow.Reply("Câu chính", "Câu chính")
+    reply.actions = [{"type": "lead_message", "md": "⛔ Cảnh báo riêng"}, {"type": "hkd_focus", "names": []}]
+    monkeypatch.setattr(flow, "handle_turn", AsyncMock(return_value=reply))
+    res = _client(conv, monkeypatch).post("/api/v1/assistant/chat", json={
+        "conversation_id": "t-confirm", "message": "__event:x", "source": "system",
+        "client_context": {"capabilities": OLD}})
+    assert res.status_code == 200, res.text
+    assert [h["text"] for h in conv["history"] if h["role"] == "bot"][-2:] == ["⛔ Cảnh báo riêng", "Câu chính"]

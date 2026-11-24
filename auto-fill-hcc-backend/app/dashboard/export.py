@@ -11,6 +11,8 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
+from app.users.roles import BCA_GROUP
+
 _VN_TZ = timezone.utc  # nhãn giờ để dạng UTC+7 khi hiển thị
 _BLUE = "1256C7"
 _BLUE_LIGHT = "EAF1FD"
@@ -55,8 +57,16 @@ def _period_label(rng: dict) -> str:
 
 def _scope_label(scope: dict) -> str:
     if scope.get("canViewUnits"):
-        province = scope.get("province") or ""
-        return f"Toàn tỉnh {province}".strip()
+        # `province` đã chuẩn hoá thường có sẵn tiền tố "Tỉnh"/"Thành phố" → không ghép thêm "tỉnh".
+        province = (scope.get("province") or "").strip()
+        if not province:
+            return "Toàn hệ thống"
+        if province == BCA_GROUP:
+            return f"Nhóm {BCA_GROUP}"
+        lowered = province[:1].lower() + province[1:]
+        if lowered.startswith(("tỉnh ", "thành phố ")):
+            return f"Toàn {lowered}"
+        return f"Toàn tỉnh {province}"
     self_unit = scope.get("self") or {}
     return self_unit.get("name") or self_unit.get("xa") or "Đơn vị của bạn"
 
@@ -333,15 +343,23 @@ def _sheet_logs(wb: Workbook, logs: list[dict]) -> None:
         r += 1
 
 
-def build_dashboard_workbook(data: dict, logs: list[dict] | None = None) -> bytes:
-    """4 sheet cho tài khoản Tỉnh (có 'Theo đơn vị'); 3 sheet cho HCC xã/phường (bỏ 'Theo đơn vị')."""
+# Mỗi tab của bảng thống kê xuất đúng sheet của tab đó; không truyền `view` (web bản cũ) = đủ các sheet.
+EXPORT_VIEWS = {"overview": "Tong quan", "units": "Theo don vi", "procedures": "Theo thu tuc", "logs": "Nhat ky ho so"}
+
+
+def build_dashboard_workbook(data: dict, logs: list[dict] | None = None, view: str | None = None) -> bytes:
+    """Đủ sheet: 4 sheet cho tài khoản Tỉnh (có 'Theo đơn vị'), 3 sheet cho HCC xã/phường. Có `view`: một sheet."""
     wb = Workbook()
     wb.remove(wb.active)
-    _sheet_overview(wb, data)
-    if (data.get("scope") or {}).get("canViewUnits"):
+    can_view_units = (data.get("scope") or {}).get("canViewUnits")
+    if view in (None, "overview"):
+        _sheet_overview(wb, data)
+    if view == "units" or (view is None and can_view_units):
         _sheet_units(wb, data)
-    _sheet_procedures(wb, data)
-    _sheet_logs(wb, logs or [])
+    if view in (None, "procedures"):
+        _sheet_procedures(wb, data)
+    if view in (None, "logs"):
+        _sheet_logs(wb, logs or [])
     buffer = io.BytesIO()
     wb.save(buffer)
     return buffer.getvalue()
@@ -374,7 +392,7 @@ def build_catalog_workbook(items: list[dict], note: str, now: datetime) -> bytes
     return buffer.getvalue()
 
 
-def export_filename(data: dict) -> str:
+def export_filename(data: dict, view: str | None = None) -> str:
     scope = data.get("scope") or {}
     selected = data.get("selected") or {}
     chosen = data.get("selectedUnits") or []
@@ -385,4 +403,152 @@ def export_filename(data: dict) -> str:
     else:
         who = _scope_label(scope)
     period = _period_label(data.get("range") or {})
-    return f"Thong ke ho so - {who} - {period}.xlsx".replace("/", "-")
+    tab = f" - {EXPORT_VIEWS[view]}" if view in EXPORT_VIEWS else ""
+    return f"Thong ke ho so{tab} - {who} - {period}.xlsx".replace("/", "-")
+
+
+_PCTFMT = "0.0%"
+
+
+def _ratio(part: int, whole: int):
+    """Tỷ lệ dạng số (Excel định dạng %); mẫu bằng 0 thì để trống thay vì 0%."""
+    return part / whole if whole else None
+
+
+def _ratings_header(ws, row: int, labels: tuple[str, str, str]) -> None:
+    for col, label in enumerate(labels, start=2):
+        cell = ws.cell(row=row, column=col, value=label)
+        cell.fill, cell.font, cell.alignment, cell.border = _HEADER_FILL, _HEADER_FONT, _CENTER, _BORDER
+
+
+def _ratings_overview(wb: Workbook, data: dict) -> None:
+    ws = wb.create_sheet("Tổng hợp")
+    ws.sheet_view.showGridLines = False
+    ws.column_dimensions["A"].width = 4
+    ws.column_dimensions["B"].width = 34
+    ws.column_dimensions["C"].width = 16
+    ws.column_dimensions["D"].width = 22
+
+    title = ws.cell(row=2, column=2, value="BÁO CÁO ĐÁNH GIÁ CỦA CÔNG DÂN")
+    title.font = _TITLE_FONT
+    ws.merge_cells("B2:D2")
+    scope_text = _scope_label(data.get("scope") or {})
+    chosen = data.get("selectedUnits") or []
+    if len(chosen) >= 2:
+        scope_text = f"{len(chosen)} đơn vị đã chọn: " + ", ".join(u.get("xa") or u.get("name") or "" for u in chosen)
+    elif data.get("selected"):
+        scope_text = data["selected"].get("name") or data["selected"].get("xa") or scope_text
+    r = 4
+    for label, value in (
+        ("Phạm vi", scope_text),
+        ("Kỳ báo cáo", _period_label(data.get("range") or {})),
+        ("Cách tính", "Phiếu đánh giá trên hồ sơ ĐÃ NỘP trong kỳ (Auto Fill + Handfree)"),
+        ("Thời điểm xuất", _fmt_now(datetime.now(timezone.utc))),
+    ):
+        ws.cell(row=r, column=2, value=label).font = _META_LABEL
+        ws.cell(row=r, column=3, value=value).font = _META_VALUE
+        ws.merge_cells(start_row=r, start_column=3, end_row=r, end_column=4)
+        r += 1
+
+    submitted = int(data.get("submitted") or 0)
+    rated = int(data.get("rated") or 0)
+    satisfied = int(data.get("satisfied") or 0)
+    r += 1
+    ws.cell(row=r, column=2, value="CHỈ SỐ CHÍNH").font = _SECTION_FONT
+    r += 1
+    _ratings_header(ws, r, ("Chỉ số", "Giá trị", "Tỷ lệ"))
+    r += 1
+    rows = [
+        ("Hồ sơ đã nộp", submitted, None),
+        ("Có đánh giá (chấm mức)", rated, _ratio(rated, submitted)),
+        ("Công dân bỏ qua", int(data.get("skipped") or 0), _ratio(int(data.get("skipped") or 0), submitted)),
+        ("Chưa có phiếu", int(data.get("unrated") or 0), _ratio(int(data.get("unrated") or 0), submitted)),
+        ("Hài lòng (Rất hài lòng + Hài lòng)", satisfied, _ratio(satisfied, rated)),
+    ]
+    for label, value, ratio in rows:
+        _body_cell(ws, r, 2, label, "l")
+        _body_cell(ws, r, 3, value, "r", num=True, bold=True)
+        _body_cell(ws, r, 4, ratio, "r").number_format = _PCTFMT
+        r += 1
+    _body_cell(ws, r, 2, "Mức đánh giá trung bình (thang 5)", "l")
+    _body_cell(ws, r, 3, data.get("average"), "r", bold=True).number_format = "0.00"
+    _body_cell(ws, r, 4, None, "r")
+    ws.cell(row=r + 1, column=2, value="Tỷ lệ hài lòng tính trên số phiếu có chấm mức; các tỷ lệ khác tính trên hồ sơ đã nộp.").font = _META_LABEL
+
+    r += 3
+    ws.cell(row=r, column=2, value="PHÂN BỐ MỨC ĐÁNH GIÁ").font = _SECTION_FONT
+    r += 1
+    _ratings_header(ws, r, ("Mức", "Số hồ sơ", "Tỷ lệ trên hồ sơ đã nộp"))
+    r += 1
+    levels = [(f"{lv['level']} — {lv['label']}", int(lv.get("count") or 0)) for lv in data.get("levels") or []]
+    levels += [("Công dân bỏ qua", int(data.get("skipped") or 0)), ("Chưa có phiếu", int(data.get("unrated") or 0))]
+    for label, count in levels:
+        _body_cell(ws, r, 2, label, "l")
+        _body_cell(ws, r, 3, count, "r", num=True)
+        _body_cell(ws, r, 4, _ratio(count, submitted), "r").number_format = _PCTFMT
+        r += 1
+    for col, value in ((2, "TỔNG (= hồ sơ đã nộp)"), (3, submitted), (4, 1 if submitted else None)):
+        cell = _body_cell(ws, r, col, value, "l" if col == 2 else "r", bold=True, num=col == 3)
+        cell.fill = _TOTAL_FILL
+        if col == 4:
+            cell.number_format = _PCTFMT
+
+
+def _ratings_units(wb: Workbook, data: dict) -> None:
+    ws = wb.create_sheet("Theo đơn vị")
+    ws.sheet_view.showGridLines = False
+    picked = _picked_ids(data)
+    units = [u for u in data.get("units") or [] if not picked or u.get("unitId") in picked]
+    level_cols = [(f"Mức {lv['level']}", lv["level"]) for lv in (units[0]["levels"] if units else data.get("levels") or [])]
+    headers = [("STT", "c", 6), ("Đơn vị", "l", 34), ("Cấp", "c", 10), ("Đã nộp", "r", 11), ("Có đánh giá", "r", 12),
+               ("Mức TB", "r", 9), ("Hài lòng", "r", 10)]
+    headers += [(label, "r", 9) for label, _ in level_cols] + [("Bỏ qua", "r", 9), ("Chưa có phiếu", "r", 13)]
+    _write_header(ws, 1, headers)
+    totals = [0] * (2 + len(level_cols) + 2)  # đã nộp, có đánh giá, từng mức, bỏ qua, chưa có phiếu
+    satisfied_total = 0
+    r = 2
+    for idx, u in enumerate(units, start=1):
+        counts = {lv["level"]: int(lv.get("count") or 0) for lv in u.get("levels") or []}
+        values = [int(u.get("submitted") or 0), int(u.get("rated") or 0)]
+        values += [counts.get(level, 0) for _, level in level_cols]
+        values += [int(u.get("skipped") or 0), int(u.get("unrated") or 0)]
+        totals = [a + b for a, b in zip(totals, values)]
+        satisfied_total += int(u.get("satisfied") or 0)
+        _body_cell(ws, r, 1, idx, "c")
+        _body_cell(ws, r, 2, u.get("name") or u.get("xa") or "—", "l")
+        _body_cell(ws, r, 3, _cap(u.get("xa")), "c")
+        _body_cell(ws, r, 4, values[0], "r", num=True, bold=True)
+        _body_cell(ws, r, 5, values[1], "r", num=True)
+        _body_cell(ws, r, 6, u.get("average"), "r").number_format = "0.00"
+        _body_cell(ws, r, 7, _ratio(int(u.get("satisfied") or 0), values[1]), "r").number_format = _PCTFMT
+        for offset, value in enumerate(values[2:], start=8):
+            _body_cell(ws, r, offset, value, "r", num=True)
+        r += 1
+    ws.merge_cells(f"A{r}:C{r}")
+    ws.cell(row=r, column=1, value="TỔNG CỘNG").font = _BOLD
+    ws.cell(row=r, column=1).alignment = _CENTER
+    row_values = {4: totals[0], 5: totals[1], 6: None, 7: _ratio(satisfied_total, totals[1])}
+    row_values.update({col: value for col, value in enumerate(totals[2:], start=8)})
+    for col in range(1, len(headers) + 1):
+        cell = ws.cell(row=r, column=col)
+        cell.fill, cell.border = _TOTAL_FILL, _BORDER
+        if col in row_values:
+            cell.value = row_values[col]
+            cell.font, cell.alignment = _BOLD, _RIGHT
+            cell.number_format = _PCTFMT if col == 7 else _NUMFMT
+
+
+def build_ratings_workbook(data: dict) -> bytes:
+    """Excel màn "Đánh giá công dân" từ CHÍNH dữ liệu của /ratings: Tổng hợp (+ Theo đơn vị khi xem được nhiều đơn vị)."""
+    wb = Workbook()
+    wb.remove(wb.active)
+    _ratings_overview(wb, data)
+    if (data.get("scope") or {}).get("canViewUnits") and data.get("units"):
+        _ratings_units(wb, data)
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    return buffer.getvalue()
+
+
+def ratings_filename(data: dict) -> str:
+    return export_filename(data).replace("Thong ke ho so", "Danh gia cong dan", 1)

@@ -73,10 +73,12 @@ def _customs_page(page: str) -> bool:
     return bool(_CUSTOMS_TITLE_RE.search(text)) or ("hai quan" in text and sum(h in text for h in _CUSTOMS_HINTS) >= 2)
 
 
-def find_origin_pages(pages_by_index: dict[int, list[str]], skip: set[int] = frozenset()) -> list[tuple[int, int]]:
-    """(tệp, trang 0-based) của mặt trước, mặt sau chứng từ nguồn gốc (tờ khai hàng hóa nhập khẩu) — tối đa 2 mục."""
+def find_origin_pages(pages_by_index: dict[int, list[str]], skip: set[int] = frozenset(), *,
+                      is_origin=_customs_page) -> list[tuple[int, int]]:
+    """(tệp, trang 0-based) của mặt trước, mặt sau chứng từ nguồn gốc — tối đa 2 mục. ``is_origin`` nhận ra trang chứng
+    từ (mặc định tờ khai hàng hóa nhập khẩu; 1.012575 truyền trang Phiếu kiểm tra chất lượng xuất xưởng)."""
     found = [(index, number) for index in sorted(pages_by_index) if index not in skip
-             for number, page in enumerate(pages_by_index[index] or []) if _customs_page(page)]
+             for number, page in enumerate(pages_by_index[index] or []) if is_origin(page)]
     if len(found) == 1:
         index, number = found[0]
         pages = pages_by_index.get(index) or []
@@ -102,25 +104,31 @@ def _photo_field(slot: tuple[str, str, str, str], image: bytes, source_name: str
     }
 
 
-def missing_photo_note(missing: list[str], *, retry: str = "điền lại") -> str:
-    """Câu báo các ô ảnh chưa có ảnh trong bộ giấy (``retry``: lượt điền → "điền lại", lượt đính kèm → "đính kèm lại")."""
-    return ("Chưa có ảnh cho ô " + ", ".join(missing) + " (ảnh chụp xe; hai mặt tờ khai hàng hóa nhập khẩu) — tải thêm "
+ORIGIN_LABEL = "tờ khai hàng hóa nhập khẩu"
+
+
+def missing_photo_note(missing: list[str], *, retry: str = "điền lại", origin: str = ORIGIN_LABEL) -> str:
+    """Câu báo các ô ảnh chưa có ảnh trong bộ giấy (``retry``: lượt điền → "điền lại", lượt đính kèm → "đính kèm lại";
+    ``origin``: tên chứng từ nguồn gốc của thủ tục)."""
+    return ("Chưa có ảnh cho ô " + ", ".join(missing) + f" (ảnh chụp xe; hai mặt {origin}) — tải thêm "
             f"ảnh rồi {retry} để hệ thống tự gắn, hoặc bấm Tải ảnh trên cổng (.jpg / .png dưới 2 MB).")
 
 
-def photo_fields(files: list[dict], texts: dict[int, str]) -> tuple[list[dict], list[str]]:
+def photo_fields(files: list[dict], texts: dict[int, str], *, is_origin=_customs_page,
+                 origin: str = ORIGIN_LABEL) -> tuple[list[dict], list[str]]:
     """(ba ô ảnh đầu trang gắn được, câu báo) — câu báo nói rõ tệp nào vào ô nào và ô nào phải tải tay."""
-    fields, done, missing = photo_slots(files, texts)
+    fields, done, missing = photo_slots(files, texts, is_origin=is_origin)
     notes = []
     if done:
         notes.append("Đã gắn ảnh vào ô đầu biểu mẫu (dạng .jpg): " + "; ".join(done)
-                     + " — kiểm tra đúng ảnh xe và hai mặt tờ khai hàng hóa nhập khẩu.")
+                     + f" — kiểm tra đúng ảnh xe và hai mặt {origin}.")
     if missing:
-        notes.append(missing_photo_note(missing))
+        notes.append(missing_photo_note(missing, origin=origin))
     return fields, notes
 
 
-def photo_slots(files: list[dict], texts: dict[int, str]) -> tuple[list[dict], list[str], list[str]]:
+def photo_slots(files: list[dict], texts: dict[int, str], *,
+                is_origin=_customs_page) -> tuple[list[dict], list[str], list[str]]:
     """(ô ảnh gắn được, "nguồn → ô" của từng ô gắn được, nhãn các ô chưa có ảnh)."""
     from app.pipelines.cap_the_tam_tru_cho_nguoi_nuoc_ngoai_tai_viet_nam.attach.dinh_kem_khong_tach.planner import (
         _page_image,
@@ -153,7 +161,7 @@ def photo_slots(files: list[dict], texts: dict[int, str]) -> tuple[list[dict], l
         add(VEHICLE_SLOT, _image_bytes(files[vehicle]), name_of(vehicle), f"'{name_of(vehicle)}'")
 
     pages = {i: ocr_pages(t) for i, t in texts.items() if (t or "").strip()}
-    origin = find_origin_pages(pages, skip={vehicle} if vehicle is not None else set())
+    origin = find_origin_pages(pages, skip={vehicle} if vehicle is not None else set(), is_origin=is_origin)
     for slot, hit in zip((ORIGIN_FRONT_SLOT, ORIGIN_BACK_SLOT), [*origin, None, None]):
         if hit is None:
             missing.append(slot[2])

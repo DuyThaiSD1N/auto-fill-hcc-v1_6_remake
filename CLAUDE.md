@@ -192,6 +192,32 @@ Chỉ chạy hai cây `tests/unit` và `tests/integration`. Cây `tests/handfree
 Baseline hiện tại có sẵn một số test đỏ không liên quan đến code mới; so số fail trước và sau khi
 sửa thay vì cố đưa về 0.
 
+Baseline ngày 2026-11-24, sau khi thêm 3.000333 cấp Phiếu lý lịch tư pháp Công an cấp tỉnh (máy local, plugin
+win_socketpair, có PYTHONUTF8=1): `17 failed, 6249 passed, 42 skipped, 13 errors`. Vẫn đúng 17 đỏ và 13 lỗi collect như dòng dưới.
+
+Baseline ngày 2026-11-24, sau khi thêm khối nhận kết quả (cboRECEIVER_TYPE) cho trang tạm trú (máy local, plugin
+win_socketpair, có PYTHONUTF8=1): `17 failed, 6233 passed, 42 skipped, 13 errors`. Vẫn đúng 17 đỏ và 13 lỗi collect như dòng dưới.
+
+Baseline ngày 2026-11-24, sau khi thêm 1.115148 tính lại tiền sử dụng đất Khánh Hòa (máy local, plugin win_socketpair, có
+PYTHONUTF8=1): `17 failed, 6223 passed, 42 skipped, 13 errors`. Vẫn đúng 17 đỏ và 13 lỗi collect như dòng dưới.
+
+Baseline ngày 2026-11-24, sau khi thêm đính kèm cho 1.010041 xác nhận thông tin về cư trú (máy local, plugin win_socketpair,
+có PYTHONUTF8=1): `17 failed, 6230 passed, 42 skipped, 13 errors`. Vẫn đúng 17 đỏ và 13 lỗi collect như dòng dưới.
+
+Baseline ngày 2026-11-24, sau khi thêm 1.013061 cấp phép thi công công trình trên đường bộ đang khai thác (máy local, plugin
+win_socketpair, có PYTHONUTF8=1): `17 failed, 6194 passed, 42 skipped, 13 errors` (gồm test khối "Thông tin chi tiết" thêm cùng ngày). Vẫn đúng 17 đỏ và 13 lỗi collect như dòng dưới.
+
+Baseline ngày 2026-11-24, sau khi thêm 1.115462 xác nhận tiếp tục sử dụng đất nông nghiệp Bắc Ninh (máy local, plugin
+win_socketpair, có PYTHONUTF8=1): `17 failed, 6177 passed, 42 skipped, 13 errors`. Vẫn đúng 17 đỏ và 13 lỗi collect như dòng dưới.
+
+Baseline ngày 2026-11-24, sau khi thêm 1.001766 khai tử có yếu tố nước ngoài (máy local, plugin win_socketpair, có
+PYTHONUTF8=1): `17 failed, 6145 passed, 42 skipped, 13 errors`. Vẫn đúng 17 đỏ của bản 2026-11-20; lỗi collect thứ 13 là
+`tests/unit/test_submit_quota_theo_ke_hoach.py` (đến từ commit d98443ea5), cũng thiếu `mongomock`.
+
+Baseline ngày 2026-11-24, sau khi thêm 1.001766 khai tử có yếu tố nước ngoài + 1.000419 khai tử lưu động (máy local,
+plugin win_socketpair, có PYTHONUTF8=1): `17 failed, 6161 passed, 42 skipped, 13 errors`. Vẫn đúng 17 đỏ của bản 2026-11-18;
+lỗi collect thứ 13 là `tests/unit/test_submit_quota_theo_ke_hoach.py` (đến từ commit d98443ea5), cũng thiếu `mongomock`.
+
 Baseline ngày 2026-11-20, sau khi thêm 1.001445 trình báo mất hộ chiếu cấp tỉnh (máy local, plugin win_socketpair, có
 PYTHONUTF8=1): `17 failed, 5810 passed, 41 skipped, 12 errors` (gồm 3 test chặn tài khoản khác người thêm cùng ngày). Vẫn
 đúng 17 đỏ của bản 2026-11-18; lỗi collect thứ 12 là

@@ -18,6 +18,8 @@ các phần đó, sửa lỗi nghe nhầm khi CHẮC CHẮN nghĩa, giữ nguyê
 <nguyen_tac_chung>
 1. Mỗi ô chỉ lấy phần lời nói về ĐÚNG ô đó (theo nhãn và phần). Câu nói nhiều ô thì tách đúng phần cho từng ô.
 2. Không bịa, không suy thêm phần công dân không nói (biết tỉnh không đoán xã; biết tên không đoán giới tính).
+   Câu chỉ có từ đệm, tiếng ồn, chữ rời rạc hay lời nói chuyện không phải thông tin của ô → "khong_co"; KHÔNG lấy một
+   chữ bất kỳ trong câu làm giá trị, KHÔNG chọn dòng danh sách chỉ vì nghe na ná.
 3. Công dân tự sửa lời ("không phải X, là Y", "à nhầm, Y") → lấy giá trị SAU CÙNG.
 4. Việc "sua" (ô ĐÃ CÓ giá trị) mà công dân chỉ nói lại MỘT PHẦN (vd chỉ ngày và tháng, chỉ số nhà) → GHÉP với phần
    còn lại của "giá trị đang có" thành giá trị đầy đủ, "ket_qua": "gia_tri", "can_xac_nhan": true. Không hỏi lại phần

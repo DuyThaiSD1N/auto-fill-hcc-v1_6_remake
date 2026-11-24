@@ -664,6 +664,11 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
                                                   "tiền sử dụng đất tính sai muốn tính lại",
                                                   "đề nghị tính lại tiền sử dụng đất theo nghị định 50",
                                                   "tính tiền sử dụng đất ở lâm đồng"],
+    # Bản Khánh Hòa (provinceOnly) 1.115148: cùng nghiệp vụ bản Lâm Đồng ngay trên — một tài khoản không thấy cả hai.
+    "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa": ["tính lại tiền sử dụng đất", "xin tính tiền sử dụng đất",
+                                                   "tiền sử dụng đất tính sai muốn tính lại",
+                                                   "đề nghị tính lại tiền sử dụng đất theo nghị định 50",
+                                                   "tính tiền sử dụng đất ở khánh hòa"],
     "dang-ky-dat-dai-lan-dau-bac-ninh": ["làm sổ đỏ lần đầu", "đất chưa có sổ đỏ muốn xin cấp sổ",
                                          "cấp giấy chứng nhận quyền sử dụng đất lần đầu",
                                          "đăng ký đất đai lần đầu", "xin cấp sổ đỏ cho đất ông bà để lại",
@@ -720,6 +725,19 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
                               "người lớn chưa có giấy khai sinh, đã có hồ sơ giấy tờ cá nhân"],
     "khai-tu-dang-ky-lai": ["đăng ký lại khai tử", "làm lại khai tử do sổ hộ tịch gốc bị mất",
                             "đã khai tử trước đây nhưng sổ hộ tịch bị mất, hư hỏng"],
+    # Người chết là NGƯỜI NƯỚC NGOÀI (hoặc chết ở nước ngoài). Người Việt Nam mất trong nước → "khai-tu" thường.
+    "khai-tu-nuoc-ngoai": ["khai tử có yếu tố nước ngoài", "khai tử cho người nước ngoài mất ở Việt Nam",
+                           "làm giấy khai tử cho chồng người Trung Quốc", "người nước ngoài chết cần đăng ký khai tử",
+                           "khai tử cho người thân mất ở nước ngoài"],
+    # Cán bộ hộ tịch đến tận nhà / thôn để khai tử (người già yếu, vùng xa). Tự đi lên UBND khai tử → "khai-tu" thường.
+    "khai-tu-luu-dong": ["khai tử lưu động", "đăng ký khai tử lưu động", "cán bộ xuống tận nhà làm khai tử",
+                         "nhà ở xa, già yếu không lên xã khai tử được", "khai tử tại nhà cho bố mất từ lâu"],
+    # Phiếu lý lịch tư pháp (xác nhận có / không có án tích) nộp ở Công an tỉnh — không phải trích lục hộ tịch,
+    # không phải xác nhận tình trạng hôn nhân.
+    "cap-phieu-ly-lich-tu-phap-cong-an-cap-tinh": ["lý lịch tư pháp", "xin phiếu lý lịch tư pháp",
+                                                   "làm lý lịch tư pháp số 1", "xin giấy xác nhận không có tiền án",
+                                                   "lý lịch tư pháp để đi xuất khẩu lao động",
+                                                   "làm lý lịch tư pháp cho con"],
     # ── Cổng Bộ Xây dựng (luồng chung "xay-dung") ──
     "dieu-chinh-giay-phep-xay-dung": ["điều chỉnh giấy phép xây dựng", "sửa giấy phép xây dựng",
                                       "thay đổi thiết kế đã được cấp phép",
@@ -756,6 +774,12 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
                                "mở đường tạm từ công trường ra đường chính",
                                "đấu nối tạm vào đường bộ đang khai thác",
                                "xin vị trí đấu nối tạm cho xe công trình"],
+    # Xin phép THI CÔNG công trình (ống nước, cáp, đường dây…) trên / dưới / dọc đường bộ đang khai thác. KHÁC
+    # "chap-thuan-dau-noi-tam" (xin mở lối ra vào tạm nối vào đường) — chỉ nhận cụm có "thi công" / "đặt ống,
+    # cáp" / "lắp lên cầu".
+    "cap-giay-phep-thi-cong-cong-trinh-tren-duong-bo-dang-khai-thac": ["xin giấy phép thi công trên quốc lộ", "cấp phép thi công công trình trên đường bộ",
+        "xin phép đặt ống nước băng qua quốc lộ", "khoan ngầm ống qua đường quốc lộ",
+        "xin phép lắp đường ống lên cầu", "xin phép kéo cáp dọc quốc lộ"],
     # Xe LÀO đã vào Việt Nam, xin ở thêm. KHÁC "cap-giay-phep-lien-van-viet-lao" (xin giấy phép liên vận để
     # đi lại hai nước) — chỉ nhận cụm có "gia hạn" / "ở lại".
     "gia-han-luu-hanh-phuong-tien-lao": ["gia hạn lưu hành xe Lào", "xe Lào hết hạn ở Việt Nam",
@@ -851,6 +875,14 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "đổi số chứng minh thư trên sổ đỏ sang căn cước", "cập nhật căn cước mới vào sổ đỏ", "đổi tên trên sổ đỏ",
         "sổ đỏ vẫn ghi địa chỉ cũ muốn cập nhật địa chỉ mới", "đất bị sạt lở mất một phần muốn đăng ký giảm diện tích",
         "thay đổi thông tin người sử dụng đất ở bắc ninh",
+    ],
+    # Bắc Ninh (provinceOnly) 1.115462: đất nông nghiệp trên sổ đỏ HẾT THỜI HẠN sử dụng (ghi "10-2013"…), người dân xin
+    # xác nhận để tiếp tục sử dụng, thường có Đơn Mẫu 09 kèm xác nhận UBND xã. KHÁC gia hạn đất phi nông nghiệp / đất
+    # thuê (gia hạn sử dụng đất) và đăng ký biến động (đổi tên, đổi chủ).
+    "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-bac-ninh": [
+        "đất ruộng trên sổ đỏ hết hạn muốn xin tiếp tục sử dụng", "xin xác nhận tiếp tục sử dụng đất nông nghiệp",
+        "xác nhận lại thời hạn sử dụng đất nông nghiệp", "gia hạn đất canh tác hết thời hạn",
+        "xác nhận tiếp tục sử dụng đất nông nghiệp ở bắc ninh",
     ],
 }
 

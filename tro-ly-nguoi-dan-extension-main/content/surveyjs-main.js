@@ -68,7 +68,13 @@
   // BE gửi tên gốc (vd "citizenQuanhe"); data-name thật kèm hậu tố "__<số>" đổi theo phiên bản biểu mẫu.
   function findQuestion(survey, name) {
     const all = survey.getAllQuestions(false) || [];
-    const matches = all.filter((q) => q.name === name || String(q.name).startsWith(`${name}__`));
+    let matches = all.filter((q) => q.name === name || String(q.name).startsWith(`${name}__`));
+    // Câu hỏi trong panel động (paneldynamic, vd "Nơi đăng ký khai sinh" của Lý lịch tư pháp khai hộ) không có trong
+    // danh sách phẳng → tìm thêm ở câu hỏi lồng.
+    if (!matches.length) {
+      matches = (survey.getAllQuestions(false, false, true) || [])
+        .filter((q) => q.name === name || String(q.name).startsWith(`${name}__`));
+    }
     return matches.find((q) => q.isVisible) || matches[0] || null;
   }
 
@@ -186,7 +192,9 @@
     for (const node of scope.querySelectorAll("[data-name]")) {
       if (node === radioEl) { afterRadio = true; continue; }
       if (!afterRadio) continue;
-      const q = survey.getQuestionByName(node.getAttribute("data-name"));
+      // Câu hỏi trong panel động (vd nơi đăng ký khai sinh của Lý lịch tư pháp) không có ở getQuestionByName.
+      const q = survey.getQuestionByName(node.getAttribute("data-name")) ||
+        findQuestion(survey, node.getAttribute("data-name"));
       if (radioEl && q?.getType?.() === "radiogroup") break;
       if (!q || q === radio || q.isReadOnly || !q.isVisible) continue;
       const label = fold([...node.querySelectorAll(".sd-title, label.floating-label")]

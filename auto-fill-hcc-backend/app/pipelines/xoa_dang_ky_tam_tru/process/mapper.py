@@ -17,7 +17,9 @@ from app.pipelines.dang_ky_tam_tru.process.mapper import (
     _name,
     _phone,
     _text,
+    receiver_fields,
 )
+from app.pipelines.dang_ky_tam_tru.process.schema import RECEIVER_EMAIL_ID
 from app.pipelines.dang_ky_thuong_tru.process.mapper import ACCOUNT_AGENCY_OPTION, _agency
 from app.pipelines.xoa_dang_ky_tam_tru.process.schema import (
     AGENCY_CITY_ID,
@@ -164,6 +166,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     rows = _member_rows(values.get("ThanhVien"), {identity, head_id} - {None})
     if rows:
         picked["listNormal"] = {"addSelector": MEMBER_ADD_SELECTOR, "rows": rows}
+    receiver, receiver_defaults = receiver_fields(picked.get("txtEMAIL"))
+    picked.update(receiver)
+    defaults |= receiver_defaults
 
     out = []
     for name, comp in UI_COMP_BY_NAME.items():
@@ -175,4 +180,6 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
         out.append(field)
     # Ô người đề nghị = chủ tài khoản VNeID: cổng đổ sẵn thì giữ nguyên, trống mới điền theo giấy (user 20/11/2026).
     keep_portal_values(out, ('txtPHONE_NUMBER', 'txtEMAIL'))
+    # Email nhận kết quả: cổng đổ sẵn (VNeID) thì giữ như ô email người đề nghị.
+    keep_portal_values(out, (RECEIVER_EMAIL_ID,))
     return out

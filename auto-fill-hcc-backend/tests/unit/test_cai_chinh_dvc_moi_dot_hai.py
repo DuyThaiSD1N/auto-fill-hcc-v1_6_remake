@@ -227,3 +227,24 @@ def test_chot_giay_khai_sinh_uu_tien_ngay_sinh_khoi_phan_vai():
     # Lượt trích chép nhầm ngày sinh của cha vào ngày sinh người có nội dung thay đổi.
     wrong = {"NguoiThayDoi_NgaySinh": "01/01/1950", "HoSo_So": "509", "HoSo_NgayDangKy": "13/04/2021"}
     assert reason.drop_other_holder_registration(wrong, docs, context) == {"NguoiThayDoi_NgaySinh": "01/01/1950"}
+
+
+def test_noi_dung_ten_viet_tay_lech_dau_theo_chu_in_tren_giay():
+    from app.pipelines._shared.thanh_tra.ho_so import Case
+    from app.pipelines.cai_chinh_dvc_moi.thanh_tra import noi_dung
+    docs = [{"name": "a.pdf", "text": "GIẤY KHAI SINH\nHọ, chữ đệm, tên người mẹ: NGUYỄN THỊ NHỮ\n"
+                                      "TRÍCH LỤC KHAI TỬ\nHọ, chữ đệm, tên: NGUYỄN THỊ THỮ\n"
+                                      "TỜ KHAI\nNội dung: từ Nguyễn Thị Như thành Nguyễn Thị Thử\n"}]
+    text = "Cải chính tên người mẹ từ Nguyễn Thị Như thành Nguyễn Thị Thử"
+    fixed = noi_dung._printed_spelling(text, Case(docs, "", {"NoiDung": text}, {}))
+    assert fixed[0] == "Cải chính tên người mẹ từ Nguyễn Thị Nhữ thành Nguyễn Thị Thữ"
+
+
+def test_noi_dung_sua_chinh_la_doi_dau_hoac_lech_tieng_chung_thi_giu():
+    from app.pipelines._shared.thanh_tra.ho_so import Case
+    from app.pipelines.cai_chinh_dvc_moi.thanh_tra import noi_dung
+    docs = [{"name": "a.pdf", "text": "CĂN CƯỚC\nHọ và tên: NGUYỄN THỊ VỊNH\nGIẤY KHAI SINH\nHọ tên cha: NGUYỄN HỮU CỐN\n"}]
+    same = "Cải chính họ tên từ Nguyễn Thị Vinh thành Nguyễn Thị Vịnh"
+    assert noi_dung._printed_spelling(same, Case(docs, "", {"NoiDung": same}, {})) is None
+    shared = "Cải chính chữ đệm của người cha từ Nguyễn Hữu Cồn thành Nguyễn Văn Cồn"
+    assert noi_dung._printed_spelling(shared, Case(docs, "", {"NoiDung": shared}, {})) is None

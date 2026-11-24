@@ -9,7 +9,7 @@ from openpyxl.utils import get_column_letter
 
 from app.procedures.registry import PROCEDURES
 from app.reports.integration import account_unit_key, canonical_procedure_id
-from app.reports.procedure_meta import cap_thu_tuc, ma_thu_tuc, pham_vi_ho_tro
+from app.reports.procedure_meta import KEY_CU, TEN_THEO_MA, cap_thu_tuc, ma_thu_tuc, pham_vi_ho_tro
 from app.traces.date_range import VIETNAM_TZ
 
 
@@ -72,12 +72,13 @@ def _procedure_rows(
         count = int(item.get("count") or 0)
         if count <= 0:
             continue
-        key = item.get("key") or "—"
+        key = KEY_CU.get(item.get("key"), item.get("key")) or "—"
         entry = registry.get(key)
         canonical_id = canonical_procedure_id(key, entry)
+        ma = ma_thu_tuc(entry)
         row = rows_by_id.setdefault(canonical_id, {
-            "ma": ma_thu_tuc(entry),
-            "ten": (entry or {}).get("label") or item.get("label") or key,
+            "ma": ma,
+            "ten": TEN_THEO_MA.get(ma) or (entry or {}).get("label") or item.get("label") or key,
             "cap": cap_thu_tuc(key),
             "pham_vi": pham_vi_ho_tro(entry, key),
             "auto_count": 0,
@@ -88,15 +89,17 @@ def _procedure_rows(
         count = int(item.get("count") or 0)
         if count <= 0:
             continue
-        key = str(item.get("procedureKey") or "").strip() or "—"
+        key = str(item.get("procedureKey") or "").strip()
+        key = KEY_CU.get(key, key) or "—"
         entry = registry.get(key)
         canonical_id = (
             str(item.get("canonicalProcedureId") or "").strip()
             or canonical_procedure_id(key, entry)
         )
+        ma = item.get("procedureCode") or ma_thu_tuc(entry)
         row = rows_by_id.setdefault(canonical_id, {
-            "ma": item.get("procedureCode") or ma_thu_tuc(entry),
-            "ten": (entry or {}).get("label") or item.get("label") or key,
+            "ma": ma,
+            "ten": TEN_THEO_MA.get(ma) or (entry or {}).get("label") or item.get("label") or key,
             "cap": item.get("level") or cap_thu_tuc(key),
             "pham_vi": item.get("supportScope") or pham_vi_ho_tro(entry, key),
             "auto_count": 0,

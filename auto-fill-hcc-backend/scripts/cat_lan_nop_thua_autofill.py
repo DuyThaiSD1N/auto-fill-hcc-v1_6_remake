@@ -12,12 +12,15 @@ không đổi, chỉ sửa "thời gian làm" và số lần nộp hiển thị.
 
 `--chung-thuc`: chỉ ba thủ tục chứng thực, GIỮ NGUYÊN mọi lần nộp (số hồ sơ báo cáo không đổi), chỉ dời
 `submit_clicked_at` về lần nộp thứ N → "thời gian làm" tính tới hết lượt trợ lý, khớp luật đang chạy.
+`--chung-thuc --khoang-nghi 20`: thêm luật khoảng nghỉ (`app.dossiers.repo.AUTOFILL_SUBMIT_GAP`) — mốc nộp cuối
+dừng ở lần nộp ngay trước khoảng nghỉ dài hơn số phút này. Chạy cả trên hồ sơ đã dời mốc lần trước (giữ bản gốc cũ).
 
 Chạy trong container backend:
     python -m scripts.cat_lan_nop_thua_autofill                    # chạy thử: chỉ in số liệu
     python -m scripts.cat_lan_nop_thua_autofill --tu 2026-09-15 --den 2026-11-24
     python -m scripts.cat_lan_nop_thua_autofill --apply
     python -m scripts.cat_lan_nop_thua_autofill --chung-thuc [--apply]
+    python -m scripts.cat_lan_nop_thua_autofill --chung-thuc --khoang-nghi 20 [--apply]
     python -m scripts.cat_lan_nop_thua_autofill --revert           # trả lại bản gốc (cần --apply để ghi)
     python -m scripts.cat_lan_nop_thua_autofill --revert --apply
 """
@@ -50,6 +53,48 @@ def _range(args) -> dict:
     if args.den:
         rng["$lt"] = _vn_day(args.den) + timedelta(days=1)
     return {"started_at": rng} if rng else {}
+
+
+def _last_before_gap(events: list, gap: timedelta):
+    last = events[0].get("at")
+    for e in events[1:]:
+        at = e.get("at")
+        if not at or not last or at - last > gap:
+            break
+        last = at
+    return last
+
+
+async def gap_trim(args) -> None:
+    db = get_db()
+    gap = timedelta(minutes=args.khoang_nghi)
+    query = {"experience": "autofill", "submit_events.1": {"$exists": True}, "procedure": {"$in": CHUNG_THUC},
+             **_range(args)}
+    scanned = changed = 0
+    saved_min = 0.0
+    async for doc in db.dossiers.find(query, {"submit_events": 1, "submit_clicked_at": 1, "portal_host": 1,
+                                              BACKUP: 1}):
+        scanned += 1
+        events = sorted(doc.get("submit_events") or [], key=lambda e: e.get("at") or datetime.min)
+        kept = events[:await _quota(db, doc["_id"])]
+        target = _last_before_gap(kept, gap)
+        current = doc.get("submit_clicked_at")
+        if not target or not current or target >= current:
+            continue
+        changed += 1
+        saved_min += (current - target).total_seconds() / 60
+        if not args.apply:
+            continue
+        host = next((e.get("host") for e in kept if e.get("at") == target), None) or doc.get("portal_host")
+        update = {"submit_clicked_at": target, "portal_host": host}
+        if BACKUP not in doc:
+            update[BACKUP] = {"chi_thoi_gian": True, "submit_clicked_at": current,
+                              "portal_host": doc.get("portal_host"), "trimmed_at": datetime.now(timezone.utc)}
+        await db.dossiers.update_one({"_id": doc["_id"], "submit_clicked_at": current}, {"$set": update})
+    print(f"Hồ sơ chứng thực có ≥2 lần nộp: {scanned}")
+    print(f"Hồ sơ có khoảng nghỉ > {args.khoang_nghi} phút cần dời mốc nộp cuối: {changed}"
+          f" · tổng thời gian cắt: {saved_min:.0f} phút (giữ nguyên mọi lần nộp)")
+    print("ĐÃ GHI." if args.apply else "Chạy thử — chưa ghi gì. Thêm --apply để ghi.")
 
 
 async def trim(args) -> None:
@@ -130,13 +175,19 @@ def main() -> None:
     p.add_argument("--revert", action="store_true", help="trả lại bản gốc đã cất")
     p.add_argument("--chung-thuc", action="store_true",
                    help="chỉ ba thủ tục chứng thực: giữ mọi lần nộp, chỉ dời mốc nộp cuối")
+    p.add_argument("--khoang-nghi", type=int, help="cùng --chung-thuc: mốc nộp cuối dừng trước khoảng nghỉ > N phút")
     asyncio.run(_run(p.parse_args()))
 
 
 async def _run(args) -> None:
     connect()
     try:
-        await (revert(args) if args.revert else trim(args))
+        if args.revert:
+            await revert(args)
+        elif args.khoang_nghi and args.chung_thuc:
+            await gap_trim(args)
+        else:
+            await trim(args)
     finally:
         close()
 

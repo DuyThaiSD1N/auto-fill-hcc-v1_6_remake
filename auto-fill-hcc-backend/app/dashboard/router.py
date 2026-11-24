@@ -29,7 +29,13 @@ from app.dashboard.combine import (
 )
 from app.dashboard import procedures as dashboard_procedures
 from app.dashboard import ratings as dashboard_ratings
-from app.dashboard.export import build_catalog_workbook, build_dashboard_workbook, export_filename
+from app.dashboard.export import (
+    build_catalog_workbook,
+    build_dashboard_workbook,
+    build_ratings_workbook,
+    export_filename,
+    ratings_filename,
+)
 from app.dashboard.scope import narrow_to_province, province_options, resolve_dashboard_scope
 from app.dossiers import repo as dossiers_repo
 from app.dossiers import stats as dossier_stats
@@ -353,6 +359,29 @@ async def ratings(
     }
 
 
+@router.get("/ratings/export")
+async def ratings_export(
+    user: dict = Depends(require_dashboard),
+    dateFrom: str | None = Query(None),
+    dateTo: str | None = Query(None),
+    unit: str | None = Query(None),
+    province: str | None = Query(None),
+):
+    """Excel màn "Đánh giá công dân": cùng dữ liệu, phạm vi và bộ lọc với /ratings (khóa theo token)."""
+    data = await ratings(user=user, dateFrom=dateFrom, dateTo=dateTo, unit=unit, province=province)
+    content = build_ratings_workbook(data)
+    logger.info(
+        "Xuất Excel đánh giá: user=%s role=%s scope=%s province=%s unit=%s",
+        user.get("id"), user.get("role"), data["scope"]["scopeKind"], data["scope"]["province"], unit or "all",
+    )
+    quoted = urllib.parse.quote(ratings_filename(data))
+    return StreamingResponse(
+        io.BytesIO(content),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quoted}"},
+    )
+
+
 @router.get("/export")
 async def export(
     user: dict = Depends(require_dashboard),
@@ -360,13 +389,17 @@ async def export(
     dateTo: str | None = Query(None),
     unit: str | None = Query(None),
     province: str | None = Query(None),
+    view: Literal["overview", "units", "procedures", "logs"] | None = Query(None),
 ):
     """Xuất Excel thống kê từ dữ liệu đã gộp AF+HF. Tỉnh: 4 sheet (kèm Theo đơn vị); xã/phường: 3 sheet.
 
+    `view` = tab đang xem → chỉ sheet của tab đó (web bản cũ không gửi → đủ các sheet như trước).
     Nhật ký hồ sơ (cả Auto Fill lẫn Handfree) đưa vào sheet cuối. Ghi log mỗi lượt xuất để
     phục vụ audit.
     """
     data = await summary(user=user, dateFrom=dateFrom, dateTo=dateTo, unit=unit, province=province)
+    if view == "units" and not data["scope"]["canViewUnits"]:
+        raise AppError("UNIT_OUT_OF_SCOPE", "Tài khoản không xem được số liệu theo đơn vị.", 403)
 
     # Nhật ký hồ sơ cho sheet cuối: lấy theo đúng phạm vi đang xuất (đơn vị đang chọn hoặc toàn bộ).
     units = data.get("units") or []
@@ -376,6 +409,7 @@ async def export(
     unit_by_id = {u["unitId"]: u for u in units}
     rollup = tdp_rollup.TdpRollup(await tdp_rollup.load_tdp_parents(), ids)
     # Cùng nguồn với /logs — file xuất ra phải khớp đúng thứ cán bộ đang nhìn trên màn hình.
+    # Tab khác Nhật ký không cần sheet nhật ký → bỏ hẳn truy vấn (có thể tới hàng chục nghìn dòng).
     log_res = await dossiers_repo.list_for_dashboard(
         user_ids=rollup.expand(ids),
         date_from=date_from,
@@ -383,7 +417,7 @@ async def export(
         skip=0,
         limit=_EXPORT_LOG_CAP,
         experience=None,  # gộp cả hai nguồn, khớp đúng bảng trên màn hình
-    )
+    ) if view in (None, "logs") else {"items": []}
     logs = [
         {
             "dossierId": row["dossierId"],
@@ -399,12 +433,12 @@ async def export(
         for row in log_res["items"]
     ]
 
-    content = build_dashboard_workbook(data, logs)
-    filename = export_filename(data)
+    content = build_dashboard_workbook(data, logs, view)
+    filename = export_filename(data, view)
     logger.info(
-        "Xuất Excel dashboard: user=%s role=%s scope=%s province=%s unit=%s log_rows=%s",
+        "Xuất Excel dashboard: user=%s role=%s scope=%s province=%s unit=%s view=%s log_rows=%s",
         user.get("id"), user.get("role"), data["scope"]["scopeKind"], data["scope"]["province"],
-        unit or "all", len(logs),
+        unit or "all", view or "all", len(logs),
     )
     quoted = urllib.parse.quote(filename)
     return StreamingResponse(

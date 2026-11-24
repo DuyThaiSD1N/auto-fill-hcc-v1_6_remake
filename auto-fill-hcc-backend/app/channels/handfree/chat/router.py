@@ -635,6 +635,11 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
             conv["history"].pop()
         store.drop_last_bot_history(conv, conv.get("state", ""))
     if reply.display_md or reply.cards or reply.chips:
+        # Bong bóng phụ đứng trước câu chính (lead_message) cũng vào history — khôi phục phiên (mỗi lần trang tải
+        # lại) mới dựng lại đủ, không mất cảnh báo đã hiện.
+        for action in reply.actions or []:
+            if isinstance(action, dict) and action.get("type") == "lead_message" and action.get("md"):
+                store.push_history(conv, "bot", str(action["md"]), "bot")
         store.push_history(conv, "bot", reply.display_md, "bot")
         conv["last_reply"] = {
             k: payload[k] for k in ("display_md", "tts_text", "tts_lang", "chips", "cards", "state")

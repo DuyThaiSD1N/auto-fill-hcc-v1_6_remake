@@ -25,7 +25,9 @@ FIELDS: list[dict] = [
     },
     {
         "name": "ChuHoSo_NgayCap",
-        "desc": "Ngày cấp giấy tờ định danh của chủ hồ sơ, dd/mm/yyyy, lấy từ mục II.2 hoặc giấy tờ đúng người khi OCR ghi rõ.",
+        "desc": "Ngày cấp giấy tờ định danh của chủ hồ sơ, dd/mm/yyyy, lấy từ mục II.2 hoặc giấy tờ đúng người khi OCR ghi rõ. "
+                "Dòng cấp ngày của chủ hồ sơ thiếu ngày hoặc tháng (còn chấm trống) và không có giấy tờ đúng người ghi đủ "
+                "→ bỏ trống; KHÔNG mượn ngày cấp của người chết hay người khác dù trùng tháng / năm.",
     },
     {
         "name": "ChuHoSo_NoiCap",

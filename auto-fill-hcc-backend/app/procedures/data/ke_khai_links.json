@@ -1537,6 +1537,15 @@
       "autoConfirm": false
     },
     {
+      "key": "cap-phieu-ly-lich-tu-phap-cong-an-cap-tinh",
+      "code": "3.000333",
+      "label": "Cấp Phiếu lý lịch tư pháp cho công dân Việt Nam, người nước ngoài đang cư trú tại Việt Nam (thực hiện tại Công an cấp tỉnh)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf7-bd79-75fb-a4c6-ba1bf85d20ad",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "autoConfirm": true
+    },
+    {
       "key": "thong-bao-ket-qua-dai-hoi-phe-duyet-dieu-le-hoi-cap-bo",
       "code": "1.012931",
       "label": "Thông báo kết quả đại hội và phê duyệt đổi tên hội, phê duyệt điều lệ hội (cấp bộ)",
@@ -4184,6 +4193,40 @@
         "xa": {},
         "so": {"selectSo": true}
       },
+      "autoConfirm": true
+    },
+    {
+      "key": "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa",
+      "code": "1.115148",
+      "label": "Khánh Hòa - Thủ tục tính hoặc tính lại tiền sử dụng đất theo quy định tại các điểm a, b, c và d khoản 2 Điều 12 Nghị định số 50/2026/NĐ-CP ngày 31/01/2026 của Chính phủ",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019e8732-a3da-753b-85f5-0590fe1e27c7",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-giay-phep-thi-cong-cong-trinh-tren-duong-bo-dang-khai-thac",
+      "code": "1.013061",
+      "label": "Cấp giấy phép thi công công trình trên đường bộ đang khai thác",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-88c8-7734-ad0e-b5e2bc20de96",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-bac-ninh",
+      "code": "1.115462",
+      "label": "Bắc Ninh - Xác nhận tiếp tục sử dụng đất nông nghiệp",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f1295-8758-714f-8aa7-330de9b7d93d",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "khai-tu-luu-dong",
+      "code": "1.000419",
+      "label": "Thủ tục đăng ký khai tử lưu động",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-380b-73c4-9566-9e8b26bbfec6",
+      "needsAgencySelect": true,
       "autoConfirm": true
     }
   ]

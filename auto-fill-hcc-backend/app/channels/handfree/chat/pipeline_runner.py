@@ -728,11 +728,10 @@ async def run_business_registration(conv_id: str, sid: str, procedure_key: str,
         workflow = str(proc.get("businessWorkflow") or "create")
         process_options = ({"allPages": True, "returnFacts": True} if workflow == "create"
                            else {"page": f"__{workflow}__"})
-        if workflow == "create":
-            owner_user = await _load_owner_user(await conv_store.get(conv_id), sess)
-            # Cấu hình theo tài khoản như lượt điền Auto Fill (phường Phương Liễu không điền ngày bắt đầu hoạt động) —
-            # trợ lý hỏi đáp cũng dùng lại business_pages dựng ở đây.
-            process_options = with_hkd_account_process_options(process_options, owner_user, procedure_key)
+        owner_user = await _load_owner_user(await conv_store.get(conv_id), sess)
+        # Cấu hình theo tài khoản như lượt điền Auto Fill (phường Phương Liễu không điền ngày bắt đầu hoạt động, cách ghi ô
+        # mô tả dòng ngành theo địa bàn) — trợ lý hỏi đáp cũng dùng lại business_pages dựng ở đây.
+        process_options = with_hkd_account_process_options(process_options, owner_user, procedure_key)
         if workflow == "create" and settings.second_pass_enabled:
             # Lớp soát hộ kinh doanh (thanh tra, điền đợt 2 của Auto Fill) chạy NGAY ở đây, song song lượt lập kế hoạch đính
             # kèm, kết quả thay vào trang + facts trước khi phát business_ready — extension nhận dữ liệu đã soát như dữ

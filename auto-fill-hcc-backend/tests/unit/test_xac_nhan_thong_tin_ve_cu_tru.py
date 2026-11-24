@@ -1,12 +1,20 @@
 """Xác nhận thông tin về cư trú (1.010041, Cổng DVC Bộ Công an): mapper ô form, Trường hợp trên / khác địa bàn,
-hình thức nhận kết quả, nhận diện trang dùng chung với đăng ký thường trú, luồng trợ lý. Thủ tục không đính kèm."""
+hình thức nhận kết quả, nhận diện trang dùng chung với đăng ký thường trú, luồng trợ lý, đính kèm (tách / không tách,
+bảng phẳng một dòng Tờ khai + dòng "+" theo ảnh chạy thật 24/11/2026)."""
 import asyncio
+import json
 
 from app.channels.handfree.chat import flow
+from app.pipelines.xac_nhan_thong_tin_ve_cu_tru.attach import planner as attach
+from app.pipelines.xac_nhan_thong_tin_ve_cu_tru.attach.dinh_kem_khong_tach import planner as khong_tach
+from app.pipelines.xac_nhan_thong_tin_ve_cu_tru.attach.dinh_kem_khong_tach.planner import GROUP, ROWS
 from app.pipelines.xac_nhan_thong_tin_ve_cu_tru.process import mapper
 from app.pipelines.xac_nhan_thong_tin_ve_cu_tru.process import runner as process_runner
 from app.procedures import registry
 from app.procedures.ke_khai_links import KE_KHAI_LINKS, with_ke_khai_detect_urls
+from app.process.schemas import FileItem
+from app.services import ocr
+from app.services.llm import client as llm_client
 
 KEY = "xac-nhan-thong-tin-ve-cu-tru"
 # Khai hộ: người đề nghị là con, bố (chủ hộ) được ủy quyền nộp thay.
@@ -131,8 +139,9 @@ def test_link_registry_va_nhan_dien_trang_chung_voi_thuong_tru():
     assert link["code"] == "1.010041" and "TT=THUONGTRU_09" in link["url"]
     proc = registry.get_procedure(KEY)
     assert registry.get_pipeline(KEY) is not None
-    # Không đính kèm.
-    assert proc["hasAttachmentStep"] is False and registry.get_attach_pipeline(KEY) is None
+    # Có đính kèm + tách giấy tờ (ảnh user 24/11/2026).
+    assert proc["hasAttachmentStep"] is True and proc["supportsSplitDocuments"] is True
+    assert registry.get_attach_pipeline(KEY) is attach.plan
     # Cùng trang dang-ky-thuong-tru.html: _09 → thủ tục này, _08 điều chỉnh, _01 vẫn là đăng ký thường trú.
     assert _detect(link["url"]) == KEY
     for other in ("dieu-chinh-thong-tin-ve-cu-tru", "dang-ky-thuong-tru"):
@@ -146,7 +155,9 @@ def test_entry_tro_ly_cung_key_toan_quoc():
     link = next(item for item in KE_KHAI_LINKS if item["key"] == KEY)
     assert hf["keKhaiUrl"] == link["url"] and hf["detect"] == registry.get_procedure(KEY)["detect"]
     assert hf["requiresCapability"] == "supportsBcaThuongTru" and hf["submitCommitCheckbox"] == "chkRULE"
-    assert hf["hasAttachmentStep"] is False and "provinceOnly" not in hf
+    # Đính kèm cùng trang, điền xong HỎI rồi mới đính như tách hộ.
+    assert hf["hasAttachmentStep"] is True and hf["samePageAttach"] is True and hf["askBeforeAttach"] is True
+    assert hf["supportsSplitDocuments"] is True and hf["docsAdjustRefill"] is True and "provinceOnly" not in hf
     assert handfree._HOAN_THIEN_THEO_TINH[KEY] == handfree._TAT_CA
     conv = {"state": "greet", "procedure_key": None, "client_capabilities": {"supportsBcaThuongTru": True},
             "location": {"province": "Tỉnh Lai Châu", "province_slug": "lai_chau", "ward": "Phường Đoàn Kết"}}
@@ -178,3 +189,161 @@ def test_moi_thu_tuc_bo_cong_an_tren_trang_ke_khai_thi_dien_truoc_roi_moi_dinh()
             # Sang trang Thành phần hồ sơ riêng (form ẩn) thì mới là bước đính kèm.
             ctx = {"formKind": "", "attachmentTarget": True, "bcaKeKhaiForm": False}
             assert flow._resolve_docs_target(p, ctx, {"agency_done": True}) == "attachment", p["key"]
+
+
+# ── Đính kèm (Auto Fill) ──
+# Bộ hồ sơ như ảnh user: tờ khai CT01 (con dâu nhập vào hộ mẹ chồng, ý kiến đồng ý ghi trên tờ khai), giấy kết hôn,
+# một PDF 2 trang gồm thẻ căn cước của chủ hộ và người đăng ký.
+_FILES = {
+    "to_khai.pdf": ["TỜ KHAI THAY ĐỔI THÔNG TIN CƯ TRÚ"],
+    "ket_hon.pdf": ["GIẤY CHỨNG NHẬN KẾT HÔN"],
+    "cccd.pdf": ["CĂN CƯỚC CÔNG DÂN", "CĂN CƯỚC"],
+}
+_DOCS = [
+    {"fileIndex": 0, "pages": [1], "docType": "to_khai", "documentName": "Tờ khai thay đổi thông tin cư trú"},
+    {"fileIndex": 1, "pages": [1], "docType": "nhan_than", "documentName": "Giấy chứng nhận kết hôn"},
+    {"fileIndex": 2, "pages": [1], "docType": "cccd", "documentName": "Thẻ căn cước", "matThe": "ca_hai",
+     "chuThe": "MAU THI A"},
+    {"fileIndex": 2, "pages": [2], "docType": "cccd", "documentName": "Thẻ căn cước", "matThe": "ca_hai",
+     "chuThe": "MAU THI B"},
+]
+
+
+def _ocr_text(pages):
+    return "\n".join(f"───── Trang {i + 1}/{len(pages)} ─────\n{t}\nTrang {i + 1} / {len(pages)}"
+                     for i, t in enumerate(pages))
+
+
+def _files(names=tuple(_FILES)):
+    return [FileItem(name=n, type="application/pdf", dataUrl="data:,", role="") for n in names]
+
+
+def _patch(monkeypatch, documents, fail_split=False, texts=None):
+    texts = texts or {n: _ocr_text(p) for n, p in _FILES.items()}
+
+    async def fake_ocr(files):
+        return [{"name": f["name"], "text": texts[f["name"]]} for f in files]
+
+    async def fake_chat(messages, max_tokens=None, **_):
+        if fail_split and "TỪNG TRANG" in messages[0]["content"]:
+            raise RuntimeError("llm hỏng")
+        return json.dumps({"documents": documents})
+
+    monkeypatch.setattr(ocr, "ocr_per_file", fake_ocr)
+    monkeypatch.setattr(llm_client, "chat", fake_chat)
+
+
+_TK = ROWS["to_khai"]
+
+
+def test_tat_tach_dinh_nguyen_tep_bang_phang_giay_khac_qua_dau_cong(monkeypatch):
+    """Ảnh chạy thật 24/11/2026: trang THUONGTRU_09 KHÔNG có nhóm như thường trú — một bảng #tblGiayToDinhKem hiện sẵn
+    chỉ có dòng Tờ khai + nút "+". Gửi số nhóm làm extension gọi load_table_tphs_new(3) → trang lỗi, không đính được."""
+    _patch(monkeypatch, _DOCS)
+    for options in ({}, {"splitDocuments": "true"}, None):
+        res = asyncio.run(attach.plan(_files(), options))
+        items = res["attachments"]
+        assert all(i["target"] == "bca-row" and i["bcaPlainTable"] is True and i["groupIndex"] == 0 for i in items)
+        assert all("sourceSegments" not in i for i in items)
+        assert [(i["fileIndex"], i["rowKey"], i["newRow"], i["componentName"]) for i in items] == [
+            (0, _TK["rowKey"], False, _TK["componentName"]),
+            (1, "", True, "Giấy chứng nhận kết hôn"),
+            # Hai thẻ một tệp → MỘT dòng "+" đính nguyên tệp, ghi chú gồm hai thẻ.
+            (2, "", True, "Thẻ căn cước"),
+        ]
+        assert items[2]["rowFields"] == {
+            "count": "01", "note": "Đính kèm chung tệp cccd.pdf (2 trang): Thẻ căn cước tại trang 1–2/2"}
+        # Không còn cảnh báo nhóm / dòng của trang thường trú.
+        assert not res["errors"]
+
+
+def test_tach_file_dung_dong_va_khong_sot_trang(monkeypatch):
+    docs = [
+        {"fileIndex": 0, "pages": [1], "docType": "to_khai", "documentName": "Tờ khai thay đổi thông tin cư trú"},
+        {"fileIndex": 0, "pages": [2], "docType": "hop_dong", "documentName": "Hợp đồng cho ở nhờ"},
+        {"fileIndex": 0, "pages": [3], "docType": "dien_tich", "documentName": "Xác nhận diện tích nhà ở"},
+        {"fileIndex": 0, "pages": [4], "docType": "nhan_than", "documentName": "Giấy chứng nhận kết hôn"},
+        {"fileIndex": 0, "pages": [5], "docType": "cccd", "documentName": "Thẻ căn cước", "matThe": "ca_hai",
+         "chuThe": "MAU THI A"},
+        {"fileIndex": 0, "pages": [6], "docType": "cccd", "documentName": "Thẻ căn cước", "matThe": "ca_hai",
+         "chuThe": "MAU THI B"},
+    ]
+    pages = ["TỜ KHAI", "HỢP ĐỒNG CHO Ở NHỜ", "XÁC NHẬN DIỆN TÍCH", "GIẤY CHỨNG NHẬN KẾT HÔN", "CĂN CƯỚC", "CĂN CƯỚC"]
+    _patch(monkeypatch, docs, texts={"hoso.pdf": _ocr_text(pages)})
+    res = asyncio.run(attach.plan(_files(["hoso.pdf"]), {"splitDocuments": True}))
+    items = res["attachments"]
+    got = [(i["rowKey"] or i["componentName"], i["newRow"], i["sourceSegments"][0]["pageIndexes"]) for i in items]
+    assert got == [
+        (_TK["rowKey"], False, [0]),
+        ("Hợp đồng cho ở nhờ", True, [1]),
+        ("Xác nhận diện tích nhà ở", True, [2]),
+        ("Giấy chứng nhận kết hôn", True, [3]),
+        (items[4]["componentName"], True, [4]),
+        (items[5]["componentName"], True, [5]),
+    ]
+    # Thẻ của hai người là hai dòng riêng (tên khác nhau → extension không gom chung).
+    assert items[4]["componentName"] != items[5]["componentName"]
+    assert sorted(p for i in items for s in i["sourceSegments"] for p in s["pageIndexes"]) == list(range(6))
+    assert all(i["bcaPlainTable"] is True for i in items)
+    assert items[0]["rowFields"] == {"count": "01"}
+    assert not res["errors"]
+
+
+def test_giay_cho_o_qua_dong_cong_thieu_to_khai_canh_bao():
+    docs = [
+        {"fileIndex": 0, "pages": [1], "docType": "to_khai"},
+        {"fileIndex": 0, "pages": [2, 3], "docType": "so_huu", "documentName": "Giấy chứng nhận quyền sử dụng đất"},
+        {"fileIndex": 1, "pages": [1], "docType": "hop_dong", "documentName": "Hợp đồng cho thuê nhà"},
+    ]
+    items, warnings, _ = khong_tach.build_plan_items(["hoso.pdf", "hd.pdf"], {0: 3, 1: 1}, docs)
+    assert [(i["rowKey"], i["newRow"], i["componentName"]) for i in items] == [
+        (_TK["rowKey"], False, _TK["componentName"]),
+        ("", True, "Giấy chứng nhận quyền sử dụng đất"),
+        ("", True, "Hợp đồng cho thuê nhà"),
+    ]
+    assert items[1]["rowFields"]["note"] == (
+        "Đính kèm chung tệp hoso.pdf (3 trang): Giấy chứng nhận quyền sử dụng đất tại trang 2–3/3")
+    assert not warnings
+    # Không có tờ khai → cảnh báo thiếu dòng Tờ khai.
+    _, warnings, _ = khong_tach.build_plan_items(["hd.pdf"], {0: 1}, [dict(docs[2], fileIndex=0)])
+    assert any(_TK["componentName"] in w for w in warnings)
+
+
+def test_giay_chua_ro_loai_qua_dong_cong_canh_bao():
+    items, warnings, _ = khong_tach.build_plan_items(["bia.pdf"], {0: 1}, [{"fileIndex": 0, "pages": [1],
+                                                                            "docType": "other"}])
+    assert items[0]["newRow"] is True and items[0]["componentName"] == "Giấy tờ khác"
+    assert any("bia.pdf" in w for w in warnings)
+
+
+def test_tach_loi_quay_ve_khong_tach(monkeypatch):
+    _patch(monkeypatch, _DOCS, fail_split=True)
+    res = asyncio.run(attach.plan(_files(), {"splitDocuments": True}))
+    assert res["attachments"] and all("sourceSegments" not in i for i in res["attachments"])
+    assert any("(tách)" in e for e in res["errors"])
+
+
+def test_llm_loi_khong_tach_van_dinh_du_tep_vao_dong_to_khai(monkeypatch):
+    async def fake_ocr(files):
+        return [{"name": f["name"], "text": _ocr_text(_FILES[f["name"]])} for f in files]
+
+    async def broken(*_a, **_k):
+        raise RuntimeError("llm hỏng")
+
+    monkeypatch.setattr(ocr, "ocr_per_file", fake_ocr)
+    monkeypatch.setattr(llm_client, "chat", broken)
+    res = asyncio.run(attach.plan(_files(), {}))
+    assert [i["rowKey"] for i in res["attachments"]] == [_TK["rowKey"]] * 3
+    assert res["attachments"][0]["rowFields"]["count"] == "03"
+    assert any("Chưa phân loại được" in e for e in res["errors"])
+
+
+def test_ke_hoach_qua_duoc_response_model(monkeypatch):
+    from app.attachments.schemas import AttachmentPlanResp
+
+    _patch(monkeypatch, _DOCS)
+    res = asyncio.run(attach.plan(_files(), {}))
+    out = AttachmentPlanResp.model_validate(res).model_dump(mode="json")["attachments"]
+    assert out[0]["rowKey"] == _TK["rowKey"]
+    assert out[0]["bcaPlainTable"] is True and out[0]["groupLabel"] == GROUP["groupLabel"]
+    assert out[1]["newRow"] is True and out[1]["componentName"] == "Giấy chứng nhận kết hôn"

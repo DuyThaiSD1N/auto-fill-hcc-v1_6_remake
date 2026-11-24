@@ -960,13 +960,13 @@ REVIEW_ATTACHMENT_SAME_PAGE_BCA = {
         "Chưa đúng thì nói điền lại tờ khai ạ."
     ),
 }
-# Đăng ký xe nhập khẩu 1.013066 (registry bcaPagePhotos, user 24/11): phần đính kèm là ba ô tải ảnh ĐẦU trang kê khai,
+# Đăng ký xe lần đầu 1.013066 + 1.012575 (registry bcaPagePhotos, user 24/11): phần đính kèm là ba ô tải ảnh ĐẦU trang
+# kê khai,
 # không có bảng Thành phần hồ sơ; đính xong bấm "Đồng ý và tiếp tục" là sang thẳng trang Xác nhận.
 REVIEW_ATTACHMENT_PAGE_PHOTOS_BCA = {
     "md": (
         "\n\nCông dân rà lại tờ khai trên trang. Đúng rồi thì bấm **Đính kèm giấy tờ**, tôi gắn **ảnh phương tiện** và "
-        "**ảnh hai mặt chứng từ nguồn gốc** (tờ khai hàng hóa nhập khẩu) vào các ô tải ảnh **đầu trang**; chưa đúng thì "
-        "nói **«điền lại tờ khai»** ạ."
+        "**ảnh hai mặt chứng từ nguồn gốc** vào các ô tải ảnh **đầu trang**; chưa đúng thì nói **«điền lại tờ khai»** ạ."
     ),
     "tts": (
         " Công dân rà lại tờ khai. Đúng rồi thì bấm Đính kèm giấy tờ, tôi gắn ảnh phương tiện và ảnh hai mặt chứng từ "
@@ -977,7 +977,7 @@ ATTACH_DONE_PAGE_PHOTOS_BCA = {
     "md": (
         "✓ Đã gắn **{attached} ảnh** vào các ô tải ảnh **đầu trang** (Ảnh phương tiện, Ảnh chứng từ nguồn gốc mặt trước / "
         "mặt sau).\n\n👉 Công dân kiểm tra đúng ảnh; chưa bấm **Tra cứu** thì nhập Mã bảo mật rồi bấm **Tra cứu** để cổng "
-        "lấy dữ liệu lệ phí trước bạ, hóa đơn, hải quan. Xong bấm **Đồng ý và tiếp tục** sang trang Xác nhận ạ."
+        "lấy dữ liệu lệ phí trước bạ, hóa đơn, thông tin xe. Xong bấm **Đồng ý và tiếp tục** sang trang Xác nhận ạ."
     ),
     "tts": ("Dạ, tôi gắn ảnh xong. Công dân kiểm tra ảnh, nhập mã bảo mật rồi bấm Tra cứu nếu chưa làm, xong bấm Đồng ý "
             "và tiếp tục ạ."),
@@ -1008,9 +1008,12 @@ REVIEW_ATTACHMENT_ACTION = {
 
 # eForm Nth cổng DVC Bộ Công an, bảng Thành phần hồ sơ ở TRANG SAU: bấm "Đính kèm giấy tờ" thì trợ lý tự bấm "Đồng ý và
 # tiếp tục" của cổng, sang tới trang Thành phần hồ sơ là tự đính (user 20/11/2026: "giống các thủ tục tư pháp").
-_NEXT_TO_ATTACH_MD = ("bấm **Đính kèm giấy tờ**: tôi bấm **Đồng ý và tiếp tục** sang **Thành phần hồ sơ** rồi tự đính "
-                      "kèm ạ.")
-_NEXT_TO_ATTACH_TTS = "bấm Đính kèm giấy tờ, tôi bấm Đồng ý và tiếp tục sang thành phần hồ sơ rồi tự đính kèm ạ."
+# Ở bước Kê khai nút đi tiếp mang tên "Sang Thành phần hồ sơ", không phải "Đính kèm giấy tờ" (user 24/11/2026, 2.001428).
+BCA_NTH_TO_ATTACH_CHIP = "📎 Sang Thành phần hồ sơ ▶"
+_NEXT_TO_ATTACH_MD = ("bấm **Sang Thành phần hồ sơ**: tôi bấm **Đồng ý và tiếp tục** của cổng, sang tới nơi là tôi tự "
+                      "đính kèm ạ.")
+_NEXT_TO_ATTACH_TTS = ("bấm Sang Thành phần hồ sơ, tôi bấm Đồng ý và tiếp tục của cổng, sang tới nơi là tôi tự đính "
+                       "kèm ạ.")
 REVIEW_ATTACHMENT_NEXT_BCA = {
     "md": "\n\nKiểm tra xong → " + _NEXT_TO_ATTACH_MD,
     "tts": " Kiểm tra xong, công dân " + _NEXT_TO_ATTACH_TTS,
@@ -1270,7 +1273,7 @@ MOBILE_CONNECTED_ATTACH = {
 
 # Chỉ nói SỐ ĐÃ NHẬN, không "x/y" — tổng gồm slot tuỳ chọn dễ làm công dân tưởng còn thiếu.
 DOCS_COMPLETE_NEXT_STEP = {
-    "md": "✓ Đã nhận **{files_count} tệp**.\n\nEm đang đọc và điền tờ khai, khoảng **30 giây** ạ…",
+    "md": "✓ Đã nhận **{files_count} tệp**.\n\nTôi đang đọc và điền tờ khai, khoảng **30 giây** ạ…",
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
     # "tts": (
     # "Em đã nhận {files_count} tệp giấy tờ. "
@@ -1280,7 +1283,7 @@ DOCS_COMPLETE_NEXT_STEP = {
 }
 
 DOCS_COMPLETE_ATTACH = {
-    "md": "✓ Đã nhận **{files_count} tệp**.\n\nEm đang đính tất cả vào **một hồ sơ**, công dân chờ chút ạ…",
+    "md": "✓ Đã nhận **{files_count} tệp**.\n\nTôi đang đính tất cả vào **một hồ sơ**, công dân chờ chút ạ…",
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
     # "tts": (
     # "Em đã nhận {files_count} tệp giấy tờ. Em đang chuẩn bị đính tất cả tệp vào cùng một hồ sơ, "
@@ -1330,7 +1333,7 @@ BUSINESS_READY_CHANGE = {
 }
 
 BUSINESS_DOCS_COMPLETE = {
-    "md": "✓ Đã nhận **{files_count} tệp**.\n\nEm đang đọc và chuẩn bị điền, công dân chờ chút ạ…",
+    "md": "✓ Đã nhận **{files_count} tệp**.\n\nTôi đang đọc và chuẩn bị điền, công dân chờ chút ạ…",
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
     # "tts": (
     # "Em đã nhận {files_count} tệp giấy tờ. Em đang chuẩn bị dữ liệu cho tám khối thông tin "
@@ -1484,7 +1487,7 @@ ATTACH_MODE_SELECTED = {
 }
 
 ATTACH_PLAN_READY = {
-    "md": "📎 Đã xếp xong **{count} mục**:\n\n{plan_list}\n\nEm đang đính từng tệp, chờ chút ạ…",
+    "md": "📎 Đã xếp xong **{count} mục**:\n\n{plan_list}\n\nTôi đang đính từng tệp, chờ chút ạ…",
     # [TTS-TẠM 17/09/2026] đọc VNeID→"vi en ai đi", QR→"quy rờ", bỏ CON SỐ tài liệu (để thu âm/cache tiếng Mông). Gỡ mốc này + bỏ comment khối dưới là về bản cũ.
     # "tts": "Kế hoạch đính kèm xong rồi, {count} mục. Em đang tự đính từng tệp vào hồ sơ, công dân chờ chút ạ.",
     "tts": "Dạ, tôi đang đính từng tệp, công dân chờ chút ạ.",
@@ -1645,6 +1648,14 @@ ATTACH_ALL_FILES_EXIST = {
         "Công dân rà lại → bấm **Nộp hồ sơ / Gửi hồ sơ** ạ."
     ),
     "tts": "Dạ, tệp đã có đủ. Công dân xem lại, rồi bấm Nộp hồ sơ ạ.",
+}
+# Như trên, cổng bắt tích ô cam kết trước khi nộp (registry submitCommitLabel, vd Cổng DVC Bộ Công an).
+ATTACH_ALL_FILES_EXIST_COMMIT = {
+    "md": (
+        "✓ Các tệp đã có sẵn trên hồ sơ, tôi không đính trùng.\n\n"
+        "Công dân rà lại lần cuối, rồi bấm ô **\"{commit}\"**, rồi bấm **Nộp hồ sơ** ạ."
+    ),
+    "tts": "Dạ, tệp đã có đủ. Công dân rà lại lần cuối, rồi bấm ô {commit}, rồi bấm Nộp hồ sơ ạ.",
 }
 
 ATTACH_SPLIT_DONE = {
@@ -2035,7 +2046,7 @@ GUIDED_OWNER_CTA = "Xong, sang bước đính kèm →"
 # Trợ lý gạt sẵn công tắc "bản giấy" — cách đại đa số công dân ra quầy đang chọn. Vẫn nói rõ
 # đây là ĐỀ XUẤT và đổi được trong một chạm.
 GUIDED_RESULT_PICK = {
-    "md": "✓ Đã vào **{result_step}**.\n\nEm đang chọn **{label}**. Muốn đổi → bấm cách khác ạ.",
+    "md": "✓ Đã vào **{result_step}**.\n\nTôi đang chọn **{label}**. Muốn đổi → bấm cách khác ạ.",
     "tts": "Dạ, tôi chọn sẵn {label}. Muốn đổi, công dân bấm cách khác ạ.",
 }
 
@@ -2135,7 +2146,7 @@ TPM_UPDATE_REQUIRED = {
 
 # Câu đuôi sau báo cáo điền (note= của FILL_REPORT_REVIEW): planner đính kèm chạy nền ngay lúc này.
 TPM_FILL_NEXT = {
-    "md": "\n\nEm đang xếp sẵn giấy tờ. Rà xong → bấm **Đính kèm thành phần hồ sơ** ạ.",
+    "md": "\n\nTôi đang xếp sẵn giấy tờ. Rà xong → bấm **Đính kèm thành phần hồ sơ** ạ.",
     "tts": " Xem xong, công dân bấm Đính kèm thành phần hồ sơ ạ.",
 }
 
@@ -2184,14 +2195,14 @@ TPM_SUBMIT_HINT = {
 
 # Bưu điện trên trang một trang: FE điền khối người nhận theo NGƯỜI YÊU CẦU trên tờ khai.
 TPM_RESULT_RECIPIENT_FILLED = {
-    "md": ("✓ Đã chọn **{label}**.\n\nEm đã điền **{filled_note}** của người nhận theo người yêu cầu "
+    "md": ("✓ Đã chọn **{label}**.\n\nTôi đã điền **{filled_note}** của người nhận theo người yêu cầu "
            "trên tờ khai, công dân kiểm tra lại ạ."),
     "tts": "Dạ, tôi đã chọn {label} và điền thông tin người nhận theo người yêu cầu trên tờ khai. "
            "Công dân kiểm tra lại ạ.",
 }
 
 TPM_RESULT_RECIPIENT_PARTIAL = {
-    "md": ("✓ Đã chọn **{label}**.\n\nEm đã điền **{filled_note}** theo người yêu cầu trên tờ khai. "
+    "md": ("✓ Đã chọn **{label}**.\n\nTôi đã điền **{filled_note}** theo người yêu cầu trên tờ khai. "
            "Còn thiếu **{missing_note}**, công dân điền nốt ạ."),
     "tts": "Dạ, tôi đã chọn {label} và điền thông tin người nhận theo tờ khai. "
            "Còn thiếu {missing_tts}, công dân điền nốt ạ.",
@@ -2266,7 +2277,7 @@ TPM_DONE_REMIND = {
 # (chọn hình thức nhận kết quả, nộp) chỉ hiện khi tờ khai đủ ô bắt buộc.
 FLOW2_STEPS = ("Bóc tách thông tin từ giấy tờ", "Điền tờ khai", "Đính kèm giấy tờ")
 FLOW2_DOCS_RECEIVED = {
-    "md": "✓ Đã nhận **{files_count} tệp**.\n\nEm đang đọc giấy tờ để điền tờ khai và đính kèm, công dân chờ chút ạ…",
+    "md": "✓ Đã nhận **{files_count} tệp**.\n\nTôi đang đọc giấy tờ để điền tờ khai và đính kèm, công dân chờ chút ạ…",
     "tts": "Dạ tôi đã nhận giấy tờ. Tôi đang đọc để điền tờ khai và đính kèm, công dân chờ chút ạ.",
 }
 FLOW2_REFILL = {
@@ -2503,11 +2514,11 @@ FLOW2_FILL_STEPS = ("Bóc tách thông tin từ giấy tờ", "Điền tờ khai
 FLOW2_ATTACH_STEPS = ("Xếp giấy tờ vào thành phần hồ sơ", "Đính kèm giấy tờ")
 # Sang Kê khai, điền tờ khai bằng giấy tờ đã nhận ở bước chủ hồ sơ (không nhận tệp mới).
 FLOW2_MAIN_FORM = {
-    "md": "✓ Đã sang **Kê khai thông tin**.\n\nEm đang đọc giấy tờ để điền tờ khai, công dân chờ chút ạ…",
+    "md": "✓ Đã sang **Kê khai thông tin**.\n\nTôi đang đọc giấy tờ để điền tờ khai, công dân chờ chút ạ…",
     "tts": "Dạ đã sang bước kê khai thông tin. Tôi đang đọc giấy tờ để điền tờ khai, công dân chờ chút ạ.",
 }
 FLOW2_DOCS_RECEIVED_FILL = {
-    "md": "✓ Đã nhận **{files_count} tệp**.\n\nEm đang đọc giấy tờ để điền tờ khai, công dân chờ chút ạ…",
+    "md": "✓ Đã nhận **{files_count} tệp**.\n\nTôi đang đọc giấy tờ để điền tờ khai, công dân chờ chút ạ…",
     "tts": "Dạ tôi đã nhận giấy tờ. Tôi đang đọc để điền tờ khai, công dân chờ chút ạ.",
 }
 # Tờ khai đủ ô bắt buộc → bước kế tiếp là Xem trước (cổng chặn Xem trước khi còn ô bắt buộc trống).
@@ -3120,6 +3131,8 @@ FLOW2_NEXT_SUBMIT = {
     "tts": " Công dân rà lại lần cuối rồi tự bấm nộp hồ sơ trên trang ạ.",
 }
 FLOW2_REVIEW_DONE_LEAD = ("✓ Tôi đã hỏi hết các ô còn trống. ", "Dạ tôi đã hỏi hết các ô còn trống. ")
+# Vòng chỉ hỏi ô bắt buộc (bản 2) dừng khi tới ô không bắt buộc, dù công dân đã bỏ qua vài ô bắt buộc.
+FLOW2_REVIEW_RED_DONE_LEAD = ("✓ Tôi đã hỏi qua các ô bắt buộc. ", "Dạ tôi đã hỏi qua các ô bắt buộc. ")
 FLOW2_REVIEW_STOP_LEAD = ("Dạ, tôi dừng hỏi. ", "Dạ tôi dừng hỏi. ")
 
 # Nhãn bước hiển thị trên thanh tiến trình (progress.label) — khớp docs/03a §3.
@@ -3151,6 +3164,15 @@ STEP_ORDER = [
     "greet", "confirm_procedure", "choose_variant", "guide_login", "choose_mae_dialog", "consent",
     "ask_doc_method", "qr_waiting", "collecting_docs", "choosing_attach_mode", "owner_filling",
     "owner_waiting_next", "filling", "reviewing", "attaching", "done",
+]
+# Số "Bước X/Y" công dân thấy tính theo chặng, không theo STEP_ORDER: mỗi thủ tục chỉ đi qua một phần
+# của 16 trạng thái nên đếm theo trạng thái sẽ nhảy cóc (4/16 → 13/16). Nhãn vẫn là tên trạng thái.
+STEP_PHASES = [
+    ("greet", "confirm_procedure", "choose_variant"),
+    ("guide_login", "choose_mae_dialog"),
+    ("consent", "ask_doc_method", "qr_waiting", "collecting_docs", "choosing_attach_mode"),
+    ("owner_filling", "owner_waiting_next", "filling", "reviewing"),
+    ("attaching", "done"),
 ]
 
 
@@ -3270,9 +3292,9 @@ FR_OPTIONAL_PHASE_SINGLE = {
 # Giữa vòng hỏi công dân đòi xem trước / sang bước tiếp mà còn ô bắt buộc trống → báo rồi hỏi tiếp ô đang dở.
 FR_PROCEED_BLOCKED = {
     "md": ("Tờ khai còn **{required} ô bắt buộc** chưa có thông tin nên {step_md} ạ. Tôi hỏi tiếp ô **{label}** nhé, "
-           "công dân không biết thì nói **bỏ qua**, hoặc nói **dừng** để tự điền trên tờ khai."),
+           "công dân muốn tự điền trên tờ khai thì nói **dừng**."),
     "tts": ("Dạ tờ khai còn {required} ô bắt buộc chưa có thông tin nên {step_md} ạ. Tôi hỏi tiếp ô {label_tts} nhé, "
-            "công dân không biết thì nói bỏ qua, hoặc nói dừng để tự điền trên tờ khai."),
+            "công dân muốn tự điền trên tờ khai thì nói dừng."),
 }
 FR_PROCEED_STEP_LEGACY = "cổng chưa cho xem trước"
 FR_PROCEED_STEP_SINGLE = "chưa sang bước nhận kết quả được"
@@ -3368,8 +3390,8 @@ FR_OFFER_AFTER_ATTACH = {
     "tts": " Tờ khai còn {empty} ô trống, công dân bấm Bổ sung các thông tin còn thiếu để tôi hỏi từng ô ạ.",
 }
 FR_START = {
-    "md": "Tôi hỏi lần lượt từng ô còn trống từ trên xuống ạ. Ô nào không có thông tin thì công dân nói **bỏ qua**.",
-    "tts": "Tôi sẽ hỏi lần lượt từng ô còn trống. Ô nào không có thông tin thì công dân nói bỏ qua ạ. ",
+    "md": "Tôi hỏi lần lượt từng ô còn trống ạ.",
+    "tts": "Tôi sẽ hỏi lần lượt từng ô còn trống ạ. ",
 }
 # Câu hỏi ô kế tiếp. head_*: dòng mở đầu FR_HEAD (hoặc FR_HEAD_NO_PART cho ô không thuộc phần nào trên tờ khai).
 FR_ASK = {
@@ -3695,6 +3717,25 @@ HKD_ATTACH_DOCS_INTRO = {
     "md": "📎 Công dân **ký tờ khai bản giấy**, rồi gửi tờ khai đã ký cùng các giấy tờ kèm theo để tôi đính vào hồ sơ ạ.\n\n",
     "tts": "Công dân ký tờ khai bản giấy, rồi gửi tờ khai đã ký cùng các giấy tờ kèm theo để tôi đính vào hồ sơ ạ. ",
 }
+# Chưa tải tờ khai bản giấy: chỉ đính giấy tờ kèm theo (căn cước, hợp đồng thuê nhà…).
+HKD_WAIT_BLOCK = "lưu khối **{label}**"
+HKD_WAIT_ALL = "điền các khối lên trang"
+HKD_WAIT_PREPARE = "chuẩn bị hồ sơ"
+HKD_RETRY_LABEL = "🔁 Thử lại"
+HKD_STILL_WAITING = {"md": "⏳ Tôi đang {what}, công dân chờ chút ạ.",
+                     "tts": "Dạ, tôi đang làm, công dân chờ chút ạ."}
+HKD_STUCK = {
+    "md": "⏳ Trang chưa báo lại kết quả {what}. Công dân bấm **Thử lại** để tôi làm lại bước này ạ.",
+    "tts": "Dạ, trang chưa báo lại kết quả. Công dân bấm Thử lại để tôi làm lại bước này ạ.",
+}
+HKD_REFILLING = {
+    "md": "🔁 Tôi điền lại các khối lên trang theo thông tin đã có, công dân chờ chút ạ…",
+    "tts": "Dạ, tôi điền lại các khối lên trang, công dân chờ chút ạ.",
+}
+HKD_ATTACH_DOCS_INTRO_PLAIN = {
+    "md": "📎 Công dân gửi các giấy tờ kèm theo để tôi đính vào hồ sơ ạ.\n\n",
+    "tts": "Công dân gửi các giấy tờ kèm theo để tôi đính vào hồ sơ ạ. ",
+}
 HKD_ATTACH_DOCS_RECEIVED = {
     "md": "✓ Đã nhận **{files_count} tệp**. Tôi đang phân loại giấy tờ để đính kèm, công dân chờ chút ạ…",
     "tts": "Dạ, tôi đã nhận giấy tờ, đang phân loại để đính kèm. Công dân chờ chút ạ.",
@@ -3739,7 +3780,7 @@ HKD_NAME_CHECKING = {"md": "🔎 Tôi kiểm tra trùng tên **{name}** trên c�
 HKD_NAME_FREE = {"md": "✓ Cổng không có hộ kinh doanh nào trùng hoặc tương tự tên **{name}**.\n\n",
                  "tts": "Cổng không có hộ kinh doanh nào trùng tên. "}
 HKD_NAME_TAKEN = {
-    "md": "⚠️ Cổng có **{n} hộ kinh doanh** trùng hoặc tương tự tên **{name}**{exact}: {names}\n\n",
+    "md": "⛔ Cổng có **{n} hộ kinh doanh** trùng hoặc tương tự tên **{name}**{exact}: {names}\n\n",
     "tts": "Cổng có {n} hộ kinh doanh trùng hoặc tương tự tên này{exact}. ",
 }
 HKD_NAME_EXACT = ", trong đó {n} hộ trùng hẳn tên"
@@ -3869,7 +3910,8 @@ HKD_QUESTIONS = {
     # Agent tra mã chỉ ra MỘT mã nhưng chưa chắc → hỏi xác nhận mã đó, không phải "chọn một trong các ngành".
     "nganh_chon_mot": {"md": ("Với **{hoat_dong}**, tôi thấy hợp nhất là ngành **{nganh}**. Đúng thì công dân bấm "
                               "ngành đó; chưa đúng thì nói rõ hơn kinh doanh gì ạ."),
-                       "tts": "Với {hoat_dong}, tôi thấy hợp nhất là ngành {nganh}. Công dân xác nhận giúp tôi, đúng không ạ?"},
+                       # Lời đọc chỉ đọc tên ngành: mã bốn số đọc thành "bốn nghìn bảy trăm…" không giúp công dân.
+                       "tts": "Với {hoat_dong}, tôi thấy hợp nhất là ngành {ten}. Công dân xác nhận giúp tôi, đúng không ạ?"},
     "nganh_ro": {"md": ("Hoạt động **{hoat_dong}** tôi chưa tìm được mã ngành. Công dân nói rõ hơn bán gì, làm gì, "
                         "hoặc bấm bỏ hoạt động này ạ."),
                  "tts": "Hoạt động {hoat_dong} tôi chưa tìm được mã ngành. Công dân nói rõ hơn, hoặc bỏ hoạt động này ạ."},

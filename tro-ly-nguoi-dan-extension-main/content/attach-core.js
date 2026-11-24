@@ -2996,13 +2996,22 @@ function bcaGroupToggle(index, label) {
   const call = `load_table_tphs_new(${index})`;
   const byHandler = Array.from(document.querySelectorAll("a[href], [onclick]")).find((el) =>
     `${el.getAttribute("href") || ""} ${el.getAttribute("onclick") || ""}`.replace(/\s+/g, "").includes(call));
-  if (byHandler) return byHandler;
   const want = bcaText(label);
-  const hit = Array.from(document.querySelectorAll("a p, a span, a")).find((el) => {
+  // Trang khác thủ tục (vd xác nhận thông tin cư trú TT=THUONGTRU_09) có thể đánh số nhóm khác trang thường trú →
+  // link đúng số nhưng KHÁC chữ nhóm thì dò lại theo chữ; không thấy mới dùng link theo số.
+  if (byHandler && (!want || bcaText(byHandler.textContent).includes(want))) return byHandler;
+  const hit = want && Array.from(document.querySelectorAll("a p, a span, a")).find((el) => {
     const text = bcaText(el.textContent);
     return text.includes(want) && text.length <= want.length + 20;
   });
-  return hit?.closest("a") || null;
+  return hit?.closest("a") || byHandler || null;
+}
+
+// Số nhóm thật của link mở nhóm (load_table_tphs_new(i)) — null khi link không mang số.
+function bcaToggleIndex(toggle) {
+  const match = `${toggle?.getAttribute?.("href") || ""} ${toggle?.getAttribute?.("onclick") || ""}`
+    .replace(/\s+/g, "").match(/load_table_tphs_new\((\d+)\)/);
+  return match ? Number(match[1]) : null;
 }
 
 // Bảng của nhóm: trong #tphs_new_<i>, hoặc (cổng vẽ ra chỗ khác) bảng có ô chọn tệp MỚI xuất hiện sau cú bấm.
@@ -3043,11 +3052,12 @@ function bcaLoadGroupInMainWorld(index) {
 }
 
 async function bcaOpenGroup(index, label) {
+  const toggle = bcaGroupToggle(index, label);
+  index = bcaToggleIndex(toggle) ?? index; // link tìm theo chữ nhóm → dùng số nhóm thật của trang
   const current = document.getElementById(`tphs_new_${index}`);
   if (bcaGroupRows(current).length && isVisible(current)) return current; // đang mở — bấm nữa là đóng lại
   const before = new Set(document.querySelectorAll('input[type="file"]'));
   const loaded = () => bcaLoadedContainer(index, before);
-  const toggle = bcaGroupToggle(index, label);
   if (toggle) {
     toggle.scrollIntoView?.({ block: "center" });
     toggle.click(); // MỘT lần: bấm lại là hỏi/chuyển lần nữa

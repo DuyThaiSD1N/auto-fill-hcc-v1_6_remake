@@ -8,7 +8,7 @@ trú của người đề nghị so với cơ quan tiếp nhận.
 LLM chỉ trả DỮ KIỆN đọc từ giấy tờ (Tờ khai CT01, giấy ủy quyền, CCCD, trang bìa). Ô form dựng ở mapper.py. Không
 điền: Thủ tục (khoá), radio Khai hộ / người khai là người xác nhận (cổng chọn sẵn theo tài khoản), khối CT02 và "Nơi đề
 nghị đăng ký thường trú" (ẩn), "Danh sách người cần xin ý kiến" (gõ vào đó cổng đổi nút nộp thành gửi xác nhận qua
-VNeID), nhận thông báo, địa chỉ nhận kết quả qua bưu chính, ô cam kết (người dân tự tích). Thủ tục không đính kèm.
+VNeID), nhận thông báo, địa chỉ nhận kết quả qua bưu chính, ô cam kết (người dân tự tích). Đính kèm ở attach/.
 """
 
 FIELDS: list[dict] = [

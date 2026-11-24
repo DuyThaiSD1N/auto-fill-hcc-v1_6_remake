@@ -7,9 +7,12 @@ cboDATE_FORMAT, txtDOB, cboGENDER_CODE…), cổng khoá Thủ tục theo TT= v�
 LLM chỉ trả DỮ KIỆN đọc từ giấy tờ (Tờ khai CT01, CCCD). Ô form dựng ở mapper.py. Không điền: Thủ tục (khoá), radio
 Khai hộ / tự khai (cổng chọn theo tài khoản), khối "Thông tin đề nghị đăng ký tạm trú" gồm cả Nội dung đề nghị
 txtCHANGED_NOTE (ẩn với TAMTRU_06 — nội dung đề nghị chỉ dùng để chọn Trường hợp), khối người đại diện / thời hạn
-(ẩn), khối VNeID xin ý kiến (ẩn), nhận thông báo / kết quả (mặc định của cổng), ô cam kết (người dân tự tích).
+(ẩn), khối VNeID xin ý kiến (ẩn), Hình thức nhận thông báo (mặc định của cổng), ô cam kết (người dân tự tích).
+Hình thức nhận kết quả + Email điền theo email trên giấy (receiver_fields của đăng ký tạm trú).
 Đính kèm ở attach/ (bảng #tblGiayToDinhKem cùng trang, nạp theo Trường hợp).
 """
+
+from app.pipelines.dang_ky_tam_tru.process.schema import RECEIVER_UI_COMP_BY_NAME
 
 FIELDS: list[dict] = [
     {
@@ -87,6 +90,8 @@ UI_COMP_BY_NAME = {
     "cboHH_PERSON_RELATIONSHIP_CODE": "dom-select",
     "txtHH_PERSON_IDENTIFIER_NUMBER": "dom-input",
     "listNormal": "bca-rows",
+    # Khối nhận kết quả cuối trang (cùng id trang tạm trú, xem dang_ky_tam_tru/process/schema.py).
+    **RECEIVER_UI_COMP_BY_NAME,
 }
 
 # Nhãn option "Trường hợp" (cboBPROC_CASE_CODE) đúng như trên cổng (sheet "Danh mục Option", mã TAT-XOA-13…18).

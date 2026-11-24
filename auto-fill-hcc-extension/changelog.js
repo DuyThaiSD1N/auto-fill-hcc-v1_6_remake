@@ -3,6 +3,30 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.28.38",
+    date: "24/11/2026",
+    items: [
+      "Cấp Phiếu lý lịch tư pháp (3.000333, Công an cấp tỉnh): tự nhận biết tài khoản là người yêu cầu cấp phiếu (Cá nhân) hay người khai hộ; điền được ô Tỉnh/Xã nơi đăng ký khai sinh trong khối khai hộ.",
+      "Khai tử có yếu tố nước ngoài (1.001766), khai tử lưu động (1.000419): đọc thông tin tài khoản để nộp thay thì điền theo người yêu cầu trên hồ sơ.",
+      "Xác nhận tiếp tục sử dụng đất nông nghiệp (Bắc Ninh, 1.115462): điền khối người ủy quyền (chủ hồ sơ).",
+      "Xác nhận thông tin về cư trú (Cổng DVC Bộ Công an): đính kèm đúng nhóm giấy tờ khi trang đánh số nhóm khác trang thường trú.",
+    ],
+  },
+  {
+    version: "1.28.37",
+    date: "24/11/2026",
+    items: [
+      "Đăng ký thành lập hộ kinh doanh: cảnh báo trùng tên hộ kinh doanh hiện màu đỏ đậm, dễ thấy hơn.",
+    ],
+  },
+  {
+    version: "1.28.36",
+    date: "24/11/2026",
+    items: [
+      "Đăng ký hộ kinh doanh (thành lập, thay đổi nội dung): ô mô tả chi tiết ngành nghề chỉ ghi khi giấy tờ có mô tả khác tên ngành chuẩn, không ghi lặp tên ngành; cách ghi riêng của từng đơn vị giữ như cũ.",
+    ],
+  },
+  {
     version: "1.28.35",
     date: "24/11/2026",
     items: [
