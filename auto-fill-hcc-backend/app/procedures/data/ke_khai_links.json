@@ -3664,6 +3664,16 @@
       "autoConfirm": false
     },
     {
+      "key": "xoa-dang-ky-thuong-tru",
+      "code": "1.003197",
+      "label": "Xóa đăng ký thường trú",
+      "url": "https://dichvucong.bocongan.gov.vn/bocongan/bothutuc/tthc?matt=26348",
+      "needsAgencySelect": false,
+      "directSubmit": true,
+      "bcaSubmit": true,
+      "autoConfirm": false
+    },
+    {
       "key": "cap-doi-the-can-cuoc",
       "code": "2.001195",
       "label": "Cấp đổi thẻ căn cước",

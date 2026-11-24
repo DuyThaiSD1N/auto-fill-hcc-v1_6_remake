@@ -109,6 +109,9 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát — "Cuv npe nyob ib ntus" (đăng ký tạm trú) đã có trong file; chưa có từ Mông cho "xóa"
     # → giữ chữ tiếng Việt "Xóa" như các nhãn ghép tiếng Việt khác.
     "xoa-dang-ky-tam-tru": "Xóa cuv npe nyob ib ntus",
+    # BẢN NHÁP chờ anh Dư soát — "cuv npe" (đăng ký) + "qhov chaw nyob ruaj" (chỗ ở thường trú, như xác nhận cư trú) đã
+    # có; giữ chữ "Xóa" tiếng Việt như nhãn xóa tạm trú.
+    "xoa-dang-ky-thuong-tru": "Xóa cuv npe qhov chaw nyob ruaj",
     # BẢN NHÁP chờ anh Dư soát — ghép "hloov" (thay đổi) + "daim npav" (thẻ) đã có; "Căn cước" giữ tiếng Việt như câu
     # "daim Căn cước công dân" sẵn trong file.
     "cap-doi-the-can-cuoc": "Hloov daim npav Căn cước",

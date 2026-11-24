@@ -486,6 +486,11 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
     "xoa-dang-ky-tam-tru": ["xóa đăng ký tạm trú", "xóa tạm trú", "hủy tạm trú", "cắt tạm trú",
                             "đã nhập hộ khẩu thường trú rồi giờ xóa tạm trú", "hết thuê trọ muốn xóa tạm trú",
                             "chuyển đi nơi khác xóa tạm trú chỗ cũ"],
+    # Phân biệt "xoa-dang-ky-thuong-tru" (BỎ hộ khẩu thường trú đang có: bán nhà, vắng mặt lâu, định cư nước ngoài) với
+    # "xoa-dang-ky-tam-tru" (bỏ TẠM trú) và "dang-ky-thuong-tru" (đăng ký MỚI nơi thường trú).
+    "xoa-dang-ky-thuong-tru": ["xóa đăng ký thường trú", "xóa hộ khẩu", "cắt hộ khẩu", "xóa thường trú",
+                               "bán nhà rồi muốn xóa hộ khẩu", "cả nhà đi định cư nước ngoài xóa thường trú",
+                               "không ở đó nữa xóa tên khỏi hộ khẩu"],
     # Phân biệt "cap-the-can-cuoc-duoi-14-tuoi" (trẻ dưới 14) và "cap-doi-the-can-cuoc" (đã có thẻ, đổi thẻ): người từ
     # đủ 14 tuổi CHƯA từng có thẻ căn cước (làm lần đầu, hoặc chỉ có CMND cũ) → thủ tục này.
     "cap-the-can-cuoc-tu-du-14-tuoi": ["con vừa đủ 14 tuổi làm căn cước lần đầu", "làm căn cước lần đầu",

@@ -154,6 +154,7 @@ def test_moi_thu_tuc_bo_cong_an_khai_o_chu_tai_khoan_giu_gia_tri_cong():
         "cap_doi_the_can_cuoc": cccd, "cap_the_can_cuoc_duoi_14_tuoi": cccd, "cap_the_can_cuoc_tu_du_14_tuoi": cccd,
         "dang_ky_thuong_tru": cu_tru, "dang_ky_tam_tru": cu_tru, "dieu_chinh_thong_tin_ve_cu_tru": cu_tru,
         "xac_nhan_thong_tin_ve_cu_tru": cu_tru, "tach_ho": cu_tru, "xoa_dang_ky_tam_tru": cu_tru,
+        "xoa_dang_ky_thuong_tru": cu_tru,
         "cap_ho_chieu_pho_thong_o_trong_nuoc": nth, "trinh_bao_mat_ho_chieu_pho_thong_cap_xa": nth,
         "trinh_bao_mat_ho_chieu_pho_thong_cap_tinh": nth, "dang_ky_xe_lan_dau_san_xuat_lap_rap_trong_nuoc": nth,
         "dang_ky_xe_lan_dau_nhap_khau": nth,

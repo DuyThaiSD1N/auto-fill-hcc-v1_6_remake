@@ -7000,6 +7000,70 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        # CÙNG trang + cùng bộ id với "dang-ky-thuong-tru" (chỉ khác TT=THUONGTRU_02) → cùng cờ supportsBcaThuongTru, cùng
+        # ô cam kết chkRULE. Toàn quốc. Detect giống lõi (mã TTHC 1.003197). keKhaiUrl KHÁC ke_khai_links.json: Auto Fill
+        # đi từ trang thủ tục Cổng DVC Bộ Công an (tthc?matt=26348, extension bấm "Nộp hồ sơ"), còn luồng bcaPortal của
+        # trợ lý cần mở thẳng trang kê khai như các thủ tục cư trú khác — URL theo mapping 24/11/2026.
+        # Chọn xong cơ quan cổng còn bắt chọn "Trường hợp" (nạp bảng giấy tờ + tự sinh nội dung đề nghị) → hỏi bằng nút
+        # như xóa tạm trú (bcaCase); nhãn = CASES của pipeline xoa_dang_ky_thuong_tru. Đính kèm như tách hộ: bảng giấy tờ
+        # CÙNG trang, điền xong DỪNG hỏi (askBeforeAttach), công dân bấm "Đính kèm giấy tờ" mới đính.
+        "key": "xoa-dang-ky-thuong-tru",
+        "detect": {
+            "urlScope": ["dang-ky-thuong-tru.html"],
+            "urlIncludes": ["TT=THUONGTRU_02"],
+            "headingDisabled": True,
+        },
+        "label": "Xóa đăng ký thường trú",
+        "shortLabel": "Xóa đăng ký thường trú",
+        "subtitle": "Không còn chỗ ở hợp pháp, vắng mặt lâu, định cư nước ngoài — kê khai trên Cổng dịch vụ công Bộ Công an",
+        "icon": "🗂️",
+        "keKhaiUrl": (
+            "https://dichvucong.dancuquocgia.gov.vn/portal/p/home/dang-ky-thuong-tru.html?ma_thu_tuc=1.004222"
+            "&TT=THUONGTRU_02&TT_NAME=X%C3%B3a%20%C4%91%C4%83ng%20k%C3%BD%20th%C6%B0%E1%BB%9Dng%20tr%C3%BA"
+        ),
+        "bcaPortal": True,
+        "bcaAgencyPlace": "nơi đang đăng ký thường trú",
+        "requiresCapability": "supportsBcaThuongTru",
+        "bcaCase": {
+            "selectId": "cboBPROC_CASE_CODE",
+            "options": [
+                "Cả hộ do không còn chỗ ở hợp pháp",
+                "Nhân khẩu do không còn chỗ ở hợp pháp",
+                "Cả hộ do vắng mặt trên 12 tháng",
+                "Nhân khẩu do vắng mặt trên 12 tháng",
+                "Cả hộ do định cư nước ngoài",
+                "Nhân khẩu do định cư nước ngoài",
+            ],
+        },
+        "samePageAttach": True,
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,
+        "docsAdjustRefill": True,
+        "askBeforeAttach": True,
+        "submitCommitLabel": "Tôi xin chịu trách nhiệm trước pháp luật về lời khai trên",
+        "submitCommitCheckbox": "chkRULE",
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "to_khai", "name": "Tờ khai thay đổi thông tin cư trú (Mẫu CT01)", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "chung_minh", "name": "Giấy tờ chứng minh lý do xóa (không còn chỗ ở hợp pháp / định cư nước ngoài)",
+             "icon": "📑", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đề nghị và các thành viên", "icon": "🪪",
+             "sides": 2, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai thay đổi thông tin cư trú (Mẫu CT01) — nguồn chính.\n"
+            "2. Giấy tờ chứng minh không còn chỗ ở hợp pháp hoặc định cư nước ngoài (nếu xóa vì lý do đó).\n"
+            "3. CCCD của người đề nghị và các thành viên (nếu có).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
+        ),
+    },
+    {
         # Cổng DVC Bộ Công an như "dang-ky-tam-tru" (bcaPortal: chọn thẻ là mở thẳng trang kê khai, trợ lý chọn hộ
         # Tỉnh + Xã ở khối "Cơ quan thực hiện" rồi mới xin giấy tờ). Trang KHÔNG có mục đính kèm. Người lưu trú thêm
         # từng người qua modal "Thêm mới người lưu trú" (bcaGuestList, comp bca-guest-list) — bản Trợ lý chưa khai
@@ -11730,6 +11794,7 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "tach-ho": _TAT_CA,
     # Vắng bảng theo dõi, user không nói phạm vi → toàn quốc (mặc định 16/11/2026), cùng trang tạm trú. 20/11/2026.
     "xoa-dang-ky-tam-tru": _TAT_CA,
+    "xoa-dang-ky-thuong-tru": _TAT_CA,
     # Toàn quốc (user 16/11/2026).
     "cap-doi-the-can-cuoc": _TAT_CA,
     # Vắng bảng theo dõi — mặc định toàn quốc như cấp đổi căn cước (cùng trang Bộ Công an), 16/11/2026.

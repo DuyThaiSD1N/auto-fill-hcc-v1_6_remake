@@ -104,6 +104,8 @@ from app.pipelines.tach_ho.process import run as tach_ho_process
 from app.pipelines.tach_ho.attach import plan as tach_ho_attach
 from app.pipelines.xoa_dang_ky_tam_tru.process import run as xoa_dang_ky_tam_tru_process
 from app.pipelines.xoa_dang_ky_tam_tru.attach import plan as xoa_dang_ky_tam_tru_attach
+from app.pipelines.xoa_dang_ky_thuong_tru.process import run as xoa_dang_ky_thuong_tru_process
+from app.pipelines.xoa_dang_ky_thuong_tru.attach import plan as xoa_dang_ky_thuong_tru_attach
 from app.pipelines.dang_ky_dat_dai.process import run as dang_ky_dat_dai_process
 from app.pipelines.dang_ky_dat_dai_tai_san.process import run as dang_ky_dat_dai_tai_san_process
 from app.pipelines.dang_ky_dat_dai_tai_san.attach import plan as dang_ky_dat_dai_tai_san_attach
@@ -11194,6 +11196,35 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        # Cổng DVC Bộ Công an: link kê khai (ke_khai_links.json, mã 1.003197) là trang thủ tục tthc?matt=26348 →
+        # extension bấm "Nộp hồ sơ" (directSubmit + bcaSubmit) → trang kê khai dang-ky-thuong-tru.html?TT=THUONGTRU_02,
+        # CÙNG trang + bộ id với "dang-ky-thuong-tru" → entry này PHẢI đứng TRƯỚC thủ tục đó (popup lấy rule urlIncludes
+        # khớp đầu tiên). Trường hợp chọn theo lý do xóa ở mục 10 CT01 (cả hộ khi người đề nghị là chủ hộ). Đính kèm (ảnh
+        # user 24/11/2026): bảng #tblGiayToDinhKem cùng trang nạp theo Trường hợp — dòng Tờ khai + dòng chứng minh không
+        # còn chỗ ở hợp pháp / định cư nước ngoài, giấy khác qua "+"; trợ lý điền xong hỏi rồi mới đính.
+        "key": "xoa-dang-ky-thuong-tru",
+        "detect": {
+            "urlScope": ["dang-ky-thuong-tru.html"],
+            "urlIncludes": ["TT=THUONGTRU_02"],
+            "headingDisabled": True,
+        },
+        "label": "Xóa đăng ký thường trú",
+        "mode": "agent",
+        "roles": [],
+        "useDangKyBy": False,
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Tờ khai thay đổi thông tin cư trú (Mẫu CT01) — nguồn chính: người đề nghị, chủ hộ, lý do xóa đăng ký "
+            "thường trú, thành viên cùng thay đổi.\n"
+            "2. Giấy tờ chứng minh lý do xóa: không còn chỗ ở hợp pháp (chuyển nhượng, bán chỗ ở, hết hợp đồng thuê…) "
+            "hoặc định cư ở nước ngoài.\n"
+            "3. CCCD của người đề nghị và các thành viên (nếu có) để đối chiếu.\n"
+            "⚠ Mục 10 tờ khai phải ghi đúng lý do xóa thì mới tự chọn được ô 'Trường hợp'; không ghi thì chọn tay."
+        ),
+    },
+    {
         # Cổng DVC Bộ Công an (jQuery + select2, ô id = name) — bộ id KHÁC trang đăng ký tạm trú dù cùng cổng. Link kê
         # khai + mã 1.004222 ở ke_khai_links.json. Cơ quan thực hiện (Tỉnh → Xã) chọn đầu tiên: cổng mới nạp Thủ tục,
         # Trường hợp và nhóm giấy tờ đính kèm.
@@ -11978,6 +12009,7 @@ _PIPELINE = {
     "xac-nhan-thong-tin-ve-cu-tru": xac_nhan_thong_tin_ve_cu_tru_process,
     "tach-ho": tach_ho_process,
     "xoa-dang-ky-tam-tru": xoa_dang_ky_tam_tru_process,
+    "xoa-dang-ky-thuong-tru": xoa_dang_ky_thuong_tru_process,
     "chuyen-doi-ten-hop-dong-nuoc-sach": doi_ten_nuoc_sach_process,
     "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham": an_toan_thuc_pham_process,
     "cap-gcn-attp-nong-lam-thuy-san": cap_gcn_attp_nong_lam_thuy_san_process,
@@ -12454,6 +12486,7 @@ _ATTACH_PIPELINE = {
     "dieu-chinh-thong-tin-ve-cu-tru": dieu_chinh_thong_tin_ve_cu_tru_attach,
     "tach-ho": tach_ho_attach,
     "xoa-dang-ky-tam-tru": xoa_dang_ky_tam_tru_attach,
+    "xoa-dang-ky-thuong-tru": xoa_dang_ky_thuong_tru_attach,
     "chuyen-doi-ten-hop-dong-nuoc-sach": doi_ten_nuoc_sach_attach,
     "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham": an_toan_thuc_pham_attach,
     "cap-gcn-attp-nong-lam-thuy-san": cap_gcn_attp_nong_lam_thuy_san_attach,
