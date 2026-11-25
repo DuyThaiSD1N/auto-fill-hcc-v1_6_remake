@@ -290,6 +290,36 @@ def test_o_ngay_phai_du_ngay_thang_nam():
     assert agent._check({"action": "value", "value": "31/02/1978"}, field).action == "unclear"
 
 
+@pytest.mark.parametrize("said,expected", [
+    # Chỉ đọc / gõ phần tên → mặc định @gmail.com (cổng Bộ Công an báo "Địa chỉ Email không hợp lệ", user 25/11).
+    ("Ngocminh", "ngocminh@gmail.com"),
+    ("Ngọc Minh", "ngocminh@gmail.com"),
+    ("ngoc minh 92", "ngocminh92@gmail.com"),
+    ("email của tôi là ngọc minh", "ngocminh@gmail.com"),
+    # Đọc đủ: "a còng", "chấm com"; rơi "a còng" vẫn nhận ra nhà cung cấp; tên miền thiếu / lệch thì sửa.
+    ("ngọc minh a còng gmail chấm com", "ngocminh@gmail.com"),
+    ("ngoc minh gmail cham com", "ngocminh@gmail.com"),
+    ("ngocminh yahoo chấm com chấm vn", "ngocminh@yahoo.com.vn"),
+    ("ngocminh@gmail", "ngocminh@gmail.com"),
+    ("NgocMinh@Gmail.com", "ngocminh@gmail.com"),
+    ("ngoc_minh@outlook.com", "ngoc_minh@outlook.com"),
+    ("ngoc minh gạch dưới 92 a còng gmail chấm com", "ngocminh_92@gmail.com"),
+])
+def test_o_email_chuan_hoa_ve_dung_dang_dia_chi(said, expected):
+    field = {"label": "11. Email của chủ xe", "kind": "text", "options": []}
+    assert agent._check({"action": "value", "value": said}, field) == agent.Answer("value", expected)
+
+
+def test_o_email_khong_ra_dia_chi_thi_hoi_lai_o_khac_khong_bi_doi():
+    email = {"label": "Thư điện tử", "kind": "text", "options": []}
+    assert agent._check({"action": "value", "value": "@@"}, email).action == "unclear"
+    assert agent._check({"action": "value", "value": "ngocminh"}, {"label": "E-mail", "kind": "text"}).value == \
+        "ngocminh@gmail.com"
+    # Ô chữ thường (tên người) không bị thêm @gmail.com.
+    name = {"label": "Họ, chữ đệm, tên", "kind": "text", "options": []}
+    assert agent._check({"action": "value", "value": "NGỌC MINH"}, name) == agent.Answer("value", "NGỌC MINH")
+
+
 
 def test_nhan_viet_tat_sdt_cung_kiem_do_dai_so_dien_thoai():
     field = {"label": "SĐT (Không sử dụng SĐT bàn)", "kind": "text", "options": []}

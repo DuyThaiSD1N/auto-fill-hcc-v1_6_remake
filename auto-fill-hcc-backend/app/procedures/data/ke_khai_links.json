@@ -3246,6 +3246,30 @@
       "autoConfirm": true
     },
     {
+      "key": "giao-dat-o-khong-dau-gia-lao-cai",
+      "code": "1.115684",
+      "label": "Lào Cai - Giao đất ở có thu tiền sử dụng đất không thông qua đấu giá, không đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất đối với cá nhân là cán bộ, công chức, viên chức, sĩ quan tại ngũ, quân nhân chuyên nghiệp, công chức quốc phòng, công nhân và viên chức quốc phòng, sĩ quan, hạ sĩ quan, công nhân công an, người làm công tác cơ yếu và người làm công tác khác trong tổ chức cơ yếu hưởng lương từ ngân sách nhà nước mà chưa được giao đất ở, nhà ở; giáo viên, nhân viên y tế đang công tác tại các xã biên giới thuộc vùng có điều kiện kinh tế - xã hội khó khăn, vùng có điều kiện kinh tế - xã hội đặc biệt khó khăn nhưng chưa có đất ở, nhà ở tại nơi công tác hoặc chưa được hưởng chính sách hỗ trợ về nhà ở theo quy định của pháp luật về nhà ở; cá nhân thường trú tại xã mà không có đất ở và chưa được Nhà nước giao đất ở hoặc chưa được hưởng chính sách hỗ trợ về nhà ở theo quy định của pháp luật về nhà ở (cấp xã)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f4aed-8f5a-73fd-9c80-85f86af93723",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "gia-han-phuong-an-su-dung-dat-ket-hop-da-muc-dich-lao-cai",
+      "code": "1.115683",
+      "label": "Lào Cai - Gia hạn phương án sử dụng đất kết hợp đa mục đích",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f4ae8-d581-739f-ab7d-3d2ce3261750",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-cap-gcn-phan-dien-tich-con-lai-du-dieu-kien-lao-cai",
+      "code": "1.115692",
+      "label": "Lào Cai - Đăng ký, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất đối với trường hợp hộ gia đình, cá nhân đã được cấp giấy chứng nhận đối với một phần diện tích của thửa đất, phần diện tích còn lại chưa đủ điều kiện cấp giấy chứng nhận theo quy định của pháp luật tại thời điểm cấp giấy chứng nhận trước đây mà nay đủ điều kiện cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f4b1a-f8ad-75ba-895b-680a1e144d2d",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "thong-bao-sua-doi-bo-sung-chuong-trinh-khuyen-mai",
       "code": "2.001474",
       "label": "Thông báo sửa đổi, bổ sung nội dung chương trình khuyến mại",

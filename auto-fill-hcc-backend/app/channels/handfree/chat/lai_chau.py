@@ -137,7 +137,9 @@ def _preset_followup(conv: dict, proc: dict | None, rows: list[dict], payload: d
 # xã/phường của TÀI KHOẢN>" (tài khoản thiếu xã thì theo nơi làm thủ tục). Cổng liệt kê xã theo địa chỉ thường trú / tạm
 # trú của công dân → xã của tài khoản có thể không có (tài khoản Khánh Hòa, công dân thường trú Hà Nội): nút thành "Đăng ký
 # tại Công an xã/phường", bấm thì trợ lý nói rõ không có trong danh sách, mời chọn trên trang.
-_PC08 = re.compile(r"^pc\s*0?8\b")
+# Điểm PC08 mỗi tỉnh ghi một kiểu: Hà Nội "PC08-Điểm ĐK Đường Láng", Ninh Bình "Phòng CSGT Ninh Bình-Điểm ĐK P.Phủ Lý"
+# (ảnh 25/11: chỉ nhận "PC08" thì Ninh Bình bày lẻ từng Công an xã) → nhận cả "Phòng/Đội CSGT" và chữ "Điểm ĐK".
+_PC08 = re.compile(r"^(pc\s*0?8|(phong|doi)\s+(csgt|canh sat giao thong))\b|\bdiem\s+(dk|dang ky)\b")
 _WARD_POLICE = re.compile(r"^cong an (phuong|xa|dac khu|thi tran)\s+")
 _WARD_LEVEL = re.compile(r"^(phuong|xa|dac khu|thi tran)\s+")
 # Giá trị giữ chỗ của nút xã/phường khi không khớp được xã của tài khoản (không phải lựa chọn của cổng).

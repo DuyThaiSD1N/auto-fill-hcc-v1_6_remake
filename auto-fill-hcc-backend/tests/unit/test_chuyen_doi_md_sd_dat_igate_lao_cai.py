@@ -235,6 +235,30 @@ def test_khong_ro_don_thi_theo_nhom_llm_hoac_mac_dinh_kem_canh_bao():
     assert any("Không nhận ra Đơn" in w for w in warnings)
 
 
+def test_trich_do_ban_do_qua_nut_them_giay_to_du_phong_dong_don():
+    by_file, warnings, _ = _plan({
+        0: {"label": "don_mau_02", "documentName": "Đơn đề nghị chuyển mục đích sử dụng đất"},
+        1: {"label": "gcn", "documentName": "Giấy chứng nhận quyền sử dụng đất"},
+        2: {"label": "ban_do", "documentName": "Trích đo bản đồ địa chính"},
+        3: {"label": "ban_do", "documentName": "Trích đo bản đồ địa chính"},
+    })
+    assert [by_file[i]["componentIndex"] for i in (0, 1)] == [1, 2]
+    for i in (2, 3):
+        item = by_file[i]
+        assert item["target"] == "add-document-dialog" and item["needsAddComponent"] is True
+        assert item["componentName"] == "Trích đo bản đồ địa chính"
+        assert "Trích đo bản đồ địa chính" in item["formOptionHints"]
+        assert item["fallbackComponentName"] == _ROWS[0]["componentName"]
+        assert "componentIndex" not in item and "untickUnplannedRows" not in item
+    # Hai tệp trích đo chung một dòng mới → tên tệp không trùng.
+    assert by_file[2]["documentName"] != by_file[3]["documentName"]
+    assert not any("không có dòng riêng" in w for w in warnings)
+    # Nhóm khác vẫn dự phòng về dòng Đơn của chính nhóm đó.
+    by_file, _, _ = _plan({0: {"label": "don_mau_17", "documentName": "Đơn"},
+                           1: {"label": "ban_do", "documentName": "Mảnh trích đo"}})
+    assert by_file[1]["fallbackComponentName"] == _ROWS[5]["componentName"]
+
+
 def test_khong_lam_roi_tep_khong_ro_loai():
     items, _, _, _ = planner.build_plan_items(_files(2), {}, "", _ROWS)
     assert sorted(i["fileIndex"] for i in items) == [0, 1]

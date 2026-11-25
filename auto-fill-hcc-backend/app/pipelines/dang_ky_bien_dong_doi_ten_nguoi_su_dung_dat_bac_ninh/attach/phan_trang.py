@@ -42,15 +42,17 @@ mỗi giấy. Mỗi tệp gồm các trang theo thứ tự, mỗi trang kèm ph�
 <rules>
 1. Trang 1 của mỗi tệp luôn mở một giấy. Mỗi giấy kéo dài tới trước trang mở giấy kế tiếp.
 2. Trang MỞ GIẤY MỚI khi là trang đầu của văn bản KHÁC: có quốc hiệu / tên cơ quan ban hành và tiêu đề riêng (ĐƠN ĐĂNG
-   KÝ BIẾN ĐỘNG, GIẤY CHỨNG NHẬN, GIẤY XÁC NHẬN THÔNG TIN VỀ CƯ TRÚ, QUYẾT ĐỊNH, GIẤY ỦY QUYỀN, HỢP ĐỒNG, MẢNH TRÍCH
-   ĐO...), là thẻ căn cước, hoặc cùng loại nhưng khác người / khác số hiệu.
-3. Đơn Mẫu 18 dài nhiều trang: trang mở đầu bằng "Cam đoan nội dung kê khai", "XÁC NHẬN CỦA ỦY BAN NHÂN DÂN CẤP XÃ",
-   "Hướng dẫn kê khai đơn", Bảng 18a → CÙNG giấy Đơn, không mở giấy mới.
+   KÝ BIẾN ĐỘNG, GIẤY CHỨNG NHẬN, GIẤY XÁC NHẬN THÔNG TIN VỀ CƯ TRÚ, QUYẾT ĐỊNH, GIẤY ỦY QUYỀN, HỢP ĐỒNG, VĂN BẢN CAM
+   KẾT, MẢNH TRÍCH ĐO...), là thẻ căn cước, hoặc cùng loại nhưng khác người / khác số hiệu.
+3. Đơn (Mẫu 18 / Mẫu 24) dài nhiều trang: trang mở đầu bằng "Cam đoan nội dung kê khai", "XÁC NHẬN CỦA ỦY BAN NHÂN DÂN
+   CẤP XÃ", "Hướng dẫn kê khai đơn", Bảng 18a → CÙNG giấy Đơn, không mở giấy mới.
 4. Giấy chứng nhận gồm nhiều trang (trang "II. Thửa đất, nhà ở…", sơ đồ thửa, "Những thay đổi sau khi cấp",
-   "TRANG BỔ SUNG GIẤY CHỨNG NHẬN") → MỘT giấy loại gcn. Giấy chứng nhận in tên / số CMND CŨ của người sử dụng đất —
-   vẫn là gcn.
+   "TRANG BỔ SUNG GIẤY CHỨNG NHẬN", lời chứng "chứng thực bản sao đúng với bản chính") → MỘT giấy loại gcn, KỂ CẢ khi
+   trang bổ sung đứng TRƯỚC trang bìa. Giấy chứng nhận in tên / số CMND CŨ của người sử dụng đất — vẫn là gcn.
 5. Đơn đăng ký biến động NHẮC tới số vào sổ / số phát hành của giấy chứng nhận nhưng KHÔNG phải giấy chứng nhận →
-   don_18.
+   don_18. Văn bản cam kết của các thành viên hộ gia đình NHẮC tới giấy chứng nhận, liệt kê số căn cước của từng người
+   nhưng vẫn là vb_cam_ket_ho; trang "LỜI CHỨNG CHỨNG THỰC CHỮ KÝ, ĐIỂM CHỈ…" ngay sau nó → CÙNG giấy, không mở giấy mới
+   (dù trang đó liệt kê số căn cước).
 6. Mặt trước + mặt sau CCCD của cùng một người là MỘT giấy. Trang ký, phụ lục cuối văn bản → cùng giấy. Trang trắng /
    chỉ vài chữ rời rạc thuộc giấy liền trước.
 7. Không chắc có phải giấy mới không → KHÔNG tách. Không chắc loại → "khac".
@@ -58,7 +60,7 @@ mỗi giấy. Mỗi tệp gồm các trang theo thứ tự, mỗi trang kèm ph�
 </rules>
 
 <output_contract>
-{{"giayTo":[{{"fileIndex":0,"trangDau":1,"loai":"don_18","ten":"Đơn đăng ký biến động Mẫu số 18"}},
+{{"giayTo":[{{"fileIndex":0,"trangDau":1,"loai":"don_18","ten":"Đơn đăng ký biến động đất đai"}},
 {{"fileIndex":0,"trangDau":3,"loai":"gcn","ten":"Giấy chứng nhận quyền sử dụng đất"}}]}}
 "trangDau" đếm từ 1 trong tệp; "loai" là đúng một nhãn trong <loai_giay>; "ten" là tên tiếng Việt ngắn (≤ 50 ký tự),
 cụ thể theo nội dung, hai giấy khác nhau không trùng tên.
@@ -147,10 +149,14 @@ def keyword_page_label(page: str) -> str | None:
     h = fold(page)[:450]
     if not h or is_blank(page):
         return None
-    if any(m in h for m in ("cam doan noi dung ke khai", "xac nhan cua uy ban nhan dan", "huong dan ke khai")):
+    if any(m in h for m in ("cam doan noi dung ke khai", "xac nhan cua uy ban nhan dan", "huong dan ke khai",
+                            "loi chung chung thuc", "chung thuc ban sao dung voi ban chinh")):
         return None
-    if "don dang ky bien dong" in h or "mau so 18" in h:
+    if "don dang ky bien dong" in h or "mau so 18" in h or "mau so 24" in h:
         return "don_18"
+    if "van ban cam ket" in h or "van ban thoa thuan" in h:
+        # Văn bản cam kết thành viên hộ liệt kê số căn cước từng người → xét TRƯỚC cccd.
+        return "vb_cam_ket_ho"
     if "trich do" in h or "trich luc ban do" in h:
         return "trich_do"
     # Không dùng "số định danh cá nhân": mặt trước thẻ căn cước mới cũng in cụm này.
@@ -173,8 +179,10 @@ def keyword_label_by_filename(name: str) -> str:
     h = fold(name)
     if any(k in h for k in ("cccd", "can cuoc", "cmnd")):
         return "cccd"
-    if "don" in h.split() or "mau 18" in h or "mau so 18" in h:
+    if "don" in h.split() or "mau 18" in h or "mau so 18" in h or "mau 24" in h:
         return "don_18"
+    if "cam ket" in h:
+        return "vb_cam_ket_ho"
     if "trich do" in h:
         return "trich_do"
     if "uy quyen" in h:

@@ -327,6 +327,18 @@ def test_tro_ly_diem_dang_ky_chi_bay_pc08_va_cong_an_xa_phuong_cua_tai_khoan():
     assert [o["label"] for o in _diem_row(r)["options"]] == CONG_AN_XA
 
 
+def test_tro_ly_diem_dang_ky_nhan_diem_phong_csgt_khong_ghi_pc08():
+    """Ảnh 25/11 (Ninh Bình): điểm PC08 ghi "Phòng CSGT <tỉnh>-Điểm ĐK …" → vẫn gộp Công an xã/phường thành một nút."""
+    conv = _case_conv()
+    conv["auth_user"] = {"id": "u1", "tinh": "Tỉnh Ninh Bình", "xa": "Xã Yên Mô"}
+    _turn(conv, "event", "page_status", {"loggedIn": True, "formKind": "", "lcStep": 1})
+    csgt = ["Phòng CSGT Ninh Bình-Điểm ĐK P.Phủ Lý", "Phòng CSGT Ninh Bình-Điểm ĐK P.Mỹ Lộc"]
+    xa = ["Công an Xã Đồng Thái", "Công an Phường Yên Thắng", "Công an Xã Yên Mô"]
+    diem = {**DIEM_DANG_KY, "options": csgt + xa}
+    r = _turn(conv, "action", "lc_result_report", {"groups": [{**LOAI_XE, "value": "Ô tô"}, diem], "prepared": []})
+    assert [o["label"] for o in _diem_row(r)["options"]] == [*csgt, "Đăng ký tại Công an Xã Yên Mô"]
+
+
 def test_tro_ly_ban_cu_chua_co_co_trang_chon_truong_hop_thi_giu_luong_cu():
     from app.channels.handfree.chat import lai_chau
     from app.channels.handfree import procedure_registry as hf
@@ -532,3 +544,66 @@ def test_tro_ly_thanh_phan_ho_so_co_anh_xe_va_hai_mat_phieu_buoc_dinh_kem_la_o_a
     # Câu hỏi trước khi đính / báo đính xong dùng chung với xe nhập khẩu → không nói "nhập khẩu", "hải quan".
     for text in (vi.REVIEW_ATTACHMENT_PAGE_PHOTOS_BCA["md"], vi.ATTACH_DONE_PAGE_PHOTOS_BCA["md"]):
         assert "nhập khẩu" not in text and "hải quan" not in text
+
+
+# ── Trợ lý, vòng "Bổ sung các thông tin còn thiếu" (user 24/11/2026): trước bản 24/11 entry trợ lý khai
+# hasAttachmentStep False → field_review.bca_nth() sai → điền xong không có nút Bổ sung. Khuôn xe nhập khẩu 1.013066. ──
+def test_tro_ly_dien_xong_con_o_trong_co_nut_bo_sung_va_chan_dong_y_tiep_tuc(monkeypatch):
+    import asyncio
+
+    from app.channels.handfree import procedure_registry as hf
+    from app.channels.handfree.chat import field_review, lai_chau, pipeline_runner
+
+    proc = hf.get_procedure(KEY)
+    caps = {**CASE_CAPS, "supportsFieldReview": True, "supportsBcaNthReview": True, "supportsBcaNthSubmit": True,
+            "supportsPageBoundDocsComplete": True}
+    ke_khai = {"pageContextCaptured": True, "formKind": "standard", "attachmentTarget": False,
+               "attachmentComponentCount": 0, "bcaKeKhaiForm": True}
+    calls = []
+
+    async def progress(_sid):
+        return {"received": 5, "total": 5, "files_count": 5}
+
+    async def save(_conv):
+        return None
+
+    monkeypatch.setattr(pipeline_runner, "run_process", lambda *a: calls.append("process"))
+    monkeypatch.setattr(pipeline_runner, "run_attach", lambda *a: calls.append("attach"))
+    monkeypatch.setattr(pipeline_runner, "spawn", lambda _job: None)
+    monkeypatch.setattr(flow.upload_service, "progress_of", progress)
+    monkeypatch.setattr(flow.conv_store, "save", save)
+
+    def text(r) -> str:
+        return r.display_md + " " + " ".join(a.get("md", "") for a in r.actions if a.get("type") == "trail_message")
+
+    conv = {"_id": "t-xe-lr", "state": "collecting_docs", "history": [], "procedure_key": KEY,
+            "upload_session_id": "s1", "docs_target": "declaration", "client_capabilities": caps}
+    asyncio.run(flow._docs_complete(conv, ke_khai))
+    assert calls == ["process"] and field_review.fill_action_extra(conv, proc) is not None
+
+    # Điền xong còn ô trống → báo số ô + nút Bổ sung; chưa có "Đồng ý và tiếp tục".
+    conv["pipeline_status"] = "fields_ready"
+    r = asyncio.run(flow._handle_filling(conv, Intent("action", "fill_report", {
+        "filled": 40, "notFound": [], "review": {"filled": 40, "optional": 12, "required": 5}})))
+    assert "🟥 **5** ô bắt buộc còn trống" in text(r)
+    sends = [c["send"] for c in r.chips]
+    assert "__action:field_review_start" in sends and "__action:confirm_review" in sends
+    assert lai_chau.NEXT_SEND not in sends
+
+    # Gắn ảnh xong mà còn ô bắt buộc trống → vẫn Bổ sung + Điền lại, không nút cam; gõ đủ trên trang → hiện nút cam.
+    _turn(conv, "action", "confirm_review")
+    conv.update(attach_plan=[{"target": "bca-photo", "fileIndex": 1, "fileName": "IMG_0001.png",
+                              "documentName": "Ảnh phương tiện", "componentName": "Ảnh phương tiện",
+                              "slotName": "Ảnh phương tiện", "fieldName": "AnhPhuongTien", "match": "anh phuong tien",
+                              "photoFid": "f-photo-1", "photoName": "anh_phuong_tien.jpg", "photoType": "image/jpeg"}],
+                pipeline_status="attach_ready", attach_errors=[])
+    r = asyncio.run(flow._handle_attaching(conv, Intent("event", "attach_ready")))
+    action = next(a for a in r.actions if a.get("type") == "attach_plan")
+    r = asyncio.run(flow._handle_attaching(conv, Intent("action", "attach_report", {
+        "attached": 3, "skipped": 0, "errors": [], "dispatch_id": action.get("dispatch_id") or "",
+        "review": {"filled": 43, "optional": 12, "required": 2}})))
+    sends = [c["send"] for c in r.chips]
+    assert "__action:field_review_start" in sends and "__action:refill" in sends
+    assert not [c for c in r.chips if c.get("cta")]
+    r = _turn(conv, "event", "field_review_status", {"stats": {"filled": 45, "optional": 12, "required": 0}})
+    assert [c for c in r.chips if c.get("cta")] == [lai_chau.next_chip()]

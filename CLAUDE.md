@@ -192,6 +192,23 @@ Chỉ chạy hai cây `tests/unit` và `tests/integration`. Cây `tests/handfree
 Baseline hiện tại có sẵn một số test đỏ không liên quan đến code mới; so số fail trước và sau khi
 sửa thay vì cố đưa về 0.
 
+Baseline ngày 2026-11-25, sau khi thêm pipeline 1.115692 cấp GCN phần diện tích còn lại Lào Cai
+(`dang_ky_cap_gcn_phan_dien_tich_con_lai_du_dieu_kien_lao_cai`, máy local, plugin win_socketpair, có PYTHONUTF8=1):
+`23 failed, 6346 passed, 42 skipped, 13 errors`. Vẫn đúng 23 đỏ như dòng dưới; `test_cap_moi_gphn_chuyen_tiep_attach.py::
+test_giay_co_chu_llm_tra_other_van_canh_bao_vao_dong_don` thỉnh thoảng đỏ khi chạy cả cây (chạy riêng pass) — chập chờn.
+
+Baseline ngày 2026-11-25, sau khi thêm pipeline 1.115683 gia hạn phương án sử dụng đất kết hợp Lào Cai
+(`gia_han_phuong_an_su_dung_dat_ket_hop_da_muc_dich_lao_cai`, máy local, plugin win_socketpair, có PYTHONUTF8=1):
+`23 failed, 6313 passed, 42 skipped, 13 errors`. Vẫn đúng 23 đỏ như dòng dưới.
+
+Baseline ngày 2026-11-25, sau khi thêm pipeline 1.115684 giao đất ở Lào Cai cấp xã (`giao_dat_o_khong_dau_gia_lao_cai`,
+máy local, plugin win_socketpair, có PYTHONUTF8=1): `23 failed, 6285 passed, 42 skipped, 13 errors`; thêm chế độ "Lấy người nộp theo tờ khai" cùng ngày: `23 failed, 6292 passed, 42 skipped, 13 errors`. Vẫn đúng 23 đỏ như dòng dưới.
+
+Baseline ngày 2026-11-25, sau khi thêm link 1.115684 giao đất ở Lào Cai cấp xã (máy local, plugin win_socketpair, có
+PYTHONUTF8=1): `23 failed, 6264 passed, 42 skipped, 13 errors`. 17 đỏ như dòng dưới + 6 đỏ
+`tests/unit/test_dashboard_xuat_danh_gia.py` (đến từ commit 9aae1f9b8: `strftime` có chữ tiếng Việt vỡ locale Windows ở
+`app/dashboard/export.py`, cùng loại đỏ dashboard cũ).
+
 Baseline ngày 2026-11-24, sau khi thêm 3.000333 cấp Phiếu lý lịch tư pháp Công an cấp tỉnh (máy local, plugin
 win_socketpair, có PYTHONUTF8=1): `17 failed, 6249 passed, 42 skipped, 13 errors`. Vẫn đúng 17 đỏ và 13 lỗi collect như dòng dưới.
 

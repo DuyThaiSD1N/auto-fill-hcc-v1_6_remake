@@ -15,8 +15,11 @@ bảng: khoanh vùng NHÓM từ dòng Đơn của mẫu đơn trong hồ sơ t�
 
 Engine FE "attp-row": mỗi dòng mat-checkbox + input[type=file] multiple; gửi index + tên NGUYÊN VĂN của dòng (FE
 kiểm rows[index-1] khớp tên). Dòng lấy từ attachmentContext.components; extension không gửi thì dùng bảng 13 dòng ở
-dưới. Giấy tờ không có dòng trong nhóm (bản đồ, GCN ĐKDN, giấy ủy quyền, tài liệu khác) — cổng không có dòng "giấy tờ
-khác" → đính chung dòng Đơn của nhóm (vẫn là tệp riêng) + cảnh báo; CCCD cũng vậy.
+dưới. Trích đo / mảnh đo đạc bản đồ địa chính (nhãn ban_do) → tạo dòng riêng "Trích đo bản đồ địa chính" qua nút
+"Thêm giấy tờ" dưới bảng (target add-document-dialog, theo yêu cầu người dùng 25/11/2026); modal không tạo được dòng
+thì FE đính chung dòng Đơn của nhóm (fallbackComponentName). Giấy tờ khác không có dòng trong nhóm (GCN ĐKDN, giấy ủy
+quyền, tài liệu khác) — cổng không có dòng "giấy tờ khác" → đính chung dòng Đơn của nhóm (vẫn là tệp riêng) + cảnh
+báo; CCCD cũng vậy.
 TUYỆT ĐỐI không làm rơi tệp.
 """
 
@@ -82,6 +85,16 @@ _ROW_KEYS: dict[str, list[str]] = {
     "vb_thay_doi_thoi_han_du_an": ["thay doi thoi han hoat dong"],
 }
 
+# nhãn catalog → dòng tạo thêm qua modal "Thêm giấy tờ" (bảng 13 dòng không có chỗ cho giấy này). FE gõ / chọn
+# theo formOptionHints rồi componentName; danh mục modal cổng Lào Cai chưa crawl nên chỉ gợi ý đúng tên trích đo,
+# không có mục khớp thì ô Giấy tờ giữ tên tự gõ = componentName.
+_ADD_DOCUMENT: dict[str, dict] = {
+    "ban_do": {
+        "componentName": "Trích đo bản đồ địa chính",
+        "formOptionHints": ["Trích đo bản đồ địa chính", "Trích đo địa chính"],
+    },
+}
+
 Row = tuple[int, str, str]  # (index 1-based, tên nguyên văn, tên fold)
 
 
@@ -140,15 +153,37 @@ def _item(entry: dict, row: Row) -> dict:
     }
 
 
+def _add_document_item(entry: dict, spec: dict, fallback: Row) -> dict:
+    return {
+        "fileIndex": entry["idx"],
+        "fileName": entry["fileName"],
+        "documentName": entry["documentName"],
+        "componentName": spec["componentName"],
+        "formOptionHints": list(spec["formOptionHints"]),
+        "loaiBan": "Bản chính",
+        "quantity": 1,
+        "target": "add-document-dialog",
+        "needsAddComponent": True,
+        # Modal không tạo được dòng → FE đính chung dòng Đơn của nhóm, không bỏ tệp.
+        "fallbackComponentName": fallback[1],
+        "detectedType": entry["label"],
+    }
+
+
 def _dedupe_document_names(attachments: list[dict]) -> None:
     """documentName thành TÊN TỆP khi FE dựng file → hai tệp cùng tên trong một ô sẽ bị bộ chống trùng bỏ qua."""
+
+    def slot(item: dict) -> tuple:
+        # Dòng tạo qua "Thêm giấy tờ" chưa có số thứ tự → khoá theo tên dòng.
+        return (item.get("componentIndex") or item["componentName"], item["documentName"])
+
     counts: dict[tuple, int] = {}
     for item in attachments:
-        key = (item["componentIndex"], item["documentName"])
+        key = slot(item)
         counts[key] = counts.get(key, 0) + 1
     used: dict[tuple, int] = {}
     for item in attachments:
-        key = (item["componentIndex"], item["documentName"])
+        key = slot(item)
         if counts[key] < 2:
             continue
         used[key] = used.get(key, 0) + 1
@@ -205,6 +240,12 @@ def build_plan_items(
         base = {"fileName": entry["fileName"], "label": entry["label"], "documentName": entry["documentName"]}
         label = entry["label"]
         routed = False
+        if label in _ADD_DOCUMENT:
+            spec = _ADD_DOCUMENT[label]
+            attachments.append(_add_document_item(entry, spec, anchor))
+            classified.append({**base, "target": "add-document-dialog", "componentName": spec["componentName"],
+                               "addDocument": True})
+            continue
         if label in _DON_KEYS:
             # Đơn khác nhóm (hiếm) vẫn về dòng Đơn của chính nó.
             row = (groups.get(label) or [anchor])[0]

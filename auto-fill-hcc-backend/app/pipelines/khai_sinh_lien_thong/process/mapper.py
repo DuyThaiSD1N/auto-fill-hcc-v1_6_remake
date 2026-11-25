@@ -419,8 +419,11 @@ def _area(value):
         dia = None
     out = {"tinh": tinh, "xa": xa, "diaChi": dia}
     out = {k: v for k, v in out.items() if v not in (None, "", {}, [])}
+    # Cấp huyện cũ (khoá "huyen" LLM trả theo mục F) gỡ tên xã trùng ở nhiều huyện: "Phường 1" của Bảo Lộc và của
+    # Đà Lạt cùng tỉnh Lâm Đồng — thiếu nó remap không chọn được và để trống xã. remap_area bỏ khoá này khỏi kết quả.
+    huyen = str(value.get("huyen") or value.get("quanHuyen") or "").strip()
     # Áp dụng remap địa chỉ để chuẩn hóa xã/phường theo sáp nhập đơn vị hành chính
-    return city_province_area(remap_area(out)) if out else None
+    return city_province_area(remap_area(out, huyen_hint=huyen or None)) if out else None
 
 
 _ADMIN_SEGMENT = re.compile(r"^(xã|phường|thị trấn|thị xã|quận|huyện|thành phố|tp\.?|tỉnh)\s", re.IGNORECASE)

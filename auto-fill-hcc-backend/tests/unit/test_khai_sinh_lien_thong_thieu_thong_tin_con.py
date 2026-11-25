@@ -97,6 +97,17 @@ def test_ten_phuong_ngan_lech_mot_chu_khong_doan():
     assert out["ChaDiaChi"]["xa"] == "Bàn Lờ"
 
 
+def test_phuong_so_trung_nhieu_huyen_dung_khoa_huyen_de_chon_xa():
+    # "Phường 1" cũ có ở cả Bảo Lộc lẫn Đà Lạt (Lâm Đồng): thiếu cấp huyện thì remap để trống xã, có thì chọn đúng.
+    out = _by_name({"ThongTinBo_HoTen": "NGUYỄN VĂN AN", "Tk_NoiCuTruCha": {
+        "tinh": "Lâm Đồng", "huyen": "Bảo Lộc", "xa": "Phường 1", "diaChi": "Tổ 5"}})
+    assert out["ChaDiaChi"] == {"tinh": "Lâm Đồng", "xa": "Phường 1 Bảo Lộc", "diaChi": "Tổ 5"}
+    out = _by_name({"ThongTinMe_HoTen": "TRẦN THỊ MAI", "Tk_NoiCuTruMe": {
+        "tinh": "Lâm Đồng", "huyen": "Đà Lạt", "xa": "1", "diaChi": "Số 2 Đường A"}})
+    assert out["MeDiaChi"]["xa"] == "Phường Xuân Hương - Đà Lạt"
+    assert "huyen" not in out["MeDiaChi"]
+
+
 def test_noi_de_nghi_dktt_ct01_chi_dien_chi_tiet():
     out = _by_name({"Ct01_ChuHoHoTen": "LÊ VĂN CHỦ", "Ct01_NoiDeNghiDktt": {
         "tinh": "Tỉnh C", "xa": "Phường B", "diaChi": "12 Đường A"}})

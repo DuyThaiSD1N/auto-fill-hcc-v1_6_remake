@@ -11,14 +11,14 @@ FIELDS: list[dict] = [
     {"name": "Gcs_GioiTinhCon", "desc": 'Giới tính con: "Nam" hoặc "Nữ". Nếu là GIẤY CAM ĐOAN: ô được đánh dấu ở "sinh ra 1 bé Trai/Gái" (Trai→Nam, Gái→Nữ).'},
     {"name": "Gcs_DanTocCon", "desc": "Dân tộc con trên giấy chứng sinh. Trả NGUYÊN VĂN giá trị đọc được, KỂ CẢ khi không nhận ra tên dân tộc (vd 'Cil', 'Cill' vẫn phải trả)."},
     {"name": "Gcs_NoiSinh", "desc": "Nơi sinh con lấy Ở DÒNG 'Tại:' trên GIẤY CHỨNG SINH (BẮT BUỘC khi có giấy chứng sinh, KHÔNG bỏ trống), object {tinh,xa,chiTietDuoiXa}; chiTietDuoiXa là TÊN ĐẦY ĐỦ cơ sở y tế (bệnh viện tuyến tỉnh kèm tên tỉnh) + ', ' + số nhà/đường của cơ sở nếu giấy có (có cả hai thì BẮT BUỘC ghi cả hai, không kèm xã/tỉnh); dòng 'Tại:' chỉ ghi địa chỉ thì tên cơ sở lấy ở tên cơ sở y tế cấp giấy in góc trên bên trái (xem mục B4). Chỉ trả xa khi OCR hoặc nguồn xác định đúng xã/phường của cơ sở; không lấy xã từ ví dụ của tỉnh khác. Nếu có tờ khai thì nơi sinh ưu tiên Tk_NoiSinh (xem mục B)."},
-    {"name": "Tk_QueQuanCon", "desc": "QUÊ QUÁN của CON (người được khai sinh) lấy Ở DÒNG 'Quê quán' trong TỜ KHAI ĐĂNG KÝ KHAI SINH, object {tinh,xa,chiTietDuoiXa} (tách địa chỉ theo mục F). CHỈ có khi hồ sơ có tờ khai đăng ký khai sinh ghi rõ quê quán con; không có thì để trống."},
+    {"name": "Tk_QueQuanCon", "desc": "QUÊ QUÁN của CON (người được khai sinh) lấy Ở DÒNG 'Quê quán' trong TỜ KHAI ĐĂNG KÝ KHAI SINH, object {tinh,huyen,xa,chiTietDuoiXa} (tách địa chỉ theo mục F). CHỈ có khi hồ sơ có tờ khai đăng ký khai sinh ghi rõ quê quán con; không có thì để trống."},
     {"name": "Tk_NoiSinh", "desc": "Nơi sinh con lấy Ở DÒNG 'Nơi sinh' trong TỜ KHAI ĐĂNG KÝ KHAI SINH (nếu có), object {tinh,xa,chiTietDuoiXa}. Trích NGUYÊN VĂN kể cả số nhà/đường/phố (vd chiTietDuoiXa='Bệnh viện Đa khoa Lâm Đồng, số 01 Phạm Ngọc Thạch'). CHỈ khi có tờ khai; không thì để trống. Nơi sinh điền vào form ưu tiên field này hơn Gcs_NoiSinh."},
     {"name": "Tk_HoTenCon", "desc": "Họ tên đầy đủ của người được khai sinh (con) lấy từ TỜ KHAI ĐĂNG KÝ KHAI SINH, dòng 'Họ, chữ đệm và tên khai sinh' hoặc 'Tên khai sinh'. CHỈ trả khi tờ khai ghi rõ; KHÔNG lấy từ giấy chứng sinh."},
     {"name": "Tk_NgaySinhCon", "desc": "Ngày sinh của người được khai sinh lấy từ TỜ KHAI ĐĂNG KÝ KHAI SINH, dd/mm/yyyy. CHỈ trả khi tờ khai ghi rõ."},
     {"name": "Tk_GioiTinhCon", "desc": 'Giới tính người được khai sinh lấy từ TỜ KHAI ĐĂNG KÝ KHAI SINH: "Nam" hoặc "Nữ". CHỈ trả khi tờ khai ghi rõ.'},
     {"name": "Tk_DanTocCon", "desc": "Dân tộc người được khai sinh lấy từ TỜ KHAI ĐĂNG KÝ KHAI SINH, dòng 'Dân tộc' trong khối thông tin người được khai sinh (KHÔNG phải dân tộc cha/mẹ). CHỈ trả khi tờ khai ghi rõ dân tộc của chính đứa trẻ. Trả NGUYÊN VĂN giá trị đọc được, KỂ CẢ khi không nhận ra tên dân tộc (vd 'Cil', 'Cill' vẫn phải trả)."},
-    {"name": "Tk_NoiCuTruCha", "desc": "NƠI CƯ TRÚ của CHA/BỐ ĐẺ lấy Ở DÒNG 'Nơi cư trú' trong KHỐI THÔNG TIN CHA của TỜ KHAI ĐĂNG KÝ KHAI SINH, object {tinh,xa,chiTietDuoiXa} (tách theo mục F). CHỈ trả khi hồ sơ có tờ khai ghi rõ; KHÔNG lấy nơi cư trú của mẹ/người yêu cầu/con. Nơi cư trú cha điền vào form ưu tiên field này trước CCCD."},
-    {"name": "Tk_NoiCuTruMe", "desc": "NƠI CƯ TRÚ của MẸ lấy Ở DÒNG 'Nơi cư trú' trong KHỐI THÔNG TIN MẸ của TỜ KHAI ĐĂNG KÝ KHAI SINH, object {tinh,xa,chiTietDuoiXa} (tách theo mục F). CHỈ trả khi hồ sơ có tờ khai ghi rõ; KHÔNG lấy nơi cư trú của cha/người yêu cầu/con. Nơi cư trú mẹ điền vào form ưu tiên field này trước CCCD."},
+    {"name": "Tk_NoiCuTruCha", "desc": "NƠI CƯ TRÚ của CHA/BỐ ĐẺ lấy Ở DÒNG 'Nơi cư trú' trong KHỐI THÔNG TIN CHA của TỜ KHAI ĐĂNG KÝ KHAI SINH, object {tinh,huyen,xa,chiTietDuoiXa} (tách theo mục F). CHỈ trả khi hồ sơ có tờ khai ghi rõ; KHÔNG lấy nơi cư trú của mẹ/người yêu cầu/con. Nơi cư trú cha điền vào form ưu tiên field này trước CCCD."},
+    {"name": "Tk_NoiCuTruMe", "desc": "NƠI CƯ TRÚ của MẸ lấy Ở DÒNG 'Nơi cư trú' trong KHỐI THÔNG TIN MẸ của TỜ KHAI ĐĂNG KÝ KHAI SINH, object {tinh,huyen,xa,chiTietDuoiXa} (tách theo mục F). CHỈ trả khi hồ sơ có tờ khai ghi rõ; KHÔNG lấy nơi cư trú của cha/người yêu cầu/con. Nơi cư trú mẹ điền vào form ưu tiên field này trước CCCD."},
 
     # Thông tin bố theo VAI TRÒ trong hồ sơ, không đồng nghĩa dữ liệu chỉ đến từ CCCD nam.
     {"name": "ThongTinBo_HoTen", "desc": "Họ tên BỐ/CHA: ưu tiên giấy chứng sinh (khối cha) > giấy kết hôn (chồng/bên nam) > giấy khai sinh bản sao của con khác (khối cha) > CCCD/CMND của bố."},
@@ -29,9 +29,9 @@ FIELDS: list[dict] = [
     {"name": "ThongTinBo_NgayCapHoChieu", "desc": "CHỈ khi cha là người nước ngoài: ngày cấp hộ chiếu, dd/mm/yyyy (hộ chiếu, hoặc dòng 'Giấy tờ tùy thân' khối chồng trên giấy kết hôn). KHÔNG lấy ngày hết hạn."},
     {"name": "ThongTinBo_NoiCapHoChieu", "desc": "CHỈ khi cha là người nước ngoài: cơ quan cấp hộ chiếu, chép đúng chữ trên giấy."},
     {"name": "ThongTinBo_NoiCuTruNuocNgoai", "desc": "CHỈ khi cha cư trú Ở NƯỚC NGOÀI: chép NGUYÊN dòng 'Nơi cư trú' thành một chuỗi, không tách tinh/xa. Cha cư trú tại Việt Nam thì bỏ field này."},
-    {"name": "ThongTinBo_QueQuan", "desc": "Quê quán/nguyên quán cha object {tinh,xa,chiTietDuoiXa}: lấy từ CCCD cũ (dòng 'Quê quán'). Thẻ căn cước mới KHÔNG có quê quán → để trống."},
-    {"name": "ThongTinBo_NoiDangKyKhaiSinh", "desc": "Nơi đăng ký khai sinh cha trên thẻ CĂN CƯỚC mới (dòng 'Nơi đăng ký khai sinh'), object {tinh,xa,chiTietDuoiXa}. CHỈ khi thẻ CÓ dòng này."},
-    {"name": "ThongTinBo_NoiCuTru", "desc": "Nơi cư trú cha object {tinh,xa,chiTietDuoiXa} NGOÀI tờ khai (tờ khai → Tk_NoiCuTruCha): ưu tiên CCCD/CMND được đối chiếu là của đúng người bố (dòng 'Nơi thường trú'/'Nơi cư trú') > giấy chứng sinh > giấy kết hôn > giấy khai sinh."},
+    {"name": "ThongTinBo_QueQuan", "desc": "Quê quán/nguyên quán cha object {tinh,huyen,xa,chiTietDuoiXa}: lấy từ CCCD cũ (dòng 'Quê quán'). Thẻ căn cước mới KHÔNG có quê quán → để trống."},
+    {"name": "ThongTinBo_NoiDangKyKhaiSinh", "desc": "Nơi đăng ký khai sinh cha trên thẻ CĂN CƯỚC mới (dòng 'Nơi đăng ký khai sinh'), object {tinh,huyen,xa,chiTietDuoiXa}. CHỈ khi thẻ CÓ dòng này."},
+    {"name": "ThongTinBo_NoiCuTru", "desc": "Nơi cư trú cha object {tinh,huyen,xa,chiTietDuoiXa} NGOÀI tờ khai (tờ khai → Tk_NoiCuTruCha): ưu tiên CCCD/CMND được đối chiếu là của đúng người bố (dòng 'Nơi thường trú'/'Nơi cư trú') > giấy chứng sinh > giấy kết hôn > giấy khai sinh."},
 
     # Thông tin mẹ theo VAI TRÒ trong hồ sơ — ưu tiên giấy chứng sinh.
     {"name": "ThongTinMe_HoTen", "desc": "Họ tên MẸ: ưu tiên giấy chứng sinh (khối mẹ) > giấy khai sinh bản sao (khối mẹ) > giấy kết hôn (bên nữ) > CCCD/CMND được đối chiếu là của đúng người mẹ."},
@@ -42,9 +42,9 @@ FIELDS: list[dict] = [
     {"name": "ThongTinMe_NgayCapHoChieu", "desc": "CHỈ khi mẹ là người nước ngoài: ngày cấp hộ chiếu, dd/mm/yyyy (hộ chiếu, hoặc dòng 'Giấy tờ tùy thân' khối vợ trên giấy kết hôn). KHÔNG lấy ngày hết hạn."},
     {"name": "ThongTinMe_NoiCapHoChieu", "desc": "CHỈ khi mẹ là người nước ngoài: cơ quan cấp hộ chiếu, chép đúng chữ trên giấy."},
     {"name": "ThongTinMe_NoiCuTruNuocNgoai", "desc": "CHỈ khi mẹ cư trú Ở NƯỚC NGOÀI: chép NGUYÊN dòng 'Nơi cư trú' thành một chuỗi, không tách tinh/xa. Mẹ cư trú tại Việt Nam thì bỏ field này."},
-    {"name": "ThongTinMe_QueQuan", "desc": "Quê quán/nguyên quán MẸ object {tinh,xa,chiTietDuoiXa}: BẮT BUỘC trích khi CCCD cũ của đúng người mẹ có dòng 'Quê quán / Place of origin:' (OCR có thể chỉ còn 'Quê quán:'). , không dùng nơi cư trú mẹ thay quê quán. Nếu dòng quê quán chỉ ghi cấp huyện và tỉnh mà không có xã/phường thì không được coi tên huyện là xa, nhưng VẪN PHẢI trả field với phần xác định chắc chắn, tối thiểu là tinh; không được bỏ toàn bộ field."},
-    {"name": "ThongTinMe_NoiCuTru", "desc": "Nơi cư trú mẹ object {tinh,xa,chiTietDuoiXa} NGOÀI tờ khai (tờ khai → Tk_NoiCuTruMe): ưu tiên CCCD/CMND được đối chiếu là của đúng người mẹ (dòng 'Nơi thường trú'/'Nơi cư trú') > giấy chứng sinh (dòng 'Nơi đăng ký thường trú' khối mẹ) > giấy kết hôn > giấy khai sinh. chiTietDuoiXa chỉ là bản/tổ/thôn/số nhà, không phải tên phường/xã."},
-    {"name": "Gcs_NoiThuongTruMe", "desc": "Dòng 'Nơi đăng ký thường trú'/'Nơi thường trú'/'Nơi cư trú' trong KHỐI MẸ của GIẤY CHỨNG SINH, object {tinh,xa,chiTietDuoiXa} (tách theo mục F). BẮT BUỘC trả khi giấy chứng sinh có dòng này, kể cả khi đã trả ThongTinMe_NoiCuTru. Không có tỉnh thì suy từ thành phố/xã ghi trên dòng."},
+    {"name": "ThongTinMe_QueQuan", "desc": "Quê quán/nguyên quán MẸ object {tinh,huyen,xa,chiTietDuoiXa}: BẮT BUỘC trích khi CCCD cũ của đúng người mẹ có dòng 'Quê quán / Place of origin:' (OCR có thể chỉ còn 'Quê quán:'). , không dùng nơi cư trú mẹ thay quê quán. Nếu dòng quê quán chỉ ghi cấp huyện và tỉnh mà không có xã/phường thì không được coi tên huyện là xa, nhưng VẪN PHẢI trả field với phần xác định chắc chắn, tối thiểu là tinh; không được bỏ toàn bộ field."},
+    {"name": "ThongTinMe_NoiCuTru", "desc": "Nơi cư trú mẹ object {tinh,huyen,xa,chiTietDuoiXa} NGOÀI tờ khai (tờ khai → Tk_NoiCuTruMe): ưu tiên CCCD/CMND được đối chiếu là của đúng người mẹ (dòng 'Nơi thường trú'/'Nơi cư trú') > giấy chứng sinh (dòng 'Nơi đăng ký thường trú' khối mẹ) > giấy kết hôn > giấy khai sinh. chiTietDuoiXa chỉ là bản/tổ/thôn/số nhà, không phải tên phường/xã."},
+    {"name": "Gcs_NoiThuongTruMe", "desc": "Dòng 'Nơi đăng ký thường trú'/'Nơi thường trú'/'Nơi cư trú' trong KHỐI MẸ của GIẤY CHỨNG SINH, object {tinh,huyen,xa,chiTietDuoiXa} (tách theo mục F). BẮT BUỘC trả khi giấy chứng sinh có dòng này, kể cả khi đã trả ThongTinMe_NoiCuTru. Không có tỉnh thì suy từ thành phố/xã ghi trên dòng."},
 
     # Marriage certificate facts from GIẤY CHỨNG NHẬN KẾT HÔN của cha mẹ (nếu có).
     # TRÍCH LỤC KẾT HÔN (bản sao) tính như giấy kết hôn; số/ngày/nơi lấy ở dòng đăng ký kết hôn, không lấy số/ngày của bản trích lục.
@@ -76,7 +76,7 @@ FIELDS: list[dict] = [
     {"name": "Tk_NguoiYeuCau_SoGiayTo", "desc": "Số giấy tờ tùy thân (CCCD/số định danh/CMND) của NGƯỜI YÊU CẦU ở dòng 'Giấy tờ tùy thân' ĐẦU TỜ KHAI ĐĂNG KÝ KHAI SINH. Chỉ trả khi tờ khai ghi rõ."},
     {"name": "Tk_NguoiYeuCau_NgayCap", "desc": "Ngày cấp giấy tờ tùy thân của NGƯỜI YÊU CẦU ghi trên dòng 'Giấy tờ tùy thân' của TỜ KHAI ĐĂNG KÝ KHAI SINH, dd/mm/yyyy. Chỉ trả khi tờ khai ghi rõ."},
     {"name": "Tk_NguoiYeuCau_NoiCap", "desc": "Nơi cấp giấy tờ tùy thân của NGƯỜI YÊU CẦU ghi trên dòng 'Giấy tờ tùy thân' của TỜ KHAI ĐĂNG KÝ KHAI SINH (tên cơ quan). Chỉ trả khi tờ khai ghi rõ."},
-    {"name": "Tk_NguoiYeuCau_NoiCuTru", "desc": "Dòng 'Nơi cư trú' của NGƯỜI YÊU CẦU ở ĐẦU TỜ KHAI ĐĂNG KÝ KHAI SINH (ngay dưới họ tên người yêu cầu), object {tinh,xa,chiTietDuoiXa} (tách theo mục F). KHÔNG lấy nơi cư trú trong khối cha/mẹ/con. Chỉ trả khi tờ khai ghi rõ."},
+    {"name": "Tk_NguoiYeuCau_NoiCuTru", "desc": "Dòng 'Nơi cư trú' của NGƯỜI YÊU CẦU ở ĐẦU TỜ KHAI ĐĂNG KÝ KHAI SINH (ngay dưới họ tên người yêu cầu), object {tinh,huyen,xa,chiTietDuoiXa} (tách theo mục F). KHÔNG lấy nơi cư trú trong khối cha/mẹ/con. Chỉ trả khi tờ khai ghi rõ."},
 
     # Ngày cấp / nơi cấp in trên CCCD/Căn cước của cha, mẹ — bù khối "Thông tin người yêu cầu" khi người
     # đăng nhập là cha/mẹ mà cổng không đổ sẵn.
@@ -91,7 +91,7 @@ FIELDS: list[dict] = [
     {"name": "NguoiKhac_GioiTinh", "desc": 'Giới tính trên thẻ của người thứ ba: "Nam" hoặc "Nữ".'},
     {"name": "NguoiKhac_NgayCapCccd", "desc": "Ngày cấp thẻ của người thứ ba (dòng 'Ngày, tháng, năm / Date, month, year' mặt sau CCCD gắn chip hoặc 'Ngày cấp'), dd/mm/yyyy. KHÔNG lấy 'Có giá trị đến'."},
     {"name": "NguoiKhac_NoiCapCccd", "desc": "Cơ quan cấp in trên thẻ của người thứ ba. Chỉ trả khi thẻ in rõ."},
-    {"name": "NguoiKhac_NoiCuTru", "desc": "Nơi thường trú/nơi cư trú trên thẻ của người thứ ba, object {tinh,xa,chiTietDuoiXa} (tách theo mục F)."},
+    {"name": "NguoiKhac_NoiCuTru", "desc": "Nơi thường trú/nơi cư trú trên thẻ của người thứ ba, object {tinh,huyen,xa,chiTietDuoiXa} (tách theo mục F)."},
 
     # Số lượng bản sao trên tờ khai đăng ký khai sinh; không có số lượng thật thì không trả.
     {"name": "CopyRequest_Quantity",

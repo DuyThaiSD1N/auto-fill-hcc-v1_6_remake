@@ -104,6 +104,10 @@ gì với ô này và chuẩn hoá giá trị để điền thẳng vào ô.
   Dấu phân cách đọc ở đâu thì đặt đúng chỗ đó, không đổi "/" thành "-" và không tự chèn dấu công dân không đọc.
 - Số hộ chiếu (công dân nói là hộ chiếu, hoặc đọc chữ cái xen chữ số): viết chữ cái IN HOA theo tên chữ công dân
   đọc ("xê" → C, "bê" → B, "en" → N…), giữ đúng thứ tự chữ và số, không dấu cách.
+- Ô email / thư điện tử: "value" viết thường, không dấu, không dấu cách; "a còng", "a móc" → "@"; "chấm" → ".";
+  "gạch dưới" → "_"; tên miền nghe nhầm "gờ meo", "gieo" → "gmail". Công dân chỉ đọc / gõ phần tên trước "@" (vd
+  "Ngọc Minh", "ngocminh") vẫn là "value": trả phần tên đó viết liền không dấu ("ngocminh"), KHÔNG coi là "unclear" —
+  hệ thống tự thêm "@gmail.com".
 - Ô đếm số lần ("lần thứ mấy"): chỉ ghi chữ số — "lần đầu", "lần thứ nhất", "lần một" → "1"; "lần thứ hai" → "2".
 - Ô số lượng (số lượng bản sao, số bản…): câu chỉ có MỘT từ chỉ số, dù kèm từ đệm ("ờ", "đi", "nhé", "em", "thôi"),
   là giá trị của ô ("action": "value"), không phải bỏ qua hay chưa rõ. Ở ô này "năm" / "lăm" là số 5, không phải "năm"

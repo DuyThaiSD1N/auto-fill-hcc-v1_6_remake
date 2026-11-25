@@ -11,7 +11,7 @@ import base64
 from app.process.schemas import FileItem
 
 from .. import catalog
-from ..dinh_kem_khong_tach.planner import build_item, extracted, unique_name, whole_file_items
+from ..dinh_kem_khong_tach.planner import build_items, extracted, unique_name, whole_file_items
 from ..phan_trang import read_documents
 
 
@@ -46,7 +46,7 @@ def split_items(raw_files: list[dict], pages_by_file: dict[int, list[str]], docu
             fallback = catalog.display_name(label)
             document_name = unique_name(doc.get("name") or fallback, used, fallback)
             sources = [{"fileIndex": file_index, "pageIndexes": doc["pages"]}] if cuttable else None
-            attachments.append(build_item(file_index, name, document_name, label, sources))
+            attachments.extend(build_items(file_index, name, document_name, label, sources))
     return attachments
 
 

@@ -2801,15 +2801,15 @@ LC_WARD_POINT_AT = "Đăng ký tại {ward}"
 LC_WARD_POINT_ANY = "Đăng ký tại Công an xã/phường"
 LC_WARD_POINT_MISSING = {
     "md": ("Danh sách **Điểm đăng ký** của cổng không có **Công an {ward}** (xã/phường của tài khoản): cổng chỉ liệt kê "
-           "Công an xã/phường theo địa chỉ thường trú / tạm trú của công dân. Công dân chọn điểm PC08 ở thẻ trên, hoặc "
+           "Công an xã/phường theo địa chỉ thường trú / tạm trú của công dân. Công dân chọn điểm của Phòng CSGT (PC08) ở thẻ trên, hoặc "
            "chọn Công an xã/phường trực tiếp trên trang giúp tôi ạ."),
-    "tts": (" Danh sách điểm đăng ký của cổng không có Công an {ward} của tài khoản. Công dân chọn điểm PC08 ở thẻ trên, "
+    "tts": (" Danh sách điểm đăng ký của cổng không có Công an {ward} của tài khoản. Công dân chọn điểm của Phòng Cảnh sát giao thông ở thẻ trên, "
             "hoặc chọn Công an xã, phường trực tiếp trên trang giúp tôi ạ."),
 }
 LC_WARD_POINT_NO_ACCOUNT = {
-    "md": ("Tài khoản chưa ghi xã/phường nên tôi chưa chọn được Công an xã/phường. Công dân chọn điểm PC08 ở thẻ trên, "
+    "md": ("Tài khoản chưa ghi xã/phường nên tôi chưa chọn được Công an xã/phường. Công dân chọn điểm của Phòng CSGT (PC08) ở thẻ trên, "
            "hoặc chọn Công an xã/phường trực tiếp trên trang giúp tôi ạ."),
-    "tts": (" Tài khoản chưa ghi xã, phường nên tôi chưa chọn được. Công dân chọn điểm PC08 ở thẻ trên, hoặc chọn trực "
+    "tts": (" Tài khoản chưa ghi xã, phường nên tôi chưa chọn được. Công dân chọn điểm của Phòng Cảnh sát giao thông ở thẻ trên, hoặc chọn trực "
             "tiếp trên trang giúp tôi ạ."),
 }
 # Ô Phường/Xã của trang chọn trường hợp: trợ lý tự chọn theo xã/phường của tài khoản (user 24/11, lai_chau._ward_followup).

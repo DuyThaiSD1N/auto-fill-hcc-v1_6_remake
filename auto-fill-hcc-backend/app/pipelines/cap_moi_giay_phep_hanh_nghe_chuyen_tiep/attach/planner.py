@@ -12,10 +12,16 @@ Bảng thành phần hồ sơ có nhiều dòng (mục a–h); ta gán vào các
 FE khớp dòng bằng TÊN giấy tờ (componentName, substring fold), tick checkbox + chọn loaiBan + set file.
 Ta upload bản SCAN → loaiBan = "Scan tệp tin".
 
-Phân loại THUẦN LLM — mọi dấu hiệu (kể cả dấu hiệu nhận ảnh chân dung) nằm trong prompt, KHÔNG có rule
-keyword/ngưỡng chữ trong code: OCR của cùng một tệp ra khác nhau giữa các lần chạy (watermark app scan,
+Phân loại bằng LLM — mọi dấu hiệu (kể cả dấu hiệu nhận ảnh chân dung) nằm trong prompt, KHÔNG có rule
+keyword xếp loại trong code: OCR của cùng một tệp ra khác nhau giữa các lần chạy (watermark app scan,
 mốc trang, chữ vụn), rule cứng khớp được lần này thì trượt lần sau. Mỗi tệp một lượt gọi riêng để kết
 quả của tệp này không phụ thuộc thứ tự hay số lượng tệp khác, và không phải tin chỉ số LLM trả về.
+
+Lưới an toàn ảnh chân dung (``_looks_like_portrait``): LLM vẫn có lúc trả other cho tệp ảnh 2 trang mà OCR chỉ
+đọc ra vài chữ vụn từ nền ảnh (vd vài chữ in hoa + một dãy số có gạch nối) → ảnh rơi vào dòng Đơn kèm cảnh báo
+"Chưa nhận ra loại giấy tờ". Lưới CHỈ chạy khi LLM đã trả other / lỗi và OCR của tệp chạy được: bỏ mốc trang +
+watermark app scan, mọi trang còn dưới _PORTRAIT_MAX_PAGE_CHARS chữ/số → ảnh chân dung (mọi giấy khác của thủ tục
+đều có tiêu đề và nhiều dòng chữ — đúng quy tắc prompt đã ghi). OCR lỗi thì không đoán, vẫn vào dòng Đơn.
 
 ⚑ KHÔNG BỎ SÓT TỆP: tệp LLM không xếp được (other) hoặc lượt gọi lỗi → đính vào dòng Đơn (tờ khai),
 giữ nguyên tên tệp gốc để cán bộ nhận ra. attp-row gộp nhiều tệp vào cùng một dòng theo componentName.
@@ -39,6 +45,7 @@ from typing import Any
 
 from app.config import settings
 from app.pipelines._shared import fold as _fold
+from app.pipelines._shared.lao_cai_tach_giay_to import split_pages
 from app.pipelines.cap_moi_giay_phep_hanh_nghe_chuyen_tiep.attach import prompt
 from app.pipelines.di_chuyen_ho_so_nguoi_huong_tro_cap.attach.planner import split_requested, splittable_pages
 from app.process.schemas import FileItem
@@ -51,6 +58,14 @@ _LOAI_BAN = "Scan tệp tin"
 _SHORT_OTHER_CHARS = 200
 # Cổng BYT cắt / từ chối tên tệp từ 50 ký tự (tính cả đuôi ".pdf").
 _TITLE_MAX = 45
+# Lưới an toàn ảnh chân dung: trang còn dưới số chữ/số này VÀ không quá số từ này sau khi bỏ mốc trang + watermark
+# app scan là trang không có câu chữ (vài mẩu vụn); một câu ngắn có nghĩa đã vượt số từ.
+_PORTRAIT_MAX_PAGE_CHARS = 40
+_PORTRAIT_MAX_PAGE_WORDS = 5
+_SCAN_NOISE_RE = re.compile(
+    r"scanned\s+with|cam\s*scanner|\bcs\b|left\s+image|right\s+image|\bimage\b|trang\s*\d+\s*/\s*\d+",
+    re.IGNORECASE,
+)
 
 _DON = "don_de_nghi"          # mục a
 _VANBANG = "van_bang"         # mục b
@@ -120,7 +135,8 @@ async def _classify_one(index: int, file_name: str, text: str) -> tuple[int, str
         {"role": "system", "content": prompt.SYSTEM_PROMPT},
         {"role": "user", "content": prompt.build_user_prompt(file_name, text)},
     ]
-    raw = await client.chat(messages, max_tokens=120, enable_thinking=settings.agent_reasoning)
+    # temperature 0: cùng tệp phải ra cùng loại giữa các lần chạy (ảnh chân dung từng lúc ra other lúc ra ảnh).
+    raw = await client.chat(messages, temperature=0, max_tokens=120, enable_thinking=settings.agent_reasoning)
     parsed = client.extract_json_block(raw)
     first = next(iter(parsed.get("documents", []) or []), None) or parsed
     return index, _normalize_doc_type(first.get("docType") or first.get("type"))
@@ -195,6 +211,19 @@ def _parse_docs(raw_pages: Any, page_count: int) -> list[dict] | None:
     return docs
 
 
+def _textless_page(page: str) -> bool:
+    """Trang không có câu chữ: bỏ watermark app scan / nhãn ảnh / mốc trang, còn dưới _PORTRAIT_MAX_PAGE_CHARS chữ/số
+    và không quá _PORTRAIT_MAX_PAGE_WORDS từ."""
+    rest = _SCAN_NOISE_RE.sub(" ", page or "")
+    return (len(re.findall(r"\w", rest)) < _PORTRAIT_MAX_PAGE_CHARS
+            and len(re.findall(r"\w+", rest)) <= _PORTRAIT_MAX_PAGE_WORDS)
+
+
+def _looks_like_portrait(text: str) -> bool:
+    """Mọi trang OCR của tệp đều không có câu chữ → ảnh chân dung (chỉ dùng khi LLM đã trả other / lỗi)."""
+    return all(_textless_page(page) for page in split_pages(text or ""))
+
+
 def _merge_short_other(docs: list[dict], pages: list[str]) -> list[dict]:
     """Giấy other mà mọi trang đều ít chữ (mặt sau in xuyên, trang chỉ có dấu/chức danh) là phần nối của giấy
     liền trước, không thành tệp riêng."""
@@ -225,6 +254,10 @@ def _split_file_items(file: dict, idx: int, pages: list[str], docs: list[dict]) 
     """Tệp đã chia theo giấy → MỖI GIẤY một mục chỉ gồm đúng các trang của nó (hai giấy cùng loại là hai tệp trong
     cùng dòng), xếp theo thứ tự dòng a–h; CCCD và giấy chưa rõ loại vào dòng Đơn như chế độ thường."""
     file_name = str(file.get("name") or f"file-{idx + 1}")
+    # Giấy other ĐỨNG ĐẦU tệp mà mọi trang không có câu chữ là ảnh chân dung (prompt tách quy tắc 4); không có giấy
+    # liền trước để nối vào nên nếu để other thì ảnh rơi vào dòng Đơn.
+    if docs and docs[0]["docType"] == _OTHER and all(_textless_page(pages[p]) for p in docs[0]["pages"]):
+        docs = [{**docs[0], "docType": _ANH}, *docs[1:]]
     docs = _merge_short_other(docs, pages)
     row_order = list(_ROWS)
     order = sorted(docs, key=lambda d: (row_order.index(d["docType"]) if d["docType"] in _ROWS else len(row_order),
@@ -281,10 +314,13 @@ def build_plan_items(
     llm_types: dict[int, str] | None = None,
     page_types: dict[int, list[dict]] | None = None,
     pages_by_file: dict[int, list[str]] | None = None,
+    ocr_texts: dict[int, str] | None = None,
 ) -> tuple[list[dict], list[str], list[dict]]:
+    """``ocr_texts``: chữ OCR của các tệp OCR chạy được (tệp OCR lỗi không có mặt) — cho lưới an toàn ảnh chân dung."""
     llm_types = llm_types or {}
     page_types = page_types or {}
     pages_by_file = pages_by_file or {}
+    ocr_texts = ocr_texts or {}
     items: list[dict] = []
     warnings: list[str] = []
     classified: list[dict] = []
@@ -300,6 +336,8 @@ def build_plan_items(
             continue
         doc_type = llm_types.get(idx, _OTHER)
         source = "llm" if idx in llm_types else "fallback"
+        if doc_type == _OTHER and idx in ocr_texts and _looks_like_portrait(ocr_texts[idx]):
+            doc_type, source = _ANH, "textless"
 
         if doc_type in _ROWS:
             items.append(_build_row_item(file, idx, doc_type))
@@ -376,7 +414,12 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
             errors.append(f"attachment_agent: {exc}")
     llm_ms = int((time.monotonic() - t1) * 1000)
 
-    attachments, warnings, classified = build_plan_items(raw_files, llm_types, page_types, pages_by_file)
+    # Tệp OCR lỗi không đưa vào lưới ảnh chân dung: chữ rỗng vì lỗi không chứng minh được tệp là ảnh.
+    ocr_ok = {
+        idx: text for idx, text in texts.items()
+        if (r := ocr_by_name.get(raw_files[idx].get("name"))) is not None and not r.get("error")
+    }
+    attachments, warnings, classified = build_plan_items(raw_files, llm_types, page_types, pages_by_file, ocr_ok)
     errors.extend(warnings)
     skipped_ocr = [f["name"] for f in raw_files if f.get("type") not in _OCR_TYPES]
 

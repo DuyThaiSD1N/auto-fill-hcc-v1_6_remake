@@ -105,9 +105,102 @@ def test_prompt_chua_dau_hieu_anh_chan_dung_thay_cho_rule_code():
     assert "RỖNG" in text
     assert "ảnh thẻ" in text
     assert "NGƯỜI LÀM ĐƠN" in text  # bẫy Đơn liệt kê mọi loại
-    # Không còn rule nội dung trong code.
+    assert "Trang 2/2" in text, "tệp ảnh nhiều trang"
+    # Không có rule keyword xếp loại trong code (chỉ còn lưới ảnh chân dung khi LLM đã trả other).
     assert not hasattr(planner, "_rule_doc_type")
     assert not hasattr(planner, "_is_image_only")
+
+
+# OCR của tệp 02 ảnh chân dung scan 2 trang: chỉ vài chữ in hoa + mã số đọc nhầm từ nền ảnh / dấu tiệm ảnh.
+_ANH_2_TRANG = "───── Trang 1/2 ─────\nVAN\nAB\n\n───── Trang 2/2 ─────\n123-45\nXYZ"
+_DON_TEXT = ("CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc\nĐƠN ĐỀ NGHỊ\n"
+             "Cấp giấy phép hành nghề khám bệnh, chữa bệnh\nKính gửi: Sở Y tế")
+
+
+def test_anh_2_trang_llm_tra_other_van_vao_dong_anh_khong_canh_bao():
+    """LLM có lúc trả other cho ảnh 2 trang → ảnh vào dòng Đơn + "Chưa nhận ra loại giấy tờ"."""
+    items, warnings, classified = planner.build_plan_items(
+        _files(["scan-1.pdf", "scan-2.pdf"]), {0: "other", 1: "don_de_nghi"},
+        ocr_texts={0: _ANH_2_TRANG, 1: _DON_TEXT},
+    )
+
+    assert items[0]["componentName"] == "02 ảnh chân dung cỡ 04 cm"
+    assert items[0]["detectedType"] == "anh_chan_dung"
+    assert classified[0] == {"fileName": "scan-1.pdf", "docType": "anh_chan_dung", "source": "textless"}
+    assert items[1]["componentName"] == "Đơn theo Mẫu 08 Phụ lục I"
+    assert not warnings
+
+
+def test_luoi_anh_chi_bat_tep_khong_co_cau_chu():
+    assert planner._looks_like_portrait(_ANH_2_TRANG)
+    assert planner._looks_like_portrait("")
+    assert planner._looks_like_portrait("Scanned with CS CamScanner\nTrang 1/1")
+    assert not planner._looks_like_portrait(_DON_TEXT)
+    assert not planner._looks_like_portrait("───── Trang 1/2 ─────\nVAN\n───── Trang 2/2 ─────\n" + _DON_TEXT), \
+        "một trang có chữ thật thì không phải tệp ảnh"
+
+
+def test_giay_co_chu_llm_tra_other_van_canh_bao_vao_dong_don():
+    items, warnings, _ = planner.build_plan_items(
+        _files(["giay_la.pdf"]), {0: "other"}, ocr_texts={0: "QUYẾT ĐỊNH về việc cử cán bộ đi học lớp bồi dưỡng"},
+    )
+    assert items[0]["componentName"] == "Đơn theo Mẫu 08 Phụ lục I"
+    assert any("giay_la.pdf" in w for w in warnings)
+
+
+def test_llm_loi_tep_khong_chu_van_vao_dong_anh():
+    items, warnings, _ = planner.build_plan_items(_files(["scan-1.pdf"]), {}, ocr_texts={0: _ANH_2_TRANG})
+    assert items[0]["componentName"] == "02 ảnh chân dung cỡ 04 cm" and not warnings
+
+
+def test_ocr_loi_khong_doan_la_anh(monkeypatch):
+    async def fake_ocr(files):
+        return [{"name": f["name"], "text": "", "error": "timeout"} for f in files]
+
+    async def fake_one(index, name, text):
+        return index, "other"
+
+    from app.services import ocr
+    monkeypatch.setattr(ocr, "ocr_per_file", fake_ocr)
+    monkeypatch.setattr(planner, "_classify_one", fake_one)
+
+    class F:
+        name, type, dataUrl = "scan-1.pdf", "application/pdf", "data:application/pdf;base64,"
+
+    out = asyncio.run(planner.plan([F()], {}))
+    assert out["attachments"][0]["componentName"] == "Đơn theo Mẫu 08 Phụ lục I"
+    assert any("Chưa nhận ra loại giấy tờ" in e for e in out["errors"])
+
+
+def test_plan_anh_2_trang_llm_tra_other_dinh_dong_anh(monkeypatch):
+    async def fake_ocr(files):
+        return [{"name": f["name"], "text": _ANH_2_TRANG} for f in files]
+
+    async def fake_one(index, name, text):
+        return index, "other"
+
+    from app.services import ocr
+    monkeypatch.setattr(ocr, "ocr_per_file", fake_ocr)
+    monkeypatch.setattr(planner, "_classify_one", fake_one)
+
+    class F:
+        name, type, dataUrl = "scan-1.pdf", "application/pdf", "data:application/pdf;base64,"
+
+    out = asyncio.run(planner.plan([F()], {}))
+    assert out["attachments"][0]["componentName"] == "02 ảnh chân dung cỡ 04 cm"
+    assert not any("Chưa nhận ra loại giấy tờ" in e for e in out["errors"])
+
+
+def test_che_do_tach_anh_dau_tep_llm_tra_other_vao_dong_anh():
+    pages = ["VAN\nAB", "123-45\nXYZ", _DON_TEXT]
+    docs = planner._parse_docs(_pages(
+        ("other", True, None), ("other", False, None), ("don_de_nghi", True, "Đơn đề nghị"),
+    ), len(pages))
+    items, warnings, _ = planner.build_plan_items(_files(["ho_so.pdf"]), {}, {0: docs}, {0: pages})
+
+    got = [(i["componentName"], i["sourceSegments"][0]["pageIndexes"]) for i in items]
+    assert got == [("Đơn theo Mẫu 08 Phụ lục I", [2]), ("02 ảnh chân dung cỡ 04 cm", [0, 1])]
+    assert not warnings
 
 
 def _pages(*rows):

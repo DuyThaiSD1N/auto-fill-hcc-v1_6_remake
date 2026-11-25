@@ -6126,12 +6126,13 @@ PROCEDURES: list[dict] = [
         "supportsSplitDocuments": True,
         "hideRepeatableHint": True,
         "requiredDocs": [
-            {"key": "don", "name": "Đơn đăng ký biến động đất đai (Mẫu số 18) — đã kê khai, ký; có thể scan chung "
-             "mọi giấy tờ vào một file", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai (Mẫu số 18 / Mẫu số 24) — đã kê khai, ký; có thể "
+             "scan chung mọi giấy tờ vào một file", "icon": "📄", "sides": 1, "repeatable": True},
             {"key": "gcn", "name": "Giấy chứng nhận quyền sử dụng đất đã cấp (bản gốc)",
              "icon": "📜", "sides": 1, "optional": True, "repeatable": True},
             {"key": "giay_to_thay_doi", "name": "Giấy tờ chứng minh thay đổi thông tin (xác nhận cư trú, xác nhận số "
-             "CMND cũ, quyết định đổi tên…)", "icon": "📑", "sides": 1, "optional": True, "repeatable": True},
+             "CMND cũ, quyết định đổi tên…) hoặc văn bản cam kết của các thành viên hộ gia đình", "icon": "📑",
+             "sides": 1, "optional": True, "repeatable": True},
             {"key": "cccd", "name": "Căn cước công dân của người sử dụng đất",
              "icon": "🪪", "sides": 2, "optional": True, "repeatable": True},
             {"key": "khac", "name": "Văn bản ủy quyền, mảnh trích đo hoặc giấy tờ khác",
@@ -6142,14 +6143,16 @@ PROCEDURES: list[dict] = [
         "roles": [],
         "useDangKyBy": False,
         # Khối "Thông tin trong trường hợp được ủy quyền" = chủ hồ sơ (người đứng Đơn), loại "Cá nhân khác là Công dân
-        # Việt Nam" — pipeline lượt purpose="authorized_person".
+        # Việt Nam" — pipeline lượt purpose="authorized_person", trả authorizedSubject "Người cao tuổi" khi chủ hồ
+        # sơ từ 60 tuổi.
         "bacNinhAuthorizedPerson": _BN_AUTHORIZED_PERSON,
         "uploadHint": (
-            "Giấy tờ cần tải lên (có thể scan chung một file, Đơn Mẫu 18 đứng đầu):\n"
-            "1. Đơn đăng ký biến động đất đai (Mẫu số 18) đã kê khai, ký — nguồn chính điền đơn.\n"
+            "Giấy tờ cần tải lên (mỗi giấy một file hoặc scan chung một file):\n"
+            "1. Đơn đăng ký biến động đất đai (Mẫu số 18 / Mẫu số 24) đã kê khai, ký — nguồn chính điền đơn.\n"
             "2. Giấy chứng nhận quyền sử dụng đất đã cấp.\n"
             "3. Giấy tờ chứng minh việc thay đổi thông tin (giấy xác nhận thông tin cư trú, xác nhận số CMND cũ, "
-            "quyết định thay đổi họ tên…).\n"
+            "quyết định thay đổi họ tên…) hoặc văn bản cam kết của các thành viên hộ gia đình có chung quyền sử dụng "
+            "đất.\n"
             "4. Căn cước công dân của người sử dụng đất; nếu nộp thay: văn bản ủy quyền; nếu có: mảnh trích đo.\n"
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung."
         ),
