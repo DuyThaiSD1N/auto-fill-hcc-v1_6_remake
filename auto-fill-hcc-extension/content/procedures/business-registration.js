@@ -1096,6 +1096,14 @@
     return 1;
   }
 
+  /** Tài khoản có câu ghi chú cố định (Xuân Hương, Lâm Đồng…) → bỏ ô BUSINESS_ACT_TEXTFld BE gửi khi giấy không
+   *  ghi mã ngành (tên ngành OCR). Ô đó phải là đúng câu cố định như khi có mã; để tên OCR vào trước thì
+   *  fillBusinessActDefault thấy ô đã có chữ và bỏ qua. */
+  function withoutOcrBusinessAct(fields, defaults) {
+    if (!Array.isArray(fields) || !norm(defaults && defaults.businessActText)) return fields;
+    return fields.filter((f) => !String((f && f.name) || "").endsWith("BUSINESS_ACT_TEXTFld"));
+  }
+
   async function saveBusinessActDefaultIfChanged(changed) {
     if (!changed) return false;
     const save = enableBusinessActSaveButton(findBusinessActSaveButton());
@@ -1168,7 +1176,10 @@
 
     // Không có mã VSIC → điền ô ngành nghề dạng text tự do (nếu có) rồi sang trang kế.
     if (!nn || !Array.isArray(nn.codes) || !nn.codes.length) {
-      const fields = ((st.pages && st.pages["nganh-nghe-kinh-doanh"]) || []).filter((f) => f.name !== "__businessLines");
+      const fields = withoutOcrBusinessAct(
+        ((st.pages && st.pages["nganh-nghe-kinh-doanh"]) || []).filter((f) => f.name !== "__businessLines"),
+        st.businessDefaults
+      );
       if (fields.length) { try { await fillFormStandard(fields); } catch (e) { /* ignore */ } }
       let changed = 0;
       if (!st.nnBusinessActDefaultDone) {
@@ -3778,6 +3789,7 @@
   H.parseBusinessDeletePostback = parseBusinessDeletePostback;
   H.isBusinessRowMarkedDeleted = isBusinessRowMarkedDeleted;
   H.fillBusinessActDefault = fillBusinessActDefault;
+  H.withoutOcrBusinessAct = withoutOcrBusinessAct;
   // Cổng ĐKKD qua mạng dùng CHUNG component ngành nghề với HkdOnline: cùng ô
   // ctl00$C$newBusinessLineCode, cùng nút thêm mã, cùng bảng danh sách, cùng radio ismain —
   // chỉ khác tiền tố ClientID (đã xử lý ở BUSINESS_LINE_ROWS/findBusinessAddLineButton).

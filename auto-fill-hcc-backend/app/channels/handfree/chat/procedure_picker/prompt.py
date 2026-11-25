@@ -856,6 +856,14 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "cho thuê đất", "giao đất giao rừng", "thuê đất thuê rừng", "ban quản lý dự án xin giao đất",
         "giao đất cho thuê đất ở lai châu",
     ],
+    # Lai Châu: DOANH NGHIỆP (tổ chức kinh tế) xin chấp thuận tự thỏa thuận nhận chuyển nhượng / thuê / nhận góp vốn đất
+    # của dân để làm dự án (Mẫu số 30). KHÁC giao đất, cho thuê đất (Nhà nước giao/cho thuê đất đã thu hồi) và chuyển mục
+    # đích (đổi mục đích đất đang dùng).
+    "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an-lai-chau": [
+        "công ty muốn mua đất của dân để làm dự án", "doanh nghiệp nhận chuyển nhượng quyền sử dụng đất làm dự án",
+        "xin chấp thuận cho công ty thuê đất của hộ dân", "nhận góp vốn bằng quyền sử dụng đất",
+        "văn bản đề nghị chấp thuận mẫu số 30", "tổ chức kinh tế nhận chuyển nhượng đất ở lai châu",
+    ],
     # Lai Châu: sổ đỏ (giấy chứng nhận) đã cấp nay BỊ MẤT → xin cấp lại. KHÁC đính chính sổ (sổ còn nhưng ghi sai) và
     # cấp sổ cho phần diện tích tăng thêm (sổ còn, đo lại thấy rộng hơn).
     "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau": [

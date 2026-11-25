@@ -764,6 +764,7 @@ def test_registered_procedures_use_their_declared_flow_family():
         ("dang-ky-cap-giay-chung-nhan-doi-voi-toan-bo-dien-tich-dat-lai-chau", "laichau", "dichvucong.laichau.gov.vn"),
         ("chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau", "laichau", "dichvucong.laichau.gov.vn"),
         ("giao-dat-cho-thue-dat-lai-chau", "laichau", "dichvucong.laichau.gov.vn"),
+        ("to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an-lai-chau", "laichau", "dichvucong.laichau.gov.vn"),
     ):
         local = procedures.pop(key)
         assert local["provinceOnly"] == [slug], key
@@ -1089,7 +1090,8 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     #    ke_khai không selectSo → chọn Tỉnh + Xã như đấu nối tạm.
     # +1 cổng iGate Khánh Hòa (24/11) "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa" (1.115148), luồng "xay-dung".
     # +1 Bộ Công an (24/11) "cap-phieu-ly-lich-tu-phap-cong-an-cap-tinh" (3.000333), luồng "tu-phap-moi" chỉ chọn Tỉnh.
-    assert len(procedures) == 198
+    # +1 cổng Lai Châu (25/11) "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an-lai-chau" (1.115591).
+    assert len(procedures) == 199
 
     for procedure in procedures:
         key = procedure["key"]

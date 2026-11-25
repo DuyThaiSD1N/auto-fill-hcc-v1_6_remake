@@ -4139,6 +4139,14 @@
       "autoConfirm": true
     },
     {
+      "key": "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an-lai-chau",
+      "code": "1.115591",
+      "label": "Lai Châu - Tổ chức kinh tế nhận chuyển nhượng, thuê quyền sử dụng đất, nhận góp vốn bằng quyền sử dụng đất để thực hiện dự án đầu tư",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f3bbd-8f99-737a-b15a-1a7e10f94cbd",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau",
       "code": "1.115578",
       "label": "Lai Châu - Chuyển mục đích sử dụng đất; chuyển hình thức sử dụng đất; gia hạn sử dụng đất khi hết thời hạn sử dụng đất; điều chỉnh thời hạn sử dụng đất của dự án đầu tư (Đối với các xã miền núi, biên giới; đảo; vùng có điều kiện kinh tế - xã hội khó khăn; vùng có điều kiện kinh tế - xã hội đặc biệt khó khăn)",

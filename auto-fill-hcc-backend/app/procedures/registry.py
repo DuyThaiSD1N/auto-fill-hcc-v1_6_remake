@@ -513,6 +513,12 @@ from app.pipelines.cap_lai_giay_chung_nhan_do_bi_mat_lai_chau.attach import (
 from app.pipelines.cap_lai_giay_chung_nhan_do_bi_mat_lai_chau.process import (
     run as cap_lai_giay_chung_nhan_do_bi_mat_lai_chau_process,
 )
+from app.pipelines.to_chuc_kinh_te_nhan_chuyen_nhuong_qsdd_du_an_lai_chau.attach import (
+    plan as to_chuc_kinh_te_nhan_chuyen_nhuong_qsdd_du_an_lai_chau_attach,
+)
+from app.pipelines.to_chuc_kinh_te_nhan_chuyen_nhuong_qsdd_du_an_lai_chau.process import (
+    run as to_chuc_kinh_te_nhan_chuyen_nhuong_qsdd_du_an_lai_chau_process,
+)
 from app.pipelines.dieu_chinh_huu_tri_xa_hoi.attach import plan as dieu_chinh_huu_tri_xa_hoi_attach
 from app.pipelines.dieu_chinh_huu_tri_xa_hoi.process import run as dieu_chinh_huu_tri_xa_hoi_process
 from app.pipelines.khai_sinh_lien_thong.attach import plan as khai_sinh_lien_thong_attach
@@ -8240,6 +8246,41 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an-lai-chau",
+        # 1.115591 cấp xã, key TRÙNG ke_khai_links. Trang nộp là SPA dichvucong.laichau.gov.vn/dich-vu-cong/tiep-nhan-
+        # online/…?sid=<phiên>, URL không mang mã; khối "thu-tuc-da-chon" in "1.115591 - <tên thủ tục>" (ảnh ánh xạ) →
+        # khớp MÃ + cụm tên như 1.115577 (tên trùng bản Lào Cai 1.115681, mã tách hai bản). urlScope khoá host;
+        # textPriority thắng rule chung. Chưa chạy thử trên cổng thật.
+        "detect": {
+            "urlScope": ["dichvucong.laichau.gov.vn"],
+            "textIncludes": [
+                "1.115591",
+                "tổ chức kinh tế nhận chuyển nhượng, thuê quyền sử dụng đất",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "[Lai Châu] Tổ chức kinh tế nhận chuyển nhượng, thuê quyền sử dụng đất, nhận góp vốn bằng quyền sử dụng "
+        "đất để thực hiện dự án đầu tư",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        # Bật "Tách giấy tờ": LLM chia trang (văn bản đề nghị + trích đo scan chung) — attach/planner.py.
+        "supportsSplitDocuments": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (người đề nghị = tổ chức kinh tế ở mục 1, người nộp = người đại diện ở mục 2 của văn "
+            "bản đề nghị):\n"
+            "1. Văn bản đề nghị chấp thuận cho tổ chức kinh tế nhận chuyển nhượng, thuê quyền sử dụng đất, nhận góp vốn "
+            "bằng quyền sử dụng đất để thực hiện dự án đầu tư (Mẫu số 30) — đủ các trang, đã ký, đóng dấu.\n"
+            "2. Trích lục vị trí khu đất / mảnh trích đo địa chính khu đất nhà đầu tư đề xuất thực hiện dự án.\n"
+            "3. Nếu có: căn cước của người đại diện (ngày cấp, nơi cấp, dân tộc, thường trú chỉ có trên thẻ).\n"
+            "Bước đính kèm: hệ thống tích và đính đúng 2 dòng thành phần hồ sơ (trích đo → dòng Trích lục vị trí khu "
+            "đất, văn bản đề nghị → dòng Mẫu số 30), mỗi file đính nguyên; căn cước vào \"Giấy tờ khác\". Dân tộc không "
+            "có trên giấy tờ nên phải tự chọn. Mỗi tệp KHÔNG QUÁ 6 MB."
+        ),
+    },
+    {
         "key": "dieu-chinh-huu-tri-xa-hoi",
         "collectFormContext": True,
         # Trang nộp đã chuyển sang Cổng Bộ Y tế dichvucongbyt.moh.gov.vn (/padsvc/apply-online/<ObjectId>):
@@ -12558,6 +12599,8 @@ _PIPELINE = {
     "chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau": chuyen_muc_dich_su_dung_dat_mien_nui_lai_chau_process,
     "giao-dat-cho-thue-dat-lai-chau": giao_dat_cho_thue_dat_lai_chau_process,
     "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau": cap_lai_giay_chung_nhan_do_bi_mat_lai_chau_process,
+    "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an-lai-chau":
+        to_chuc_kinh_te_nhan_chuyen_nhuong_qsdd_du_an_lai_chau_process,
     "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh": cap_lai_gcn_do_bi_mat_bac_ninh_process,
     "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-bac-ninh": dkbd_doi_ten_bac_ninh_process,
     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-bac-ninh": xn_tiep_tuc_dat_nn_bac_ninh_process,
@@ -12873,6 +12916,8 @@ _ATTACH_PIPELINE = {
     "cap-the-tam-tru-cho-nguoi-nuoc-ngoai-tai-viet-nam": cap_the_tam_tru_nnn_attach,
     "giao-dat-cho-thue-dat-lai-chau": giao_dat_cho_thue_dat_lai_chau_attach,
     "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau": cap_lai_giay_chung_nhan_do_bi_mat_lai_chau_attach,
+    "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an-lai-chau":
+        to_chuc_kinh_te_nhan_chuyen_nhuong_qsdd_du_an_lai_chau_attach,
     "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh": cap_lai_gcn_do_bi_mat_bac_ninh_attach,
     "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-bac-ninh": dkbd_doi_ten_bac_ninh_attach,
     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-bac-ninh": xn_tiep_tuc_dat_nn_bac_ninh_attach,

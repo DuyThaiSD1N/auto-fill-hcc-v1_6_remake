@@ -109,7 +109,8 @@ def test_so_thu_tuc_moi_tinh_dung_bang_hoan_thien():
         # 24/11: +1 Bắc Ninh xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-bac-ninh (1.115462, {"bacninh"}).
         # 24/11: +1 mọi tỉnh Bộ Xây dựng cap-giay-phep-thi-cong-cong-trinh-tren-duong-bo-dang-khai-thac (1.013061) (_TAT_CA, mặc định toàn quốc).
         # 24/11: +1 mọi tỉnh Bộ Công an cap-phieu-ly-lich-tu-phap-cong-an-cap-tinh (3.000333) (_TAT_CA, mặc định toàn quốc).
-        "laichau": 154, "bacninh": 162, "lamdong": 148, "danang": 151, "quangninh": 155, "ninhbinh": 144,
+        # 25/11: +1 Lai Châu to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an-lai-chau (1.115591, provinceOnly laichau).
+        "laichau": 155, "bacninh": 162, "lamdong": 148, "danang": 151, "quangninh": 155, "ninhbinh": 144,
         # 24/11: +1 Khánh Hòa tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa (1.115148, {"khanhhoa"}).
         "quangngai": 145, "laocai": 143, "quangtri": 145, "khanhhoa": 151, "tuyenquang": 145,
     }

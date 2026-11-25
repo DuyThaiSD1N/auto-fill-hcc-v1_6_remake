@@ -50,7 +50,7 @@
   // header hiện "1.17 · 8/9" trong khi manifest đã là 1.17.0.6. Đúng lúc cần trả
   // lời "bản vá đã tới máy này chưa?" thì nhãn lại nói sai.
   // NGÀY vẫn ghi tay (để hỗ trợ), đổi cùng mục đầu changelog.js — tests/release-version.test.js kiểm.
-  const APP_RELEASE_DATE = "24/11";
+  const APP_RELEASE_DATE = "25/11";
   const APP_VERSION_LABEL = (() => {
     let v = "?";
     try { v = chrome.runtime.getManifest().version; } catch (e) { /* context đã mất */ }
@@ -1798,6 +1798,12 @@
     if (msg.businessPage && typeof H.applyBusinessLocalDefaults === "function") {
       try { fields = H.applyBusinessLocalDefaults(fields, msg.businessDefaults, msg.businessPage); }
       catch (e) { console.warn("[AutoFill] default theo địa bàn:", e); }
+    }
+    // Giấy không ghi mã ngành → BE gửi tên ngành OCR vào ô "Ngành, nghề chưa khớp mã". Tài khoản có câu ghi chú cố định
+    // (Xuân Hương, Lâm Đồng…) thì ô đó vẫn phải là đúng câu cố định như khi có mã.
+    const businessActText = String(msg.businessDefaults?.businessActText || "").trim();
+    if (msg.businessPage === "nganh-nghe-kinh-doanh" && businessActText) {
+      fields = fields.map((f) => (String(f?.name || "").endsWith("BUSINESS_ACT_TEXTFld") ? { ...f, value: businessActText } : f));
     }
     if (!fields.length) { sendResponse({ error: "Không có trường nào để điền." }); return; }
     // comp "bca-*" (cổng Bộ Công an) chỉ engine standard biết; bước đính kèm hộ chiếu gửi riêng ô ảnh chân dung

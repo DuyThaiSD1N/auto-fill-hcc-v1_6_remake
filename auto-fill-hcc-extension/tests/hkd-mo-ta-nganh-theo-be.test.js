@@ -62,3 +62,23 @@ test("popup không còn tự quyết ô mô tả ngành theo tài khoản (đã 
   const popup = fs.readFileSync(path.join(__dirname, "..", "popup.js"), "utf8");
   assert.doesNotMatch(popup, /skipBusinessLineDescription|businessLineDescriptionParenOnly/);
 });
+
+test("giấy không ghi mã ngành: tài khoản có câu cố định thì bỏ tên ngành OCR khỏi ô chưa khớp mã", () => {
+  const src = fs.readFileSync(path.join(__dirname, "..", "content", "procedures", "business-registration.js"), "utf8");
+  const ctx = { norm: (s) => String(s || "").trim() };
+  vm.runInNewContext(`${extract(src, "withoutOcrBusinessAct")}; this.drop = withoutOcrBusinessAct;`, ctx);
+  const fields = [
+    { name: "ctl00$C$BUSINESS_ACT_TEXTFld", comp: "dom-input", value: "Sản xuất sữa chua" },
+    { name: "ctl00$C$khac", comp: "dom-input", value: "x" },
+  ];
+  assert.deepEqual(ctx.drop(fields, { businessActText: "Hộ kinh doanh phải thực hiện đúng ..." }).map((f) => f.name),
+    ["ctl00$C$khac"]);
+  assert.equal(ctx.drop(fields, null), fields, "tài khoản không có câu cố định giữ tên ngành OCR");
+  assert.equal(ctx.drop(fields, { businessActText: "  " }), fields);
+
+  const nganh = extract(src, "handleNganhNghePage");
+  assert.match(nganh, /withoutOcrBusinessAct\(\s*\(\(st\.pages/, "luồng điền tất cả phải lọc trước fillFormStandard");
+  const content = fs.readFileSync(path.join(__dirname, "..", "content.js"), "utf8");
+  assert.match(content, /endsWith\("BUSINESS_ACT_TEXTFld"\) \? \{ \.\.\.f, value: businessActText \}/,
+    "điền lẻ trang ngành nghề thay tên OCR bằng câu cố định");
+});

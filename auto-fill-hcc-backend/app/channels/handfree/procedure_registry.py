@@ -8717,6 +8717,58 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an-lai-chau",
+        "provinceOnly": ["laichau"],  # đặc thù Lai Châu: chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.115591 (cấp xã), cùng cổng dichvucong.laichau.gov.vn và cùng luồng với thẻ 1.115577 ngay trên (trang
+        # chọn trường hợp → nút cam "Đồng ý và tiếp tục" → bước Lệ phí). Detect y hệt lõi; label = label lõi bỏ "[Lai
+        # Châu] ". "Đối tượng nộp" luôn Tổ chức. Đính kèm fixed-slot 2 dòng: trích đo → dòng 1, Mẫu số 30 → dòng 2.
+        # Key TRÙNG lõi. Chưa chạy thử trên cổng thật.
+        "detect": {
+            "urlScope": ["dichvucong.laichau.gov.vn"],
+            "textIncludes": [
+                "1.115591",
+                "tổ chức kinh tế nhận chuyển nhượng, thuê quyền sử dụng đất",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Tổ chức kinh tế nhận chuyển nhượng, thuê quyền sử dụng đất, nhận góp vốn bằng quyền sử dụng đất để thực "
+            "hiện dự án đầu tư"
+        ),
+        "shortLabel": "Tổ chức kinh tế nhận chuyển nhượng, thuê, nhận góp vốn quyền sử dụng đất làm dự án",
+        "subtitle": "Doanh nghiệp xin chấp thuận nhận chuyển nhượng, thuê đất của dân để thực hiện dự án đầu tư",
+        "icon": "🏭",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f3bbd-8f99-737a-b15a-1a7e10f94cbd",
+        "needsAgencySelect": True,
+        "agencyProvince": "Lai Châu",
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,
+        "laiChauFeeStep": _LC_FEE_STEP,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "van_ban", "name": "Văn bản đề nghị chấp thuận (Mẫu số 30) — đã ký, đóng dấu", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "trich_luc", "name": "Trích lục vị trí khu đất / mảnh trích đo địa chính", "icon": "🗺️",
+             "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước của người đại diện", "icon": "🪪", "sides": 2, "optional": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Văn bản đề nghị chấp thuận (Mẫu số 30) — nguồn chính điền tên công ty, mã số doanh nghiệp, trụ sở, "
+            "người đại diện.\n"
+            "2. Trích lục vị trí khu đất / mảnh trích đo địa chính khu đất thực hiện dự án.\n"
+            "3. Căn cước của người đại diện (nếu có).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung. Mỗi tệp không quá 6 MB.\n"
+            "Bước đính kèm: trích đo → dòng Trích lục vị trí khu đất, văn bản đề nghị → dòng Mẫu số 30; căn cước vào "
+            "\"Giấy tờ khác\"."
+        ),
+    },
+    {
         "key": "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau",
         "provinceOnly": ["laichau"],  # đặc thù Lai Châu: chỉ account tỉnh này thấy + gọi được
         # Mã TTHC 1.115557, cùng cổng dichvucong.laichau.gov.vn và cùng luồng với thẻ 1.115578 (trang chọn trường hợp →
@@ -12156,6 +12208,8 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "dang-ky-cap-giay-chung-nhan-doi-voi-toan-bo-dien-tich-dat-lai-chau": _TAT_CA,
     "chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau": _TAT_CA,
     "giao-dat-cho-thue-dat-lai-chau": _TAT_CA,  # STT 178
+    # 1.115591 (25/11/2026): thủ tục riêng Lai Châu (provinceOnly ["laichau"]), ngoài bảng → _TAT_CA như các thẻ Lai Châu.
+    "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an-lai-chau": _TAT_CA,
     "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau": _TAT_CA,  # STT 50
     "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh": frozenset({"bacninh"}),  # STT 50; 12/11/2026 người dùng mở cho Bắc Ninh
     # 1.115460 (21/11/2026): thủ tục riêng Bắc Ninh ("Bắc Ninh - …"), chưa có trong bảng theo dõi → mở cho Bắc Ninh.

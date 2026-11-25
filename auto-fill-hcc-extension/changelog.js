@@ -3,6 +3,17 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.29.1",
+    date: "25/11/2026",
+    items: [
+      "Thêm thủ tục Lào Cai trên cổng mới: giao đất ở không qua đấu giá (1.115684), gia hạn phương án sử dụng đất kết hợp đa mục đích (1.115683), cấp Giấy chứng nhận cho phần diện tích còn lại (1.115692).",
+      "Thêm thủ tục tổ chức kinh tế nhận chuyển nhượng quyền sử dụng đất để thực hiện dự án (Lai Châu, 1.115591).",
+      "Đổi tên người sử dụng đất (Bắc Ninh, 1.115460): điền đơn cho cả hai người, đính kèm văn bản cam kết đúng dòng.",
+      "Xác nhận tình trạng hôn nhân và trích lục khai sinh trên eForm cũ của Bộ Tư pháp điền được như trước.",
+      "Đăng ký hộ kinh doanh: giấy tờ không ghi mã ngành thì ô \"Ngành, nghề chưa khớp mã\" vẫn ghi đúng câu ghi chú cố định của đơn vị (Xuân Hương, Lâm Đồng…), không ghi tên ngành đọc từ giấy.",
+    ],
+  },
+  {
     version: "1.29",
     date: "24/11/2026",
     items: [

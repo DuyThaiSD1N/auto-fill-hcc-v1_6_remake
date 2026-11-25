@@ -192,6 +192,10 @@ Chỉ chạy hai cây `tests/unit` và `tests/integration`. Cây `tests/handfree
 Baseline hiện tại có sẵn một số test đỏ không liên quan đến code mới; so số fail trước và sau khi
 sửa thay vì cố đưa về 0.
 
+Baseline ngày 2026-11-25, sau khi thêm pipeline 1.115591 tổ chức kinh tế nhận chuyển nhượng QSDĐ Lai Châu
+(`to_chuc_kinh_te_nhan_chuyen_nhuong_qsdd_du_an_lai_chau`, máy local, plugin win_socketpair, có PYTHONUTF8=1):
+`23 failed, 6397 passed, 42 skipped, 13 errors`. Vẫn đúng 23 đỏ như dòng dưới.
+
 Baseline ngày 2026-11-25, sau khi khôi phục form cũ eForm Bộ Tư pháp xác nhận TTHN 1.004873
 (`xac-nhan-tinh-trang-hon-nhan-eform` → pipeline cũ `xac_nhan_tthn`, máy local, plugin win_socketpair, có PYTHONUTF8=1):
 `23 failed, 6365 passed, 42 skipped, 13 errors`; khôi phục thêm form cũ trích lục 2.000635 (`trich-luc-ks-eform` → pipeline
