@@ -280,3 +280,92 @@ def test_khuyet_tat_bien_ban_gdyk_moi_vao_dong_giay_to_lien_quan():
     items, _, _ = kt.build_plan_items([{"name": "gdyk.pdf"}], [{"name": "gdyk.pdf", "text": text}], {})
     assert items[0]["slotIndex"] == 0
     assert "01/6/2012" in kt.prompt.SYSTEM_PROMPT
+
+
+# --- Công bố cơ sở đủ điều kiện tiêm chủng (2.000655): bước điền thông tin ---
+from app.pipelines.cong_bo_du_dk_tiem_chung.process import mapper as tiem_chung_mapper  # noqa: E402
+
+_TC_OCR = [{"name": "tb.pdf", "text": (
+    "THÔNG BÁO\nCơ sở đủ điều kiện tiêm chủng\n- Tên cơ sở thông báo: Trạm Y tế xã Mẫu.\n"
+    "- Người đứng đầu cơ sở: Trần Thị Mẫu – Giám đốc Trạm Y tế xã.\n- Điện thoại liên hệ: 0900000001"
+)}]
+
+
+def _tc_facts(**extra):
+    base = {
+        "CoSo_Ten": "Trạm Y tế xã Mẫu",
+        "CoSo_DiaChi": {"quocGia": "Việt Nam", "tinh": "Lai Châu", "xa": "Mường Tè", "diaChi": "Bản Một"},
+        "CoSo_NguoiDungDau": "Trần Thị Mẫu",
+        "CoSo_DienThoai": "0900000001",
+        "CoSo_Email": "tram@example.com",
+    }
+    base.update(extra)
+    return [{"name": k, "value": v} for k, v in base.items() if v is not None]
+
+
+def _tc_by_name(fields):
+    return {f["name"]: f for f in fields}
+
+
+_TC_CTX = {"formContext": {"applicantFullname": "Lê Văn Tài Khoản", "applicantIdentityNumber": "001200000009"}}
+
+
+def test_tiem_chung_llm_sai_ten_khoa_nguoi_dung_dau_van_ra_ho_ten_chu_ho_so():
+    raw = {"CoSo_Ten": "Trạm Y tế xã Mẫu", "CoSo_NguoiDauCoSo": "Trần Thị Mẫu"}
+    fixed = tiem_chung_mapper.head_name_ocr_fallback(raw, _TC_OCR)
+    assert fixed["CoSo_NguoiDungDau"] == "Trần Thị Mẫu"
+    assert "CoSo_NguoiDauCoSo" not in fixed
+
+
+def test_tiem_chung_llm_bo_sot_nguoi_dung_dau_doc_lai_tu_ocr_bo_chuc_vu():
+    fixed = tiem_chung_mapper.head_name_ocr_fallback({"CoSo_Ten": "Trạm Y tế xã Mẫu"}, _TC_OCR)
+    assert fixed["CoSo_NguoiDungDau"] == "Trần Thị Mẫu"
+    fixed = tiem_chung_mapper.head_name_ocr_fallback([{"name": "CoSo_Ten", "value": "X"}], _TC_OCR)
+    assert fixed["CoSo_NguoiDungDau"] == "Trần Thị Mẫu"
+
+
+def test_tiem_chung_mac_dinh_khong_dung_phan_nguoi_nop_khi_khong_co_cccd_tai_khoan():
+    out, _ = tiem_chung_mapper.enrich(_tc_facts(), _TC_CTX)
+    got = _tc_by_name(out)
+    assert got["data[ownerFullname]"]["value"] == "Trần Thị Mẫu"
+    assert got["data[ownerNation]"]["value"] == "Việt Nam"
+    assert got["data[isOwnerDossierCheck]"]["value"] is False
+    assert not any(name in got for name in ("data[fullname]", "data[identityNumber]", "data[phoneNumber]"))
+
+
+def test_tiem_chung_lay_nguoi_nop_theo_to_khai_ghi_phan_i_theo_nguoi_dung_dau():
+    opts = {**_TC_CTX, "submitterMode": "owner_as_submitter"}
+    out, warnings = tiem_chung_mapper.enrich(_tc_facts(), opts)
+    got = _tc_by_name(out)
+    assert got["data[fullname]"]["value"] == "Trần Thị Mẫu"
+    assert got["data[fullname]"]["enableInput"] is True
+    # Không có CCCD người đứng đầu → xoá ngày sinh + số CCCD của tài khoản, tô đỏ.
+    assert got["data[identityNumber]"]["clear"] is True and got["data[identityNumber]"]["value"] == ""
+    assert got["data[birthday]"]["clear"] is True
+    assert got["data[province]"]["value"] == "Tỉnh Lai Châu"
+    assert got["data[address]"]["value"] == "Bản Một"
+    assert got["data[phoneNumber]"]["value"] == "0900000001"
+    assert got["data[ownerFullname]"]["value"] == "Trần Thị Mẫu"
+    assert any("Lấy người nộp theo tờ khai" in w for w in warnings)
+
+
+def test_tiem_chung_theo_to_khai_co_cccd_nguoi_dung_dau_ghi_du_nhan_than():
+    opts = {**_TC_CTX, "submitterMode": "owner_as_submitter"}
+    facts = _tc_facts(DauCoSo_HoTen="TRẦN THỊ MẪU", DauCoSo_SoDinhDanh="001300000002",
+                      DauCoSo_NgaySinh="01/02/1980", DauCoSo_GioiTinh="Nữ",
+                      NguoiNop_HoTen="Lê Văn Tài Khoản", NguoiNop_SoDinhDanh="001200000009",
+                      NguoiNop_NgaySinh="05/05/1990")
+    got = _tc_by_name(tiem_chung_mapper.enrich(facts, opts)[0])
+    assert got["data[identityNumber]"]["value"] == "001300000002"
+    assert got["data[birthday]"]["value"] == "01/02/1980"
+    assert got["data[gender]"]["value"] == "Nữ"
+    assert got["data[ownerIdentityNumber]"]["value"] == "001300000002"
+
+
+def test_tiem_chung_theo_to_khai_tai_khoan_chinh_la_nguoi_dung_dau_khong_mo_khoa():
+    opts = {"formContext": {"applicantFullname": "Trần Thị Mẫu", "applicantIdentityNumber": "001300000002"},
+            "submitterMode": "owner_as_submitter"}
+    facts = _tc_facts(DauCoSo_HoTen="Trần Thị Mẫu", DauCoSo_SoDinhDanh="001300000002", DauCoSo_NgaySinh="01/02/1980")
+    got = _tc_by_name(tiem_chung_mapper.enrich(facts, opts)[0])
+    assert "data[fullname]" not in got and "data[identityNumber]" not in got
+    assert got["data[birthday]"]["value"] == "01/02/1980"

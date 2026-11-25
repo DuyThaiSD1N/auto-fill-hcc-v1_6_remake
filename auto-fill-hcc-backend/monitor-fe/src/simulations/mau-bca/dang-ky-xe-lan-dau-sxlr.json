@@ -1,0 +1,477 @@
+{
+ "source": "dichvucong.bocongan.gov.vn — trang kê khai (nhap-thong-tin-nguoi-nop-ho-so?sid=…)",
+ "title": "Đăng ký xe lần đầu toàn trình — xe sản xuất, lắp ráp trong nước",
+ "capturedAt": "2026-11-25T00:00:00+07:00",
+ "inferred": true,
+ "note": "Mẫu SUY từ bảng ô của BE (schema.py theo file mapping Mapping_DangKyXeLanDau_SXLR_TrongNuoc_1.012575): số mục (n) và name ô đúng mapping, nhãn chữ / option Loại giấy tờ là suy, CHƯA chụp trang thật. Chụp bằng monitor-fe/scripts/capture-bca-form.js.",
+ "code": "1.012575",
+ "sections": [
+  {
+   "title": "Tra cứu dữ liệu (CSDL Thuế + Cục Đăng kiểm)",
+   "note": "Người dân tự nhập Mã bảo mật rồi bấm \"Tra cứu\": cổng lấy dữ liệu Phần III–V từ CSDL và GHI ĐÈ giá trị điền sẵn từ giấy.",
+   "fields": [
+    {
+     "id": "CongDan__fsSeriChatLuongXuatXuong",
+     "kind": "text",
+     "label": "Số seri Phiếu kiểm tra chất lượng xuất xưởng"
+    },
+    {
+     "id": "CongDan__fsTraCuMaHsLPTB",
+     "kind": "text",
+     "label": "Mã hồ sơ lệ phí trước bạ"
+    }
+   ]
+  },
+  {
+   "title": "Phần I. Thông tin chủ xe",
+   "note": "Cổng đổ theo tài khoản VNeID và khoá (BE không phát): Mã định danh, Họ tên, Ngày sinh, Phân loại quản lý, nơi thường trú / tạm trú / ở hiện tại.",
+   "fields": [
+    {
+     "id": "CongDan__fs_BCAGioiTinhCd",
+     "kind": "select",
+     "label": "(4) Giới tính",
+     "options": [
+      "Nam",
+      "Nữ"
+     ]
+    },
+    {
+     "id": "CongDan__fsLoaiGiayToChuXe",
+     "kind": "select",
+     "label": "(5) Loại giấy tờ",
+     "required": true,
+     "options": [
+      "CMND",
+      "Căn cước công dân",
+      "Định danh điện tử"
+     ]
+    },
+    {
+     "id": "CongDan__fsngayCapCmnd",
+     "kind": "date",
+     "label": "(6) Cấp ngày",
+     "required": true
+    },
+    {
+     "id": "CongDan__fsnoiCapCmnd",
+     "kind": "text",
+     "label": "(7) Nơi cấp",
+     "required": true
+    },
+    {
+     "id": "CongDan__fsQuocTichChuXe",
+     "kind": "select",
+     "label": "(8) Quốc tịch",
+     "required": true,
+     "note": "Cổng chọn sẵn Việt Nam"
+    },
+    {
+     "id": "CongDan_diDong",
+     "kind": "text",
+     "label": "(10) Số điện thoại",
+     "required": true,
+     "portalMayFill": true
+    },
+    {
+     "id": "CongDan_email",
+     "kind": "text",
+     "label": "(11) Email",
+     "required": true,
+     "portalMayFill": true
+    }
+   ]
+  },
+  {
+   "title": "Phần III. Thông tin lệ phí trước bạ",
+   "fields": [
+    {
+     "id": "CongDan__fsMaHsLPTBDienTu",
+     "kind": "text",
+     "label": "(30) Mã hồ sơ LPTB điện tử"
+    },
+    {
+     "id": "CongDan__fsNgayCapLPTB",
+     "kind": "date",
+     "label": "(31) Ngày cấp"
+    },
+    {
+     "id": "CongDan__fsCoQuanCapLPTB",
+     "kind": "text",
+     "label": "(32) Cơ quan cấp"
+    },
+    {
+     "id": "CongDan__fsCMNDNguoiNopThueLPTB",
+     "kind": "text",
+     "label": "(33) Số định danh người nộp thuế"
+    },
+    {
+     "id": "CongDan__fsMSTnguoiNopThueLPTB",
+     "kind": "text",
+     "label": "(34) Mã số thuế người nộp thuế"
+    },
+    {
+     "id": "CongDan__fsTenNguoiNopThue",
+     "kind": "text",
+     "label": "(35) Tên người nộp thuế"
+    },
+    {
+     "id": "CongDan__fsSDTNguoiNopThue",
+     "kind": "text",
+     "label": "(36) Số điện thoại người nộp thuế"
+    },
+    {
+     "id": "CongDan__fsDiaChiNguoiNopThue",
+     "kind": "text",
+     "label": "(37) Địa chỉ người nộp thuế",
+     "wide": true
+    },
+    {
+     "id": "CongDan__fsLPTBMauSon",
+     "kind": "text",
+     "label": "(38) Màu sơn"
+    },
+    {
+     "id": "CongDan__fsLoaiXe",
+     "kind": "text",
+     "label": "(39) Loại xe"
+    },
+    {
+     "id": "CongDan__fsnhanHieu",
+     "kind": "text",
+     "label": "(40) Nhãn hiệu"
+    },
+    {
+     "id": "CongDan__fssoLoai",
+     "kind": "text",
+     "label": "(41) Số loại"
+    },
+    {
+     "id": "CongDan__fsNamSanXuat",
+     "kind": "text",
+     "label": "(42) Năm sản xuất"
+    },
+    {
+     "id": "CongDan__fsSoMay1",
+     "kind": "text",
+     "label": "(43) Số máy"
+    },
+    {
+     "id": "CongDan__fsSoKhung",
+     "kind": "text",
+     "label": "(44) Số khung"
+    },
+    {
+     "id": "CongDan__fsDungTich",
+     "kind": "text",
+     "label": "(45) Dung tích"
+    },
+    {
+     "id": "CongDan__fsCongSuat",
+     "kind": "text",
+     "label": "(46) Công suất"
+    },
+    {
+     "id": "CongDan__fsCanCuMienThuLPTB",
+     "kind": "text",
+     "label": "(47) Căn cứ miễn thu LPTB",
+     "wide": true
+    },
+    {
+     "id": "CongDan__fsSoTienLPTB",
+     "kind": "text",
+     "label": "(48) Số tiền LPTB"
+    },
+    {
+     "id": "CongDan__fsGiaTriTinhLPTB",
+     "kind": "text",
+     "label": "(49) Giá trị tính LPTB"
+    },
+    {
+     "id": "CongDan__fsSoTienBangChuLPTB",
+     "kind": "text",
+     "label": "(50) Số tiền bằng chữ",
+     "wide": true
+    }
+   ]
+  },
+  {
+   "title": "Phần IV. Thông tin hóa đơn điện tử",
+   "fields": [
+    {
+     "id": "CongDan__fsLoaiHoaDon",
+     "kind": "text",
+     "label": "(51) Loại hóa đơn"
+    },
+    {
+     "id": "CongDan__fsKyHieu",
+     "kind": "text",
+     "label": "(52) Ký hiệu"
+    },
+    {
+     "id": "CongDan__fsHDDTMauSoHoaDon",
+     "kind": "text",
+     "label": "(53) Mẫu số hóa đơn"
+    },
+    {
+     "id": "CongDan__fsSoHoaDon",
+     "kind": "text",
+     "label": "(54) Số hóa đơn"
+    },
+    {
+     "id": "CongDan__fsTenHangHoa",
+     "kind": "text",
+     "label": "(55) Tên hàng hóa",
+     "wide": true
+    },
+    {
+     "id": "CongDan__fsDonViBanHang",
+     "kind": "text",
+     "label": "(56) Đơn vị bán hàng"
+    },
+    {
+     "id": "CongDan__fsMSTNguoiBan",
+     "kind": "text",
+     "label": "(57) Mã số thuế người bán"
+    },
+    {
+     "id": "CongDan__fsDiaChiNguoiBan",
+     "kind": "text",
+     "label": "(58) Địa chỉ người bán",
+     "wide": true
+    },
+    {
+     "id": "CongDan__fsDonViNguoiMua",
+     "kind": "text",
+     "label": "(59) Đơn vị mua"
+    },
+    {
+     "id": "CongDan__fsHoTenNguoiMua",
+     "kind": "text",
+     "label": "(60) Họ tên người mua"
+    },
+    {
+     "id": "CongDan__fsMSTNguoiMua",
+     "kind": "text",
+     "label": "(61) Mã số thuế người mua"
+    },
+    {
+     "id": "CongDan__fsDiaChiNguoiMua",
+     "kind": "text",
+     "label": "(62) Địa chỉ người mua",
+     "wide": true
+    },
+    {
+     "id": "CongDan__fsTienthue",
+     "kind": "text",
+     "label": "(63) Tiền thuế"
+    },
+    {
+     "id": "CongDan__fsTongCongTienThanhToan",
+     "kind": "text",
+     "label": "(64) Tổng cộng tiền thanh toán"
+    },
+    {
+     "id": "CongDan__fsTongCongTienThanhToanBangChu",
+     "kind": "text",
+     "label": "(65) Tổng tiền thanh toán bằng chữ",
+     "wide": true
+    },
+    {
+     "id": "CongDan__fsHDDTNgayCap",
+     "kind": "date",
+     "label": "(66) Ngày lập hóa đơn"
+    }
+   ]
+  },
+  {
+   "title": "Phần V. Thông tin xe",
+   "note": "Ô tô / xe máy, nguồn gốc xe, Mã nhóm / Mã loại phương tiện: cổng khoá theo thủ tục hoặc lấy từ CSDL Cục Đăng kiểm.",
+   "fields": [
+    {
+     "id": "CongDan__fsSoSeriKTCLXX",
+     "kind": "text",
+     "label": "(67) Số seri Phiếu KTCLXX"
+    },
+    {
+     "id": "CongDan__fsTenDonViSanXuat",
+     "kind": "text",
+     "label": "(68) Tên đơn vị sản xuất, lắp ráp"
+    },
+    {
+     "id": "CongDan__fsDkNgayXuatXuong",
+     "kind": "date",
+     "label": "(69) Ngày xuất xưởng"
+    },
+    {
+     "id": "CongDan__fsDiaChiDK",
+     "kind": "text",
+     "label": "(70) Địa chỉ đơn vị sản xuất",
+     "wide": true
+    },
+    {
+     "id": "CongDan__fsLoaiXeDK",
+     "kind": "text",
+     "label": "(73) Loại xe"
+    },
+    {
+     "id": "CongDan__fsnhanHieuDK_1",
+     "kind": "text",
+     "label": "(74) Nhãn hiệu"
+    },
+    {
+     "id": "CongDan__fsSoLoaiDK",
+     "kind": "text",
+     "label": "(75) Số loại"
+    },
+    {
+     "id": "CongDan__fsSoMay1DK",
+     "kind": "text",
+     "label": "(76) Số máy 1"
+    },
+    {
+     "id": "CongDan__fsSoMay2DK",
+     "kind": "text",
+     "label": "(77) Số máy 2"
+    },
+    {
+     "id": "CongDan__fsSoKhungDK",
+     "kind": "text",
+     "label": "(78) Số khung"
+    },
+    {
+     "id": "CongDan__fsNamSanXuatDK",
+     "kind": "text",
+     "label": "(79) Năm sản xuất"
+    },
+    {
+     "id": "CongDan__fsDungTichXiLanhDK",
+     "kind": "text",
+     "label": "(80) Dung tích xi lanh (cm3)"
+    },
+    {
+     "id": "CongDan__fsCongSuatDK",
+     "kind": "text",
+     "label": "(81) Công suất (kW)",
+     "note": "Bắt buộc với ô tô"
+    },
+    {
+     "id": "CongDan__fsMauSonDK",
+     "kind": "text",
+     "label": "(82) Màu sơn"
+    },
+    {
+     "id": "CongDan__fsTrongLuongBanThanDK",
+     "kind": "text",
+     "label": "(83) Khối lượng bản thân (kg)"
+    },
+    {
+     "id": "CongDan__fsSoChoNgoiDK",
+     "kind": "text",
+     "label": "(84) Số chỗ ngồi"
+    },
+    {
+     "id": "CongDan__fsSoChoDungDK",
+     "kind": "text",
+     "label": "(85) Số chỗ đứng"
+    },
+    {
+     "id": "CongDan__fsSoChoNamDK",
+     "kind": "text",
+     "label": "(86) Số chỗ nằm"
+    },
+    {
+     "id": "CongDan__fsKichCoLopDK",
+     "kind": "text",
+     "label": "(87) Kích cỡ lốp"
+    },
+    {
+     "id": "CongDan__fsTrongTaiDK",
+     "kind": "text",
+     "label": "(88) Trọng tải (kg)"
+    },
+    {
+     "id": "CongDan__fsTrongLuongKeoTheoDK",
+     "kind": "text",
+     "label": "(89) Khối lượng kéo theo"
+    },
+    {
+     "id": "CongDan__fsKichThuocThungDK",
+     "kind": "text",
+     "label": "(90) Kích thước thùng"
+    },
+    {
+     "id": "CongDan__fsKichThuocBaoDK",
+     "kind": "text",
+     "label": "(91) Kích thước bao"
+    },
+    {
+     "id": "CongDan__fsTrongLuongToanBoDK",
+     "kind": "text",
+     "label": "(92) Khối lượng toàn bộ"
+    },
+    {
+     "id": "CongDan__fsChieuDaiCoSoDK",
+     "kind": "text",
+     "label": "(93) Chiều dài cơ sở"
+    },
+    {
+     "id": "CongDan__fsNuocSanXuatDK",
+     "kind": "text",
+     "label": "(94) Nước sản xuất"
+    },
+    {
+     "id": "CongDan__fsLoaiNhienLieuDK",
+     "kind": "text",
+     "label": "(95) Loại nhiên liệu"
+    }
+   ]
+  },
+  {
+   "title": "Phần VII. Hình thức nhận kết quả",
+   "fields": [
+    {
+     "id": "CongDan__fsHinhThucNhanKQ",
+     "kind": "select",
+     "label": "(100) Hình thức nhận kết quả",
+     "required": true,
+     "options": [
+      "Đến cơ quan giải quyết để nhận kết quả",
+      "Gửi hồ sơ đến địa chỉ của tôi",
+      "Nhận kết quả qua mạng",
+      "Qua bưu điện, tại nhà"
+     ],
+     "wide": true
+    },
+    {
+     "id": "CongDan__fsTenNguoiNhanKQ",
+     "kind": "text",
+     "label": "(101) Tên người nhận"
+    },
+    {
+     "id": "CongDan__fsSoDienThoaiNguoiNhan",
+     "kind": "text",
+     "label": "(102) Số điện thoại người nhận"
+    },
+    {
+     "id": "CongDan__fsTinhNhanKQ",
+     "kind": "select",
+     "label": "(103) Tỉnh/Thành phố",
+     "options": "@provinces"
+    },
+    {
+     "id": "CongDan__fsXaNhanKQ",
+     "kind": "select",
+     "label": "(105) Xã/Phường/Đặc khu",
+     "required": true,
+     "options": "@wards:CongDan__fsTinhNhanKQ"
+    },
+    {
+     "id": "CongDan__fsDiaChiChiTietNhanKQ",
+     "kind": "text",
+     "label": "(106) Địa chỉ chi tiết",
+     "wide": true
+    }
+   ]
+  }
+ ]
+}

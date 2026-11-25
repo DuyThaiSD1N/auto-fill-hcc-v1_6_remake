@@ -1,0 +1,246 @@
+{
+ "source": "dichvucong.dancuquocgia.gov.vn/portal/p/home/dang-ky-thuong-tru.html?TT=THUONGTRU_01",
+ "title": "Đăng ký thường trú",
+ "capturedAt": "2026-11-25T00:00:00+07:00",
+ "inferred": true,
+ "note": "Mẫu SUY từ id ô trong BE (schema.py theo file mapping) + nhãn option đã crawl; nhãn chữ của ô và thứ tự khối là suy, CHƯA chụp trang thật. Chụp bằng monitor-fe/scripts/capture-bca-form.js.",
+ "code": "1.004222",
+ "sections": [
+  {
+   "title": "Cơ quan thực hiện",
+   "note": "Chọn cơ quan xong cổng mới nạp Thủ tục + Trường hợp + nhóm giấy tờ.",
+   "fields": [
+    {
+     "id": "cboRECEIVE_ADDR_CITY_ID",
+     "kind": "select",
+     "label": "Tỉnh/Thành phố",
+     "required": true,
+     "options": "@provinces"
+    },
+    {
+     "id": "cboRECEIVE_ADDR_VILLAGE_ID",
+     "kind": "select",
+     "label": "Xã/Phường/Đặc khu",
+     "required": true,
+     "options": "@wards:cboRECEIVE_ADDR_CITY_ID"
+    }
+   ]
+  },
+  {
+   "title": "Thông tin thủ tục",
+   "note": "Ô \"Thủ tục\" cổng tự chọn theo TT= trên URL rồi khoá.",
+   "fields": [
+    {
+     "id": "cboBPROC_CASE_CODE",
+     "kind": "select",
+     "label": "Trường hợp",
+     "required": true,
+     "options": [
+      "Đăng ký thường trú cả hộ",
+      "Đăng ký thường trú nhân khẩu",
+      "Đăng ký thường trú lần đầu với trẻ em mới sinh, công dân chưa từng đăng ký thường trú"
+     ],
+     "wide": true
+    },
+    {
+     "id": "radIsHouseHold",
+     "kind": "radio",
+     "label": "Hình thức",
+     "required": true,
+     "options": [
+      "Đăng ký thường trú lập hộ mới",
+      "Đăng ký thường trú vào hộ đã có"
+     ],
+     "wide": true,
+     "note": "Trường hợp \"lần đầu\" cổng ép vào hộ đã có và khoá radio"
+    }
+   ]
+  },
+  {
+   "title": "Thông tin người đề nghị",
+   "note": "Cổng có thể đổ sẵn theo tài khoản VNeID; đổi Trường hợp là cổng xoá khối này, đổi Định dạng là cổng xoá ô ngày sinh.",
+   "fields": [
+    {
+     "id": "txtFULLNAME",
+     "kind": "text",
+     "label": "Họ, chữ đệm và tên",
+     "required": true
+    },
+    {
+     "id": "cboFORMAT_DATE",
+     "kind": "select",
+     "label": "Định dạng ngày sinh",
+     "options": [
+      "Ngày tháng năm",
+      "Tháng năm",
+      "Năm"
+     ]
+    },
+    {
+     "id": "txtBIRTH_DATE",
+     "kind": "date",
+     "label": "Ngày sinh",
+     "required": true,
+     "partialDate": true
+    },
+    {
+     "id": "cboGENDER_ID",
+     "kind": "select",
+     "label": "Giới tính",
+     "required": true,
+     "options": [
+      "Nam",
+      "Nữ"
+     ]
+    },
+    {
+     "id": "txtID_CARD_NUMBER",
+     "kind": "text",
+     "label": "Số định danh cá nhân",
+     "required": true
+    },
+    {
+     "id": "txtPHONE_NUMBER",
+     "kind": "text",
+     "label": "Số điện thoại",
+     "portalMayFill": true
+    },
+    {
+     "id": "txtEMAIL",
+     "kind": "text",
+     "label": "Email",
+     "portalMayFill": true
+    }
+   ]
+  },
+  {
+   "title": "Nơi đề nghị đăng ký thường trú",
+   "note": "Tỉnh/Xã cổng chép từ Cơ quan thực hiện; gõ Địa chỉ thì cổng ghi đè Nội dung đề nghị (nên Nội dung điền sau).",
+   "fields": [
+    {
+     "id": "txtSUGGEST_DETAIL_ADDR",
+     "kind": "text",
+     "label": "Địa chỉ (dưới cấp xã)",
+     "required": true,
+     "wide": true
+    },
+    {
+     "id": "txtCHANGED_CONTENT_NOTE",
+     "kind": "text",
+     "label": "Nội dung đề nghị",
+     "wide": true
+    }
+   ]
+  },
+  {
+   "title": "Thông tin chủ hộ",
+   "fields": [
+    {
+     "id": "txtHH_HEAD_FULLNAME",
+     "kind": "text",
+     "label": "Họ, chữ đệm và tên chủ hộ",
+     "required": true,
+     "lockedWhen": {
+      "field": "radIsHouseHold",
+      "is": [
+       "Đăng ký thường trú lập hộ mới"
+      ],
+      "note": "Lập hộ mới: cổng tự đặt Chủ hộ, chép người đề nghị rồi khoá"
+     },
+     "showWhen": {
+      "field": "radIsHouseHold",
+      "is": [
+       "Đăng ký thường trú lập hộ mới",
+       "Đăng ký thường trú vào hộ đã có"
+      ]
+     }
+    },
+    {
+     "id": "cboRELATIONSHIP_WITH_HHHEAD_ID",
+     "kind": "select",
+     "label": "Quan hệ với chủ hộ",
+     "required": true,
+     "note": "Chưa có danh mục quan hệ của cổng",
+     "lockedWhen": {
+      "field": "radIsHouseHold",
+      "is": [
+       "Đăng ký thường trú lập hộ mới"
+      ],
+      "note": "Lập hộ mới: cổng tự đặt Chủ hộ, chép người đề nghị rồi khoá"
+     },
+     "showWhen": {
+      "field": "radIsHouseHold",
+      "is": [
+       "Đăng ký thường trú lập hộ mới",
+       "Đăng ký thường trú vào hộ đã có"
+      ]
+     }
+    },
+    {
+     "id": "txtID_CARD_NUMBER_HHEAD",
+     "kind": "text",
+     "label": "Số định danh cá nhân của chủ hộ",
+     "required": true,
+     "lockedWhen": {
+      "field": "radIsHouseHold",
+      "is": [
+       "Đăng ký thường trú lập hộ mới"
+      ],
+      "note": "Lập hộ mới: cổng tự đặt Chủ hộ, chép người đề nghị rồi khoá"
+     },
+     "showWhen": {
+      "field": "radIsHouseHold",
+      "is": [
+       "Đăng ký thường trú lập hộ mới",
+       "Đăng ký thường trú vào hộ đã có"
+      ]
+     }
+    }
+   ],
+   "note": "Khối mở sau khi chọn Hình thức."
+  },
+  {
+   "title": "Những thành viên trong hộ gia đình cùng thay đổi",
+   "fields": [],
+   "table": {
+    "id": "tblNguoi_CUNGTD",
+    "columns": [
+     {
+      "prefix": "txtFULLNAME_CUNGTD",
+      "label": "Họ, chữ đệm và tên",
+      "kind": "text"
+     },
+     {
+      "prefix": "txtDOB_CUNGTD",
+      "label": "Ngày sinh",
+      "kind": "text"
+     },
+     {
+      "prefix": "cboGENDER_CUNGTD",
+      "label": "Giới tính",
+      "kind": "select",
+      "options": [
+       "Nam",
+       "Nữ"
+      ]
+     },
+     {
+      "prefix": "txtIDENTIFIER_NOCARD_NUMBER_CUNGTD",
+      "label": "Số định danh cá nhân",
+      "kind": "text"
+     },
+     {
+      "prefix": "cboRELATIONSHIP_CHUHO_CUNGTD",
+      "label": "Quan hệ với chủ hộ",
+      "kind": "select"
+     }
+    ]
+   }
+  },
+  {
+   "title": "Nhận thông báo / kết quả",
+   "note": "Để mặc định của cổng — BE không điền.",
+   "fields": []
+  }
+ ]
+}

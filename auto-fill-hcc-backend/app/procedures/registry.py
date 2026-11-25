@@ -555,6 +555,8 @@ from app.pipelines.mai_tang_dan_cong.process import run as mai_tang_dan_cong_pro
 from app.pipelines.mai_tang_dan_cong.attach import plan as mai_tang_dan_cong_attach
 from app.pipelines.trich_luc_dvc_moi.attach import plan as trich_luc_dvc_moi_attach
 from app.pipelines.trich_luc_dvc_moi.process import run as trich_luc_dvc_moi_process
+from app.pipelines.trich_luc.attach import plan as trich_luc_attach
+from app.pipelines.trich_luc.process import run as trich_luc_process
 from app.pipelines.cai_chinh_dvc_moi.attach import plan as cai_chinh_dvc_moi_attach
 from app.pipelines.cai_chinh_dvc_moi.process import run as cai_chinh_dvc_moi_process
 from app.pipelines.khai_sinh_dvc_moi.attach import plan as khai_sinh_dvc_moi_attach
@@ -565,6 +567,8 @@ from app.pipelines.khai_sinh_nuoc_ngoai.attach import plan as khai_sinh_nuoc_ngo
 from app.pipelines.khai_sinh_nuoc_ngoai.process import run as khai_sinh_nuoc_ngoai_process
 from app.pipelines.xac_nhan_tthn_dvc_moi.attach import plan as xac_nhan_tthn_dvc_moi_attach
 from app.pipelines.xac_nhan_tthn_dvc_moi.process import run as xac_nhan_tthn_dvc_moi_process
+from app.pipelines.xac_nhan_tthn.attach import plan as xac_nhan_tthn_attach
+from app.pipelines.xac_nhan_tthn.process import run as xac_nhan_tthn_process
 from app.pipelines.xac_nhan_thong_tin_ho_tich.attach import plan as xac_nhan_thong_tin_ho_tich_attach
 from app.pipelines.xac_nhan_thong_tin_ho_tich.process import run as xac_nhan_thong_tin_ho_tich_process
 from app.pipelines.thi_tuyen_cong_chuc.attach import plan as thi_tuyen_cong_chuc_attach
@@ -1604,6 +1608,38 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "trich-luc-ks-eform",
+        # Form CŨ của cùng thủ tục 2.000635: eForm Bộ Tư pháp dichvucongnganhtuphap.moj.gov.vn/nop-ho-so/<id>?maThuTuc=
+        # 2.000635 (ô HoVaTenC/NDK_HoVaTen/HoSo_TenGiayTo...). Một số xã (vd Xuân Hương, Lâm Đồng) vẫn nộp trên form
+        # này nên khôi phục cho Auto Fill (KHÔNG đưa lên trợ lý), dùng lại nguyên pipeline cũ trich_luc (entry cũ đã
+        # comment ở trên). urlScope giữ đúng host moj; entry gốc (Cổng DVC quốc gia mới) bị urlScope
+        # ://dichvucong.gov.vn/nop-ho-so chặn nên hai entry không tranh nhau.
+        "detect": {
+            "urlIncludes": ["maThuTuc=2.000635"],
+            "urlScope": ["dichvucongnganhtuphap.moj.gov.vn"],
+        },
+        "label": "Cấp bản sao Trích lục hộ tịch, bản sao Giấy khai sinh (eForm Bộ Tư pháp - form cũ)",
+        # Form khác của CÙNG thủ tục: popup (sameProcedureFamily) đổi sang key này mà không xoá giấy tờ đã tải lên.
+        "formVariantOf": "trich-luc-ks",
+        # Mục I người yêu cầu cổng đổ sẵn từ VNeID (HoVaTenC/SoDinhDanhC) → mốc tài khoản để mapper biết bản thân hay
+        # nộp thay (quy tắc hai CCCD).
+        "collectFormContext": True,
+        # Chế độ agent: không gắn role, BE tự suy luận từ text OCR.
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        # Client cũ hoặc không gửi option luôn giữ nguyên file; chỉ boolean True mới tách theo trang.
+        "supportsSplitDocuments": True,
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. CCCD của người yêu cầu.\n"
+            "2. Giấy tờ hộ tịch cần cấp bản sao: giấy khai sinh, giấy đăng ký kết hôn hoặc trích lục khai tử.\n"
+            "3. Nếu có: văn bản ủy quyền hoặc giấy tờ chứng minh cư trú."
+        ),
+    },
+    {
         "key": "thay-doi-cai-chinh-ho-tich",
         "collectFormContext": True,
         # Cổng DVC quốc gia bản mới (/nop-ho-so, React + SurveyJS): trang không in mã TTHC → khóa domain + tiêu đề
@@ -2025,6 +2061,38 @@ PROCEDURES: list[dict] = [
             "Thông tin người nộp do cổng điền sẵn từ VNeID; Kính gửi, 'Tại' theo tài khoản trợ lý.\n"
             "Bước đính kèm: giấy XNTTHN đã cấp vào dòng 1, bản án ly hôn / giấy chứng tử vào dòng 2, văn bản ủy quyền "
             "dòng 3; giấy tờ khác (tờ khai, CCCD, giấy kết hôn) đính chung dòng 2."
+        ),
+    },
+    {
+        "key": "xac-nhan-tinh-trang-hon-nhan-eform",
+        # Form CŨ của cùng thủ tục 1.004873: eForm Bộ Tư pháp dichvucongnganhtuphap.moj.gov.vn/nop-ho-so/<id>?maThuTuc=
+        # 1.004873 ("MẪU ĐIỆN TỬ TƯƠNG TÁC YÊU CẦU CẤP GIẤY XÁC NHẬN TÌNH TRẠNG HÔN NHÂN", ô HoVaTenC/HoVaTenC1...).
+        # Một số xã (vd Xuân Hương, Lâm Đồng) vẫn nộp trên form này nên khôi phục cho Auto Fill (KHÔNG đưa lên trợ lý),
+        # dùng lại nguyên pipeline cũ xac_nhan_tthn. urlScope giữ đúng host moj; entry gốc (Cổng DVC quốc gia mới)
+        # bị urlScope //dichvucong.gov.vn/nop-ho-so chặn nên hai entry không tranh nhau.
+        "detect": {
+            "urlIncludes": ["maThuTuc=1.004873"],
+            "urlScope": ["dichvucongnganhtuphap.moj.gov.vn"],
+        },
+        "label": "Thủ tục cấp Giấy xác nhận tình trạng hôn nhân (eForm Bộ Tư pháp - form cũ)",
+        # Form khác của CÙNG thủ tục: popup (sameProcedureFamily) đổi sang key này mà không xoá giấy tờ đã tải lên.
+        "formVariantOf": "xac-nhan-tinh-trang-hon-nhan",
+        # Mục I người yêu cầu cổng đổ sẵn từ VNeID (HoVaTenC/SoDinhDanhC) → mốc tài khoản để mapper biết bản thân hay
+        # nộp thay.
+        "collectFormContext": True,
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        # Client cũ không có option sẽ giữ nguyên từng file; chỉ boolean True mới cho phép tách trang.
+        "supportsSplitDocuments": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. CCCD của cá nhân yêu cầu xác nhận tình trạng hôn nhân.\n"
+            "2. Nếu có: tờ khai, bản án/quyết định ly hôn, giấy chứng tử của vợ/chồng, giấy xác nhận tình trạng hôn "
+            "nhân đã cấp, văn bản ủy quyền.\n"
+            "Mặc định người yêu cầu là bản thân; không cần chọn trước vai trò giấy tờ.\n"
+            "Bước 3: hệ thống đính kèm CCCD hoặc giấy tờ điều kiện vào thành phần hồ sơ phù hợp."
         ),
     },
     {
@@ -9160,6 +9228,7 @@ PROCEDURES: list[dict] = [
         # Mã TTHC 2.000655, nộp tại SỞ Y tế (ke_khai_links đặt selectSo). Form.io trên hệ thống TTHC Bộ Y tế,
         # engine fillFormStandard dom-* + attach attp-row (bảng 1 dòng Văn bản thông báo). Phần I chỉ bổ sung
         # khi có CCCD khớp tài khoản đăng nhập (extension gửi formContext); Phần II theo tờ Thông báo.
+        # Hỗ trợ cài đặt "Lấy người nộp theo tờ khai" (options.submitterMode, xem process/mapper.py).
         "detect": {
             "textIncludes": [
                 "công bố cơ sở đủ điều kiện tiêm chủng",
@@ -9183,6 +9252,8 @@ PROCEDURES: list[dict] = [
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
             "Extension bỏ tích 'Người nộp hồ sơ là chủ hồ sơ' và điền chủ hồ sơ theo Thông báo (người đứng "
             "đầu, địa chỉ, điện thoại, email của cơ sở).\n"
+            "Bật cài đặt 'Lấy người nộp theo tờ khai' thì mục Thông tin người nộp hồ sơ cũng ghi theo người đứng đầu "
+            "cơ sở (mở khoá họ tên, số CCCD).\n"
             "Bước đính kèm: Thông báo (kèm Tờ trình/Danh sách nếu có) được tick vào dòng 'Văn bản thông báo đủ "
             "điều kiện tiêm chủng', loại '1 Bản chính' (CCCD chỉ dùng ở bước thông tin)."
         ),
@@ -12284,6 +12355,7 @@ _PIPELINE = {
     "dang-ky-nhan-cha-me-con": nhan_cha_me_con_process,
     "dang-ky-nuoi-con-nuoi-trong-nuoc": dang_ky_nuoi_con_nuoi_trong_nuoc_process,
     "trich-luc-ks": trich_luc_dvc_moi_process,
+    "trich-luc-ks-eform": trich_luc_process,
     "khai-tu": khai_tu_dvcqg_process,
     "khai-tu-lien-thong": khai_tu_lien_thong_process,
     "khai-tu-dang-ky-lai": khai_tu_dang_ky_lai_process,
@@ -12291,6 +12363,7 @@ _PIPELINE = {
     "khai-tu-luu-dong": khai_tu_luu_dong_process,
     "thay-doi-cai-chinh-ho-tich": cai_chinh_dvc_moi_process,
     "xac-nhan-tinh-trang-hon-nhan": xac_nhan_tthn_dvc_moi_process,
+    "xac-nhan-tinh-trang-hon-nhan-eform": xac_nhan_tthn_process,
     "xac-nhan-thong-tin-ho-tich": xac_nhan_thong_tin_ho_tich_process,
     "dinh-chinh-sai-sot": dinh_chinh_sai_sot_process,
     "dinh-chinh-sai-sot-bac-ninh": dinh_chinh_sai_sot_bac_ninh_process,
@@ -12821,6 +12894,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-nhan-cha-me-con": nhan_cha_me_con_attach,
     "dang-ky-nuoi-con-nuoi-trong-nuoc": dang_ky_nuoi_con_nuoi_trong_nuoc_attach,
     "trich-luc-ks": trich_luc_dvc_moi_attach,
+    "trich-luc-ks-eform": trich_luc_attach,
     "khai-tu": khai_tu_dvcqg_attach,
     "khai-tu-lien-thong": khai_tu_lien_thong_attach,
     "khai-tu-dang-ky-lai": khai_tu_dang_ky_lai_attach,
@@ -12830,6 +12904,7 @@ _ATTACH_PIPELINE = {
     "xac-dinh-muc-do-khuyet-tat": khuyet_tat_attach,
     "doi-cap-lai-giay-xac-nhan-khuyet-tat": doi_cap_lai_giay_xac_nhan_khuyet_tat_attach,
     "xac-nhan-tinh-trang-hon-nhan": xac_nhan_tthn_dvc_moi_attach,
+    "xac-nhan-tinh-trang-hon-nhan-eform": xac_nhan_tthn_attach,
     "xac-nhan-thong-tin-ho-tich": xac_nhan_thong_tin_ho_tich_attach,
     "xet-tuyen-vien-chuc": xet_tuyen_vien_chuc_attach,
     "xet-tuyen-vien-chuc-lai-chau": xet_tuyen_vien_chuc_lai_chau_attach,

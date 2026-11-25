@@ -30,7 +30,9 @@ FIELDS: list[dict] = [
      "desc": "Loại giấy tờ tùy thân CỦA CHÍNH người được cấp: Căn cước, Căn cước công dân, CMND, Hộ chiếu..."},
     {"name": "NguoiDuocCap_SoGiayTo", "desc": "Số giấy tờ tùy thân CỦA CHÍNH người được cấp. Thẻ căn cước: lấy số in ở "
      "mặt trước thẻ (dòng \"Số / No.\"), KHÔNG lấy từ dòng mã máy đọc ở mặt sau thẻ (dòng bắt đầu bằng \"IDVNM\")."},
-    {"name": "NguoiDuocCap_NgayCap", "desc": "Ngày cấp giấy tờ tùy thân của người được cấp, dd/mm/yyyy."},
+    {"name": "NguoiDuocCap_NgayCap", "desc": "Ngày cấp giấy tờ tùy thân của người được cấp, dd/mm/yyyy. Thẻ căn cước: "
+     "ngày cấp in ở MẶT SAU, dòng \"Ngày, tháng, năm / Date, month, year\" (hoặc \"Date of issue\") cạnh chữ ký Cục "
+     "trưởng / Bộ Công an; mặt sau có MRZ mang đúng số của người được cấp thì là thẻ của họ."},
     {"name": "NguoiDuocCap_NoiCap",
      "desc": "Cơ quan cấp giấy tờ tùy thân của người được cấp, CHÉP ĐÚNG chữ trên giấy. Không ghi → bỏ."},
     {"name": "NguoiDuocCap_NoiCuTru",

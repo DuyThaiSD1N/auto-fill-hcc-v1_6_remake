@@ -8,6 +8,7 @@ import re
 import unicodedata
 
 from app.pipelines._shared.area_remap import accent_only_ward, is_current_area, remap_area
+from app.pipelines._shared.cccd import mrz_records
 from app.pipelines._shared.compact_agent.issuer import (
     default_issuer,
     id_doc_type,
@@ -111,6 +112,33 @@ def _full_date(value) -> str:
         return ""
     day, month, year = match.groups()
     return f"{int(day):02d}/{int(month):02d}/{year}"
+
+
+# Mặt sau thẻ căn cước: ngày cấp in ở dòng "Ngày, tháng, năm / Date, month, year" (CCCD gắn chip) hoặc "Ngày, tháng,
+# năm cấp / Date of issue" (căn cước 2024), không có chữ "ngày cấp" nên LLM hay bỏ sót. Ngày có thể rơi xuống dòng
+# dưới nhãn. Bỏ dòng ngày sinh / hết hạn.
+_OCR_FILE_SPLIT = re.compile(r"^=====.*=====\s*$", re.MULTILINE)
+_CARD_ISSUE_LABEL = ("ngay, thang, nam", "ngay thang nam", "ngay cap", "date of issue", "date, month, year")
+_CARD_ISSUE_SKIP = ("sinh", "birth", "het han", "expiry", "co gia tri")
+
+
+def _card_back_issue_date(ocr_text, number: str) -> str:
+    """Ngày cấp trên mặt sau thẻ của ĐÚNG người: chỉ đọc tệp có dòng MRZ mang số định danh đó."""
+    if len(number) != 12 or not ocr_text:
+        return ""
+    for segment in _OCR_FILE_SPLIT.split(unicodedata.normalize("NFC", str(ocr_text))):
+        if not any(record.get("id") == number for record in mrz_records(segment)):
+            continue
+        lines = segment.splitlines()
+        for index, line in enumerate(lines):
+            folded = _fold(line)
+            if not any(label in folded for label in _CARD_ISSUE_LABEL) or any(s in folded for s in _CARD_ISSUE_SKIP):
+                continue
+            for candidate in (line, *lines[index + 1:index + 2]):
+                date = _full_date(candidate)
+                if date:
+                    return date
+    return ""
 
 
 def _iso(ddmmyyyy: str) -> str:
@@ -515,7 +543,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("citizenField20", nationality, code="VN" if _fold(nationality) == "viet nam" else None,
             default=not values.get("NguoiDuocCap_QuocTich"))
     if number:
-        issue_date = _full_date(values.get("NguoiDuocCap_NgayCap"))
+        # LLM bỏ sót ngày cấp ở mặt sau thẻ → đọc lại từ đúng mặt sau có MRZ mang số đó; có ngày thì cơ quan cấp
+        # mặc định theo ngày ở dưới cũng có.
+        issue_date = _full_date(values.get("NguoiDuocCap_NgayCap")) or _card_back_issue_date(
+            options.get("_ocr_text"), number)
         # Mặc định cơ quan cấp theo ngày chỉ đúng với thẻ căn cước 12 số.
         issuer = normalize_issuer(values.get("NguoiDuocCap_NoiCap")) or (
             default_issuer(issue_date) if len(number) == 12 and issue_date else "")

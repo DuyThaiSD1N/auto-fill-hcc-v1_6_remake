@@ -1,0 +1,191 @@
+{
+ "source": "dichvucong.bocongan.gov.vn — trang kê khai sau bước chọn trường hợp hồ sơ (ma-thu-tuc-public=40852)",
+ "title": "Đăng ký mẫu con dấu mới",
+ "capturedAt": "2026-11-25T00:00:00+07:00",
+ "inferred": true,
+ "note": "Mẫu SUY từ bảng ô của BE (schema.py theo file Mapping_Dang_ky_mau_con_dau_moi, 24 ô): số mục (n) và name ô đúng mapping, nhãn chữ lấy theo chú thích mapping; ô (5) chỉ có 7/14 option BE được phép chọn; CHƯA chụp trang thật. Chụp bằng monitor-fe/scripts/capture-bca-form.js.",
+ "code": "2.001428",
+ "sections": [
+  {
+   "title": "Cơ quan tiếp nhận",
+   "fields": [
+    {
+     "id": "CongDan__fs_BCANoiNopHS",
+     "kind": "select",
+     "label": "(1) Chọn nơi tiếp nhận hồ sơ",
+     "required": true,
+     "wide": true,
+     "note": "Danh sách chỉ có cơ quan đã chọn ở bước chọn trường hợp"
+    }
+   ]
+  },
+  {
+   "title": "Thông tin cơ quan, tổ chức đề nghị đăng ký mẫu con dấu",
+   "fields": [
+    {
+     "id": "CongDan__fsLoaiHinhToChuc",
+     "kind": "select",
+     "label": "(2) Loại hình cơ quan/tổ chức",
+     "required": true,
+     "options": [
+      "Cơ quan tổ chức có mã định danh",
+      "Cơ quan tổ chức khác"
+     ]
+    },
+    {
+     "id": "CongDan__fs_BCAMaDinhDanh",
+     "kind": "text",
+     "label": "(3) Mã định danh điện tử cơ quan tổ chức",
+     "showWhen": {
+      "field": "CongDan__fsLoaiHinhToChuc",
+      "is": [
+       "Cơ quan tổ chức có mã định danh"
+      ]
+     }
+    },
+    {
+     "id": "CongDan__fs_BCATenCQDangKy",
+     "kind": "text",
+     "label": "(4) Tên cơ quan, tổ chức đề nghị đăng ký mẫu con dấu",
+     "required": true,
+     "wide": true
+    },
+    {
+     "id": "CongDan__fs_BCATruongHop",
+     "kind": "select",
+     "label": "(5) Loại hình Cơ quan/Tổ chức",
+     "required": true,
+     "wide": true,
+     "options": [
+      "Tổ chức Đảng",
+      "Cơ quan có chức năng quản lý nhà nước, cơ quan chuyên môn",
+      "Tổ chức sự nghiệp",
+      "Mặt trận Tổ quốc Việt Nam, tổ chức chính trị - xã hội, tổ chức chính trị xã hội - nghề nghiệp, tổ chức xã hội, tổ chức xã hội - nghề nghiệp, quỹ xã hội, quỹ từ thiện, tổ chức phi chính phủ",
+      "Doanh nghiệp, hợp tác xã, liên hiệp hợp tác xã; chi nhánh, văn phòng đại diện của doanh nghiệp, hợp tác xã, liên hiệp hợp tác xã",
+      "Tổ chức tôn giáo",
+      "Tổ chức khác được thành lập, hoạt động theo quy định của pháp luật"
+     ],
+     "note": "Cổng có 14 option, nạp lại sau khi chọn (1)"
+    },
+    {
+     "id": "CongDan__fs_BCADiaChiCQDangKy",
+     "kind": "text",
+     "label": "(6) Địa chỉ",
+     "required": true,
+     "wide": true
+    },
+    {
+     "id": "CongDan__fs_BCAQueQuanMaTinh",
+     "kind": "select",
+     "label": "(7) Tỉnh/thành phố",
+     "required": true,
+     "options": "@provinces"
+    },
+    {
+     "id": "CongDan__fs_BCAQueQuanMaPX",
+     "kind": "select",
+     "label": "(8) Phường/xã/thị trấn",
+     "required": true,
+     "options": "@wards:CongDan__fs_BCAQueQuanMaTinh"
+    }
+   ]
+  },
+  {
+   "title": "Thông tin người nộp hồ sơ",
+   "note": "Người được giới thiệu nộp hồ sơ (mục 6 văn bản đề nghị).",
+   "fields": [
+    {
+     "id": "CongDan_tenCongDan",
+     "kind": "text",
+     "label": "(9) Họ và tên",
+     "required": true,
+     "note": "Cổng đổ sẵn tên chủ tài khoản; BE điền theo giấy"
+    },
+    {
+     "id": "CongDan_diDong",
+     "kind": "text",
+     "label": "(10) Số điện thoại liên hệ",
+     "required": true,
+     "portalMayFill": true
+    },
+    {
+     "id": "CongDan_email",
+     "kind": "text",
+     "label": "(11) Email",
+     "portalMayFill": true
+    },
+    {
+     "id": "CongDan_soCmnd",
+     "kind": "text",
+     "label": "(12) Số CCCD/CMND/Hộ chiếu",
+     "required": true
+    },
+    {
+     "id": "CongDan__fs_BCANgayCapCMND",
+     "kind": "date",
+     "label": "(13) Ngày cấp",
+     "required": true
+    },
+    {
+     "id": "CongDan__fs_BCANoiCapCMND",
+     "kind": "text",
+     "label": "(14) Nơi cấp",
+     "required": true
+    },
+    {
+     "id": "CongDan__fsNgaySinh",
+     "kind": "date",
+     "label": "(15) Ngày sinh",
+     "required": true
+    },
+    {
+     "id": "CongDan__fsDangKyDauGioiTinh",
+     "kind": "select",
+     "label": "(16) Giới tính",
+     "required": true,
+     "options": [
+      "Nam",
+      "Nữ"
+     ]
+    }
+   ]
+  },
+  {
+   "title": "Thông tin con dấu",
+   "note": "(18) Tên cơ sở sản xuất con dấu: danh mục cổng, giấy tờ không có — người nộp chọn; (19) Thông tin liên hệ cơ sở cổng tự điền.",
+   "fields": [
+    {
+     "id": "CongDan__fs_BCALoaiHinhConDau",
+     "kind": "select",
+     "label": "(17) Loại hình con dấu",
+     "required": true,
+     "wide": true,
+     "options": [
+      "Con dấu của các cơ quan, tổ chức khác.",
+      "Con dấu của các Đảng ủy và các cơ quan Đảng trực thuộc Trung ương",
+      "Con dấu của Ban chấp hành Trung ương"
+     ]
+    },
+    {
+     "id": "CongDan__fs_BCANoiDungYeuCauGQ",
+     "kind": "text",
+     "label": "(20) Nội dung yêu cầu giải quyết",
+     "required": true,
+     "wide": true
+    },
+    {
+     "id": "CongDan__fs_BCATenGiayToTaiLieu",
+     "kind": "text",
+     "label": "(21) Các giấy tờ tài liệu có trong hồ sơ",
+     "required": true,
+     "wide": true
+    }
+   ]
+  },
+  {
+   "title": "Nhận kết quả",
+   "note": "(22) Hình thức nhận kết quả, (23) Địa chỉ nhận kết quả: giấy tờ không ghi — người nộp tự chọn; (24) Phí bưu chính cổng tự điền.",
+   "fields": []
+  }
+ ]
+}

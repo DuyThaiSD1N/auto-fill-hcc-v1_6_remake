@@ -192,6 +192,11 @@ Chỉ chạy hai cây `tests/unit` và `tests/integration`. Cây `tests/handfree
 Baseline hiện tại có sẵn một số test đỏ không liên quan đến code mới; so số fail trước và sau khi
 sửa thay vì cố đưa về 0.
 
+Baseline ngày 2026-11-25, sau khi khôi phục form cũ eForm Bộ Tư pháp xác nhận TTHN 1.004873
+(`xac-nhan-tinh-trang-hon-nhan-eform` → pipeline cũ `xac_nhan_tthn`, máy local, plugin win_socketpair, có PYTHONUTF8=1):
+`23 failed, 6365 passed, 42 skipped, 13 errors`; khôi phục thêm form cũ trích lục 2.000635 (`trich-luc-ks-eform` → pipeline
+cũ `trich_luc`) cùng ngày: `23 failed, 6368 passed, 42 skipped, 13 errors`. Vẫn đúng 23 đỏ như dòng dưới.
+
 Baseline ngày 2026-11-25, sau khi thêm pipeline 1.115692 cấp GCN phần diện tích còn lại Lào Cai
 (`dang_ky_cap_gcn_phan_dien_tich_con_lai_du_dieu_kien_lao_cai`, máy local, plugin win_socketpair, có PYTHONUTF8=1):
 `23 failed, 6346 passed, 42 skipped, 13 errors`. Vẫn đúng 23 đỏ như dòng dưới; `test_cap_moi_gphn_chuyen_tiep_attach.py::

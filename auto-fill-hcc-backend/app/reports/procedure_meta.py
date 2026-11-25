@@ -28,9 +28,12 @@ _MA_TT_BO_SUNG = {
     "khai-sinh-dang-ky-thuong": "1.001193",
     "khai-sinh-nuoc-ngoai": "2.000528",
     "trich-luc-ks": "2.000635",
+    "trich-luc-ks-eform": "2.000635",
     "khai-tu": "1.000656",
     "thay-doi-cai-chinh-ho-tich": "1.004859",
     "xac-nhan-tinh-trang-hon-nhan": "1.004873",
+    # Form cũ eForm Bộ Tư pháp của cùng thủ tục (URL có maThuTuc nhưng khai sẵn cho chắc).
+    "xac-nhan-tinh-trang-hon-nhan-eform": "1.004873",
     # Biến thể theo tỉnh / theo quy trình không mang mã riêng → mã của thủ tục gốc: cùng tỉnh bỏ hậu tố quy
     # trình (iLis, vbdlis, miền núi hải đảo, cổng mới), hoặc mã quốc gia của đúng tên thủ tục ở ke_khai_links.
     "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang-ilis": "1.012796",
