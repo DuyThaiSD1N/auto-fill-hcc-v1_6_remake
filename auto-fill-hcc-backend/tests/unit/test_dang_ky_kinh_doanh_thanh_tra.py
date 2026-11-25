@@ -178,6 +178,19 @@ def test_ten_ho_chi_khac_dau_voi_luot_doc_anh_thi_dua_toa():
         assert asyncio.run(ten_ho.find(ten_ho.INSPECTOR, case, "")) == []
 
 
+def test_ten_ho_de_xuat_giu_dau_cau_va_khoang_trang_cua_A():
+    """Lượt đọc ảnh chèn / bớt dấu cách quanh dấu gạch: đề xuất chỉ lấy dấu thanh của lượt đọc ảnh, giữ chữ của A."""
+    values = {**VALUES, "HoKinhDoanh_Ten": "QUÁN CƠM-LÂU AN"}
+    docs = [{"name": "don.pdf", "text": DON.replace("QUÁN LÂU AN", "QUÁN CƠM-LÂU AN")}]
+    case = Case(docs, "", values, {"_vision": {"ten_ho": "Quán cơm- Lẩu An"}})
+    found = asyncio.run(ten_ho.find(ten_ho.INSPECTOR, case, ""))
+    assert found and found[0].values == {"HoKinhDoanh_Ten": "QUÁN CƠM-LẨU AN"}
+
+
+def test_luat_ten_ho_noi_toa_nguon_doc_anh_khong_co_nguyen_van_ocr():
+    assert "KHÔNG có nguyên văn trong OCR là đương nhiên" in ten_ho.RULES
+
+
 def test_chep_chu_ho_da_sua_sang_khoi_cung_nguoi():
     before = {"ChuHo_HoTen": "NGUYỄN VẤN AN", "NguoiNop_HoTen": "NGUYỄN VẤN AN", "UyQuyen_NguoiUyQuyen_HoTen": "LÊ C",
               "HoKinhDoanh_Ten": "NGUYỄN VẤN AN"}

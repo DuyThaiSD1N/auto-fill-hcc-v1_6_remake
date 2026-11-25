@@ -4,7 +4,7 @@ import time
 import pytest
 
 from app.channels.handfree.chat import hkd_tro_ly as hkd
-from app.channels.handfree.chat import pipeline_runner, router
+from app.channels.handfree.chat import flow, pipeline_runner, router, tracing
 from app.channels.handfree.chat import script_vi as vi
 from app.channels.handfree.chat.hkd_tro_ly import hoi_dap, nganh_nghe
 from app.channels.handfree.chat.intents import Intent
@@ -26,9 +26,16 @@ def _no_db(monkeypatch):
     async def no_user(conv, sess):
         return None
     monkeypatch.setattr(pipeline_runner, "_load_owner_user", no_user)
+    traces = []
+
+    async def fake_record(conv, key, proc, files, result, pipe_ms, *a, **k):
+        traces.append({"key": key, "files": files, "fields": result.get("fields"), "page": k.get("fill_page")})
+        return "req_test"
+    monkeypatch.setattr(tracing, "record_process", fake_record)
     # Test luồng khối giả lập cách hiểu một lượt (hoi_dap.interpret); hai lớp agent có test riêng
     # (test_hkd_agents.py) — không để test này gọi LLM thật.
     monkeypatch.setattr(hkd.agents, "ENABLED", False)
+    return traces
 
 
 def _fake_lookup(monkeypatch, rows, chinh="", hoi_lai=""):
@@ -159,6 +166,19 @@ async def test_khong_giay_to_di_tung_khoi_hoi_toi_dau_dien_toi_do(monkeypatch):
     assert not any(f["name"].endswith("FULL_NAMEFld") for f in owner), "không hỏi/bịa nhân thân"
     assert set(conv["hkd"]["skipped"]) == {"email", "fax", "website", "ten_nuoc_ngoai", "ten_viet_tat"}
     assert conv["state"] == "done" and vi.HKD_DONE["md"].split("{")[0] in r.display_md
+
+
+async def test_khong_giay_to_moi_trang_luu_xong_ghi_mot_luot_dien_va_ho_so_duoc_tinh(monkeypatch, _no_db):
+    _fake_lookup(monkeypatch, [("Mở quán phở bò", ["5610"], True, "Bán phở bò")], chinh="5610")
+    _fake_answers(monkeypatch, _ANSWERS)
+    conv = _conv(procedure_key="dang-ky-kinh-doanh")
+    first = await hkd.start_no_docs(conv)
+    assert not flow.dossier_has_real_work(conv) and not _no_db
+    await _drive(conv, first)
+    assert [t["page"] for t in _no_db] == [hkd._label(p) for p in ORDER], "mỗi trang lưu xong là một lượt, mang tên trang"
+    assert all(t["key"] == "dang-ky-kinh-doanh" and t["files"] == [] for t in _no_db)
+    assert all(t["fields"] for t in _no_db), "lượt ghi mang các ô của trang vừa lưu"
+    assert flow.dossier_has_real_work(conv), "cú bấm nộp sau đó được tính như hồ sơ có việc điền"
 
 
 async def test_ho_gia_dinh_co_khoi_thanh_vien(monkeypatch):

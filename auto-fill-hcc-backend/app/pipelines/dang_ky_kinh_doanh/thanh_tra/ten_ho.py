@@ -20,10 +20,15 @@ _NAME_LINE = re.compile(r"(?i)t[eê]n\s*h[oộ]\s*kinh\s*doanh\s*vi[eế]t\s*b[a
 
 RULES = """
 <ten_ho>
-A là tên OCR đọc chữ viết tay; B là tên lượt đọc thẳng ảnh giấy đề nghị đọc được — hai bên CHỈ khác dấu. Chọn B CHỈ KHI một
-chữ của A không mang nghĩa trong tiếng Việt, hoặc lạc nghĩa với cả tên (tên quán / cửa hàng / mặt hàng), còn chữ tương ứng
-của B là từ thông dụng hợp nghĩa với cả tên. Chữ là tên người, thương hiệu, từ nước ngoài, hoặc cả hai cách viết đều hợp
-nghĩa → KHONG_DU_CAN_CU (giữ A).
+A là tên OCR đọc chữ viết tay; B là tên lượt đọc thẳng ảnh giấy đề nghị đọc được — hai bên CHỈ khác dấu ở một vài chữ.
+B lấy từ ẢNH chứ không từ OCR, nên giá trị của B KHÔNG có nguyên văn trong OCR là đương nhiên — điều đó không nghiêng về bên
+nào; dòng chứng cứ là chính dòng tên đó trên giấy (OCR đọc theo cách viết của A).
+Cách xét theo CỤM, không theo từng chữ đứng riêng: ghép chữ khác dấu với chữ liền trước / liền sau, đọc cụm theo cách viết
+của A rồi theo cách viết của B.
+- Cụm của A là tên món, mặt hàng, dịch vụ hay cụm thông dụng hợp với cả tên → "A", dù cụm của B ra sao.
+- Cụm của A không dùng được trong tên (chữ vô nghĩa, hoặc chữ tự nó có nghĩa mà ghép với chữ bên cạnh thì vô nghĩa / lạc
+  nghĩa với cả tên), còn cụm của B là cụm thông dụng hợp với cả tên → "B".
+- Chữ là tên người, thương hiệu, từ nước ngoài, hoặc không chắc → KHONG_DU_CAN_CU (giữ A).
 </ten_ho>
 """
 
@@ -35,6 +40,17 @@ def _bare(text) -> str:
 def _letters(text) -> str:
     """Bỏ dấu, giữ chữ cái: hai cách viết chỉ khác dấu thì trùng nhau."""
     return " ".join(re.findall(r"[0-9a-z]+", fold(text)))
+
+
+def _accented(ours: str, seen: str) -> str:
+    """Tên của A, mỗi chữ lấy dấu theo chữ tương ứng của lượt đọc ảnh — giữ kiểu chữ (thường in hoa), dấu câu và khoảng
+    trắng của A: lượt đọc ảnh hay chèn / bớt dấu cách quanh dấu gạch, dấu phẩy."""
+    words = re.findall(r"[^\W_]+", ours)
+    other = re.findall(r"[^\W_]+", seen)
+    if len(words) != len(other) or any(fold(a) != fold(b) or len(a) != len(b) for a, b in zip(words, other)):
+        return ""
+    marks = iter("".join(y.upper() if x.isupper() else y.lower() for x, y in zip(a, b)) for a, b in zip(words, other))
+    return re.sub(r"[^\W_]+", lambda _: next(marks), ours)
 
 
 def _quote(page_list: list[dict], name: str) -> tuple[str, int]:
@@ -62,8 +78,9 @@ async def find(inspector: Inspector, case: Case, title: str) -> list[Finding]:
     line, doc = _quote(trang.pages(case.documents, case.values), ours)
     if not line:
         return []
-    # Giữ kiểu chữ của A (thường in hoa), chỉ thay dấu theo lượt đọc ảnh.
-    value = seen.upper() if ours.isupper() else seen
+    value = _accented(ours, seen)
+    if not value:
+        return []
     return [Finding(INSPECTOR, UNIT, {FIELD.name: value}, line, doc, "mục 1 tên hộ kinh doanh của giấy đề nghị",
                     "tên hộ kinh doanh", backed=True,
                     evidence=(f'lượt đọc thẳng ảnh giấy đề nghị đọc tên là "{seen}"; OCR đọc "{ours}"; hai cách viết chỉ '

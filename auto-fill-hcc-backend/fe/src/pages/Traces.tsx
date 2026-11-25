@@ -197,7 +197,7 @@ export default function Traces({
                 </td>
                 <td>
                   <span className={`badge ${t.kind === "attach" ? "warn" : "ok"}`}>
-                    {t.kind === "attach" ? "Đính kèm" : "Auto-fill"}
+                    {t.kind === "attach" ? "Đính kèm" : t.fill_page ? `Điền trang ${t.fill_page}` : "Auto-fill"}
                   </span>
                 </td>
                 <td className="num">{t.attachments?.length ?? 0}</td>

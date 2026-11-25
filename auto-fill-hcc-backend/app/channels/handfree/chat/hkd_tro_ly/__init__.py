@@ -1461,6 +1461,9 @@ async def _on_report(conv: dict, payload: dict):
         from app.channels.handfree.chat import flow
         flow._business_attach_commit(conv)
         st["attached"] = int(st.get("attached") or 0) + max(0, int(payload.get("attached") or 0))
+        # Khối danh sách (ngành, thành viên): lượt điền thật là lượt thêm dòng (cổng lưu từng dòng); xác nhận sau đó chỉ
+        # sang khối kế, không báo lại → ghi ở đây cho cả hai loại khối.
+        await _record_page_fill(conv, page)
         if st.pop("fill_only", False):
             st["list_filled"] = True
             return _ask_next(conv)  # đã điền danh sách lên trang → chờ công dân xác nhận lưu
@@ -1470,6 +1473,18 @@ async def _on_report(conv: dict, payload: dict):
     errors = [str(e) for e in payload.get("errors") or [] if e]
     text = _say(vi.HKD_BLOCK_SAVE_FAILED, label=_label(page), error=errors[0] if errors else "cổng chưa nhận")
     return _reply(text, [{"label": vi.HKD_BLOCK_RETRY_LABEL, "send": f"__action:{retry}", "solid": True}])
+
+
+async def _record_page_fill(conv: dict, page: str) -> None:
+    """Lưu khối đi ngoài pipeline đọc giấy nên không tự sinh lượt điền: luồng không giấy tờ trước đây không có lượt nào
+    (Traces/Monitor trống, hồ sơ không vào sổ, cú bấm nộp bị bỏ ở flow.dossier_has_real_work). Mỗi khối cổng nhận lưu
+    là một lượt điền 0 tệp mang tên trang + các ô của khối đó; hồ sơ được đánh dấu đã có việc."""
+    from app.channels.handfree.chat import tracing
+    from app.channels.handfree.procedure_registry import get_procedure
+    key = conv.get("procedure_key") or ""
+    await tracing.record_process(conv, key, get_procedure(key) or {}, [], {"fields": page_fields(conv["hkd"], page)}, 0,
+                                 fill_page=_label(page))
+    conv["dossier_has_activity"] = True
 
 
 def _after_saved(conv: dict, lead: tuple[str, str]):

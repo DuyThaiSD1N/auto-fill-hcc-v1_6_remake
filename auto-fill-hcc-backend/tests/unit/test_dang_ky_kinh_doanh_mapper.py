@@ -356,3 +356,27 @@ def test_o_mo_ta_dong_nganh_do_be_quyet_theo_dia_ban_tai_khoan():
     # Client không tự bật được cho xã khác.
     assert mapper.with_account_process_options({mapper.LINE_DETAIL_OPTION: "skip"}, {"tinh": "Hà Nội"},
                                                 "dang-ky-kinh-doanh") == {}
+
+
+def test_sdt_lech_mot_chu_so_o_mot_muc_thi_theo_cach_ghi_cua_da_so_muc():
+    """Chủ hộ / trụ sở / thuế ghi cùng một số, OCR đọc lệch đúng một chữ số ở một mục → mục đó theo cách ghi mà nhiều mục
+    hơn cùng ghi (kể cả khi mục lệch là chủ hộ). Hoà, hoặc lệch ≥2 chữ số với số đa số → không phân xử theo số mục."""
+    keys = {"dia-chi": "HO_PHONEFld", "chu-ho-kinh-doanh": "PHONEFld", "thong-tin-ve-thue": "REP_RECEIVER_PHONEFld"}
+
+    def phones(chu_ho, tru_so, thue):
+        fields = [{"name": "ChuHo_DienThoai", "value": chu_ho}, {"name": "TruSo_DienThoai", "value": tru_so},
+                  {"name": "Thue_DienThoai", "value": thue}]
+        pages = mapper.enrich_all(fields)
+        return tuple(next((f["value"] for f in pages[page] if f["name"].endswith("$" + key)), "")
+                     for page, key in keys.items())
+
+    # Chủ hộ lệch, trụ sở + thuế cùng ghi → chủ hộ (và trụ sở) theo trụ sở + thuế.
+    assert phones("0900000723", "0900000123", "0900000123") == ("0900000123",) * 3
+    # Thuế lệch, chủ hộ + trụ sở cùng ghi → thuế theo.
+    assert phones("0900000123", "0900000123", "0900000173") == ("0900000123",) * 3
+    # Hoà chủ hộ – thuế (trụ sở trống): giữ từng mục.
+    assert phones("0900000123", "", "0900000173") == ("", "0900000123", "0900000173")
+    # Hoà chủ hộ – trụ sở: trụ sở vẫn theo chủ hộ như trước.
+    assert phones("0900000123", "0900000173", "") == ("0900000123", "0900000123", "")
+    # Thuế lệch ≥2 chữ số với số đa số: là số khác, giữ.
+    assert phones("0900000123", "0900000123", "0900000987") == ("0900000123", "0900000123", "0900000987")

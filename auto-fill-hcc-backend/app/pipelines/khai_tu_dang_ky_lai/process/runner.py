@@ -139,7 +139,8 @@ def _apply_identity_facts(fields: dict, prefix: str, facts: dict) -> None:
         fields["Deceased_Nationality"] = facts["nationality"]
     if facts.get("issueDate"):
         fields[f"{prefix}_IdIssueDate"] = facts["issueDate"]
-    if facts.get("issuePlace"):
+    # Khối mặt sau tìm theo cửa sổ ký tự có thể tràn sang thẻ người khác trong cùng tệp → chỉ bù khi LLM bỏ trống.
+    if facts.get("issuePlace") and not str(fields.get(f"{prefix}_IdIssuePlace") or "").strip():
         fields[f"{prefix}_IdIssuePlace"] = facts["issuePlace"]
 
 

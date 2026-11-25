@@ -48,7 +48,7 @@ _SLOTS = {name: Slot(ten_xa.RESIDENCE_RE if name == "UyQuyen_NoiCuTru" else _ANY
 RULES = common.RULES + """
 <chi_tiet>
 Tín hiệu mã nêu chi tiết (tên thôn / tổ / xóm) của A chỉ có trên dòng viết tay của đơn, còn giấy khác (có giấy in) ghi một
-cách viết lệch 1–2 chữ cái ở nhiều trang hơn → chọn B dù chi tiết B không nguyên văn trên dòng trích dẫn: OCR hay đọc lệch
+cách viết lệch vài chữ cái ở nhiều trang hơn → chọn B dù chi tiết B không nguyên văn trên dòng trích dẫn: OCR hay đọc lệch
 chữ viết tay của đơn. Ô chi tiết của A TRỐNG mà dòng địa chỉ của chính người đó trên đơn ghi chi tiết → chọn B. Chi tiết của A bị cắt bớt chữ so
 với dòng trên đơn (B chép đủ) → chọn B.
 </chi_tiet>
@@ -62,10 +62,20 @@ def _tokens(text) -> list[str]:
     return re.findall(r"\w+", unicodedata.normalize("NFC", str(text or "")).lower())
 
 
+def _near(window: str, target: str, limit: int) -> bool:
+    if window[0] == target[0] and mapper._edit_distance(window, target) <= limit:
+        return True
+    # Chữ viết tay hay bị đọc lệch cả chữ cái đầu (vd Đ ↔ H): tên dài (≥ 8 ký tự) cho lệch tới 3 chữ cái nhưng mỗi từ
+    # lệch ≤ 2 — vẫn phải qua điều kiện số trang bên dưới và toà xét.
+    words, names = window.split(), target.split()
+    return (len(target) >= 8 and len(words) == len(names) and mapper._edit_distance(window, target) <= 3
+            and all(mapper._edit_distance(a, b) <= 2 for a, b in zip(words, names)))
+
+
 def detail_fix(detail, page_list: list[dict]) -> dict | None:
     """Chi tiết của A bị OCR đọc lệch ở dòng viết tay của đơn: tên thôn / tổ (bỏ cấp) không có trên trang nào ngoài đơn,
-    giấy khác ghi MỘT cách viết lệch 1–2 chữ cái (kể cả lệch dấu) ở ≥2 trang, có trang không phải đơn, nhiều trang hơn
-    cách viết của A → {"diaChi", "why"}. Tên có chữ số (số nhà, đường) hay chỉ một chữ thì không đoán."""
+    giấy khác ghi MỘT cách viết lệch vài chữ cái (kể cả lệch dấu, xem _near) ở ≥2 trang, có trang không phải đơn, nhiều
+    trang hơn cách viết của A → {"diaChi", "why"}. Tên có chữ số (số nhà, đường) hay chỉ một chữ thì không đoán."""
     text = " ".join(str(detail or "").split())
     prefix = _UNIT_PREFIX.match(text)
     name = _tokens(text[prefix.end():] if prefix else text)
@@ -83,7 +93,7 @@ def detail_fix(detail, page_list: list[dict]) -> dict | None:
                 window = " ".join(words[start:start + len(name)])
                 if window == target:
                     hits.add(target)
-                elif window[0] == target[0] and mapper._edit_distance(window, target) <= limit:
+                elif _near(window, target, limit):
                     hits.add(window)
                     found.setdefault(window, {"trang": set(), "ngoai_don": set(), "line": line})
         for window in hits:
@@ -230,9 +240,17 @@ async def find(inspector: Inspector, case: Case, title: str) -> list[Finding]:
     for name, (line, doc) in lines.items():
         proposed = answer.get(name) if isinstance(answer.get(name), dict) else None
         value = common.check(name, proposed, line, counter) if proposed else None
-        if not value:
-            continue
         current = case.values.get(name)
+        if not value:
+            # Cách tách dòng không đạt (vd tên xã trên đơn bị cắt chữ) vẫn soát tên thôn / tổ của lượt trích theo
+            # giấy khác; xã / tỉnh giữ như lượt trích.
+            fix = detail_fix(current.get("diaChi") or current.get("chiTietDuoiXa"), page_list) if isinstance(
+                current, dict) else None
+            if fix:
+                value = {"quocGia": current.get("quocGia") or "Việt Nam", "tinh": current.get("tinh") or "",
+                         "xa": current.get("xa") or "", "diaChi": fix["diaChi"]}
+                pending[name] = {"value": value, "line": line, "doc": doc, "why": [fix["why"]], "fixed": True}
+            continue
         ours = _form(current, ocr_text)
         # Chỉ thay phần dòng trên đơn ghi: dòng không ghi xã thì giữ tỉnh / xã lượt trích; chi tiết chỉ bổ sung khi lượt
         # trích bỏ trống (chi tiết lượt trích có thể lấy từ giấy in rõ hơn chữ viết tay trên đơn).

@@ -16,6 +16,18 @@ def _fold(text: str) -> str:
     return " ".join(t.lower().split())
 
 
+def _theo_doi_chieu(goc, doi_chieu):
+    """Lấy bản LLM đối chiếu cách viết chỉ khi nó khác bản gốc DUY NHẤT ở dấu (bỏ dấu ra giống hệt) —
+    chặn đổi sang địa danh khác; giữ kiểu hoa/thường của bản gốc."""
+    if not isinstance(goc, str) or not isinstance(doi_chieu, str):
+        return goc
+    a = unicodedata.normalize("NFC", " ".join(goc.split()))
+    b = unicodedata.normalize("NFC", " ".join(doi_chieu.split()))
+    if not a or len(a) != len(b) or _fold(a) != _fold(b):
+        return goc
+    return "".join(y.upper() if x.isupper() else y.lower() for x, y in zip(a, b))
+
+
 def _by_name(fields: list[dict]) -> dict:
     return {f["name"]: f["value"] for f in fields if f.get("value") not in (None, "", {}, [])}
 
@@ -153,7 +165,8 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     add(S.K_TOBANDO, v.get("Gcn_ToBanDoSo"))
     add(S.K_MUCDICH, v.get("Gcn_MucDichSuDung"))
     add(S.K_THOIHAN, v.get("Gcn_ThoiHanSuDung"))
-    add(S.K_DIACHITHUADAT, _flatten(v.get("Gcn_DiaChiThuaDat")))
+    dia_chi_thua = _flatten(v.get("Gcn_DiaChiThuaDat"))
+    add(S.K_DIACHITHUADAT, _theo_doi_chieu(dia_chi_thua, _flatten(v.get("Gcn_DiaChiThuaDat_DoiChieu"))))
     add(S.K_DIENTICH, re.sub(r"[^\d]", "", str(v.get("Gcn_DienTich") or "")) or None)
     add(S.K_BANGCHU, v.get("Gcn_DienTichBangChu"))
     add(S.K_SOPHATHANH, v.get("Gcn_SoPhatHanh"))

@@ -129,6 +129,7 @@ export interface TraceListItem {
   fields_count: number;
   experience?: "autofill" | "handfree" | null;
   kind?: string | null;             // "autofill" | "attach"
+  fill_page?: string | null;        // lượt điền đúng một trang (trợ lý hộ kinh doanh lưu từng khối)
   key_fields_total?: number | null;  // tổng trường then chốt (chỉ autofill)
   key_fields_filled?: number | null; // số trường bóc tách được
   // Chứng thực tách mỗi tài liệu thành một hồ sơ riêng (mở nhiều tab). true = tách, false = gộp,

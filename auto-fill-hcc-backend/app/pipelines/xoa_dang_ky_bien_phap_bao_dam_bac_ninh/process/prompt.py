@@ -21,6 +21,11 @@ PHÂN BIỆT 2 ĐỊA CHỈ (đừng nhầm):
   giữ đủ thôn/bản + phường/xã + tỉnh.
 - Gcn_DiaChiThuaDat = địa chỉ THỬA ĐẤT (GCN trang II mục 1.b) — tài sản, KHÁC hoàn toàn nơi cư trú.
 
+ĐỐI CHIẾU CÁCH VIẾT ĐỊA DANH (Gcn_DiaChiThuaDat_DoiChieu): cùng một thôn/xã mà các chỗ trong hồ sơ chỉ khác
+dấu thanh/dấu mũ là do OCR đọc lệch, không phải hai nơi. Tên thôn/xã ở mục 1.b mà CÙNG địa danh ở chỗ khác
+(trang 1 GCN, Phiếu 03a, tờ khai) ghi lệch dấu → theo cách viết được nhiều chỗ ghi hơn, không theo một dòng
+lẻ; ngang nhau thì giữ như mục 1.b.
+
 TÀI SẢN: chỉ khai QUYỀN SỬ DỤNG ĐẤT (Gcn_*). Nếu GCN ghi Nhà ở '-/-', Công trình xây dựng '-/-' → KHÔNG
 có tài sản gắn liền với đất, bỏ qua (mapper không phát các field đó).
 

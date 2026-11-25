@@ -34,6 +34,29 @@ def test_quan_he_theo_chu_tren_don_khi_luot_trich_dao_chieu():
     assert dinh_danh.relation_finding({"Ndd_QuanHe": "Mẹ"}, blank) is None
 
 
+def test_so_dinh_danh_viet_tay_lech_mot_chu_so_theo_giay_in_cua_chinh_nguoi_do():
+    don = ("ĐƠN ĐỀ NGHỊ XÁC ĐỊNH, XÁC ĐỊNH LẠI MỨC ĐỘ KHUYẾT TẬT\nI. Thông tin người được xác định mức độ khuyết tật\n"
+           "- Họ và tên: Nguyễn Văn Con\n- Số CMND hoặc căn cước công dân: 001210000180\n")
+    kham = ("SỞ Y TẾ\nBỆNH VIỆN ĐA KHOA\nGIẤY KHÁM SỨC KHỎE\n1. Họ và tên (viết chữ in hoa): NGUYỄN VĂN CON\n"
+            "3. Ngày, tháng, năm sinh: 07/6/2010\n4. Số CCCD/Hộ chiếu/Mã định danh: 001210000170\n")
+    values = {"Nkt_HoTen": "Nguyễn Văn Con", "Nkt_SoDinhDanh": "001210000180", "Nkt_NgaySinh": "07/06/2010"}
+
+    def _pages(*texts):
+        return trang.pages([{"name": f"{i}.pdf", "text": text} for i, text in enumerate(texts)])
+
+    def _find(paper):
+        return dinh_danh.printed_number_finding(dinh_danh.NKT, values, _pages(don, paper))
+
+    finding = _find(kham)
+    assert finding and finding.values == {"Nkt_SoDinhDanh": "001210000170"}
+    # Giấy in không mang đủ họ tên + ngày sinh của người này → không ghép số.
+    assert _find(kham.replace("07/6/2010", "07/6/2011")) is None
+    assert _find(kham.replace("NGUYỄN VĂN CON", "NGUYỄN VĂN CHÁU")) is None
+    # Lệch hơn một chữ số, hay số của A có trên giấy khác → không đoán.
+    assert _find(kham.replace("000170", "000270")) is None
+    assert _find(kham + "Số: 001210000180\n") is None
+
+
 def test_so_ngay_sinh_nguoi_dai_dien_theo_mrz_the_cua_chinh_nguoi_do():
     values = {"Ndd_HoTen": "Nguyễn Văn Cha", "Ndd_SoDinhDanh": "001080000092", "Ndd_NgaySinh": "03/04/1981"}
     docs = [{"name": "the.jpg", "text": _THE + "\nNgày sinh: 03/04/1980"}]

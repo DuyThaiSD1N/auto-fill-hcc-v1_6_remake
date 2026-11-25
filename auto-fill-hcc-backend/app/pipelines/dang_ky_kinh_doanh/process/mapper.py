@@ -222,6 +222,28 @@ def _head_office_phone(values: dict) -> str:
     return office
 
 
+_CONTACT_PHONES = ("ChuHo_DienThoai", "TruSo_DienThoai", "Thue_DienThoai")
+
+
+def _contact_phones(values: dict) -> dict[str, str]:
+    """Số điện thoại chủ hộ / trụ sở / thuế. Đơn hay ghi cùng một số ở nhiều mục; OCR chữ viết tay / viết đè đọc lệch
+    đúng một chữ số ở một mục (cùng độ dài) → mục đó theo cách ghi mà NHIỀU mục hơn cùng ghi. Hoà thì không phân xử theo
+    số mục; riêng trụ sở – chủ hộ vẫn theo _head_office_phone."""
+    phones = {name: _clean_phone(values.get(name)) for name in _CONTACT_PHONES}
+    counts: dict[str, int] = {}
+    for phone in phones.values():
+        if phone:
+            counts[phone] = counts.get(phone, 0) + 1
+    out = dict(phones)
+    for name, phone in phones.items():
+        majority = [other for other, count in counts.items() if phone and count > counts[phone]
+                    and len(other) == len(phone) and sum(a != b for a, b in zip(other, phone)) == 1]
+        if len(majority) == 1:
+            out[name] = majority[0]
+    out["TruSo_DienThoai"] = _head_office_phone(out)
+    return out
+
+
 def _clean_email(value: Any) -> str:
     text = _compact_text(value).lower()
     if not text:
@@ -834,7 +856,7 @@ def enrich(fields: list[dict], *, page: str | None = None, skip_start_date: bool
 
     elif selected_page == "dia-chi":
         add_address("ctl00$C$ADDRCtl", values.get("TruSo_DiaChi"))
-        add("ctl00$C$DCONTClt$HO_PHONEFld", "dom-input", _head_office_phone(values))
+        add("ctl00$C$DCONTClt$HO_PHONEFld", "dom-input", _contact_phones(values)["TruSo_DienThoai"])
         add("ctl00$C$DCONTClt$HO_FAXFld", "dom-input", values.get("TruSo_Fax"))
         add("ctl00$C$DCONTClt$HO_EMAILFld", "dom-input", _clean_email(values.get("TruSo_Email")))
         add("ctl00$C$DCONTClt$HO_URLFld", "dom-input", values.get("TruSo_Website"))
@@ -868,7 +890,7 @@ def enrich(fields: list[dict], *, page: str | None = None, skip_start_date: bool
         add("ctl00$C$OWN_PCtl$PERSCtl$DATE_OF_BIRTHFld", "dom-date", normalize_date(values.get("ChuHo_NgaySinh")))
         add("ctl00$C$OWN_PCtl$PERSCtl$PERS_DOC_NOFld", "dom-input", values.get("ChuHo_SoDinhDanh"))
         add_address("ctl00$C$OWN_PCtl$PERSCtl$ADDRCCtl", values.get("ChuHo_DiaChi"))
-        add("ctl00$C$OWN_PCtl$PERSCtl$PHONEFld", "dom-input", _clean_phone(values.get("ChuHo_DienThoai")))
+        add("ctl00$C$OWN_PCtl$PERSCtl$PHONEFld", "dom-input", _contact_phones(values)["ChuHo_DienThoai"])
         add("ctl00$C$OWN_PCtl$PERSCtl$FAXFld", "dom-input", values.get("ChuHo_Fax"))
         add("ctl00$C$OWN_PCtl$PERSCtl$EMAILFld", "dom-input", _clean_email(values.get("ChuHo_Email")))
         add("ctl00$C$OWN_PCtl$PERSCtl$URLFld", "dom-input", values.get("ChuHo_Website"))
@@ -889,7 +911,7 @@ def enrich(fields: list[dict], *, page: str | None = None, skip_start_date: bool
         elif _has_addr(tax_addr):
             add("ctl00$C$UC_DW_TAXEditCtl$REP_RECV_ADDR_TYPEFld", "dom-radio", "0")
             add_address("ctl00$C$UC_DW_TAXEditCtl$ADDRCtl", tax_addr)
-        add("ctl00$C$UC_DW_TAXEditCtl$REP_RECEIVER_PHONEFld", "dom-input", _clean_phone(values.get("Thue_DienThoai")))
+        add("ctl00$C$UC_DW_TAXEditCtl$REP_RECEIVER_PHONEFld", "dom-input", _contact_phones(values)["Thue_DienThoai"])
         add("ctl00$C$UC_DW_TAXEditCtl$REP_RECEIVER_FAXFld", "dom-input", values.get("Thue_Fax"))
         add("ctl00$C$UC_DW_TAXEditCtl$REP_RECEIVER_EMAILFld", "dom-input", _clean_email(values.get("Thue_Email")))
         if not skip_start_date:  # tài khoản phường Phương Liễu không nhập ngày bắt đầu
