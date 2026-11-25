@@ -4,6 +4,7 @@ API mới dùng namespace ``/api/v1/assistant/document-sessions``; giao diện �
 ``/m/handfree/{sid}``. File và quota vẫn dùng chung store với Auto Fill, còn phân loại
 theo checklist thủ tục chỉ chạy trong router Handfree này.
 """
+import asyncio
 import base64
 import io
 import socket
@@ -143,6 +144,15 @@ async def get_file(
     return Response(content=raw, media_type=meta.get("type") or "image/jpeg")
 
 
+# Mỗi lượt tải chạy OCR + LLM phân loại ngay trong request. Client gửi dồn hàng trăm tệp vào MỘT phiên (máy quét thấy
+# cả thư mục đổi mtime, mỗi tệp một request song song) từng đè sập OCR dùng chung của mọi đơn vị. Giới hạn theo phiên,
+# trong từng worker: tối đa _SESSION_PARALLEL lượt chạy cùng lúc, hàng chờ quá _SESSION_MAX_PENDING thì từ chối ngay
+# (chưa OCR). Lô tệp chọn tay đi chung một request nên không chạm ngưỡng.
+_SESSION_PARALLEL = 3
+_SESSION_MAX_PENDING = 30
+_session_slots: dict[str, dict] = {}
+
+
 @router.post("/{sid}/files")
 async def upload_files(
     sid: str,
@@ -163,7 +173,7 @@ async def upload_files(
         rec.meta["request_id"] = request_id
         rec.add_span("pre.request", rec.origin, handler_start)
     try:
-        response = await _upload_files(sid, files, doc_key, sess)
+        response = await _upload_files_limited(sid, files, doc_key, sess)
     except Exception as exc:
         if rec is not None:
             rec.set_outcome("error")
@@ -176,6 +186,25 @@ async def upload_files(
         rec.mark_wait_end()
         monitor_persist.schedule(rec, request_id)
     return response
+
+
+async def _upload_files_limited(sid: str, files: list[UploadFile], doc_key: str, sess: dict) -> dict:
+    slot = _session_slots.setdefault(sid, {"sem": asyncio.Semaphore(_SESSION_PARALLEL), "pending": 0})
+    if slot["pending"] >= _SESSION_MAX_PENDING:
+        raise HTTPException(status_code=429, detail="Đang xử lý quá nhiều tệp của phiên này, thử lại sau ít phút.")
+    slot["pending"] += 1
+    try:
+        waited = slot["sem"].locked()
+        async with slot["sem"]:
+            # Lượt phải xếp hàng: phiên có thể đã chốt / đã đầy dung lượng trong lúc chờ → đọc lại để chặn TRƯỚC khi
+            # OCR, không phải OCR xong mới bị từ chối ở bước ghi.
+            if waited:
+                sess = await store.get(sid) or sess
+            return await _upload_files(sid, files, doc_key, sess)
+    finally:
+        slot["pending"] -= 1
+        if slot["pending"] <= 0:
+            _session_slots.pop(sid, None)
 
 
 async def _upload_files(sid: str, files: list[UploadFile], doc_key: str, sess: dict) -> dict:

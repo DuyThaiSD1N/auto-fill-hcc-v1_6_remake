@@ -52,7 +52,9 @@ Bản thân / Cha / Mẹ / Khác". Nguồn duy nhất để chốt ô này là T
    họ tên/ngày sinh/giới tính). Subject_BirthDateFromId là ngày sinh IN TRÊN THẺ, đọc thẳng từ thẻ và
    trả kể cả khi trùng Subject_BirthDate — ô ngày sinh mục II lấy nguồn này TRƯỚC tờ khai viết tay.
    Đây là nguồn duy nhất của khối "Người được đăng ký lại khai sinh" — thiếu là hỏng cả khối. KHÔNG lấy
-   số định danh hay nơi thường trú của cha/mẹ gán cho Subject_*.
+   số định danh hay nơi thường trú của cha/mẹ gán cho Subject_*. Riêng Subject_IdIssueDate: hồ sơ chỉ có
+   mặt trước thẻ (không có dòng ngày cấp) thì BỎ TRỐNG — "Có giá trị đến / Date of expiry" là ngày HẾT HẠN,
+   không phải ngày cấp.
 </nguoi_yeu_cau>
 
 <uu_tien_nguon>
