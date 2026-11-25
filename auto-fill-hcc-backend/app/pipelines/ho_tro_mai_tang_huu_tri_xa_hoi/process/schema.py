@@ -81,6 +81,15 @@ FIELDS: list[dict] = [
         "name": "NguoiNop_QuocTich",
         "desc": "Quốc tịch người nộp khi tài liệu đúng người ghi rõ.",
     },
+    {
+        "name": "TenThon_DoiChieu",
+        "desc": 'Đối chiếu cách viết TÊN thôn/xóm. Tờ khai viết tay hay bị OCR đọc lệch một chữ (m ↔ n, sai dấu) và lặp '
+                'lại cùng chữ sai ở mọi dòng. Tìm trên giấy IN do cơ quan cấp trong hồ sơ (Trích lục khai tử, Giấy báo '
+                'tử, căn cước — ở dòng bất kỳ, kể cả "Nơi chết", của bất kỳ ai) tên thôn cùng xã mà chỉ lệch 1–2 chữ '
+                'cái/dấu so với tên thôn trên tờ khai → trả {"to_khai": "<tên thôn đúng như OCR tờ khai>", "chu_in": '
+                '"<tên thôn đúng như OCR giấy in>"}, chỉ phần TÊN (bỏ chữ "thôn"/"xóm" và số thôn I, II, 2). Không có '
+                'giấy in ghi thôn đó, hai cách viết giống hệt, hoặc khác hẳn tên → bỏ trống.',
+    },
 ]
 
 # Chỉ dùng khi tài khoản bật cờ deceasedAsOwner (phường Cam Đường, xã Bình Chương): người chết là chủ hồ sơ trên
