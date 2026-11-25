@@ -5,11 +5,12 @@
 // Chỉ xin đúng tệp đang xem, qua cha → sidebar (bên có quyền gọi BE).
 //
 // Giao thức với cha:
-//   cha → con  tlnd-preview-nhom     {tieuDe, bieuTuong, tep: [{fid, name}], chiSo, ghim}
+//   cha → con  tlnd-preview-nhom     {tieuDe, bieuTuong, tep: [{fid, name, meta?, chon?}], chiSo, ghim, giuViTri?}
 //   cha → con  tlnd-preview-du-lieu  {fid, mime, dataUrl} | {fid, loi}
 //   con → cha  tlnd-preview-san-sang
 //   con → cha  tlnd-preview-can      {fid}
 //   con → cha  tlnd-preview-dong
+//   con → cha  tlnd-preview-chon     {fid}  — tệp có `chon` (true/false): bấm nút chọn ở thanh dưới
 const $ = (id) => document.getElementById(id);
 const tieuDeEl = $("tieuDe");
 const bieuTuongEl = $("bieuTuong");
@@ -19,6 +20,8 @@ const truocEl = $("truoc");
 const sauEl = $("sau");
 const daiEl = $("dai");
 const noiDungEl = $("noiDung");
+const chanEl = $("chan");
+const chanChonEl = $("chanChon");
 
 let nhom = { tieuDe: "", bieuTuong: "📄", tep: [] };
 let chiSo = 0;
@@ -46,6 +49,14 @@ function veDau() {
   tieuDeEl.textContent = nhieu ? nhom.tieuDe : (tep?.name || nhom.tieuDe);
   tieuDeEl.title = tep?.name || nhom.tieuDe || "";
   goiYEl.textContent = ghim ? "📌 đang giữ" : "nhấn để giữ";
+  // Tệp chọn được (giấy trong Ví cá nhân): thanh dưới mang tên, nguồn và nút chọn.
+  chanEl.hidden = typeof tep?.chon !== "boolean";
+  if (!chanEl.hidden) {
+    $("chanTen").textContent = tep.name || "";
+    $("chanMeta").textContent = String(tep.meta || "");
+    chanChonEl.textContent = tep.chon ? "☑ Đã chọn giấy tờ này" : "☐ Chọn giấy tờ này";
+    chanChonEl.setAttribute("aria-pressed", tep.chon ? "true" : "false");
+  }
   demEl.hidden = truocEl.hidden = sauEl.hidden = daiEl.hidden = !nhieu;
   if (!nhieu) return;
   demEl.textContent = `${chiSo + 1}/${n}`;
@@ -168,6 +179,10 @@ function buoc(delta) {
 
 const xinDong = () => parent.postMessage({ type: "tlnd-preview-dong" }, "*");
 $("dong").addEventListener("click", xinDong);
+chanChonEl.addEventListener("click", () => {
+  const tep = nhom.tep[chiSo];
+  if (tep && typeof tep.chon === "boolean") parent.postMessage({ type: "tlnd-preview-chon", fid: tep.fid }, "*");
+});
 truocEl.addEventListener("click", () => buoc(-1));
 sauEl.addEventListener("click", () => buoc(1));
 document.addEventListener("keydown", (e) => {
@@ -182,7 +197,7 @@ window.addEventListener("message", (e) => {
   if (d?.type === "tlnd-preview-nhom") {
     const tep = Array.isArray(d.tep) ? d.tep.filter((t) => t && t.fid) : [];
     const cungNhom = tep.length === nhom.tep.length && tep.every((t, i) => t.fid === nhom.tep[i].fid);
-    const chiSoMoi = Math.max(0, Math.min(Number(d.chiSo) || 0, tep.length - 1));
+    const chiSoMoi = cungNhom && d.giuViTri === true ? chiSo : Math.max(0, Math.min(Number(d.chiSo) || 0, tep.length - 1));
     nhom = { tieuDe: String(d.tieuDe || ""), bieuTuong: d.bieuTuong || "📄", tep };
     ghim = d.ghim !== false;
     for (const fid of [...daCo.keys()]) if (!tep.some((t) => t.fid === fid)) daCo.delete(fid);

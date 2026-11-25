@@ -1047,9 +1047,7 @@ function isHaiChauDaNangUser(user) {
 // ===== Nghiệp vụ riêng phường Đắk Bla (chỉ áp cho tài khoản của địa bàn này) =====
 // 1. Ô "Lý do giải thể" (trang Chấm dứt hoạt động) LUÔN là câu cố định, bất kể Thông báo chấm dứt
 //    trong hồ sơ ghi lý do gì — kể cả khi backend không đọc được lý do nào.
-// 2. Trang Ngành nghề kinh doanh: KHÔNG ghi gì vào ô mô tả (ô trắng dưới tên ngành) của từng dòng
-//    ngành — giống phường Yên Bái, chỉ giữ tên ngành chính thức cổng tự hiện theo mã VSIC.
-// 3. Ô "Địa chỉ nhận kết quả" (trang Người nộp hồ sơ) LUÔN là địa chỉ nhận trực tiếp của phường, cho
+// 2. Ô "Địa chỉ nhận kết quả" (trang Người nộp hồ sơ) LUÔN là địa chỉ nhận trực tiếp của phường, cho
 //    MỌI thủ tục hộ kinh doanh — giống phường Hải Châu.
 const DAK_BLA_DISSOLUTION_REASON = "Hộ kinh doanh không hiệu quả";
 const DAK_BLA_POSTAL_ADDRESS = "Nhận trực tiếp tại 54 Đặng Tiến Đông, Phường ĐăkBla, Tỉnh Quảng Ngãi";
@@ -1076,37 +1074,6 @@ function isLamDongBusinessActUser(user) {
     && !normalizeProcedureSearch(user?.xa).includes("don duong");
 }
 
-// ===== Nghiệp vụ riêng phường Yên Bái — tỉnh Lào Cai (chỉ áp cho tài khoản của địa bàn này) =====
-// Trang Ngành nghề kinh doanh: KHÔNG ghi gì vào ô mô tả (ô trắng dưới tên ngành) của từng dòng ngành —
-// chỉ giữ tên ngành chính thức cổng tự hiện theo mã VSIC. Địa bàn khác vẫn điền ô mô tả như cũ.
-/** Tài khoản phường Yên Bái — tỉnh Lào Cai (/auth/me trả `xa` + `tinh`). */
-function isYenBaiLaoCaiUser(user) {
-  // Phải khớp CẢ phường lẫn tỉnh: không dính địa danh "Yên Bái" (tỉnh cũ) ở nơi khác.
-  return normalizeProcedureSearch(user?.tinh).includes("lao cai")
-    && normalizeProcedureSearch(user?.xa).includes("yen bai");
-}
-
-// ===== Nghiệp vụ riêng phường Bắc Nha Trang — tỉnh Khánh Hòa (chỉ áp cho tài khoản của địa bàn này) =====
-// Trang Ngành nghề kinh doanh: KHÔNG ghi gì vào ô mô tả (ô trắng dưới tên ngành) của từng dòng ngành —
-// giống phường Yên Bái. Phường Nha Trang / Nam Nha Trang / Tây Nha Trang vẫn điền ô mô tả như cũ.
-/** Tài khoản phường Bắc Nha Trang — tỉnh Khánh Hòa (/auth/me trả `xa` + `tinh`). */
-function isBacNhaTrangUser(user) {
-  return normalizeProcedureSearch(user?.tinh).includes("khanh hoa")
-    && normalizeProcedureSearch(user?.xa).includes("bac nha trang");
-}
-
-// ===== Nghiệp vụ riêng xã Đơn Dương — Lâm Đồng và phường Nam Nha Trang — Khánh Hòa =====
-// Trang Ngành nghề kinh doanh: ô mô tả (ô trắng dưới tên ngành) CHỈ ghi phần chữ trong ngoặc của tên
-// ngành hồ sơ, vd "Bán buôn ... động vật sống (Bán buôn nông lâm sản khác ...)" → "Bán buôn nông lâm sản
-// khác ...". Tên không có ngoặc (ngoài ngoặc vốn có trong tên chính thức cổng) thì không điền.
-/** Tài khoản xã Đơn Dương — Lâm Đồng hoặc phường Nam Nha Trang — Khánh Hòa (/auth/me trả `xa` + `tinh`). */
-function isBusinessLineParenOnlyUser(user) {
-  const tinh = normalizeProcedureSearch(user?.tinh);
-  const xa = normalizeProcedureSearch(user?.xa);
-  return (tinh.includes("lam dong") && xa.includes("don duong"))
-    || (tinh.includes("khanh hoa") && xa.includes("nam nha trang"));
-}
-
 // ===== Nghiệp vụ riêng xã Bát Xát (chỉ áp cho tài khoản của địa bàn này) =====
 // Gợi ý tệp máy quét đã có sẵn trong thư mục (quét trước rồi mới mở trợ lý) — xem attemptScanRecentSuggest.
 /** Tài khoản xã Bát Xát (/auth/me trả `xa`). */
@@ -1116,8 +1083,6 @@ function isBatXatUser(user) {
 
 function buildBusinessDefaults(user) {
   const defaults = {};
-  if (isYenBaiLaoCaiUser(user) || isBacNhaTrangUser(user)) defaults.skipBusinessLineDescription = true;
-  else if (isBusinessLineParenOnlyUser(user)) defaults.businessLineDescriptionParenOnly = true;
   if (isXuanHuongBusinessUser(user)) defaults.businessActText = XUAN_HUONG_BUSINESS_ACT_TEXT;
   else if (isLamDongBusinessActUser(user)) defaults.businessActText = LAM_DONG_BUSINESS_ACT_TEXT;
   // Đà Nẵng: vai trò người nộp LUÔN là "Người có thẩm quyền ký Giấy đề nghị đăng ký Hộ kinh doanh",
@@ -1132,7 +1097,6 @@ function buildBusinessDefaults(user) {
   }
   if (isDakBlaUser(user)) {
     defaults.dissolutionReason = DAK_BLA_DISSOLUTION_REASON;
-    defaults.skipBusinessLineDescription = true;
     defaults.postalServiceAddress = DAK_BLA_POSTAL_ADDRESS;
   }
   return Object.keys(defaults).length ? defaults : null;
@@ -2282,6 +2246,15 @@ async function restoreFillAllResult() {
   } catch (_) { return; }
   if (!result?.text || Date.now() - Number(result.at || 0) > FILLALL_RESULT_TTL_MS) return;
   setStatus(result.text, result.type === "ok" ? "ok" : "warn");
+  // Cảnh báo trùng tên hộ kinh doanh nối sau câu "đã điền xong" (màu xanh) → tô riêng để không lẫn vào câu báo xong.
+  const at = result.text.indexOf("\n⚠ Kiểm trùng tên");
+  if (at >= 0) {
+    statusEl.textContent = result.text.slice(0, at);
+    const warn = document.createElement("strong");
+    warn.className = "status-danger";
+    warn.textContent = result.text.slice(at);
+    statusEl.appendChild(warn);
+  }
 }
 
 function restoreBusinessFillSupportCode() {
@@ -5786,12 +5759,24 @@ if (fillAllBtn) {
         delete options.allPages;
         options.page = `__${cfg.businessWorkflow}__`;
       }
+      // Điền đợt 2 hộ kinh doanh (BE khai secondPass "hkd"): BE soát lại ở nền, engine đính kèm TRƯỚC rồi lấy các trang đã
+      // soát mới điền 8 trang. Chỉ hồ sơ thành lập mới đọc từ tệp (tờ khai nhập tay không có giấy để soát).
+      const hkdSecondPass = cfg.secondPass === "hkd" && !isAmendmentWorkflow && !cfg.enterprisePortal && !toKhai;
+      if (hkdSecondPass) options.fillSupports = ["secondPassHkd"];
 
       setStatus(toKhai ? "Đang lấy thông tin từ tờ khai đã nhập..." : " Đang phân tích tài liệu...", "info");
       options.dossierId = ensureDossierId();
       const res = await api.process({ procedure: cfg.key, options, files: toKhai ? [] : payloadFiles });
       console.log("[BE fill-all]", { extracted: res.extracted, stats: res.stats });
       businessFillSupportCode = String(res.requestId || res.sessionId || "").trim();
+      // BE chỉ soát khi bật đợt 2 / tài khoản thuộc diện / còn chỗ chạy: hỏi một lần, chưa soát ("none") thì giữ thứ tự cũ
+      // (điền rồi mới đính kèm).
+      const secondPassAt = Date.now();
+      let secondPassOn = false;
+      if (hkdSecondPass && businessFillSupportCode) {
+        const sp = await api.secondPass(businessFillSupportCode).catch(() => null);
+        secondPassOn = sp?.status === "pending" || sp?.status === "done";
+      }
       showSupportCode(businessFillSupportCode);
       // Ghi trước khi content bắt đầu state machine: các postback sẽ phá iframe/popup hiện tại.
       await saveSession();
@@ -5852,6 +5837,8 @@ if (fillAllBtn) {
         businessSearch,
         attachPayload,
         businessDefaults: buildBusinessDefaults(currentUser),
+        // Mốc tính hạn chờ kết quả soát là lúc BE trả lượt điền (lượt soát bắt đầu từ đó).
+        secondPass: secondPassOn ? { requestId: businessFillSupportCode, at: secondPassAt } : null,
       });
       if (startRes?.error) {
         setStatus(startRes.error, "err");
@@ -5869,7 +5856,9 @@ if (fillAllBtn) {
           ? `Đang tiếp tục từ bước hiện tại, sửa ${pageCount} trang cần thiết rồi tự đính kèm. Đừng thao tác trên trang.`
           : `Đang tiếp tục từ bước hiện tại và sửa ${pageCount} trang cần thiết. Đừng thao tác trên trang.`, "ok");
       } else {
-        setStatus(attachPayload
+        setStatus(attachPayload && secondPassOn
+          ? "Đang tự đính kèm rồi điền & lưu 8 trang. Đừng thao tác trên trang cho tới khi xong."
+          : attachPayload
           ? "Đang tự điền & lưu 8 trang rồi TỰ ĐÍNH KÈM. Đừng thao tác trên trang cho tới khi xong."
           : "Đang tự điền & lưu lần lượt 8 trang. Đừng thao tác trên trang cho tới khi xong.", "ok");
       }

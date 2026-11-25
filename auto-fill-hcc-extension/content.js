@@ -1217,6 +1217,9 @@
     try {
       chrome.storage.local.remove([FILLALL_STATE_KEY, ATTACHALL_STATE_KEY, ENTERPRISE_FILLALL_STATE_KEY]);
     } catch (e) { /* ignore */ }
+    // Bản sao state trong sessionStorage (business-registration.js đọc khi storage trống) — không xoá thì engine đang chờ
+    // (vd chờ kết quả soát) đọc lại bản sao rồi điền tiếp.
+    try { window.sessionStorage.removeItem("__af_fillall_state_mirror"); } catch (e) { /* ignore */ }
     sessDel(SS_FILLALL);
     sessDel(SS_FILLALL_STEP);
     reopenPanelWithFillAllResult("Đã dừng tiến trình tự động. Bạn có thể thao tác lại trên trang.", "warn");
@@ -1540,6 +1543,9 @@
         businessDefaults: (msg && msg.businessDefaults) || null,
         // Gộp đính kèm: điền xong 8 trang → tự chạy state machine đính kèm (nếu popup gửi kèm).
         attachPayload: (msg && msg.attachPayload) || null,
+        // Điền đợt 2 ({requestId, at}): đính kèm TRƯỚC trong lúc BE soát, đính xong lấy các trang đã soát rồi mới điền.
+        secondPass: (msg && msg.secondPass && msg.secondPass.requestId) ? msg.secondPass : null,
+        attachFirst: !!(msg && msg.secondPass && msg.secondPass.requestId && msg.attachPayload),
         // Còn đứng ở wizard (Chọn loại đăng ký / Xác nhận) thì tự bấm Thành lập mới → Tiếp theo → Bắt đầu
         // trước khi điền; đã ở trong hồ sơ thì bước này tự đánh dấu xong ngay lượt đầu.
         createBootstrap: true,
@@ -2036,7 +2042,9 @@
             // Đang chạy fill-all / đính-kèm nhiều bước → không mount panel; giữ cờ sync + banner cho nhịp sau.
             if (fillSt || attachSt) {
               sessSet(SS_FILLALL, "1");
-              if (fillSt && typeof fillSt.step === "number" && Array.isArray(fillSt.order)) {
+              // Đang đính kèm trước khi điền (điền đợt 2): banner đính kèm, không phải "Đang điền trang 1/8".
+              if (fillSt && fillSt.phase !== "attaching-first" && typeof fillSt.step === "number"
+                && Array.isArray(fillSt.order)) {
                 setFillAllProgress(fillSt.step + 1, fillSt.order.length, "");
               } else if (attachSt && !document.getElementById(FILLALL_BANNER_ID)) {
                 showFillAllProgress("Đang đính kèm hồ sơ...");
@@ -2392,6 +2400,8 @@
     console.log("[FillAll] chèn lượt chốt địa chỉ thuế vào cuối order");
     return [...order, taxKey];
   }
+  // Trang thuế có thể đổi sau điền đợt 2 (engine HkdOnline tính lại thứ tự trước khi điền).
+  H.withFinalTaxPass = withFinalTaxPass;
 
   // readAcctContact: đọc sđt/email tài khoản (span _Vw chế độ xem, fallback input). Dùng bởi business-registration.js.
   function readAcctContact(baseId) {

@@ -3,13 +3,15 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
-    version: "1.28.38",
+    version: "1.29",
     date: "24/11/2026",
     items: [
-      "Cấp Phiếu lý lịch tư pháp (3.000333, Công an cấp tỉnh): tự nhận biết tài khoản là người yêu cầu cấp phiếu (Cá nhân) hay người khai hộ; điền được ô Tỉnh/Xã nơi đăng ký khai sinh trong khối khai hộ.",
-      "Khai tử có yếu tố nước ngoài (1.001766), khai tử lưu động (1.000419): đọc thông tin tài khoản để nộp thay thì điền theo người yêu cầu trên hồ sơ.",
+      "Thêm thủ tục Cấp Phiếu lý lịch tư pháp (3.000333, Công an cấp tỉnh): tự nhận biết tài khoản là người yêu cầu cấp phiếu (Cá nhân) hay người khai hộ; điền được ô Tỉnh/Xã nơi đăng ký khai sinh trong khối khai hộ.",
+      "Thêm thủ tục khai tử có yếu tố nước ngoài (1.001766) và khai tử lưu động (1.000419); đọc thông tin tài khoản để nộp thay thì điền theo người yêu cầu trên hồ sơ.",
+      "Thêm thủ tục tính tiền sử dụng đất (Khánh Hòa, 1.115148) và cấp giấy phép thi công công trình trên đường bộ đang khai thác (1.013061).",
       "Xác nhận tiếp tục sử dụng đất nông nghiệp (Bắc Ninh, 1.115462): điền khối người ủy quyền (chủ hồ sơ).",
       "Xác nhận thông tin về cư trú (Cổng DVC Bộ Công an): đính kèm đúng nhóm giấy tờ khi trang đánh số nhóm khác trang thường trú.",
+      "Thống kê: hồ sơ tách nhiều tab nộp cách nhau lâu vẫn đếm đủ số hồ sơ, nhưng thời gian làm không còn cộng cả quãng tab nằm chờ.",
     ],
   },
   {

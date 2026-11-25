@@ -13,6 +13,7 @@ const sidebar = read("sidebar.js");
 const html = fs.readFileSync(path.join(root, "sidebar.html"), "utf8");
 const watcher = read("content/moj-upload-watch-main.js");
 const attachCore = read("content/attach-core.js");
+const css = fs.readFileSync(path.join(root, "sidebar.css"), "utf8");
 
 function slice(src, startMarker, endMarker) {
   const start = src.indexOf(startMarker);
@@ -59,11 +60,31 @@ assert.doesNotMatch(card, /innerHTML\s*=/);
 assert.match(card, /card\.pickSend \|\| "__action:wallet_pick"/);
 assert.match(card, /JSON\.stringify\(\{ picked:/);
 
-// Xem tệp: tải thẳng từ cổng (origin https *.gov.vn, không cookie); thẻ BE cũ (có fid + phiên tạm) vẫn xem như trước.
-const remote = slice(sidebar, "async function previewWalletRemote", "\n  }\n");
-assert.match(remote, /WALLET_ORIGIN_RE\.test\(origin\)/);
-assert.match(remote, /credentials: "omit"/);
-assert.match(card, /previewWalletRemote\(String\(card\.origin\), String\(card\.downloadPath\), String\(entry\.uri\)\)/);
+// Xem tệp: khung xem trước TRÊN TRANG (cùng khung với tệp đã nhận), không mở tab mới; nội dung tải thẳng từ cổng (origin
+// https *.gov.vn, không cookie); nút chọn ở thanh dưới khung đổi lựa chọn trên thẻ.
+const viPreview = slice(sidebar, "function taiDuLieuPreviewVi", "\n  }\n");
+assert.match(viPreview, /WALLET_ORIGIN_RE\.test\(origin\)/);
+assert.match(viPreview, /credentials: "omit"/);
+assert.doesNotMatch(sidebar, /function previewWalletRemote/, "không mở tệp trong ví ở tab mới");
+assert.match(slice(sidebar, "async function openWalletPreview", "\n  }\n"), /action: "tlndPreviewOpen"/);
+assert.match(card, /if \(remote\) openPreview\(entry\);/);
+assert.match(card, /fid: `vi:\$\{e\.uri\}`/);
+assert.match(sidebar, /\(wallet \? taiDuLieuPreviewVi\(fid\) : taiDuLieuPreview\(fid\)\)/);
+assert.match(sidebar, /msg\?\.action === "tlndPreviewChon" && walletPreview/);
+const contentJs = read("content.js");
+assert.match(contentJs, /d\?\.type === "tlnd-preview-chon"[\s\S]*action: "tlndPreviewChon"/);
+const previewJs = read("preview.js");
+assert.match(previewJs, /chanEl\.hidden = typeof tep\?\.chon !== "boolean";/);
+assert.match(previewJs, /type: "tlnd-preview-chon", fid: tep\.fid/);
+assert.match(previewJs, /cungNhom && d\.giuViTri === true \? chiSo/, "bấm chọn trên thẻ không làm khung nhảy tệp");
+
+// Hai mục bấm để đổi (Tài liệu tải lên / Tài liệu được cấp), số liền qua hai mục; chọn tất cả theo mục đang mở.
+assert.match(card, /const tabbed = entries\.some\(\(e\) => e\.tab\);/);
+assert.match(card, /e\.tab === "issued" \? "issued" : "uploaded"/);
+assert.match(card, /` số \$\{Math\.min\(\.\.\.nos\)\}–\$\{Math\.max\(\.\.\.nos\)\}`/);
+assert.match(card, /const tabEntries = inTab\(activeTab\);\s*const allOn = tabEntries\.every/);
+assert.match(card, /`Đã chọn \$\{picked\.size\}\/\$\{entries\.length\}`/);
+assert.match(css, /\.wallet-item\[hidden\]\{display:none\}|\.wallet-item\[hidden\][^{]*\{display:none\}/);
 assert.match(card, /walletSizeText\(entry\.size\)/);
 
 // MAIN world: nghe phần dữ liệu danh sách ví, KHÔNG đọc header (token).
@@ -100,10 +121,8 @@ assert.match(one, /if \(planItem\.walletPick\) \{[\s\S]*pickExistingWalletDocume
 assert.ok(one.indexOf("pickExistingWalletDocument") < one.indexOf('findButtonByText(dialog, ["Tải lên từ thiết bị"])'),
   "chọn từ ví trước, tải lên chỉ là đường dự phòng");
 assert.match(attachCore, /if \(planItem\.walletPick\?\.name\) ownNames\.push\(planItem\.walletPick\.name\);/);
-assert.match(card, /entry\.tab === "issued"/);
 
 // Khung chat là cột flex cao cố định: thẻ phải flex:none, không thì bị co còn mỗi viền.
-const css = fs.readFileSync(path.join(root, "sidebar.css"), "utf8");
 assert.match(css, /\.wallet-card\{[^}]*flex:none/);
 
 // Auto Fill cài cùng file watcher với cờ chung __HCC_MOJ_FILE_API_WATCH__: nó nạp trước thì bản này vẫn phải nghe được

@@ -76,9 +76,9 @@ function renderMarkdown(md) {
       html.push(`<li>${inlineMd(ol[1])}</li>`);
       continue;
     }
-    // Paragraph
+    // Paragraph — mở đầu "⛔" = cảnh báo cần xem lại trước khi nộp (BE đặt), tô đỏ đậm riêng đoạn đó.
     closeList();
-    html.push(`<p>${inlineMd(line)}</p>`);
+    html.push(/^\s*⛔/.test(line) ? `<p class="md-danger">${inlineMd(line)}</p>` : `<p>${inlineMd(line)}</p>`);
   }
   closeList();
   return html.join("\n");

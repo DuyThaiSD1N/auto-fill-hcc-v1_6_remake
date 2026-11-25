@@ -765,6 +765,7 @@ input, select, textarea { font-family: inherit; }
 .status.err { color: #c62828; }
 .status.warn { color: #b26a00; }
 .status.info { color: #1565c0; }
+.status .status-danger { color: #b71c1c; font-weight: 700; }
 
 /* Trạng thái chính luôn ngắn; thông tin hỗ trợ chỉ mở khi người dùng chủ động xem. */
 .status-details-toggle {

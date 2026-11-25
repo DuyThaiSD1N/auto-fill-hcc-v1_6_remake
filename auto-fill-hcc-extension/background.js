@@ -522,6 +522,35 @@ async function sendSubmitReport(item) {
   return "retry";
 }
 
+// GET kết quả điền đợt 2 của một lượt process. Dùng chung base, token và cách làm mới token với mốc nộp. Lỗi / chưa đăng
+// nhập → "none" (engine điền theo kết quả lượt đầu).
+async function fetchSecondPass(requestId) {
+  if (!requestId) return { status: "none" };
+  const store = await chrome.storage.local.get([SUBMIT_WATCH_KEY, "auth_tokens"]);
+  const conf = store?.[SUBMIT_WATCH_KEY] || {};
+  const bases = [...new Set([conf.base, ...(Array.isArray(conf.bases) ? conf.bases : [])]
+    .map((b) => String(b || "").trim().replace(/\/+$/, "")).filter(Boolean))];
+  let tokens = store?.auth_tokens;
+  if (!bases.length || !tokens?.accessToken) return { status: "none" };
+  const get = (base) => fetchWithTimeout(`${base}/api/v1/process/${encodeURIComponent(requestId)}/second-pass`, {
+    headers: { Authorization: "Bearer " + tokens.accessToken },
+  });
+  for (const base of bases) {
+    let res;
+    try { res = await get(base); } catch (_) { continue; }
+    if (SUBMIT_INFRA_STATUS.has(res.status)) continue;
+    if (res.status === 401 && tokens.refreshToken) {
+      const next = await refreshSubmitTokens(base, tokens);
+      if (!next) return { status: "none" };
+      tokens = next;
+      try { res = await get(base); } catch (_) { continue; }
+    }
+    if (!res.ok) return { status: "none" };
+    try { return await res.json(); } catch (_) { return { status: "none" }; }
+  }
+  return { status: "none" };
+}
+
 let submitFlushing = null;
 function flushSubmitOutbox() {
   if (submitFlushing) return submitFlushing;
@@ -604,10 +633,14 @@ async function afterDossierSubmitted(tabId, dossierId) {
 
 async function reportDossierSubmitClick(tabId, host, ref, clickId, clickedAt) {
   if (!tabId) return;
-  const { sessionKey, session, dossierId } = await readSubmitSession(tabId);
+  const { sessionKey, session, marks, dossierId } = await readSubmitSession(tabId);
   // Chưa có khóa = extension chưa điền/đính kèm gì cho hồ sơ này → không có gì để chấm.
   // Cố ý: báo cáo chỉ tính hồ sơ trợ lý có tham gia.
   if (!dossierId) return;
+  // Một tab = một hồ sơ của lượt đính kèm. Khóa giữ trên tab tới lượt điền/đính kèm sau, nên cú
+  // bấm nộp tiếp theo trên chính tab này là bấm lại hoặc hồ sơ làm tay không qua trợ lý.
+  // Tab tách nộp được vì mỗi tab có mốc riêng.
+  if (marks.clickDossierId === dossierId || marks.textDossierId === dossierId) return;
   const at = Number(clickedAt) || Date.now();
   await markTabSubmitted(tabId, sessionKey, session, { clickDossierId: dossierId });
   await enqueueSubmitReport({
@@ -663,6 +696,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg?.action === "dossierSubmitSeen") {
     void reportDossierSubmitSeen(sender?.tab?.id, msg.host, msg.ref, msg.seenAt);
     sendResponse?.({ ok: true });
+    return true;
+  }
+  // Điền đợt 2 hộ kinh doanh: engine HkdOnline (content script, sống qua nhiều postback — panel bị dựng lại sau mỗi lần
+  // tải trang) hỏi kết quả soát của lượt điền sau khi đính kèm xong.
+  if (msg?.action === "hkdSecondPass") {
+    fetchSecondPass(String(msg.requestId || "")).then(sendResponse, () => sendResponse({ status: "none" }));
     return true;
   }
   // Proxy fetch: popup-iframe gọi API BE qua background để TRÁNH mixed-content blocking

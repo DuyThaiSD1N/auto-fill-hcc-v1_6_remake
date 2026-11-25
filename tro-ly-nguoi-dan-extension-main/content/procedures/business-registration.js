@@ -1094,7 +1094,14 @@
     return !!official && !!extracted && official !== extracted;
   }
 
+  // Hộ kinh doanh: BE quyết chữ ghi vào ô mô tả từng dòng (khoá "detail", gồm cả quy tắc theo địa bàn tài khoản) —
+  // extension chỉ ghi: có chữ thì ghi (detailReplace → ghi đè cả ô, không thì thêm dòng dưới tên chính thức cổng tự
+  // điền), rỗng thì bỏ qua. Dòng không có "detail" (BE cũ) điền như trước.
   function fillBusinessLineDescriptions(nn) {
+    const rows = Array.isArray(nn && nn.items) ? nn.items : [];
+    if (rows.some((row) => row && Object.prototype.hasOwnProperty.call(row, "detail"))) {
+      return fillBusinessLineDetails(rows);
+    }
     const nameByCode = getBusinessLineNameByCode(nn);
     let changed = 0;
     for (const code of Object.keys(nameByCode)) {
@@ -1113,6 +1120,28 @@
       setNativeValue(desc, next, { typing: false, commit: true });
       changed += 1;
       console.log("[FillAll] mô tả ngành nghề:", { code, officialName, extractedName });
+    }
+    return changed;
+  }
+
+  function fillBusinessLineDetails(rows) {
+    let changed = 0;
+    for (const item of rows) {
+      const code = String((item && (item.code || item.ma)) || "").trim();
+      const detail = String((item && item.detail) || "").trim();
+      if (!code || !detail) continue;
+      const row = findBusinessRowByCode(code);
+      const desc = getBusinessRowDescription(row);
+      if (!row || !desc) continue;
+      // Chỉ chặn ghi lặp (chạy lại / postback giữa chừng): ô đã chứa đúng chữ này thì thôi.
+      const current = String(desc.value || "").trim();
+      const currentFold = foldBusinessLineName(current);
+      const detailFold = foldBusinessLineName(detail);
+      if (item.detailReplace ? currentFold === detailFold : currentFold.includes(detailFold)) continue;
+      const next = item.detailReplace || !current ? detail : `${current}\n${detail}`;
+      setNativeValue(desc, next, { typing: false, commit: true });
+      changed += 1;
+      console.log("[FillAll] mô tả ngành nghề:", { code, detail, replace: !!item.detailReplace });
     }
     return changed;
   }
@@ -2438,7 +2467,12 @@
   }
 
   function areaIsAt(sel, target) {
-    return !!target && areaFold(areaSelectedText(sel)) === areaFold(target);
+    const t = areaFold(target);
+    if (!t) return false;
+    const cur = areaFold(areaSelectedText(sel));
+    // Option xã của vài tỉnh mang đuôi tên huyện cũ ("Phường X - Đà Lạt"): coi là đã đúng xã, chọn lại sẽ kích
+    // postback dựng lại khối địa chỉ và xoá ô số nhà vừa ghi.
+    return cur === t || cur.startsWith(`${t} - `);
   }
 
   function areaChoose(sel, target) {
@@ -2455,14 +2489,15 @@
       const f = fields.find((x) => new RegExp(key).test(x.name || ""));
       return f && f.value ? { f, target: String(f.value) } : null;
     };
-    const chooseAndWait = async (info, waitReady) => {
+    const chooseAndWait = async (info, waitReady, settleId) => {
       if (!info) return;
       const el = findStandardSelect(fieldCandidates(info.f));
       if (!el || areaIsAt(el, info.target)) return;
       if (!areaFindOption(el, info.target)) { console.warn("[FillAll] địa chỉ: chưa có option", info.target); return; }
       areaChoose(el, info.target); // dispatch change → onchange __doPostBack (AJAX partial)
       console.log("[FillAll] địa chỉ chọn:", info.target);
-      if (waitReady) await waitFor(waitReady, 8000, 250);
+      if (settleId) await waitForPanelSettle(settleId, 6000);
+      else if (waitReady) await waitFor(waitReady, 8000, 250);
       else await sleep(900);
     };
 
@@ -2477,10 +2512,13 @@
       const w = findStandardSelect(fieldCandidates(ward.f));
       return w && !!areaFindOption(w, ward.target);
     });
-    await chooseAndWait(ward);
+    const sf = fields.find((x) => /STREET_NUMBER/.test(x.name || ""));
+    const streetBefore = sf && sf.value ? findStandardInput(fieldCandidates(sf)) : null;
+    // Postback chọn xã dựng lại cả ô số nhà; trả về chậm hơn nhịp chờ cố định thì xoá trắng giá trị vừa ghi
+    // → có số nhà cần ghi thì chờ chính ô đó được dựng lại xong.
+    await chooseAndWait(ward, null, streetBefore && streetBefore.id);
 
     // Số nhà: set value KHÔNG kích onchange (tránh thêm 1 postback thừa); nút Lưu sẽ submit giá trị này.
-    const sf = fields.find((x) => /STREET_NUMBER/.test(x.name || ""));
     if (sf && sf.value) {
       const el = findStandardInput(fieldCandidates(sf));
       if (el && norm(el.value) !== norm(String(sf.value))) {

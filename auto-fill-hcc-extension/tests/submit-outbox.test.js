@@ -220,3 +220,20 @@ test("đa tab: tab 2 rớt cú bấm, chỉ còn chữ thành công → vẫn đ
   await settle(h);
   assert.deepEqual(h.submits().map((c) => c.body.source), ["click", "text"]);
 });
+
+test("tab đã nộp cho khóa này → các cú bấm sau trên cùng tab không ghi thêm (làm tay, bấm lại)", async () => {
+  const h = harness();
+  const t = Date.now();
+  for (let i = 0; i < 6; i++) await h.api.reportDossierSubmitClick(7, "h", "", "c" + i, t + i * 60_000);
+  await settle(h);
+  assert.deepEqual(h.submits().map((c) => c.body.clickId), ["c0"]);
+});
+
+test("tab đã nộp, cán bộ dùng trợ lý làm hồ sơ mới (khóa mới) → cú bấm của hồ sơ mới vẫn ghi", async () => {
+  const h = harness();
+  await h.api.reportDossierSubmitClick(7, "h", "", "c1", Date.now());
+  h.store.autofill_session_7 = { dossierId: "d2" };
+  await h.api.reportDossierSubmitClick(7, "h", "", "c2", Date.now());
+  await settle(h);
+  assert.deepEqual(h.submits().map((c) => c.body.dossierId), ["d1", "d2"]);
+});

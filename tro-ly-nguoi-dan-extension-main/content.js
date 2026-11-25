@@ -587,7 +587,7 @@
     box.style.display = "block";
     guiPreview({
       type: "tlnd-preview-nhom",
-      tieuDe: msg.tieuDe, bieuTuong: msg.bieuTuong, tep: msg.tep, chiSo: msg.chiSo, ghim,
+      tieuDe: msg.tieuDe, bieuTuong: msg.bieuTuong, tep: msg.tep, chiSo: msg.chiSo, ghim, giuViTri: msg.giuViTri === true,
     });
   }
 
@@ -620,6 +620,12 @@
         } catch (_) { /* context mất */ }
       } else if (d?.type === "tlnd-preview-dong") {
         dongPreview();
+      } else if (d?.type === "tlnd-preview-chon") {
+        // Nút chọn ở thanh dưới (giấy trong Ví cá nhân) → sidebar đổi lựa chọn trên thẻ rồi gửi lại trạng thái.
+        try {
+          chrome.runtime.sendMessage({ action: "tlndPreviewChon", fid: String(d.fid || "") },
+            () => void chrome.runtime.lastError);
+        } catch (_) { /* context mất */ }
       }
     });
     // Bấm ra ngoài khung xem trước trên TRANG, hoặc Esc → đóng. Bấm vào khung Trợ lý (đẩy trang)
