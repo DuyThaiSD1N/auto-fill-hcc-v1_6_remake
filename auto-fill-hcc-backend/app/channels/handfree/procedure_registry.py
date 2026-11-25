@@ -9215,6 +9215,56 @@ PROCEDURES: list[dict] = [
             "dòng 3 (không có thì bỏ tick), Đơn thêm dòng qua 'Thêm giấy tờ'."
         ),
     },
+    {
+        "key": "dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa",
+        # Cài đặt "Có tách hồ sơ khi đính kèm" (options.splitDocuments) chọn attach/dinh_kem_tach hay dinh_kem_khong_tach.
+        "supportsSplitDocuments": True,
+        "provinceOnly": ["khanhhoa"],  # đặc thù Khánh Hòa: chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.012796 (25/11/2026), chép theo đính chính GCN đã cấp Khánh Hòa (1.012790, cùng template ba khối, cùng
+        # luồng iGate Khánh Hòa) nhưng thủ tục CẤP XÃ như bản Tuyên Quang: ke_khai_links không khai provinceOnlyAgency →
+        # DVCQG chọn đủ Tỉnh + Phường/Xã của tài khoản, không có thẻ chi nhánh. Một form (quy trình 1.012796-01) nên
+        # không cần caseOptions. Bảng đính kèm 4 dòng: dòng 1 bỏ tích, GCN + giấy chứng minh → 2, ủy quyền → 3, Đơn +
+        # CCCD → 4.
+        "detect": {
+            "urlScope": ["khanhhoa.gov.vn"],
+            "textIncludes": ["1.012796", "Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
+        "shortLabel": "Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
+        "subtitle": "Sửa thông tin ghi sai ngay từ khi cấp (năm sinh, tên, số giấy tờ, thửa đất) trên Giấy chứng nhận "
+        "tại Khánh Hòa",
+        "icon": "✏️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76cb-741b-996e-33d1ef50be50",
+        "flowProfile": "xay-dung",
+        "agencyProvince": "Khánh Hòa",
+        "bxdFlow": _KH_BXD_FLOW,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18) — ghi nội dung "
+             "đính chính, đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận đã cấp cần đính chính (đủ các trang)", "icon": "📜", "sides": 1,
+             "repeatable": True},
+            {"key": "chung_minh", "name": "Giấy tờ chứng minh sai sót (giấy khai sinh, trích lục hộ tịch, quyết định "
+             "cải chính…)", "icon": "📑", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người sử dụng đất", "icon": "🪪", "sides": 2,
+             "optional": True, "repeatable": True},
+            {"key": "uy_quyen", "name": "Văn bản ủy quyền (nếu nộp thay)", "icon": "✍️", "sides": 1, "optional": True,
+             "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên (cả bộ có thể là một PDF scan gộp):\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18) đã ký — người sử dụng đất, số căn "
+            "cước, địa chỉ, điện thoại, nội dung đính chính, số thửa, số tờ.\n"
+            "2. Giấy chứng nhận đã cấp cần đính chính (đủ các trang).\n"
+            "3. Giấy tờ chứng minh thông tin đúng: giấy khai sinh, trích lục hộ tịch, quyết định cải chính (bản chính "
+            "hoặc bản sao chứng thực).\n"
+            "4. Căn cước công dân của người sử dụng đất; nếu nộp thay: văn bản ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: dòng 1 (bản gốc Giấy chứng nhận) bỏ tích; Giấy chứng nhận, giấy khai sinh → dòng 2; văn bản "
+            "ủy quyền → dòng 3 (không có thì bỏ tích); Đơn và căn cước → dòng 4."
+        ),
+    },
     # ── Thủ tục đất đai cổng iGate Tuyên Quang (04/11/2026) ──
     # Key TRÙNG lõi → process/attach tự nối; detect y hệt entry gốc của lõi (urlScope tuyenquang.gov.vn — tên thủ tục trùng
     # bản tỉnh khác); label = label lõi bỏ "Tuyên Quang - ". ke_khai_links không khai provinceOnlyAgency / selectSo →
@@ -12223,6 +12273,8 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn-khanh-hoa": _TAT_CA,  # STT 190
     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa": _TAT_CA,  # STT 207
     "dinh-chinh-gcn-da-cap-khanh-hoa": frozenset({"khanhhoa"}),  # STT 103; 12/11/2026 người dùng mở cho Khánh Hòa
+    # 1.012796 (25/11/2026): bản riêng Khánh Hòa ("Khánh Hòa - …"), provinceOnly ["khanhhoa"] → mở cho Khánh Hòa.
+    "dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa": frozenset({"khanhhoa"}),
     "dang-ky-dat-dai-lan-dau-tuyen-quang": _TAT_CA,  # STT 44 + STT 229 (mã 1.013978)
     "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang": _TAT_CA,
     "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang": _TAT_CA,

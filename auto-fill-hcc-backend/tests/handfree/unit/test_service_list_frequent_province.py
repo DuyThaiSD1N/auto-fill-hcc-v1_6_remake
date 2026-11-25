@@ -112,7 +112,8 @@ def test_so_thu_tuc_moi_tinh_dung_bang_hoan_thien():
         # 25/11: +1 Lai Châu to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an-lai-chau (1.115591, provinceOnly laichau).
         "laichau": 155, "bacninh": 162, "lamdong": 148, "danang": 151, "quangninh": 155, "ninhbinh": 144,
         # 24/11: +1 Khánh Hòa tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa (1.115148, {"khanhhoa"}).
-        "quangngai": 145, "laocai": 143, "quangtri": 145, "khanhhoa": 151, "tuyenquang": 145,
+        # 25/11: +1 Khánh Hòa dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa (1.012796, {"khanhhoa"}).
+        "quangngai": 145, "laocai": 143, "quangtri": 145, "khanhhoa": 152, "tuyenquang": 145,
     }
 
 
@@ -123,6 +124,8 @@ def test_tinh_chi_thay_thu_tuc_da_hoan_thien():
     assert "khai-tu-lien-thong" in kh                          # STT 110: Khánh Hòa hoàn thiện (bảng 11/11)
     assert "khai-tu-lien-thong" in _card_keys("tuyenquang")    # STT 110: Tuyên Quang hoàn thiện (bảng 11/11)
     assert "dinh-chinh-gcn-da-cap-khanh-hoa" in kh             # STT 103: 12/11 người dùng mở cho Khánh Hòa
+    assert "dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa" in kh  # 25/11: 1.012796 bản Khánh Hòa
+    assert "dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa" not in _card_keys("tuyenquang")
     assert "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh" in _card_keys("bacninh")  # STT 50: 12/11 mở cho Bắc Ninh
     assert "cap-gcn-dang-ky-tau-ca" not in kh                  # STT 118: Khánh Hòa chưa cập nhật
     assert "cap-phep-long-duong-via-he" in _card_keys("danang")  # STT 138: chỉ Đà Nẵng

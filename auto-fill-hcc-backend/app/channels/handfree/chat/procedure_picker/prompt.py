@@ -640,6 +640,13 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "đính chính giấy chứng nhận đã cấp", "sửa thông tin sai trên sổ đỏ", "sổ đỏ ghi sai tên, sai năm sinh",
         "cập nhật số căn cước thay chứng minh thư trên sổ đỏ", "sổ đỏ ghi sai nguồn gốc sử dụng đất",
         "đính chính sổ đỏ ở khánh hòa"],
+    # Bản Khánh Hòa (provinceOnly) 1.012796, cấp xã: sổ ghi SAI ngay từ lúc cấp lần đầu (năm sinh, tên, số thửa) so với
+    # giấy khai sinh / căn cước — KHÁC 1.012790 ngay trên (thông tin đã THAY ĐỔI sau khi cấp: CMND sang CCCD, địa chỉ sau
+    # sắp xếp) và cấp đổi (đổi sang sổ mới).
+    "dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa": [
+        "sổ đỏ ghi sai năm sinh so với giấy khai sinh", "sổ đỏ cấp lần đầu bị ghi sai thông tin",
+        "đính chính giấy chứng nhận đã cấp lần đầu có sai sót", "sửa năm sinh trên sổ đỏ cho đúng căn cước",
+        "sổ đỏ in sai tên người sử dụng đất", "đính chính sổ đỏ ghi sai ở khánh hòa"],
     # Bản Lâm Đồng (provinceOnly): đất CHƯA có sổ, xin cấp lần đầu — KHÁC thẻ diện tích tăng thêm ngay dưới (đã có sổ,
     # chỉ xin cấp cho phần đất tăng thêm do ranh giới thay đổi).
     "dang-ky-dat-dai-lan-dau-lam-dong": ["làm sổ đỏ lần đầu", "đất chưa có sổ đỏ muốn xin cấp sổ",

@@ -806,7 +806,9 @@ def test_registered_procedures_use_their_declared_flow_family():
     # xã): DVCQG chọn đủ Tỉnh + Xã; 5 thủ tục còn lại: DVCQG chỉ chọn Tỉnh (ke_khai_links provinceOnlyAgency) + thẻ Chi
     # nhánh VPĐK theo xã.
     kh_ward_level = ("dang-ky-dat-dai-lan-dau-khanh-hoa", "giao-thue-chuyen-muc-dich-dat-khanh-hoa",
-                     "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa")
+                     "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa",
+                     # 25/11: 1.012796 quy trình "(Cấp Xã)", cơ quan UBND phường/xã.
+                     "dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa")
     for key in (*kh_ward_level,
                 "cap-doi-gcn-khanh-hoa",
                 "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa",
@@ -1091,7 +1093,8 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 cổng iGate Khánh Hòa (24/11) "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa" (1.115148), luồng "xay-dung".
     # +1 Bộ Công an (24/11) "cap-phieu-ly-lich-tu-phap-cong-an-cap-tinh" (3.000333), luồng "tu-phap-moi" chỉ chọn Tỉnh.
     # +1 cổng Lai Châu (25/11) "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an-lai-chau" (1.115591).
-    assert len(procedures) == 199
+    # +1 cổng iGate Khánh Hòa (25/11) "dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa" (1.012796), luồng "xay-dung".
+    assert len(procedures) == 200
 
     for procedure in procedures:
         key = procedure["key"]

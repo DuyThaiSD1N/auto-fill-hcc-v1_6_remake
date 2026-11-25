@@ -192,6 +192,10 @@ Chỉ chạy hai cây `tests/unit` và `tests/integration`. Cây `tests/handfree
 Baseline hiện tại có sẵn một số test đỏ không liên quan đến code mới; so số fail trước và sau khi
 sửa thay vì cố đưa về 0.
 
+Baseline ngày 2026-11-25, sau khi thêm pipeline 1.012796 đính chính GCN đã cấp lần đầu có sai sót Khánh Hòa
+(`dinh_chinh_gcn_cap_lan_dau_sai_sot_khanh_hoa`, máy local, plugin win_socketpair, có PYTHONUTF8=1):
+`23 failed, 6428 passed, 42 skipped, 13 errors`. Vẫn đúng 23 đỏ như dòng dưới.
+
 Baseline ngày 2026-11-25, sau khi thêm pipeline 1.115591 tổ chức kinh tế nhận chuyển nhượng QSDĐ Lai Châu
 (`to_chuc_kinh_te_nhan_chuyen_nhuong_qsdd_du_an_lai_chau`, máy local, plugin win_socketpair, có PYTHONUTF8=1):
 `23 failed, 6397 passed, 42 skipped, 13 errors`. Vẫn đúng 23 đỏ như dòng dưới.

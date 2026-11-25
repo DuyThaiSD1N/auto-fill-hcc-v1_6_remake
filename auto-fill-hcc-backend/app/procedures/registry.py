@@ -217,6 +217,8 @@ from app.pipelines.dang_ky_tai_san_gan_lien_thua_dat_da_cap_gcn_khanh_hoa.attach
 )
 from app.pipelines.dinh_chinh_gcn_da_cap_khanh_hoa.process import run as dinh_chinh_gcn_da_cap_khanh_hoa_process
 from app.pipelines.dinh_chinh_gcn_da_cap_khanh_hoa.attach import plan as dinh_chinh_gcn_da_cap_khanh_hoa_attach
+from app.pipelines.dinh_chinh_gcn_cap_lan_dau_sai_sot_khanh_hoa.process import run as dinh_chinh_gcn_cap_lan_dau_sai_sot_khanh_hoa_process
+from app.pipelines.dinh_chinh_gcn_cap_lan_dau_sai_sot_khanh_hoa.attach import plan as dinh_chinh_gcn_cap_lan_dau_sai_sot_khanh_hoa_attach
 from app.pipelines.xac_nhan_tiep_tuc_su_dung_dat_nong_nghiep_khanh_hoa.process import (
     run as xac_nhan_tiep_tuc_su_dung_dat_nong_nghiep_khanh_hoa_process,
 )
@@ -3117,6 +3119,42 @@ PROCEDURES: list[dict] = [
             "Đính kèm: bảng có sẵn 3 dòng; mỗi file đính NGUYÊN KHỐI: Giấy chứng nhận -> dòng 1 VÀ dòng 2 (cùng tệp, trang "
             "IV thể hiện sai sót), CCCD/giấy xác nhận cư trú/giấy tờ chứng minh -> dòng 2, văn bản ủy quyền -> dòng 3 "
             "(không có thì bỏ tick dòng 3), Đơn Mẫu 27 -> nút 'Thêm giấy tờ'. Loại bản giữ mặc định của cổng.\n"
+        ),
+    },
+    {
+        "key": "dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa",
+        # Mã TTHC 1.012796 (25/11/2026), theo file "Mapping_TTHC_1.012796_DinhChinhGCN_LamDong.xlsx" (DOM bóc trên cổng
+        # Khánh Hòa) + ảnh ánh xạ đính kèm. Link kê khai DVCQG cùng key (chọn Tỉnh + Phường/Xã, quy trình "1.012796-01 –
+        # (Cấp Xã)", cơ quan UBND phường/xã) sang cổng iGate Khánh Hòa; form ba khối như dinh-chinh-gcn-da-cap-khanh-hoa.
+        # Tên thủ tục trùng bản Tuyên Quang/Quảng Ngãi/Ninh Bình và chứa tên bản 1.012790 → khóa urlScope theo tên miền
+        # tỉnh + khớp MÃ in ở dòng "Quy trình: 1.012796-01".
+        "detect": {
+            "urlScope": ["khanhhoa.gov.vn"],
+            "textIncludes": ["1.012796", "Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Khánh Hòa - Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        # Cài đặt "Có tách hồ sơ khi đính kèm" (options.splitDocuments) chọn attach/dinh_kem_tach hay dinh_kem_khong_tach.
+        "supportsSplitDocuments": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ nên tải lên (cả bộ có thể là một PDF scan gộp):\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18) đã ký — người sử dụng đất, số CCCD, "
+            "địa chỉ, điện thoại; mục 2 ghi rõ nội dung đính chính (từ … sang …), số thửa, số tờ.\n"
+            "2. Giấy chứng nhận đã cấp cần đính chính (đủ các trang).\n"
+            "3. Giấy tờ chứng minh sai sót: Giấy khai sinh (bản chính hoặc bản sao chứng thực), trích lục hộ tịch, quyết "
+            "định cải chính…\n"
+            "4. Căn cước công dân của người sử dụng đất (bản chính hoặc bản sao chứng thực).\n"
+            "5. Văn bản ủy quyền (nếu nộp thay).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Đính kèm: bảng 4 dòng — dòng 1 (bản gốc Giấy chứng nhận) bỏ tích; Giấy chứng nhận, giấy khai sinh, giấy tờ "
+            "chứng minh -> dòng 2; văn bản ủy quyền -> dòng 3 (không có thì bỏ tích); Đơn + CCCD -> dòng 4. Không tách "
+            "(mặc định): mỗi file đính NGUYÊN FILE một lần vào dòng của giấy chính (file gộp có Đơn -> dòng 4). Bật 'Có "
+            "tách hồ sơ khi đính kèm': mỗi giấy cắt thành tệp riêng vào dòng của nó.\n"
         ),
     },
     {
@@ -12464,6 +12502,7 @@ _PIPELINE = {
         dang_ky_tai_san_gan_lien_thua_dat_da_cap_gcn_khanh_hoa_process,
     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa": xac_nhan_tiep_tuc_su_dung_dat_nong_nghiep_khanh_hoa_process,
     "dinh-chinh-gcn-da-cap-khanh-hoa": dinh_chinh_gcn_da_cap_khanh_hoa_process,
+    "dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa": dinh_chinh_gcn_cap_lan_dau_sai_sot_khanh_hoa_process,
     "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang": dinh_chinh_gcn_cap_lan_dau_sai_sot_tuyen_quang_process,
     "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang-ilis": dinh_chinh_gcn_cap_lan_dau_sai_sot_tuyen_quang_ilis_process,
     "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang": giao_thue_chuyen_muc_dich_dat_giao_rung_gia_han_tuyen_quang_process,
@@ -12778,6 +12817,7 @@ _ATTACH_PIPELINE = {
         dang_ky_tai_san_gan_lien_thua_dat_da_cap_gcn_khanh_hoa_attach,
     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa": xac_nhan_tiep_tuc_su_dung_dat_nong_nghiep_khanh_hoa_attach,
     "dinh-chinh-gcn-da-cap-khanh-hoa": dinh_chinh_gcn_da_cap_khanh_hoa_attach,
+    "dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa": dinh_chinh_gcn_cap_lan_dau_sai_sot_khanh_hoa_attach,
     "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang": dinh_chinh_gcn_cap_lan_dau_sai_sot_tuyen_quang_attach,
     "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang-ilis": dinh_chinh_gcn_cap_lan_dau_sai_sot_tuyen_quang_attach,
     "giao-thue-chuyen-muc-dich-dat-giao-rung-gia-han-tuyen-quang": giao_thue_chuyen_muc_dich_dat_giao_rung_gia_han_tuyen_quang_attach,
