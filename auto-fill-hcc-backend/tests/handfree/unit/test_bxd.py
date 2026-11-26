@@ -101,6 +101,7 @@ def test_cau_hinh_bo_sung_o_doc_dau_bat_buoc_cua_form_io():
     ("bo-sung-than-nhan-liet-si", ("ghiChu",)), ("tham-vieng-mo-liet-si", ("ghiChu",)),
     ("giai-quyet-che-do-khang-chien", ("ghiChu",)), ("sua-doi-thong-tin-ho-so-nguoi-co-cong", ("ghiChu",)),
     ("cong-nhan-che-do-khang-chien-nhiem-chat-doc-hoa-hoc", ("ghiChu",)),
+    ("giai-quyet-che-do-mai-tang-cuu-chien-binh-2002307", ("ghiChu",)),
     ("mai-tang-dan-cong-hoa-tuyen", ("ghiChu",)), ("dang-ky-noi-quy-lao-dong", ("ghiChu",)),
     # Cổng Bộ Y tế nộp tại Sở, có hộp thoại "Chọn trường hợp giải quyết" như GPXD.
     ("cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te", ("ghiChu",)), ("dang-ky-hanh-nghe", ("ghiChu",)),

@@ -311,6 +311,9 @@ PROCEDURE_HMONG = {
     "cong-nhan-che-do-khang-chien-nhiem-chat-doc-hoa-hoc": "Nyiaj pab neeg tau koom tsov rog raug tshuaj lom",
     "sua-doi-thong-tin-ho-so-nguoi-co-cong": "Kho ntaub ntawv tus neeg muaj nuj nqi rau teb chaws",
     "mai-tang-dan-cong-hoa-tuyen": "Nyiaj pab faus neeg tau pab tub rog thaum tsov rog",
+    # BẢN NHÁP chờ anh Dư soát — ghép "Nyiaj pab faus" (mai táng phí) của "mai-tang-dan-cong-hoa-tuyen" với "tub rog
+    # qub" (cựu chiến binh = lính cũ) là TỪ MỚI.
+    "giai-quyet-che-do-mai-tang-cuu-chien-binh-2002307": "Nyiaj pab faus tub rog qub",
     "uu-dai-ncc-tu-tran": "Pab tsev neeg ntawm neeg muaj nuj nqi rau teb chaws uas tuag lawm",
     "di-chuyen-ho-so-nguoi-huong-tro-cap": "Tsiv ntaub ntawv tus neeg tau nyiaj pab",
     "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham": "Ntawv lees paub chaw ua zaub mov huv si",

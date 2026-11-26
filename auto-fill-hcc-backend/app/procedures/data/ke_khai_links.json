@@ -1007,6 +1007,14 @@
       "autoConfirm": true
     },
     {
+      "key": "giai-quyet-che-do-mai-tang-cuu-chien-binh-2002307",
+      "code": "2.002307",
+      "label": "Giải quyết chế độ mai táng phí đối với cựu chiến binh",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-4a4e-7368-a306-f665291850ca",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "giai-quyet-che-do-mai-tang-dan-cong-hoa-tuyen",
       "code": "1.014359",
       "label": "Giải quyết chế độ mai táng phí đối với dân công hỏa tuyến tham gia kháng chiến chống Pháp, chống Mỹ, chiến tranh bảo vệ Tổ quốc và làm nhiệm vụ quốc tế",

@@ -370,6 +370,13 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "mai táng phí dân công hỏa tuyến", "bố tôi là dân công hỏa tuyến vừa mất",
         "dân công hỏa tuyến qua đời xin tiền mai táng", "chế độ mai táng cho dân công hỏa tuyến",
     ],
+    # CỰU CHIẾN BINH đã mất, người lo mai táng xin tiền mai táng (Mẫu 01 TT 21/2026/TT-BNV). KHÁC "mai-tang-dan-cong-
+    # hoa-tuyen" (người mất là dân công hỏa tuyến) và các thủ tục mai táng Bộ Y tế ("ho-tro-mai-tang-1116910", hưu trí
+    # xã hội): chỉ khi người mất là cựu chiến binh / bộ đội phục viên, xuất ngũ.
+    "giai-quyet-che-do-mai-tang-cuu-chien-binh-2002307": [
+        "mai táng phí cựu chiến binh", "ông tôi là cựu chiến binh vừa mất xin tiền mai táng",
+        "bố tôi là bộ đội phục viên đã qua đời xin chế độ mai táng", "trợ cấp mai táng cho cựu chiến binh",
+    ],
     # CÙNG cụm "trợ cấp ưu đãi" với thủ tục di chuyển hồ sơ người có công, chỉ khác ở chỗ NGƯỜI CÓ
     # CÔNG ĐÃ MẤT và thân nhân đứng ra hưởng chế độ → hint chỉ nhận cụm có người có công qua
     # đời; cụm "trợ cấp ưu đãi" trơn không thuộc bên nào.

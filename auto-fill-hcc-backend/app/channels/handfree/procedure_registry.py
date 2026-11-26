@@ -4299,6 +4299,68 @@ PROCEDURES: list[dict] = [
         "supportsSplitDocuments": True,
     },
     {
+        "key": "giai-quyet-che-do-mai-tang-cuu-chien-binh-2002307",
+        # Mã TTHC 2.002307, cổng Bộ Nội vụ — "Quy trình liên thông Xã - Sở Nội vụ" như "uu-dai-ncc-tu-tran" ngay trên →
+        # CÙNG cách chọn cơ quan CẤP XÃ: DVCQG chọn đủ Tỉnh + Phường/Xã (needsAgencySelect, không agencySoFirst), cổng bộ
+        # gạt radio "Phường/Xã" (maeAgencyLevel "ward"). Key TRÙNG lõi → process/attach (attp-row 3 dòng, có tách giấy)
+        # tự nối. Toàn quốc (người dùng không giới hạn tỉnh).
+        "detect": {
+            "urlScope": ["dichvucongbnv.moha.gov.vn", "dichvucong.gov.vn"],
+            "urlIncludes": ["MaTTHC=2.002307", "019d2bfb-4a4e-7368-a306-f665291850ca"],
+            # Cụm "đối với cựu chiến binh" không khớp 1.010456 ("đối với đối tượng cựu chiến binh … Quyết định 49").
+            "textIncludes": ["mai táng phí đối với cựu chiến binh"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Giải quyết chế độ mai táng phí đối với cựu chiến binh",
+        "shortLabel": "Giải quyết chế độ mai táng phí cựu chiến binh",
+        "subtitle": "Trợ cấp mai táng khi cựu chiến binh qua đời",
+        "icon": "🕯️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-4a4e-7368-a306-f665291850ca",
+        "needsAgencySelect": True,
+        "maePortal": True,
+        "maeAgencyLevel": "ward",
+        "supportsSplitDocuments": True,
+        "wizard": {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4},
+        # Cổng Bộ Nội vụ cùng nền iGate với cổng Bộ Xây dựng (bước 3 "Thông tin bổ sung" = hình thức nhận kết quả + cam
+        # đoan + mã xác nhận) → dẫn đủ 4 bước bằng luồng chung chat/bxd.
+        "bxdFlow": {
+            "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+        },
+        "hasAttachmentStep": True,
+        # Bước "Thành phần hồ sơ" có 3 dòng attp-row (planner core): Bản khai / trích lục khai tử / giấy xác nhận cựu
+        # chiến binh; căn cước đính chung dòng Bản khai.
+        "requiredDocs": [
+            {"key": "ban_khai", "name": "Bản khai đề nghị giải quyết chế độ trợ cấp mai táng (Mẫu số 01 Thông tư "
+             "21/2026/TT-BNV), có xác nhận của UBND cấp xã", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "trich_luc_khai_tu", "name": "Bản sao chứng thực trích lục khai tử / giấy chứng tử của cựu chiến "
+             "binh", "icon": "🕯️", "sides": 1, "repeatable": True},
+            {"key": "xac_nhan_ccb", "name": "Giấy tờ xác nhận là cựu chiến binh (giấy xác nhận của Ban Chỉ huy quân sự "
+             "/ Hội Cựu chiến binh, quyết định phục viên / xuất ngũ…)", "icon": "🎖️", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người nhận trợ cấp mai táng", "icon": "🪪", "sides": 1,
+             "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ liên quan khác", "icon": "📎", "sides": 1, "optional": True,
+             "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Bản khai đề nghị giải quyết chế độ trợ cấp mai táng đối với cựu chiến binh đã chết (Mẫu số 01 Thông tư "
+            "21/2026/TT-BNV), có xác nhận của UBND cấp xã — nguồn chính để điền form.\n"
+            "2. Bản sao chứng thực trích lục khai tử hoặc giấy chứng tử của cựu chiến binh.\n"
+            "3. Giấy tờ xác nhận là cựu chiến binh (giấy xác nhận của Ban Chỉ huy quân sự / Hội Cựu chiến binh, quyết "
+            "định phục viên / xuất ngũ…).\n"
+            "4. Nên có: căn cước công dân của người nhận trợ cấp (để điền nơi thường trú, quê quán).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "LƯU Ý: người nhận trợ cấp (còn sống, là chủ hồ sơ) và cựu chiến binh đã chết là HAI người khác nhau.\n"
+            "Bước Thành phần hồ sơ: Bản khai vào dòng 1, trích lục khai tử vào dòng 2, giấy xác nhận cựu chiến binh "
+            "vào dòng 3; căn cước đính chung dòng 1."
+        ),
+    },
+    {
         "key": "xac-dinh-muc-do-khuyet-tat",
         # Cổng Bộ Y tế, cùng cách chọn cơ quan + wizard với ba thủ tục trợ cấp/mai táng ở trên.
         # KHÁC HẲN ở bước đính kèm: KHÔNG phải một dòng gộp, mà là các Ô UPLOAD CỐ ĐỊNH — planner
@@ -12173,6 +12235,7 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "sua-doi-thong-tin-ho-so-nguoi-co-cong": _TAT_CA,
     "mai-tang-dan-cong-hoa-tuyen": _TAT_CA,
     "uu-dai-ncc-tu-tran": _TAT_CA,
+    "giai-quyet-che-do-mai-tang-cuu-chien-binh-2002307": _TAT_CA,
     "xac-dinh-muc-do-khuyet-tat": _TAT_CA,
     "doi-cap-lai-giay-xac-nhan-khuyet-tat": _TAT_CA,
     "ho-tro-mai-tang-1116910": _TAT_CA,  # STT 36 (bảng ghi mã cũ 1.001731)

@@ -767,6 +767,7 @@ def test_cau_hinh_bo_sung_o_moi_thu_tuc_mot_file_rieng_va_key_co_trong_registry(
                                      "cap-lai-to-quoc-ghi-cong", "cap-bo-sung-cap-lai-giay-chung-nhan-nguoi-co-cong",
                                      "bo-sung-than-nhan-liet-si", "tham-vieng-mo-liet-si", "giai-quyet-che-do-khang-chien",
                                      "cong-nhan-che-do-khang-chien-nhiem-chat-doc-hoa-hoc",
+                                     "giai-quyet-che-do-mai-tang-cuu-chien-binh-2002307",
                                      "sua-doi-thong-tin-ho-so-nguoi-co-cong", "mai-tang-dan-cong-hoa-tuyen",
                                      "dang-ky-noi-quy-lao-dong", "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc",
                                      "cung-cap-thong-tin-quy-hoach", "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san",

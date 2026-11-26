@@ -609,6 +609,8 @@ from app.pipelines.giai_quyet_che_do_khang_chien.attach import plan as giai_quye
 from app.pipelines.giai_quyet_che_do_khang_chien.process import run as giai_quyet_che_do_khang_chien_process
 from app.pipelines.cong_nhan_che_do_khang_chien_nhiem_chat_doc_hoa_hoc.attach import plan as cong_nhan_cdhh_attach
 from app.pipelines.cong_nhan_che_do_khang_chien_nhiem_chat_doc_hoa_hoc.process import run as cong_nhan_cdhh_process
+from app.pipelines.giai_quyet_che_do_mai_tang_cuu_chien_binh_2002307.attach import plan as mai_tang_ccb_attach
+from app.pipelines.giai_quyet_che_do_mai_tang_cuu_chien_binh_2002307.process import run as mai_tang_ccb_process
 from app.pipelines.sua_doi_thong_tin_ho_so_nguoi_co_cong.attach import plan as sua_doi_ttncc_attach
 from app.pipelines.sua_doi_thong_tin_ho_so_nguoi_co_cong.process import run as sua_doi_ttncc_process
 from app.pipelines.di_chuyen_ho_so_nguoi_huong_tro_cap.attach import plan as di_chuyen_ho_so_attach
@@ -8760,6 +8762,43 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "giai-quyet-che-do-mai-tang-cuu-chien-binh-2002307",
+        "collectFormContext": True,
+        # attach/planner.py: bật "Tách giấy tờ" → dinh_kem_tach (mỗi giấy một tệp đúng dòng), tắt → dinh_kem_khong_tach.
+        "supportsSplitDocuments": True,
+        # Mã TTHC 2.002307 — cổng Bộ Nội vụ (vào từ DVCQG), quy trình liên thông Xã – Sở Nội vụ, Form.io (engine
+        # fillFormStandard dom-*) theo Mapping_TTHC_MaiTangPhi_CCB_BoNoiVu.xlsx. Chủ hồ sơ = cá nhân nhận trợ cấp mai táng
+        # (Mục 2a Bản khai Mẫu 01 TT 21/2026/TT-BNV); eForm dùng lại key khối Người nộp (occurrence 1) cho cựu chiến binh
+        # và trú quán người nhận mai táng phí. Đính kèm attp-row 3 dòng. Key có hậu tố mã vì key không hậu tố là 1.010456
+        # (QĐ 49/2015/QĐ-TTg). Chưa có id SPA cổng Bộ Nội vụ → nhận theo cụm tên (cụm "đối với cựu chiến binh" không khớp
+        # 1.010456 "đối với đối tượng cựu chiến binh …").
+        # Hỗ trợ cài đặt "Lấy người nộp theo tờ khai" (options.submitterMode, xem process/mapper.py).
+        "detect": {
+            "textIncludes": ["mai táng phí đối với cựu chiến binh"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Giải quyết chế độ mai táng phí đối với cựu chiến binh",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể gộp chung một PDF scan):\n"
+            "1. Bản khai đề nghị giải quyết chế độ trợ cấp mai táng đối với cựu chiến binh đã chết theo Mẫu số 01 Thông "
+            "tư 21/2026/TT-BNV (có xác nhận của UBND cấp xã) — nguồn chính để điền.\n"
+            "2. Bản sao chứng thực trích lục khai tử / giấy chứng tử của cựu chiến binh.\n"
+            "3. Một trong các giấy tờ xác nhận là cựu chiến binh (giấy xác nhận của Ban CHQS / Hội Cựu chiến binh, quyết "
+            "định phục viên / xuất ngũ…).\n"
+            "4. Nên có: CCCD của người nhận trợ cấp mai táng (để điền nơi thường trú, quê quán).\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân loại (và tách trang nếu bật 'Tách giấy tờ').\n"
+            "Form điền: chủ hồ sơ = người nhận trợ cấp, thông tin cựu chiến binh đã chết, người nhận mai táng phí, bảng "
+            "'Hồ sơ kèm theo gồm'; người nộp chỉ bổ sung ô cổng không khoá.\n"
+            "Bước đính kèm: Bản khai → dòng 1; trích lục khai tử → dòng 2; giấy xác nhận cựu chiến binh → dòng 3; CCCD "
+            "đính chung dòng 1. Tệp bộ hồ sơ gộp trùng các tệp lẻ không đính thêm."
+        ),
+    },
+    {
         "key": "sua-doi-thong-tin-ho-so-nguoi-co-cong",
         "collectFormContext": True,
         # Cổng Bộ Nội vụ dichvucongbnv.moha.gov.vn — Form.io, engine fillFormStandard dom-* + attach MOHA
@@ -12660,6 +12699,7 @@ _PIPELINE = {
     "uu-dai-ncc-tu-tran": uu_dai_ncc_tu_tran_process,
     "giai-quyet-che-do-khang-chien": giai_quyet_che_do_khang_chien_process,
     "cong-nhan-che-do-khang-chien-nhiem-chat-doc-hoa-hoc": cong_nhan_cdhh_process,
+    "giai-quyet-che-do-mai-tang-cuu-chien-binh-2002307": mai_tang_ccb_process,
     "sua-doi-thong-tin-ho-so-nguoi-co-cong": sua_doi_ttncc_process,
     "di-chuyen-ho-so-nguoi-huong-tro-cap": di_chuyen_ho_so_process,
     "tro-cap-xa-hoi-hang-thang": tro_cap_xa_hoi_hang_thang_process,
@@ -13004,6 +13044,7 @@ _ATTACH_PIPELINE = {
     "uu-dai-ncc-tu-tran": uu_dai_ncc_tu_tran_attach,
     "giai-quyet-che-do-khang-chien": giai_quyet_che_do_khang_chien_attach,
     "cong-nhan-che-do-khang-chien-nhiem-chat-doc-hoa-hoc": cong_nhan_cdhh_attach,
+    "giai-quyet-che-do-mai-tang-cuu-chien-binh-2002307": mai_tang_ccb_attach,
     "sua-doi-thong-tin-ho-so-nguoi-co-cong": sua_doi_ttncc_attach,
     "di-chuyen-ho-so-nguoi-huong-tro-cap": di_chuyen_ho_so_attach,
     "tro-cap-xa-hoi-hang-thang": tro_cap_xa_hoi_hang_thang_attach,

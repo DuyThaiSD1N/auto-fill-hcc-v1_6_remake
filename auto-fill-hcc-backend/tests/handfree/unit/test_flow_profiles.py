@@ -396,7 +396,8 @@ def test_registered_procedures_use_their_declared_flow_family():
                           "cap-lai-to-quoc-ghi-cong", "cap-bo-sung-cap-lai-giay-chung-nhan-nguoi-co-cong",
                           "bo-sung-than-nhan-liet-si", "tham-vieng-mo-liet-si", "giai-quyet-che-do-khang-chien",
                           "mai-tang-dan-cong-hoa-tuyen", "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat",
-                          "hoa-giai-tranh-chap-dat-dai", "cong-nhan-che-do-khang-chien-nhiem-chat-doc-hoa-hoc"):
+                          "hoa-giai-tranh-chap-dat-dai", "cong-nhan-che-do-khang-chien-nhiem-chat-doc-hoa-hoc",
+                          "giai-quyet-che-do-mai-tang-cuu-chien-binh-2002307"):
         moha_ward = procedures.pop(moha_ward_key)
         assert moha_ward.get("flowProfile") is None
         assert moha_ward["needsAgencySelect"] is True
@@ -1094,7 +1095,8 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 Bộ Công an (24/11) "cap-phieu-ly-lich-tu-phap-cong-an-cap-tinh" (3.000333), luồng "tu-phap-moi" chỉ chọn Tỉnh.
     # +1 cổng Lai Châu (25/11) "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an-lai-chau" (1.115591).
     # +1 cổng iGate Khánh Hòa (25/11) "dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa" (1.012796), luồng "xay-dung".
-    assert len(procedures) == 200
+    # +1 cổng Bộ Nội vụ (26/11) "giai-quyet-che-do-mai-tang-cuu-chien-binh-2002307" (2.002307), cấp xã.
+    assert len(procedures) == 201
 
     for procedure in procedures:
         key = procedure["key"]
