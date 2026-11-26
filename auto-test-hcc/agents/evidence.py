@@ -130,6 +130,48 @@ def pipeline_folder(procedure: str) -> str | None:
     return guess if (BE / "app/pipelines" / guess).is_dir() else None
 
 
+def second_pass_kind(procedure: str) -> str | None:
+    """Giá trị "secondPass" của thủ tục trong registry (True → "surveyjs", hoặc "legacy" / "formio" / "hkd"...).
+    None = thủ tục không có lớp thanh tra (điền đợt 2)."""
+    registry = (BE / "app/procedures/registry.py").read_text(encoding="utf-8")
+    start = re.search(rf'^\s*"key":\s*"{re.escape(procedure)}",\s*$', registry, re.M)
+    if not start:
+        return None
+    following = re.search(r'^\s*"key":\s*"', registry[start.end():], re.M)
+    block = registry[start.end(): start.end() + following.start()] if following else registry[start.end():]
+    found = re.search(r'^\s*"secondPass":\s*(True|"(\w+)")', block, re.M)
+    if not found:
+        return None
+    return found.group(2) or "surveyjs"
+
+
+def _second_pass_record(request: dict | None) -> dict | None:
+    """Kết quả thanh tra của lượt gốc (process_requests.second_pass do backend ghi sau khi lượt soát chạy nền xong)."""
+    record = (request or {}).get("second_pass")
+    return record if isinstance(record, dict) else None
+
+
+def thanh_tra_info(procedure: str, pipeline: str | None, request: dict | None) -> dict:
+    """Thủ tục có lớp thanh tra không, code nằm đâu, lượt gốc thanh tra đã chạy chưa và ghi lại bao nhiêu ô."""
+    kind = second_pass_kind(procedure)
+    folder = BE / "app/pipelines" / (pipeline or "").replace(".", "/") / "thanh_tra" if pipeline else None
+    record = _second_pass_record(request)
+    outcomes: dict[str, int] = {}
+    for ruling in (record or {}).get("rulings") or []:
+        if isinstance(ruling, dict) and ruling.get("outcome"):
+            outcomes[ruling["outcome"]] = outcomes.get(ruling["outcome"], 0) + 1
+    return {
+        "has": kind is not None,
+        "kind": kind,
+        "dir": (folder.relative_to(BE.parent).as_posix() + "/") if folder and folder.is_dir() else None,
+        # done / failed (lỗi hoặc quá giờ) / None = lượt gốc không chạy thanh tra (extension cũ, tài khoản ngoài thí điểm...)
+        "ran": (record or {}).get("status"),
+        "reason": (record or {}).get("reason"),
+        "patched": len((record or {}).get("fields") or []) if record else 0,
+        "outcomes": outcomes,
+    }
+
+
 _ARCHIVE_CACHE: dict[str, dict] = {}
 # Loại lượt test được: điền form, và đính kèm (kế hoạch giấy nào vào dòng nào, chấm qua ô ảo của scoring.attach_fields).
 KINDS = ("autofill", "attach")
@@ -216,6 +258,7 @@ def lookup(request_id: str) -> dict:
     context = _form_context(db, request) if kind == "autofill" else {}
     options = request.get("options") or {}
     plan = attach_plan(trace) if kind == "attach" else []
+    pipeline = pipeline_folder(str(request.get("procedure")))
     return {
         "source": "archive" if stored else "mongo",
         "kind": kind,
@@ -240,7 +283,9 @@ def lookup(request_id: str) -> dict:
         },
         "files": [{"name": f.get("name"), "size": f.get("size")} for f in files],
         "missingFiles": missing,
-        "pipeline": pipeline_folder(str(request.get("procedure"))),
+        "pipeline": pipeline,
+        # Lớp thanh tra (điền đợt 2): sau lượt điền đầu, AI khác đọc lại giấy tờ độc lập rồi ghi lại các ô có căn cứ.
+        "thanhTra": thanh_tra_info(str(request.get("procedure")), pipeline, request) if kind == "autofill" else None,
         # Lượt trợ lý: ngữ cảnh nằm ở conversations (TTL 24h), hết hạn thì phải hỏi lại người dùng.
         "needsApplicant": kind == "autofill" and request.get("experience") == "handfree" and not context,
         "link": _procedure_link(str(request.get("procedure"))),
@@ -382,6 +427,18 @@ def collect(request_id: str, case_dir: Path) -> dict:
             "portalRows": (options.get("attachmentContext") or {}).get("components") or [],
         })
         extra = {"plan": plan, "pageCounts": counts}
+    record = _second_pass_record(request) if (info.get("thanhTra") or {}).get("has") else None
+    if record:
+        # Thủ tục có thanh tra: fields.json là giá trị CUỐI lên form (lượt điền đầu + bản vá đợt 2), fields_dot1.json là
+        # lượt điền đầu, second_pass.json là bản vá + biên bản từng vụ (thanh tra đề xuất gì, toà xử ra sao).
+        _write_json(case_dir / "second_pass.json", {
+            "status": record.get("status"), "reason": record.get("reason"), "ms": record.get("ms"),
+            "patch": record.get("fields") or [], "rulings": record.get("rulings") or [], "timing": record.get("timing") or {},
+        })
+        _write_json(case_dir / "fields_dot1.json", fields)
+        extra["firstPassFields"] = fields
+        if record.get("status") == "done":
+            fields = scoring.merge_patch(fields, record.get("fields"))
     _write_json(case_dir / "fields.json", fields)
     _write_json(case_dir / "llm_output.json", (trace or {}).get("llm_output") or {})
     calls = (steps or {}).get("llm") or []

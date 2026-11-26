@@ -279,7 +279,7 @@ def deploy(cancel: threading.Event) -> dict:
     compose, cwd, service = _compose()
     extra = [] if COMPOSE_FILE else ["--remove-orphans"]
     env = _compose_env()
-    key = tree_key() if USE_WORKSPACE else None
+    key = _stack_key() if USE_WORKSPACE else None
     code, output = run([*compose, "up", "-d", "--build", *extra, service], cwd, 1500, cancel, env)
     if code != 0:
         return {"ok": False, "step": "build", "output": output[-4000:]}
@@ -305,7 +305,16 @@ def stack_current() -> bool:
         mark = json.loads(_STACK_MARK.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return False
-    return mark.get("key") == tree_key() and healthz()[0]
+    return mark.get("key") == _stack_key() and healthz()[0]
+
+
+def _stack_key() -> str:
+    """Cây code + nội dung file compose của backend thử: đổi biến môi trường trong compose (vd bật thanh tra) cũng phải dựng lại."""
+    try:
+        compose = Path(COMPOSE_FILE).read_bytes() if COMPOSE_FILE else b""
+    except OSError:
+        compose = b""
+    return f"{tree_key()}|{hashlib.sha1(compose).hexdigest()}"
 
 
 def ensure_stack(cancel: threading.Event) -> dict | None:

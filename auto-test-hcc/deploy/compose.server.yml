@@ -58,6 +58,12 @@ services:
       - VAULT_TOKEN=
       # Extension của bot nạp dạng unpacked, id khác bản cài trên Chrome store.
       - ALLOWED_EXTENSION_IDS=
+      # Lớp thanh tra (điền đợt 2) bật cho mọi tài khoản thử; lần chạy lại chỉ khai fillSupports khi lượt gốc có thanh tra
+      # (replay.second_pass_options). Hạn chờ rộng hơn production để máy chậm không cắt ngang lượt soát.
+      - SECOND_PASS_ENABLED=true
+      - SECOND_PASS_USERNAMES=
+      - SECOND_PASS_TIMEOUT_SECONDS=60
+      - SECOND_PASS_MAX_RUNNING=10
     ports:
       - "127.0.0.1:12015:12015"
     volumes:

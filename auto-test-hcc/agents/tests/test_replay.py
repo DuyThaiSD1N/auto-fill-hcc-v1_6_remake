@@ -117,3 +117,46 @@ def test_chay_lai_luot_dinh_kem_goi_action_attach(monkeypatch, tmp_path):
     assert run["response"]["fields"][0] == {"name": "dòng: Tờ khai đăng ký", "value": "Tờ khai [#1]"}
     assert "replaceFiles" not in run["response"] and run["response"]["replacedFiles"] == ["scan.pdf"]
     assert (tmp_path / "run1_plan.json").is_file()
+
+
+# ---- thủ tục có thanh tra (điền đợt 2) --------------------------------------------------------------------------------
+
+def _tt_case(ran, kind="surveyjs"):
+    return {"kind": "autofill", "thanhTra": {"has": True, "kind": kind, "ran": ran}}
+
+
+def test_luot_goc_khong_chay_thanh_tra_thi_chay_lai_cung_tat():
+    options = replay.second_pass_options({"fillSupports": ["secondPass", "secondPassArea", "khac"]}, _tt_case(None))
+    assert options["fillSupports"] == ["khac"]
+    assert not replay.wants_second_pass(_tt_case(None))
+
+
+def test_luot_goc_co_thanh_tra_thi_giu_nang_luc_cua_extension():
+    options = replay.second_pass_options({"fillSupports": ["secondPass"]}, _tt_case("done"))
+    assert options["fillSupports"] == ["secondPass"]
+
+
+def test_luot_tro_ly_khong_co_fill_supports_thi_khai_nhu_extension():
+    assert "secondPassFormio" in replay.second_pass_options({}, _tt_case("done", "formio"))["fillSupports"]
+    assert replay.second_pass_options({}, _tt_case("done", "hkd"))["fillSupports"] == ["secondPassHkd"]
+
+
+def test_luot_dinh_kem_khong_chay_thanh_tra():
+    assert not replay.wants_second_pass({**_tt_case("done"), "kind": "attach"})
+
+
+def test_ghep_ket_qua_thanh_tra_vao_lan_chay_lai(tmp_path):
+    body = {"fields": [{"name": "hoTen", "value": "Nguyen Van B"}]}
+    doc = {"status": "done", "ms": 1200, "fields": [{"name": "hoTen", "value": "Nguyễn Văn B", "from": "Nguyen Van B", "by": "dinh_danh"}],
+           "rulings": [{"inspector": "dinh_danh", "outcome": "sua"}, {"inspector": "dia_chi", "outcome": "giu"}]}
+    brief = replay.apply_second_pass(body, doc, 3, tmp_path)
+    assert body["fields"][0]["value"] == "Nguyễn Văn B" and body["firstPassFields"][0]["value"] == "Nguyen Van B"
+    assert brief == {"status": "done", "reason": None, "ms": 1200, "outcomes": {"sua": 1, "giu": 1}, "patched": ["hoTen"]}
+    assert (tmp_path / "run3_second_pass.json").is_file()
+
+
+def test_thanh_tra_qua_gio_thi_giu_luot_dau(tmp_path):
+    body = {"fields": [{"name": "hoTen", "value": "A"}]}
+    brief = replay.apply_second_pass(body, {"status": "failed", "reason": "timeout"}, 1, tmp_path)
+    assert body == {"fields": [{"name": "hoTen", "value": "A"}]} and brief["status"] == "failed"
+    assert replay.apply_second_pass(body, None, 2, tmp_path) == {"status": "none"}

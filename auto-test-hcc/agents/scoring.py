@@ -110,10 +110,39 @@ def known_fields(original: list[dict] | None, runs: list[dict]) -> set[str]:
     return keys
 
 
-def field_table(original: list[dict] | None, runs: list[dict]) -> list[dict]:
-    """Field × lần cho agent đọc: giá trị lượt gốc, từng lần chạy lại, có ổn định không."""
+def merge_patch(fields: list[dict] | None, patch: list[dict] | None) -> list[dict]:
+    """Giá trị cuối cùng lên form của thủ tục có thanh tra: ô lượt điền đầu, ô nào bản vá đợt 2 ghi lại thì lấy giá trị
+    bản vá (extension ghi đè đúng các ô đó). Ô bản vá có mà lượt đầu chưa có thì thêm vào cuối. Bản vá không xoá ô nào."""
+    out = [dict(f) for f in fields or [] if isinstance(f, dict)]
+    index = {field_key(f): i for i, f in enumerate(out)}
+    for item in patch or []:
+        if not isinstance(item, dict) or "name" not in item:
+            continue
+        field = {k: v for k, v in item.items() if k not in ("from", "by")}
+        key = field_key(field)
+        if key in index:
+            out[index[key]] = {**out[index[key]], **field}
+        else:
+            index[key] = len(out)
+            out.append(field)
+    return out
+
+
+def _first_pass_values(run: dict) -> dict[str, str] | None:
+    """Giá trị lượt điền đầu của một lần chạy có thanh tra ghi lại ô (None = lần đó không có bản vá)."""
+    first = (run.get("response") or {}).get("firstPassFields")
+    return run_values(first) if isinstance(first, list) else None
+
+
+def field_table(original: list[dict] | None, runs: list[dict], original_first: list[dict] | None = None) -> list[dict]:
+    """Field × lần cho agent đọc: giá trị lượt gốc, từng lần chạy lại, có ổn định không.
+
+    Thủ tục có thanh tra: giá trị là giá trị CUỐI (sau bản vá đợt 2). Ô nào thanh tra đã ghi lại ở ít nhất một lần thì
+    thêm ``dot1`` (giá trị lượt điền đầu từng lần, None = lần đó thanh tra không đổi ô này) và ``originalDot1``."""
     base = run_values(original)
+    base_first = run_values(original_first) if original_first is not None else None
     per_run = [actual_values(r) if run_ok(r) else None for r in runs]
+    first_runs = [_first_pass_values(r) if run_ok(r) else None for r in runs]
     keys: list[str] = list(base)
     for values in per_run:
         keys.extend(k for k in (values or {}) if k not in keys)
@@ -121,7 +150,14 @@ def field_table(original: list[dict] | None, runs: list[dict]) -> list[dict]:
     for key in keys:
         values = [None if v is None else v.get(key, "") for v in per_run]
         seen = {v for v in values if v is not None}
-        table.append({"field": key, "original": base.get(key, ""), "runs": values, "stable": len(seen) <= 1})
+        row = {"field": key, "original": base.get(key, ""), "runs": values, "stable": len(seen) <= 1}
+        dot1 = [None if f is None or v is None or f.get(key, "") == v.get(key, "") else f.get(key, "")
+                for f, v in zip(first_runs, per_run)]
+        original_dot1 = None if base_first is None or base_first.get(key, "") == base.get(key, "") else base_first.get(key, "")
+        if any(d is not None for d in dot1) or original_dot1 is not None:
+            row["dot1"] = dot1
+            row["originalDot1"] = original_dot1
+        table.append(row)
     return table
 
 

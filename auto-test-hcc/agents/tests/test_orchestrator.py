@@ -857,3 +857,49 @@ def test_qua_gio_khong_ai_duyet_ke_hoach_thi_dung(world, reviewer, monkeypatch):
     orch.run()
     assert job.data["outcome"] == "not_approved" and "không ai duyệt kế hoạch" in job.data["report"]["reason"]
     assert "fixer" not in world.calls
+
+
+# ---- thủ tục có thanh tra (điền đợt 2) --------------------------------------------------------------------------------
+
+def _tt_job():
+    return {"requestId": "req-mau", "description": "Ô họ tên sai", "settings": {}}
+
+
+def _tt_case(**info):
+    return {"caseDir": "runs/x/case", "label": "Thủ tục mẫu", "procedure": "thu-tuc-mau", "pipeline": "thu_tuc_mau",
+            "thanhTra": {"has": True, "kind": "surveyjs", "dir": "auto-fill-hcc-backend/app/pipelines/thu_tuc_mau/thanh_tra/", **info}}
+
+
+def test_thu_tuc_co_thanh_tra_thi_hoi_dong_co_vai_soat_thanh_tra_va_quy_tac_can_bang():
+    brief = roles.case_brief(_tt_job(), _tt_case(ran="done", patched=2, outcomes={"sua": 1}), [])
+    assert "Lớp thanh tra" in brief and "Cân bằng" in brief and "second_pass.json" in brief
+    assert "thu_tuc_mau/thanh_tra/" in brief and "ghi lại 2 ô" in brief
+    assert list(roles.analysts(None, True)) == ["ocr", "mapper", "form", "thanh_tra"]
+    system, _ = roles.analyst_prompt("thanh_tra", brief, None, True)
+    assert "Soát thanh tra" not in system and "THANH TRA" in system
+    assert "thanh_tra" in roles.CAUSES and "plain" in roles.DECISION_SCHEMA["required"]
+
+
+def test_thu_tuc_khong_thanh_tra_hoac_luot_dinh_kem_thi_brief_nhu_cu():
+    plain = {"caseDir": "runs/x/case", "label": "Thủ tục mẫu", "procedure": "thu-tuc-mau", "pipeline": "thu_tuc_mau"}
+    assert "Lớp thanh tra" not in roles.case_brief(_tt_job(), plain, [])
+    assert "Lớp thanh tra" not in roles.case_brief(_tt_job(), {**_tt_case(ran="done"), "kind": "attach"}, [])
+    assert list(roles.analysts("attach", True)) == ["ocr", "mapper", "form"]
+
+
+def test_luot_goc_khong_chay_thanh_tra_thi_brief_noi_ro():
+    brief = roles.case_brief(_tt_job(), _tt_case(ran=None), [])
+    assert "KHÔNG chạy thanh tra" in brief and "second_pass.json là" not in brief
+
+
+def test_doc_co_second_pass_trong_registry(monkeypatch, tmp_path):
+    registry = tmp_path / "app/procedures/registry.py"
+    registry.parent.mkdir(parents=True)
+    registry.write_text('PROCEDURES = [\n    {\n        "key": "a-b",\n        "secondPass": True,\n    },\n    {\n'
+                        '        "key": "c-d",\n        "label": "x",\n    },\n    {\n        "key": "e-f",\n'
+                        '        # "secondPass": "formio",\n        "secondPass": "formio",\n    },\n]\n', encoding="utf-8")
+    monkeypatch.setattr(evidence, "BE", tmp_path)
+    assert evidence.second_pass_kind("a-b") == "surveyjs"
+    assert evidence.second_pass_kind("c-d") is None  # không lấy nhầm secondPass của thủ tục sau
+    assert evidence.second_pass_kind("e-f") == "formio"
+    assert evidence.second_pass_kind("khong-co") is None

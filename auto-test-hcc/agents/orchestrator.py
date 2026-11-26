@@ -293,6 +293,10 @@ class Orchestrator:
         # Vòng trước có thể đã build bản sửa rồi trượt: code đã hoàn tác nhưng stack vẫn chạy bản đó.
         self._restore_stack()
         report = {"outcome": outcome, "headline": HEADLINES[outcome], "reason": reason, "finishedAt": now()}
+        # Câu đời thường của trọng tài vòng cuối: web hiện cho tester trước, lý do kỹ thuật thu gọn bên dưới.
+        decision = next((r.get("decision") for r in reversed(job.data.get("rounds") or []) if r.get("decision")), None) or {}
+        if decision.get("plain"):
+            report["plain"] = decision["plain"]
         job.update(stage="report", status="done", outcome=outcome, report=report)
         job.log(f"Kết luận: {report['headline']}.")
 
@@ -378,13 +382,21 @@ class Orchestrator:
         if applicant:
             options = self.case["options"]
             options["formContext"] = {**(options.get("formContext") or {}), **applicant}
-        public = {k: v for k, v in self.case.items() if k not in ("options", "storedFiles", "fields", "caseDir", "plan")}
+        public = {k: v for k, v in self.case.items()
+                  if k not in ("options", "storedFiles", "fields", "firstPassFields", "caseDir", "plan")}
         self.job.update(case=public)
         if replay.is_attach(self.case):
             self.job.log(f"Lượt ĐÍNH KÈM · thủ tục {self.case.get('label')}, {len(self.case['storedFiles'])} tệp, "
                          f"{len(self.case.get('plan') or [])} mục trong kế hoạch lượt gốc.")
         else:
             self.job.log(f"Thủ tục {self.case.get('label')}, {len(self.case['storedFiles'])} tệp, {len(self.case['fields'])} field ở lượt gốc.")
+            info = self.case.get("thanhTra") or {}
+            if info.get("has"):
+                ran = info.get("ran")
+                self.job.log("Thủ tục có lớp thanh tra (soát lại sau lượt điền đầu). " + (
+                    f"Lượt gốc thanh tra ghi lại {info.get('patched', 0)} ô; chạy lại sẽ chờ thanh tra rồi chấm trên giá trị cuối."
+                    if ran == "done" else f"Lượt gốc thanh tra không xong ({info.get('reason') or ran})." if ran else
+                    "Lượt gốc không chạy thanh tra nên chạy lại cũng tắt thanh tra."))
 
     @property
     def for_troly(self) -> bool:
@@ -406,8 +418,11 @@ class Orchestrator:
             return
         shutil.copytree(source, target, dirs_exist_ok=True)
 
+    def _table(self, runs: list[dict]) -> list[dict]:
+        return scoring.field_table(self.case["fields"], runs, self.case.get("firstPassFields"))
+
     def _reproduce(self) -> None:
-        table = scoring.field_table(self.case["fields"], [])
+        table = self._table([])
         if self.settings["reproduce"]:
             self._stage("reproduce", f"Chạy lại {self.settings['runs']} lần với code hiện tại để xem lỗi có lặp lại không…")
             live: list[dict] = []
@@ -421,9 +436,10 @@ class Orchestrator:
             self.pre_runs = self._replay("reproduce", on_run)
             if self.pre_runs and not any(scoring.run_ok(r) for r in self.pre_runs):
                 raise JobError(f"Chạy lại lỗi cả {len(self.pre_runs)} lần: {self.pre_runs[0].get('error')}")
-            table = scoring.field_table(self.case["fields"], self.pre_runs)
+            table = self._table(self.pre_runs)
             fresh = scoring.ocr_fresh_count(self.pre_runs)
             self._check_runs(self.pre_runs)
+            self._check_second_pass(self.pre_runs)
             coverage = scoring.replay_coverage(self.case["fields"], self.pre_runs)
             faithful = coverage["ratio"] >= _FAITHFUL_RATIO
             if not faithful:
@@ -449,6 +465,17 @@ class Orchestrator:
             self._warn(f"Chỉ {fresh}/{len(done)} lần xác nhận được OCR mới, các lần còn lại có thể trúng cache.")
         if any(r.get("llmReused") for r in runs):
             self._warn("Thủ tục này dùng lại câu trả lời LLM trong 30 phút, nên các lần chạy không đo được độ dao động của LLM.")
+
+    def _check_second_pass(self, runs: list[dict]) -> None:
+        """Thủ tục có thanh tra mà lần chạy lại không có kết quả thanh tra thì giá trị chấm chỉ là lượt điền đầu."""
+        if not replay.wants_second_pass(self.case):
+            return
+        done = [r for r in runs if scoring.run_ok(r)]
+        missing = [r for r in done if (r.get("secondPass") or {}).get("status") != "done"]
+        if missing:
+            states = ", ".join(sorted({str((r.get("secondPass") or {}).get("status") or "none") for r in missing}))
+            self._warn(f"{len(missing)}/{len(done)} lần chạy lại không có kết quả thanh tra ({states}): các lần đó chấm trên lượt "
+                       "điền đầu. Kiểm tra backend thử có bật SECOND_PASS_ENABLED (deploy/compose.*.yml).")
 
     def _warn(self, text: str) -> None:
         with self.job.lock:
@@ -523,8 +550,9 @@ class Orchestrator:
         brief = roles.case_brief(self.job.data, self.case, self.attempts)
         self._stage("meeting", f"Vòng {round_['n']}: hội đồng phân tích độc lập…")
         tasks = []
-        for role, spec in roles.analysts(self.case.get("kind")).items():
-            system, prompt = roles.analyst_prompt(role, brief, self.case.get("kind"))
+        thanh_tra = roles.has_thanh_tra(self.case)
+        for role, spec in roles.analysts(self.case.get("kind"), thanh_tra).items():
+            system, prompt = roles.analyst_prompt(role, brief, self.case.get("kind"), thanh_tra)
             tasks.append(lambda r=role, l=spec["label"], s=system, p=prompt: self._ask(r, l, s, p, roles.OPINION_SCHEMA))
         opinions = self._together(tasks)
         with self.job.lock:
@@ -545,7 +573,7 @@ class Orchestrator:
         tasks = []
         for opinion in valid:
             others = [p for p in public if p["role"] != opinion["role"]]
-            system, _ = roles.analyst_prompt(opinion["role"], brief, self.case.get("kind"))
+            system, _ = roles.analyst_prompt(opinion["role"], brief, self.case.get("kind"), thanh_tra)
             tasks.append(lambda o=opinion, s=system, x=others: self._ask(
                 o["role"], o["label"], s, roles.review_prompt(x), roles.REVIEW_SCHEMA, resume=o.get("sessionId"),
             ))
@@ -850,6 +878,7 @@ class Orchestrator:
 
         runs = self._replay(f"round{round_['n']}", on_run)
         self._check_runs(runs)
+        self._check_second_pass(runs)
         evaluation = scoring.evaluate(checks, runs)
         targets = {str(c.get("field")) for c in checks}
         regressions = scoring.find_regressions(self._baseline_values(), runs, targets)
@@ -970,6 +999,10 @@ class Orchestrator:
             # Bộ phát lại thay tệp bằng ảnh giả 1 trang, mà planner đính kèm chia giấy theo trang của tệp thật.
             raise regression_case.Skip("Ca đính kèm chưa có ca hồi quy: planner chia giấy theo trang của tệp thật, bộ phát lại "
                                        "chỉ có chữ OCR. Test unit fixer thêm vào pipeline là chốt chặn hồi quy.")
+        if any("/thanh_tra/" in change.rel for change in changes):
+            # Lớp thanh tra chạy nền với context rỗng nên lượt LLM của nó không vào trace: bộ phát lại chỉ phát được lượt đầu.
+            raise regression_case.Skip("Bản sửa nằm ở lớp thanh tra (đợt 2): bộ phát lại chỉ phát lượt điền đầu, chưa phát được "
+                                       "lượt soát. Test unit thanh tra fixer thêm vào là chốt chặn hồi quy.")
         request_id = self._passing_request()
         if not request_id:
             raise regression_case.Skip("Không có lượt chạy lại đạt nào có mã req để lấy trace.")

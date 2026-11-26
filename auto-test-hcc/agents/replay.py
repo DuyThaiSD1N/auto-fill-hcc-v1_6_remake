@@ -19,6 +19,10 @@ from evidence import test_database as database
 # Khoá gắn với hồ sơ/phiên thật: gửi lại thì lượt thử dính vào hồ sơ của người dân.
 _DROP_OPTIONS = {"dossierId", "sessionId", "conversation_id", "upload_session_id", "consent_id", "channel"}
 _TRACE_WAIT_S = 6
+# Thanh tra chạy nền sau khi /process trả lượt điền đầu; backend thử đặt SECOND_PASS_TIMEOUT_SECONDS=60 (deploy/compose.*.yml).
+_SECOND_PASS_WAIT_S = 90
+# fillSupports bản extension Auto Fill gửi cho thủ tục có thanh tra (popup.js); hộ kinh doanh gửi riêng secondPassHkd.
+_SECOND_PASS_SUPPORTS = ["secondPass", "secondPassLegacy", "secondPassAngular", "secondPassArea", "secondPassFormio", "secondPassBacNinh"]
 
 
 class LoginError(Exception):
@@ -29,6 +33,65 @@ def replay_options(original: dict, tag: str) -> dict:
     options = {k: v for k, v in (original or {}).items() if k not in _DROP_OPTIONS}
     options["labRun"] = tag
     return options
+
+
+def wants_second_pass(case: dict) -> bool:
+    """Chạy lại có thanh tra khi và chỉ khi lượt gốc đã chạy thanh tra: giữ đúng điều kiện của lượt gốc."""
+    info = case.get("thanhTra") or {}
+    return bool(info.get("has") and info.get("ran")) and not is_attach(case)
+
+
+def second_pass_options(options: dict, case: dict) -> dict:
+    """Bật / tắt thanh tra cho lần chạy lại qua fillSupports (backend thử bật SECOND_PASS_ENABLED cho mọi tài khoản).
+
+    Lượt gốc không chạy thanh tra → bỏ mọi năng lực secondPass*, kẻo lần chạy lại có thanh tra còn lượt gốc thì không.
+    Lượt gốc có thanh tra mà options không mang fillSupports (lượt trợ lý gọi pipeline trực tiếp) → khai như extension."""
+    supports = options.get("fillSupports")
+    if not wants_second_pass(case):
+        if isinstance(supports, list):
+            options["fillSupports"] = [s for s in supports if not str(s).startswith("secondPass")]
+        return options
+    if not isinstance(supports, list) or not any(str(s).startswith("secondPass") for s in supports):
+        kind = (case.get("thanhTra") or {}).get("kind")
+        options["fillSupports"] = ["secondPassHkd"] if kind == "hkd" else list(_SECOND_PASS_SUPPORTS)
+    return options
+
+
+def wait_second_pass(request_id: str, wait_s: float = _SECOND_PASS_WAIT_S) -> dict | None:
+    """Kết quả thanh tra của một lần chạy lại, đọc thẳng collection second_pass của backend thử (có cả biên bản).
+    None = backend không chạy thanh tra cho lượt này."""
+    db = database()
+    deadline = time.monotonic() + wait_s
+    while True:
+        doc = db.second_pass.find_one({"_id": request_id})
+        if doc and doc.get("status") != "pending":
+            return doc
+        if time.monotonic() > deadline:
+            return {"status": "pending", "reason": "quá giờ chờ"} if doc else None
+        time.sleep(1)
+
+
+def apply_second_pass(body: dict, doc: dict | None, number: int, out_dir: Path) -> dict:
+    """Ghép bản vá thanh tra vào kết quả: response.fields = giá trị cuối lên form, firstPassFields = lượt điền đầu.
+    Biên bản đầy đủ ghi ra run<n>_second_pass.json cho agent đọc. Trả tóm tắt để hiện trên web."""
+    if not doc:
+        return {"status": "none"}
+    patch = doc.get("fields") or []
+    rulings = doc.get("rulings") or []
+    (out_dir / f"run{number}_second_pass.json").write_text(json.dumps(
+        {"status": doc.get("status"), "reason": doc.get("reason"), "ms": doc.get("ms"), "patch": patch, "rulings": rulings,
+         "timing": doc.get("timing") or {}}, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+    if doc.get("status") == "done":
+        body["firstPassFields"] = body.get("fields") or []
+        body["fields"] = scoring.merge_patch(body["firstPassFields"], patch)
+    outcomes: dict[str, int] = {}
+    for ruling in rulings:
+        if isinstance(ruling, dict) and ruling.get("outcome"):
+            outcomes[ruling["outcome"]] = outcomes.get(ruling["outcome"], 0) + 1
+    return {
+        "status": doc.get("status"), "reason": doc.get("reason"), "ms": doc.get("ms"), "outcomes": outcomes,
+        "patched": [scoring.field_key(f) for f in patch if isinstance(f, dict)],
+    }
 
 
 def login(username: str, password: str) -> dict:
@@ -140,7 +203,7 @@ def run_once(case: dict, number: int, tag: str, token: str, out_dir: Path) -> di
     data = {
         "action": "attach" if is_attach(case) else "fill",
         "procedure": case["procedure"],
-        "options": json.dumps(replay_options(case.get("options") or {}, tag), ensure_ascii=False),
+        "options": json.dumps(second_pass_options(replay_options(case.get("options") or {}, tag), case), ensure_ascii=False),
         "fileMetadata": json.dumps(metadata, ensure_ascii=False),
     }
     started = time.monotonic()
@@ -162,6 +225,8 @@ def run_once(case: dict, number: int, tag: str, token: str, out_dir: Path) -> di
         request_id = body.get("requestId")
         if is_attach(case):
             body = attach_result(case, body, number, out_dir)
+        elif request_id and wants_second_pass(case):
+            result["secondPass"] = apply_second_pass(body, wait_second_pass(request_id), number, out_dir)
         result.update(status="partial" if errors else "ok", requestId=request_id, response=body)
         if request_id:
             trace = read_trace(request_id, "attach" if is_attach(case) else "autofill")

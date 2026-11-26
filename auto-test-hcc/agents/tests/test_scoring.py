@@ -181,3 +181,28 @@ def test_tieu_chi_dinh_kem_cham_nhu_field():
     result = evaluate(checks, [good, bad])
     assert [cell["ok"] for cell in result["rows"][0]["cells"]] == [True, False]
     assert result["passed"] == 1
+
+
+# ---- thủ tục có thanh tra (điền đợt 2) --------------------------------------------------------------------------------
+
+def test_ghep_ban_va_thanh_tra_ghi_de_dung_o_va_them_o_moi():
+    from scoring import merge_patch
+
+    first = [f("hoTen", "Nguyen Van B"), f("ngay", "01/02/2000", occurrence=2), f("xa", "Xã Mẫu")]
+    patch = [{"name": "hoTen", "value": "Nguyễn Văn B", "from": "Nguyen Van B", "by": "dinh_danh"},
+             {"name": "soGiay", "value": "001", "from": None, "by": "dinh_danh"}]
+    merged = merge_patch(first, patch)
+    assert run_values(merged) == {"hoTen": "Nguyễn Văn B", "ngay#2": "01/02/2000", "xa": "Xã Mẫu", "soGiay": "001"}
+    assert all("from" not in m and "by" not in m for m in merged)
+    assert first[0]["value"] == "Nguyen Van B"  # không sửa list lượt đầu tại chỗ
+
+
+def test_bang_field_co_cot_dot1_khi_thanh_tra_doi_o():
+    patched = {"status": "ok", "response": {"fields": [f("hoTen", "Nguyễn Văn B"), f("xa", "Xã Mẫu")],
+                                            "firstPassFields": [f("hoTen", "Nguyen Van B"), f("xa", "Xã Mẫu")]}}
+    plain = run([f("hoTen", "Nguyễn Văn B"), f("xa", "Xã Mẫu")])
+    table = {row["field"]: row for row in field_table([f("hoTen", "Nguyễn Văn B"), f("xa", "Xã Mẫu")], [patched, plain],
+                                                       [f("hoTen", "Nguyen Van B"), f("xa", "Xã Mẫu")])}
+    assert table["hoTen"]["dot1"] == ["Nguyen Van B", None]
+    assert table["hoTen"]["originalDot1"] == "Nguyen Van B"
+    assert "dot1" not in table["xa"]  # ô thanh tra không đổi thì bảng giữ như cũ
