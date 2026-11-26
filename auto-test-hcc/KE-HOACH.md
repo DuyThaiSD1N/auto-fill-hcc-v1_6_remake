@@ -100,6 +100,16 @@ python auto-test-hcc/agents/server.py
 4. Máy chấm kế hoạch backend trả (giấy nào vào dòng nào), không chấm việc tệp có lên cổng không. Bảng kết quả ghi theo dòng:
    `dòng: <tên dòng>` là giấy + trang vào dòng đó, `tệp #n` là từng trang của tệp n vào dòng nào, `tổng: trang thiếu` rỗng là không sót trang.
 
+### Cách xem Dễ hiểu và thủ tục có thanh tra
+
+- Trang ca mặc định ở chế độ **Dễ hiểu**. Khung "Tóm tắt dễ hiểu" ở đầu trang cho biết: lỗi nằm ở bước nào trên sơ đồ (ô viền đỏ
+  "Lỗi ở đây"), kết luận bằng lời thường, kết quả điền thử trước / sau khi sửa, và bạn cần làm gì tiếp. Ý kiến chi tiết, file,
+  patch, từng bộ test được thu gọn, bấm vào để mở. Muốn xem hết thì bấm **Đầy đủ kỹ thuật**.
+- Một số thủ tục có **thanh tra**: sau khi điền lần đầu, một AI khác đọc lại giấy tờ độc lập và chỉ sửa ô khi có bằng chứng trên giấy.
+  Ô tra req hiện nhãn "Có thanh tra", sơ đồ có thêm bước "Thanh tra soát lại". Với các thủ tục này, hệ thống chấm trên giá trị
+  cuối cùng lên form (sau thanh tra), và hội đồng tự xét lỗi do lần điền đầu hay do thanh tra để sửa đúng một chỗ. Khung kế hoạch
+  có dòng "Vì sao sửa ở bước này".
+
 ## 4. Luồng chi tiết
 
 | Bước | Ai làm | Trên web thấy gì |

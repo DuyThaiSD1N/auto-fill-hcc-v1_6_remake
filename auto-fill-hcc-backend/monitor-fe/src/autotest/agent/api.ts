@@ -40,6 +40,31 @@ export interface Decision {
   plan?: Plan;
   acceptance?: Check[];
   risk?: string;
+  /** Câu giải thích cho tester không biết code (trọng tài viết, không thuật ngữ, không tên file). */
+  plain?: string;
+  /** Thủ tục có thanh tra: vì sao xử lý ở lượt điền đầu hay ở thanh tra. */
+  balance?: string;
+}
+
+/** Lớp thanh tra (điền đợt 2) của thủ tục: soát lại sau lượt điền đầu rồi ghi lại vài ô. */
+export interface ThanhTraInfo {
+  has: boolean;
+  kind?: string | null;
+  dir?: string | null;
+  /** done / failed = lượt gốc có chạy thanh tra; null = lượt gốc không chạy. */
+  ran?: string | null;
+  reason?: string | null;
+  patched?: number;
+  outcomes?: Record<string, number>;
+}
+
+/** Kết quả thanh tra của một lần chạy lại. */
+export interface SecondPassBrief {
+  status: string;
+  reason?: string | null;
+  ms?: number;
+  outcomes?: Record<string, number>;
+  patched?: string[];
 }
 
 export interface Evaluation {
@@ -56,6 +81,7 @@ export interface RunBrief {
   requestId?: string;
   error?: string;
   ocrFresh?: boolean | null;
+  secondPass?: SecondPassBrief;
 }
 
 export interface Regression {
@@ -99,7 +125,7 @@ export interface Round {
   /** Người dùng duyệt kế hoạch sửa (mỗi lần lập lại một mục). */
   planReviews?: (ApprovalResult & { revision: number })[];
   precheck?: Evaluation;
-  fix: { summary: string; files?: string[]; patch?: string; repairs?: number; notes?: string } | null;
+  fix: { summary: string; plain?: string; files?: string[]; patch?: string; repairs?: number; notes?: string } | null;
   tests: { pipeline?: { ok: boolean; skipped?: boolean; summary: string; files?: string[] }; full?: FullTests; extension?: ExtensionTests;
     regression?: RegressionTests } | null;
   approval?: ApprovalResult | null;
@@ -165,6 +191,8 @@ export interface RequestInfo {
   portalRows?: number | null;
   /** Lượt điền: các lượt đính kèm cùng hồ sơ. */
   attachRuns?: { requestId: string; createdAt?: string }[];
+  /** Lượt điền của thủ tục có thanh tra; null với lượt đính kèm. */
+  thanhTra?: ThanhTraInfo | null;
 }
 
 /** Bộ ca hồi quy (auto-test-hcc/regression/cases) phát lại trên bản sửa, so với trước khi sửa. */
@@ -207,7 +235,7 @@ export interface Job {
   error: string | null;
   warnings: string[];
   case: Partial<RequestInfo>;
-  reproduce: { runs: RunBrief[]; total: number; ocrFresh?: number; faithful?: boolean; coverage?: { original: number; matched: number }; table?: { field: string; original: string; runs: (string | null)[]; stable: boolean }[] } | null;
+  reproduce: { runs: RunBrief[]; total: number; ocrFresh?: number; faithful?: boolean; coverage?: { original: number; matched: number }; table?: { field: string; original: string; runs: (string | null)[]; stable: boolean; dot1?: (string | null)[]; originalDot1?: string | null }[] } | null;
   rounds: Round[];
   /** unverified: code của vòng chưa đạt, để lại cho người xem (Cần người xem), chưa build lên Docker. */
   fix: {
@@ -221,7 +249,7 @@ export interface Job {
   /** Khu làm việc: tag release đang chạy production của từng repo mà ca này sửa trên đó. */
   workspace?: Record<string, { ref: string; commit: string; url: string; base: string }>;
   regression?: { saved: boolean; path?: string; catchesOldBug?: boolean; reason?: string };
-  report: { outcome: Outcome; headline: string; reason: string; finishedAt: string } | null;
+  report: { outcome: Outcome; headline: string; reason: string; finishedAt: string; plain?: string } | null;
   cost: { usd: number; calls: number };
   events: { t: string; level: string; who: string | null; text: string }[];
 }

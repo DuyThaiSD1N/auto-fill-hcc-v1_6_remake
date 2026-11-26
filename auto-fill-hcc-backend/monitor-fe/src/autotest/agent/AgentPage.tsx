@@ -81,6 +81,11 @@ function LookupCard({ info, looking, error, onPick }: {
       <div className="at-lookup__title">
         <strong>{info.label}</strong>
         <span className={`at-tag at-tag--${attach ? "warn" : "plain"}`}>{attach ? "Lượt đính kèm" : "Lượt điền"}</span>
+        {info.thanhTra?.has ? (
+          <span className="at-tag at-tag--plain" title="Sau lần điền đầu, một AI khác đọc lại giấy tờ và sửa ô khi có bằng chứng. Hội đồng sẽ xét cả bước này.">
+            Có thanh tra{info.thanhTra.ran === "done" ? ` · đã sửa ${info.thanhTra.patched ?? 0} ô` : info.thanhTra.ran ? "" : " · lượt này không chạy"}
+          </span>
+        ) : null}
         <span className={`at-tag at-tag--${info.source === "archive" ? "plain" : "ok"}`}>
           {info.source === "archive" ? "Kho lưu trữ" : "Còn trên production"}
         </span>

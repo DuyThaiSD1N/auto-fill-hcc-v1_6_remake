@@ -1112,3 +1112,168 @@
   border-color: currentColor;
 }
 
+
+/* ---- Cách xem dễ hiểu cho tester (không cần biết code) ---------------------------------------------------------- */
+
+.at-viewbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  font-size: 12.5px;
+}
+
+.at-viewbar__hint {
+  min-width: 0;
+}
+
+.at-plain {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  font-size: 13.5px;
+  line-height: 1.55;
+  min-width: 0;
+}
+
+.at-plain__title {
+  margin: 0;
+  font-size: 15px;
+}
+
+.at-plain__list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.at-plain__list > div {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.at-plain__list dt {
+  color: var(--ink-3);
+  font-weight: 600;
+  font-size: 12.5px;
+  padding-top: 1px;
+}
+
+.at-plain__list dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.at-plain__balance {
+  display: block;
+  margin-top: 4px;
+  color: var(--ink-2);
+}
+
+.at-plain__lead {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.at-path {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 6px;
+  counter-reset: step;
+}
+
+.at-path__step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2, var(--surface));
+  font-size: 12.5px;
+  min-width: 0;
+  counter-increment: step;
+}
+
+.at-path__step b::before {
+  content: counter(step) ". ";
+  color: var(--ink-3);
+  font-weight: 500;
+}
+
+.at-path__step small {
+  color: var(--ink-3);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.at-path__step.is-tt {
+  border-style: dashed;
+}
+
+.at-path__step.is-hit {
+  border: 2px solid var(--bad);
+  background: var(--bad-soft);
+}
+
+.at-path__flag {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--bad);
+  color: var(--surface);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.at-glossary li {
+  margin: 3px 0;
+}
+
+.at-checkline {
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.at-checkline.is-ok {
+  color: var(--ok);
+}
+
+.at-checkline.is-bad {
+  color: var(--bad);
+}
+
+.at-tech > summary {
+  font-weight: 500;
+}
+
+.at-tech__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+  min-width: 0;
+}
+
+@media (max-width: 560px) {
+  .at-plain__list > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}

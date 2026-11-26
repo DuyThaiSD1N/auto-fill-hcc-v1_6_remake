@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import CopyButton from "../../components/CopyButton";
 import Icon from "../../components/Icon";
 import { ErrorNotice, PageLoading, Spinner } from "../../components/Status";
@@ -31,6 +31,7 @@ const CAUSES: Record<string, string> = {
   ocr: "Lỗi OCR",
   mapper: "Lỗi mapper",
   llm: "LLM trích sai",
+  thanh_tra: "Thanh tra soát sai",
   catalog: "Danh mục, địa giới",
   extension: "Extension hoặc cổng",
   input: "Giấy tờ thiếu thông tin",
@@ -72,6 +73,233 @@ const STATUS_LABEL: Record<Job["status"], string> = {
   stopped: "Đã dừng",
 };
 
+// ---- Lời giải thích cho tester không biết code -------------------------------------------------------------------
+
+/** Các bước dữ liệu đi qua, nói bằng lời thường. `cause` = nguyên nhân hội đồng gán khi lỗi nằm ở bước đó. */
+type Step = { key: string; label: string; hint: string; causes: string[] };
+
+function dataPath(attach: boolean, thanhTra: boolean): Step[] {
+  if (attach) {
+    return [
+      { key: "giay", label: "Giấy tờ", hint: "Ảnh / PDF người dân tải lên", causes: ["input"] },
+      { key: "ocr", label: "Đọc chữ", hint: "Máy đọc chữ trên ảnh (OCR)", causes: ["ocr"] },
+      { key: "ai", label: "AI nhận loại giấy", hint: "AI xem trang nào là giấy gì", causes: ["llm"] },
+      { key: "xep", label: "Xếp vào dòng", hint: "Chọn dòng đính kèm cho từng giấy", causes: ["mapper", "catalog"] },
+      { key: "cong", label: "Đính lên cổng", hint: "Extension tải tệp lên đúng dòng", causes: ["extension"] },
+    ];
+  }
+  return [
+    { key: "giay", label: "Giấy tờ", hint: "Ảnh / PDF người dân tải lên", causes: ["input"] },
+    { key: "ocr", label: "Đọc chữ", hint: "Máy đọc chữ trên ảnh (OCR)", causes: ["ocr"] },
+    { key: "ai", label: "AI trích thông tin", hint: "AI tìm họ tên, ngày sinh… trong chữ đã đọc", causes: ["llm"] },
+    { key: "ghep", label: "Ghép vào ô", hint: "Đổi thông tin thành giá trị từng ô của form", causes: ["mapper", "catalog"] },
+    ...(thanhTra ? [{ key: "thanhtra", label: "Thanh tra soát lại", hint: "AI thứ hai đọc lại giấy, chỉ sửa ô khi có bằng chứng", causes: ["thanh_tra"] }] : []),
+    { key: "cong", label: "Điền lên cổng", hint: "Extension gõ giá trị vào form trên cổng", causes: ["extension"] },
+  ];
+}
+
+const CAUSE_PLAIN: Record<string, string> = {
+  ocr: "Máy đọc chữ đọc sai chữ trên giấy (ảnh mờ, nghiêng, chữ viết tay…). Code không biết được chữ đúng nên không sửa code.",
+  llm: "Chữ đọc ra đúng nhưng AI lấy sai hoặc bỏ sót thông tin.",
+  mapper: "AI lấy đúng thông tin nhưng bước ghép vào ô của form làm sai.",
+  thanh_tra: "Lượt điền đầu ổn, nhưng bước thanh tra soát lại đã đổi ô thành sai, hoặc bắt trượt đúng loại lỗi nó phải bắt.",
+  catalog: "Tên xã / phường, tỉnh hoặc mục chọn không khớp danh sách của cổng (thường do sáp nhập địa giới).",
+  extension: "Hệ thống tính đúng nhưng khi điền lên cổng thì ô không nhận. Phần này người sửa extension phải làm.",
+  input: "Giấy tờ tải lên không có thông tin này.",
+  not_a_bug: "Hệ thống làm đúng; form của cổng vốn như vậy hoặc kỳ vọng chưa đúng.",
+  unknown: "Chưa xác định được lỗi nằm ở bước nào.",
+};
+
+function stagePlain(stage: string, runs: number): string {
+  const map: Record<string, string> = {
+    collect: "Đang lấy giấy tờ và kết quả điền của lượt bị báo lỗi.",
+    reproduce: `Đang cho hệ thống điền lại ${runs} lần với đúng giấy tờ đó để xem lỗi có lặp lại không.`,
+    meeting: "Các AI phân tích đang đọc giấy tờ và code để tìm lỗi nằm ở bước nào.",
+    arbiter: "AI trọng tài đang cân các ý kiến và quyết định có sửa hay không.",
+    plan: "Đang chờ bạn duyệt kế hoạch sửa.",
+    fix: "AI đang sửa code theo kế hoạch đã duyệt.",
+    test: "Đang chạy test tự động để chắc bản sửa không làm hỏng chỗ khác.",
+    approve: "Đang chờ bạn duyệt bản sửa.",
+    deploy: "Đang dựng hệ thống thử với bản sửa.",
+    retest: `Đang cho hệ thống điền lại ${runs} lần với bản sửa để chấm.`,
+  };
+  return map[stage] ?? "Đang chạy.";
+}
+
+function outcomePlain(outcome: Outcome, runs: number): string {
+  const map: Record<Outcome, string> = {
+    fixed: `Đã sửa: hệ thống thử điền lại ${runs} lần với bản sửa và lần nào cũng đúng. Bản sửa chờ người phát triển gộp vào bản chính.`,
+    skipped_ocr: "Không sửa code: máy đọc chữ đọc sai chữ trên giấy. Nên chụp / scan lại giấy rõ hơn rồi điền lại.",
+    report_only: "Không sửa code. Lý do ở phần kết luận; nếu cần sửa thì người phát triển làm tiếp.",
+    not_reproduced: "Điền lại nhiều lần đều đúng nên không có gì để sửa. Lỗi có thể đã được sửa trước đó, hoặc chỉ thỉnh thoảng mới xảy ra.",
+    need_human: "Đã thử sửa nhưng chưa đạt sau số vòng cho phép. Cần người phát triển xem tiếp.",
+    not_approved: "Kế hoạch hoặc bản sửa không được duyệt nên đã dừng, code giữ nguyên.",
+  };
+  return map[outcome];
+}
+
+/** Nguyên nhân để tô trên sơ đồ: trọng tài đã quyết thì theo trọng tài, chưa thì theo số đông hội đồng. */
+function currentCause(job: Job): { cause: string; final: boolean } | null {
+  const rounds = [...job.rounds].reverse();
+  const decided = rounds.find((r) => r.decision)?.decision;
+  if (decided) return { cause: decided.cause, final: true };
+  const opinions = rounds.find((r) => r.opinions.length)?.opinions.filter((o) => o.cause && !o.error) ?? [];
+  if (!opinions.length) return null;
+  const count: Record<string, number> = {};
+  for (const o of opinions) count[o.cause!] = (count[o.cause!] ?? 0) + 1;
+  const [cause] = Object.entries(count).sort((a, b) => b[1] - a[1])[0];
+  return { cause, final: false };
+}
+
+function DataPath({ steps, cause }: { steps: Step[]; cause: string | null }) {
+  return (
+    <ol className="at-path" aria-label="Đường đi của dữ liệu">
+      {steps.map((step) => {
+        const hit = !!cause && step.causes.includes(cause);
+        return (
+          <li key={step.key} className={`at-path__step${hit ? " is-hit" : ""}${step.key === "thanhtra" ? " is-tt" : ""}`}>
+            <b>{step.label}</b>
+            <small>{step.hint}</small>
+            {hit ? <span className="at-path__flag">Lỗi ở đây</span> : null}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function thanhTraOriginal(job: Job): string | null {
+  const info = job.case.thanhTra;
+  if (!info?.has) return null;
+  if (info.ran === "done") {
+    const changed = info.patched ?? 0;
+    return changed ? `Ở lượt bị báo lỗi, thanh tra đã sửa lại ${changed} ô sau khi điền lần đầu.` : "Ở lượt bị báo lỗi, thanh tra đã soát nhưng không sửa ô nào.";
+  }
+  if (info.ran) return "Ở lượt bị báo lỗi, thanh tra chạy không xong (quá giờ hoặc lỗi) nên form giữ kết quả điền lần đầu.";
+  return "Ở lượt bị báo lỗi, thanh tra không chạy (extension cũ hoặc tài khoản chưa bật), nên khi chạy lại cũng tắt thanh tra cho giống.";
+}
+
+/** Khung đầu trang cho tester: lỗi ở bước nào, hệ thống đang / đã làm gì, bạn cần làm gì. Không thuật ngữ, không tên file. */
+function PlainSummary({ job }: { job: Job }) {
+  const attach = job.settings.kind === "attach";
+  const thanhTra = !attach && !!job.case.thanhTra?.has;
+  const picked = currentCause(job);
+  const decision = [...job.rounds].reverse().find((r) => r.decision)?.decision ?? null;
+  const running = job.status === "queued" || job.status === "running";
+  const lastRound = job.rounds[job.rounds.length - 1];
+  const before = job.rounds.find((r) => r.precheck)?.precheck;
+  const after = [...job.rounds].reverse().find((r) => r.retest?.evaluation)?.retest?.evaluation;
+  const conclusion = job.report?.plain ?? decision?.plain ?? null;
+  let next = "";
+  if (job.planApproval && running) next = "Bạn cần đọc kế hoạch sửa ở khung vàng bên dưới rồi chọn Đồng ý, Lập lại theo góp ý, hoặc Dừng.";
+  else if (job.approval && running) next = "Bạn cần đọc bản sửa ở khung vàng bên dưới rồi chọn Đồng ý, Làm lại theo góp ý, hoặc Dừng.";
+  else if (running) next = stagePlain(job.stage, job.settings.runs);
+  else if (job.outcome) next = outcomePlain(job.outcome, job.settings.runs);
+  else if (job.status === "failed") next = "Ca dừng vì lỗi hệ thống (xem dòng đỏ bên dưới). Báo người phát triển kèm mã ca.";
+  else if (job.status === "stopped") next = "Ca đã dừng, mọi thay đổi đã hoàn tác.";
+  return (
+    <section className="at-plain" aria-label="Tóm tắt dễ hiểu">
+      <h2 className="at-plain__title">Tóm tắt dễ hiểu</h2>
+      <DataPath steps={dataPath(attach, thanhTra)} cause={picked?.cause ?? null} />
+      <dl className="at-plain__list">
+        <div>
+          <dt>Lỗi nằm ở đâu</dt>
+          <dd>
+            {picked ? (
+              <>
+                {!picked.final ? <span className="faint">Hội đồng đang nghiêng về: </span> : null}
+                {CAUSE_PLAIN[picked.cause] ?? CAUSES[picked.cause] ?? picked.cause}
+              </>
+            ) : <span className="faint">Chưa phân tích xong.</span>}
+          </dd>
+        </div>
+        {conclusion ? (
+          <div>
+            <dt>Kết luận</dt>
+            <dd>{conclusion}</dd>
+          </div>
+        ) : null}
+        {thanhTra ? (
+          <div>
+            <dt>Thanh tra</dt>
+            <dd>
+              Thủ tục này có <b>thanh tra</b>: sau khi điền lần đầu, một AI khác đọc lại giấy tờ độc lập và chỉ sửa ô khi thấy bằng chứng
+              trên giấy. {thanhTraOriginal(job)}
+              {decision?.balance ? <span className="at-plain__balance">Vì sao sửa ở bước này: {decision.balance}</span> : null}
+            </dd>
+          </div>
+        ) : null}
+        {before || after ? (
+          <div>
+            <dt>Kết quả điền thử</dt>
+            <dd>
+              {before ? <span>Trước khi sửa: đúng <b>{before.passed}/{before.total}</b> lần. </span> : null}
+              {after ? <span>Sau khi sửa: đúng <b className={after.allPass ? "lab-ok" : "ef-red"}>{after.passed}/{after.total}</b> lần.</span> : null}
+            </dd>
+          </div>
+        ) : null}
+        {next ? (
+          <div>
+            <dt>{running ? "Đang làm" : "Tiếp theo"}</dt>
+            <dd>{next}</dd>
+          </div>
+        ) : null}
+      </dl>
+      {lastRound?.decision?.acceptance?.length && !after ? (
+        <details className="at-more">
+          <summary>Máy sẽ kiểm những gì sau khi sửa ({lastRound.decision.acceptance.length})</summary>
+          <ul>{lastRound.decision.acceptance.map((c, i) => <li key={i}>{c.why || `${c.field} ${checkText(c)}`}</li>)}</ul>
+        </details>
+      ) : null}
+      <details className="at-more">
+        <summary>Giải thích từ ngữ</summary>
+        <ul className="at-glossary">
+          <li><b>Đọc chữ (OCR)</b>: máy đọc chữ trên ảnh giấy tờ thành văn bản.</li>
+          <li><b>AI trích thông tin</b>: AI đọc văn bản đó và lấy ra họ tên, ngày sinh, địa chỉ…</li>
+          <li><b>Ghép vào ô (mapper)</b>: code đổi thông tin thành đúng giá trị từng ô của form, ví dụ tách ngày, chọn đúng xã trong danh sách.</li>
+          {thanhTra ? <li><b>Thanh tra</b>: sau lần điền đầu, AI khác đọc lại giấy mà không xem kết quả lần đầu. Chỗ hai bên lệch nhau, "toà án" xem bằng chứng trên giấy rồi mới quyết định có sửa ô hay không.</li> : null}
+          <li><b>Hội đồng</b>: vài AI phân tích độc lập rồi phản biện nhau; <b>trọng tài</b> là AI ra quyết định cuối.</li>
+          <li><b>Chạy lại {job.settings.runs} lần</b>: cho hệ thống điền lại bằng đúng giấy tờ đó, mỗi lần đọc chữ mới, để xem lỗi có lặp lại không.</li>
+          <li><b>Tiêu chí</b>: điều máy tự kiểm trên kết quả điền, ví dụ "ô ngày sinh phải bằng 01/02/1990". Đạt đủ mọi lần mới tính là sửa được.</li>
+        </ul>
+      </details>
+    </section>
+  );
+}
+
+/** Chế độ dễ hiểu: phần kỹ thuật thu gọn vào một mục mở được; chế độ đầy đủ: hiện như cũ. */
+function Tech({ simple, label, children }: { simple: boolean; label: string; children: ReactNode }) {
+  if (!simple) return <>{children}</>;
+  return (
+    <details className="at-more at-tech">
+      <summary>{label}</summary>
+      <div className="at-tech__body">{children}</div>
+    </details>
+  );
+}
+
+type View = "simple" | "full";
+const VIEW_KEY = "autotest.agent.view";
+
+function useView(): [View, (view: View) => void] {
+  const [view, setView] = useState<View>(() => {
+    try {
+      return window.localStorage.getItem(VIEW_KEY) === "full" ? "full" : "simple";
+    } catch {
+      return "simple";
+    }
+  });
+  const change = useCallback((next: View) => {
+    setView(next);
+    try {
+      window.localStorage.setItem(VIEW_KEY, next);
+    } catch {
+      /* trình duyệt chặn lưu: chỉ giữ trong phiên */
+    }
+  }, []);
+  return [view, change];
+}
+
 export function OutcomeTag({ outcome }: { outcome: Outcome }) {
   const item = OUTCOMES[outcome];
   return <span className={`at-tag at-tag--${item.tone}`}>{item.label}</span>;
@@ -108,7 +336,7 @@ function StageRail({ job }: { job: Job }) {
 }
 
 /** Trọng tài chọn sửa code: dừng lại để người dùng đọc kế hoạch, đồng ý thì agent mới sửa. */
-function PlanBox({ job, busy, onDecide }: { job: Job; busy: boolean; onDecide: (decision: Verdict, note: string) => void }) {
+function PlanBox({ job, busy, simple, onDecide }: { job: Job; busy: boolean; simple: boolean; onDecide: (decision: Verdict, note: string) => void }) {
   const [note, setNote] = useState("");
   const pending = job.planApproval;
   if (!pending || job.status !== "running") return null;
@@ -127,26 +355,32 @@ function PlanBox({ job, busy, onDecide }: { job: Job; busy: boolean; onDecide: (
         <p className="at-plan-box__cause">
           <span className="at-tag at-tag--plain">{CAUSES[decision.cause] ?? decision.cause}</span>
         </p>
-        <Clamp text={decision.reason} />
-        {decision.plan ? (
-          <div className="at-plan">
-            <b>Kế hoạch:</b> {decision.plan.summary}
-            <ol>{decision.plan.steps.map((s, i) => <li key={i}>{s}</li>)}</ol>
-            {decision.plan.files.length ? <p className="mono at-refs">{decision.plan.files.join("  ")}</p> : null}
-            {decision.plan.test ? <p className="muted"><b>Test:</b> {decision.plan.test}</p> : null}
-          </div>
-        ) : null}
+        {decision.plain ? <p className="at-plain__lead">{decision.plain}</p> : null}
+        {decision.balance ? <p className="muted"><b>Vì sao sửa ở bước này (thủ tục có thanh tra):</b> {decision.balance}</p> : null}
         {decision.acceptance?.length ? (
           <div>
-            <b>Tiêu chí máy sẽ chấm sau khi sửa</b>
+            <b>Máy sẽ tự kiểm sau khi sửa</b>
             <ul className="at-plan-box__checks">
               {decision.acceptance.map((c, i) => (
-                <li key={i}><span className="mono">{c.field}</span> {OPS[c.op] ?? c.op} {c.expected ? <b>{c.expected}</b> : null}{c.why ? <span className="faint"> · {c.why}</span> : null}</li>
+                simple && c.why
+                  ? <li key={i}>{c.why} <span className="faint mono">({c.field} {checkText(c)})</span></li>
+                  : <li key={i}><span className="mono">{c.field}</span> {OPS[c.op] ?? c.op} {c.expected ? <b>{c.expected}</b> : null}{c.why ? <span className="faint"> · {c.why}</span> : null}</li>
               ))}
             </ul>
           </div>
         ) : null}
-        {decision.risk ? <p className="muted"><b>Rủi ro:</b> {decision.risk}</p> : null}
+        <Tech simple={simple} label="Chi tiết kỹ thuật của kế hoạch">
+          <Clamp text={decision.reason} />
+          {decision.plan ? (
+            <div className="at-plan">
+              <b>Kế hoạch:</b> {decision.plan.summary}
+              <ol>{decision.plan.steps.map((s, i) => <li key={i}>{s}</li>)}</ol>
+              {decision.plan.files.length ? <p className="mono at-refs">{decision.plan.files.join("  ")}</p> : null}
+              {decision.plan.test ? <p className="muted"><b>Test:</b> {decision.plan.test}</p> : null}
+            </div>
+          ) : null}
+          {decision.risk ? <p className="muted"><b>Rủi ro:</b> {decision.risk}</p> : null}
+        </Tech>
       </div>
       <div className="at-decide-bar">
       <label className="field">
@@ -188,7 +422,7 @@ function PlanBox({ job, busy, onDecide }: { job: Job; busy: boolean; onDecide: (
 }
 
 /** Bản sửa đã qua test nhưng chưa build, chưa nạp extension: phải có người đọc patch và bấm một trong ba nút. */
-function ApprovalBox({ job, busy, onDecide }: { job: Job; busy: boolean; onDecide: (decision: Verdict, note: string) => void }) {
+function ApprovalBox({ job, busy, simple, onDecide }: { job: Job; busy: boolean; simple: boolean; onDecide: (decision: Verdict, note: string) => void }) {
   const [note, setNote] = useState("");
   const pending = job.approval;
   if (!pending || job.status !== "running") return null;
@@ -205,10 +439,14 @@ function ApprovalBox({ job, busy, onDecide }: { job: Job; busy: boolean; onDecid
         </p>
         <p className="faint">Quá {formatClock(deadline)} không ai duyệt thì tự hoàn tác và kết thúc job.</p>
       </div>
-      {round?.fix?.summary ? <p className="at-approve__summary">{round.fix.summary}</p> : null}
-      <p className="mono at-refs">{pending.files.join("  ")}</p>
-      {round ? <Checks round={round} /> : null}
-      {round?.fix?.patch ? <Patch patch={round.fix.patch} /> : null}
+      {round?.fix?.plain ? <p className="at-plain__lead">{round.fix.plain}</p> : null}
+      {round ? <ChecksLine round={round} /> : null}
+      <Tech simple={simple} label="Chi tiết kỹ thuật: file đã sửa, test, patch">
+        {round?.fix?.summary ? <p className="at-approve__summary">{round.fix.summary}</p> : null}
+        <p className="mono at-refs">{pending.files.join("  ")}</p>
+        {round ? <Checks round={round} /> : null}
+        {round?.fix?.patch ? <Patch patch={round.fix.patch} /> : null}
+      </Tech>
       <div className="at-decide-bar">
       <label className="field">
         <span>Góp ý cho hội đồng (bắt buộc khi chọn làm lại)</span>
@@ -267,13 +505,17 @@ function ApprovalNote({ approval }: { approval: ApprovalResult }) {
   );
 }
 
-function Banner({ job }: { job: Job }) {
+function Banner({ job, simple }: { job: Job; simple: boolean }) {
   if (job.report) {
     const tone = OUTCOMES[job.report.outcome].tone;
+    const plain = job.report.plain;
     return (
       <div className={`at-banner at-banner--${tone}`}>
         <strong>{job.report.headline}</strong>
-        <p>{job.report.reason}</p>
+        {plain ? <p>{plain}</p> : null}
+        {plain && simple ? (
+          <details className="at-more"><summary>Lý do kỹ thuật</summary><p>{job.report.reason}</p></details>
+        ) : <p className={plain ? "muted" : undefined}>{job.report.reason}</p>}
       </div>
     );
   }
@@ -346,7 +588,7 @@ function checkText(check: Check): string {
   return `${OPS[check.op] ?? check.op}${needsValue ? ` "${check.expected}"` : ""}`;
 }
 
-function CheckMatrix({ evaluation, caption }: { evaluation: Evaluation; caption: string }) {
+function CheckMatrix({ evaluation, caption, simple = false }: { evaluation: Evaluation; caption: string; simple?: boolean }) {
   const count = evaluation.total;
   return (
     <div className="table-wrap">
@@ -361,7 +603,10 @@ function CheckMatrix({ evaluation, caption }: { evaluation: Evaluation; caption:
         <tbody>
           {evaluation.rows.map((row, r) => (
             <tr key={r}>
-              <td><span className="mono">{row.check.field}</span> <small className="faint">{checkText(row.check)}</small></td>
+              <td>
+                {simple && row.check.why ? <>{row.check.why}<br /></> : null}
+                <span className="mono">{row.check.field}</span> <small className="faint">{checkText(row.check)}</small>
+              </td>
               {row.cells.map((cell, c) => (
                 <td key={c} className={cell.ok ? "at-pass" : "at-fail"}>
                   {cell.value === null ? "lượt lỗi" : cell.value === "" ? <span className="faint">(trống)</span> : cell.value}
@@ -375,7 +620,7 @@ function CheckMatrix({ evaluation, caption }: { evaluation: Evaluation; caption:
   );
 }
 
-function DecisionCard({ decision, shownAbove }: { decision: Decision; shownAbove?: boolean }) {
+function DecisionCard({ decision, shownAbove, simple = false }: { decision: Decision; shownAbove?: boolean; simple?: boolean }) {
   return (
     <article className="at-card at-card--arbiter">
       <header className="at-card__head">
@@ -383,24 +628,28 @@ function DecisionCard({ decision, shownAbove }: { decision: Decision; shownAbove
         <span className="at-tag at-tag--plain">{CAUSES[decision.cause] ?? decision.cause}</span>
         <span className={`at-tag at-tag--${decision.decision === "fix_code" ? "ok" : decision.decision === "skip_ocr" ? "warn" : "plain"}`}>{DECISIONS[decision.decision]}</span>
       </header>
-      {shownAbove ? <p className="faint">Lý do: xem khung kết luận ở trên.</p> : <Clamp text={decision.reason} />}
-      {decision.dissent ? <p className="muted"><b>Ý kiến bị bác:</b> {decision.dissent}</p> : null}
-      {decision.plan ? (
-        <div className="at-plan">
-          <b>Kế hoạch sửa:</b> {decision.plan.summary}
-          <ol>{decision.plan.steps.map((s, i) => <li key={i}>{s}</li>)}</ol>
-          {decision.plan.files.length ? <p className="mono at-refs">{decision.plan.files.join("  ")}</p> : null}
-          {decision.plan.test ? <p className="muted"><b>Test:</b> {decision.plan.test}</p> : null}
-        </div>
-      ) : null}
-      {decision.risk ? <p className="muted"><b>Rủi ro:</b> {decision.risk}</p> : null}
+      {decision.plain ? <p className="at-plain__lead">{decision.plain}</p> : null}
+      {decision.balance ? <p className="muted"><b>Vì sao sửa ở bước này (thủ tục có thanh tra):</b> {decision.balance}</p> : null}
+      <Tech simple={simple && !!decision.plain} label="Lý do và kế hoạch chi tiết (kỹ thuật)">
+        {shownAbove ? <p className="faint">Lý do: xem khung kết luận ở trên.</p> : <Clamp text={decision.reason} />}
+        {decision.dissent ? <p className="muted"><b>Ý kiến bị bác:</b> {decision.dissent}</p> : null}
+        {decision.plan ? (
+          <div className="at-plan">
+            <b>Kế hoạch sửa:</b> {decision.plan.summary}
+            <ol>{decision.plan.steps.map((s, i) => <li key={i}>{s}</li>)}</ol>
+            {decision.plan.files.length ? <p className="mono at-refs">{decision.plan.files.join("  ")}</p> : null}
+            {decision.plan.test ? <p className="muted"><b>Test:</b> {decision.plan.test}</p> : null}
+          </div>
+        ) : null}
+        {decision.risk ? <p className="muted"><b>Rủi ro:</b> {decision.risk}</p> : null}
+      </Tech>
     </article>
   );
 }
 
-function Patch({ patch }: { patch: string }) {
+function Patch({ patch, open = true }: { patch: string; open?: boolean }) {
   return (
-    <details className="at-more" open>
+    <details className="at-more" open={open}>
       <summary>Patch</summary>
       <div className="at-patch__bar"><CopyButton text={patch} label="Chép patch" /></div>
       <pre className="at-patch">
@@ -417,7 +666,9 @@ function RunDots({ runs, total }: { runs: RunBrief[]; total: number }) {
     <span className="at-dots" aria-label={`${runs.length}/${total} lần xong`}>
       {Array.from({ length: total }, (_, i) => {
         const run = runs.find((r) => r.n === i + 1);
-        return <i key={i} className={run ? (run.status === "error" ? "is-bad" : "is-ok") : ""} title={run?.error ?? `Lần ${i + 1}`} />;
+        const tt = run?.secondPass;
+        const note = tt ? (tt.status === "done" ? ` · thanh tra sửa ${tt.patched?.length ?? 0} ô` : tt.status === "none" ? "" : " · thanh tra không xong") : "";
+        return <i key={i} className={run ? (run.status === "error" ? "is-bad" : "is-ok") : ""} title={run?.error ?? `Lần ${i + 1}${note}`} />;
       })}
     </span>
   );
@@ -477,32 +728,58 @@ function Checks({ round }: { round: Pick<Round, "tests" | "deploy"> & { tests: (
   );
 }
 
-function RoundView({ job, round, single }: { job: Job; round: Round; single: boolean }) {
+/** Một dòng cho tester: test tự động và dựng hệ thống thử có ổn không; chi tiết từng bộ test ở phần kỹ thuật. */
+function ChecksLine({ round }: { round: Pick<Round, "tests" | "deploy"> }) {
+  const tests = round.tests as (Round["tests"] & { troly?: ExtensionTests; handfree?: FullTests }) | null;
+  if (!tests && !round.deploy) return null;
+  const parts: { name: string; ok: boolean }[] = [];
+  if (tests?.pipeline) parts.push({ name: "test của thủ tục", ok: tests.pipeline.ok || !!tests.pipeline.skipped });
+  if (tests?.full) parts.push({ name: "toàn bộ test", ok: tests.full.ok });
+  if (tests?.extension) parts.push({ name: "test extension", ok: tests.extension.ok });
+  if (tests?.troly) parts.push({ name: "test extension trợ lý", ok: tests.troly.ok });
+  if (tests?.handfree) parts.push({ name: "test trợ lý", ok: tests.handfree.ok });
+  if (tests?.regression) parts.push({ name: "các ca lỗi cũ đã sửa", ok: tests.regression.ok });
+  if (round.deploy) parts.push({ name: "dựng hệ thống thử", ok: round.deploy.ok });
+  const bad = parts.filter((p) => !p.ok);
+  return (
+    <p className={`at-checkline ${bad.length ? "is-bad" : "is-ok"}`}>
+      <Icon name={bad.length ? "alert" : "check"} size={14} />
+      {bad.length
+        ? <span>Kiểm tra tự động có chỗ chưa qua: {bad.map((p) => p.name).join(", ")}.</span>
+        : <span>Kiểm tra tự động đều qua ({parts.map((p) => p.name).join(", ")}): bản sửa không làm hỏng chỗ khác mà test biết.</span>}
+    </p>
+  );
+}
+
+function RoundView({ job, round, single, simple }: { job: Job; round: Round; single: boolean; simple: boolean }) {
   const retest = round.retest;
+  const council = round.opinions.length + round.reviews.length;
   return (
     <section className="at-round" aria-label={`Vòng ${round.n}`}>
       {single ? null : <h2 className="at-round__title">Vòng {round.n}</h2>}
-      {round.opinions.length ? (
-        <div>
-          <h3 className="section-title">Ý kiến độc lập</h3>
-          <div className="at-cards">{round.opinions.map((o) => <OpinionCard key={o.role} item={o} />)}</div>
-        </div>
-      ) : null}
-      {round.debate?.skipped ? <p className="faint">{round.debate.reason}</p> : null}
-      {round.reviews.length ? (
-        <div>
-          <h3 className="section-title">Phản biện</h3>
-          <div className="at-cards">{round.reviews.map((o) => <OpinionCard key={o.role} item={o} />)}</div>
-        </div>
-      ) : null}
+      <Tech simple={simple} label={`Ý kiến chi tiết của hội đồng (${council})`}>
+        {round.opinions.length ? (
+          <div>
+            <h3 className="section-title">Ý kiến độc lập</h3>
+            <div className="at-cards">{round.opinions.map((o) => <OpinionCard key={o.role} item={o} />)}</div>
+          </div>
+        ) : null}
+        {round.debate?.skipped ? <p className="faint">{round.debate.reason}</p> : null}
+        {round.reviews.length ? (
+          <div>
+            <h3 className="section-title">Phản biện</h3>
+            <div className="at-cards">{round.reviews.map((o) => <OpinionCard key={o.role} item={o} />)}</div>
+          </div>
+        ) : null}
+      </Tech>
       {round.planHistory?.length ? (
         <details className="at-more">
           <summary>{round.planHistory.length} kế hoạch trước đã được yêu cầu lập lại</summary>
-          {round.planHistory.map((d, i) => <DecisionCard key={i} decision={d} />)}
+          {round.planHistory.map((d, i) => <DecisionCard key={i} decision={d} simple={simple} />)}
         </details>
       ) : null}
       {round.decision && job.planApproval?.round !== round.n ? (
-        <DecisionCard decision={round.decision} shownAbove={!!job.report && job.report.reason === round.decision.reason} />
+        <DecisionCard decision={round.decision} simple={simple} shownAbove={!!job.report && job.report.reason === round.decision.reason} />
       ) : null}
       {round.planReviews?.map((r) => (
         <p key={r.revision} className={`at-verdict is-${r.decision}`}>
@@ -512,24 +789,30 @@ function RoundView({ job, round, single }: { job: Job; round: Round; single: boo
           {r.note ? <span>: {r.note}</span> : null}
         </p>
       ))}
-      {round.precheck ? <CheckMatrix evaluation={round.precheck} caption="Tiêu chí trên code trước khi sửa" /> : null}
+      {round.precheck ? <CheckMatrix evaluation={round.precheck} simple={simple} caption="Tiêu chí trên code trước khi sửa" /> : null}
       {round.fix ? (
         <article className="at-card">
           <header className="at-card__head">
             <strong>Sửa code</strong>
             {round.fix.repairs ? <span className="at-tag at-tag--warn">Vá lại {round.fix.repairs} lần</span> : null}
           </header>
-          <p>{round.fix.summary}</p>
-          {round.fix.notes ? <p className="muted">{round.fix.notes}</p> : null}
-          {round.fix.patch ? <Patch patch={round.fix.patch} /> : null}
+          {round.fix.plain ? <p className="at-plain__lead">{round.fix.plain}</p> : null}
+          <Tech simple={simple} label="Chi tiết kỹ thuật của bản sửa">
+            <p>{round.fix.summary}</p>
+            {round.fix.notes ? <p className="muted">{round.fix.notes}</p> : null}
+            {round.fix.patch ? <Patch patch={round.fix.patch} open={!simple} /> : null}
+          </Tech>
         </article>
       ) : null}
-      <Checks round={round} />
+      {simple ? <ChecksLine round={round} /> : null}
+      <Tech simple={simple} label="Chi tiết từng bộ test">
+        <Checks round={round} />
+      </Tech>
       {round.approval ? <ApprovalNote approval={round.approval} /> : null}
       {retest ? (
         <div className="at-retest">
           <h3 className="section-title">Chạy lại với bản sửa <RunDots runs={retest.runs} total={retest.total} /></h3>
-          {retest.evaluation ? <CheckMatrix evaluation={retest.evaluation} caption="Tiêu chí sau khi sửa" /> : null}
+          {retest.evaluation ? <CheckMatrix evaluation={retest.evaluation} simple={simple} caption="Tiêu chí sau khi sửa" /> : null}
           {retest.regressions?.length ? (
             <div className="at-regress">
               <b className="ef-red">Field đổi giá trị ngoài dự kiến</b>
@@ -588,6 +871,8 @@ export default function JobDetail({ id, onBack }: { id: string; onBack: () => vo
   const [error, setError] = useState("");
   const [tab, setTab] = useState<Tab>("flow");
   const [acting, setActing] = useState(false);
+  const [view, setView] = useView();
+  const simple = view === "simple";
 
   const refresh = useCallback(() => {
     agentApi.get(id).then((data) => { setJob(data); setError(""); }).catch((reason) => setError(errorText(reason)));
@@ -656,6 +941,7 @@ export default function JobDetail({ id, onBack }: { id: string; onBack: () => vo
         {account ? <span>{account.username}{account.xa ? ` · ${account.xa}` : ""}{account.tinh ? `, ${account.tinh}` : ""}</span> : null}
         <span>Sửa cho {job.settings.target === "troly" ? "Trợ lý hồ sơ" : "Auto Fill"}</span>
         <span>{job.settings.kind === "attach" ? "Lượt đính kèm" : "Lượt điền"}</span>
+        {job.case.thanhTra?.has ? <span>Có thanh tra soát lại</span> : null}
         {job.settings.mode === "portal" ? <span>Cổng thật (chế độ cũ)</span> : null}
         <span>Chạy lại bằng {job.settings.replayAccount}</span>
         {job.workspace?.["auto-fill-hcc-backend"] ? <span className="mono">BE {job.workspace["auto-fill-hcc-backend"].ref}</span> : null}
@@ -664,16 +950,26 @@ export default function JobDetail({ id, onBack }: { id: string; onBack: () => vo
       </div>
 
       <blockquote className="at-quote">{job.description}</blockquote>
+      <div className="at-viewbar">
+        <span className="faint">Cách xem:</span>
+        <div className="seg" role="group" aria-label="Cách xem">
+          <button type="button" aria-pressed={simple} onClick={() => setView("simple")}>Dễ hiểu</button>
+          <button type="button" aria-pressed={!simple} onClick={() => setView("full")}>Đầy đủ kỹ thuật</button>
+        </div>
+        <span className="faint at-viewbar__hint">{simple ? "Phần kỹ thuật được thu gọn, bấm vào để mở." : "Hiện toàn bộ ý kiến, file, test và patch."}</span>
+      </div>
       <StageRail job={job} />
       {running ? (
         <p className="at-live" aria-live="polite">
           <Spinner label={job.status === "queued" ? "Đang chờ ca trước chạy xong" : lastEvent ? `${lastEvent.who ? `${lastEvent.who}: ` : ""}${lastEvent.text}` : "Đang chạy"} />
         </p>
       ) : null}
+      <PlainSummary job={job} />
       <PlanBox
         key={`plan-${job.planApproval?.round ?? 0}-${job.planApproval?.revision ?? 0}`}
         job={job}
         busy={acting}
+        simple={simple}
         onDecide={(decision, note) => void act(async () => ({
           ...(await agentApi.plan(job.id, { round: job.planApproval?.round ?? 0, revision: job.planApproval?.revision ?? 0, decision, note })),
           planApproval: null,
@@ -683,12 +979,13 @@ export default function JobDetail({ id, onBack }: { id: string; onBack: () => vo
         key={job.approval?.round ?? 0}
         job={job}
         busy={acting}
+        simple={simple}
         onDecide={(decision, note) => void act(async () => ({
           ...(await agentApi.approve(job.id, { round: job.approval?.round ?? 0, decision, note })),
           approval: null,
         }))}
       />
-      <Banner job={job} />
+      <Banner job={job} simple={simple} />
       {job.fix?.reverted ? (
         <div className="at-banner at-banner--plain">
           <strong>Bản sửa đã được hoàn tác</strong>
@@ -758,7 +1055,7 @@ export default function JobDetail({ id, onBack }: { id: string; onBack: () => vo
               {job.reproduce.coverage ? <span className={job.reproduce.faithful === false ? "ef-red" : "faint"}> · ra {job.reproduce.coverage.matched}/{job.reproduce.coverage.original} {job.settings.kind === "attach" ? "ô đính kèm" : "field"} của lượt gốc</span> : null}
             </p>
           ) : null}
-          {job.rounds.map((round) => <RoundView key={round.n} job={job} round={round} single={job.rounds.length === 1} />)}
+          {job.rounds.map((round) => <RoundView key={round.n} job={job} round={round} single={job.rounds.length === 1} simple={simple} />)}
         </div>
       ) : null}
       {tab === "fields" ? <FieldsTab job={job} /> : null}

@@ -112,6 +112,35 @@ Web nhận cả mã req của lượt đính kèm (mã hỗ trợ extension hi�
 - Tab "Kết quả đính kèm" dựng bảng thành phần hồ sơ từ kế hoạch từng lần (`AttachSimulation`), có cả lượt gốc.
 - Chưa làm: lượt đính kèm của Trợ lý hồ sơ.
 
+## Thủ tục có thanh tra (điền đợt 2, từ 26/11/2026)
+
+Thủ tục khai `"secondPass"` trong `app/procedures/registry.py` có lớp thanh tra (`app/pipelines/<pipeline>/thanh_tra/`, khung
+`_shared/thanh_tra`, `app/second_pass`): sau lượt điền đầu, thanh tra đọc lại OCR độc lập, toà án xử chỗ lệch, bản vá ghi lại vài ô.
+
+- `evidence.second_pass_kind` đọc cờ trong registry (khớp `PROCEDURES` thật), `thanh_tra_info` gắn `case.thanhTra` = {has, kind,
+  dir, ran, patched, outcomes}. Lượt gốc có `process_requests.second_pass` thì chứng cứ thêm `second_pass.json` (bản vá + biên bản),
+  `fields_dot1.json` (lượt điền đầu), còn `fields.json` là giá trị CUỐI (`scoring.merge_patch`).
+- Chạy lại: `replay.second_pass_options` chỉ khai `fillSupports` secondPass* khi lượt gốc có chạy thanh tra (lượt gốc không chạy thì
+  bỏ, cho giống). `wait_second_pass` đọc collection `second_pass` của backend thử (≤ 90 s), `apply_second_pass` ghép bản vá vào
+  `response.fields`, giữ `firstPassFields`, ghi `run<n>_second_pass.json`. Bảng `reproduce.json` có `dot1` / `originalDot1` ở ô bị vá.
+  Máy chấm trên giá trị cuối. Lần chạy không có kết quả thanh tra thì web cảnh báo.
+- Backend thử bật `SECOND_PASS_ENABLED=true` (mọi tài khoản, hạn 60 s, 10 lượt song song) trong `deploy/compose.local.yml` và
+  `compose.server.yml`. Khoá stack gồm cả nội dung file compose (`verify._stack_key`) nên đổi env là tự dựng lại. Kiểu cũ
+  (`AUTOTEST_WORKSPACE=0`, chạy lại trên 12005) không bật thanh tra.
+- Hội đồng: thêm vai `thanh_tra` ("Soát thanh tra", `roles.THANH_TRA_ANALYST`), cause `thanh_tra`, mục "Lớp thanh tra" + quy tắc cân
+  bằng trong `roles._thanh_tra_note`: lượt điền đầu là nguồn chính, thanh tra là lưới an toàn; lượt đầu đúng mà thanh tra đổi sai →
+  sửa thanh tra; lượt đầu sai → sửa lượt đầu, không vá thanh tra để chữa lỗi gốc; không sửa cả hai cho một ô; thanh tra phải đọc giấy
+  độc lập. Trọng tài ghi `balance`.
+- Bản sửa trong `thanh_tra/` không sinh ca hồi quy (lượt soát chạy nền với context rỗng, bộ phát lại chỉ phát lượt đầu).
+
+## Cách xem cho tester (từ 26/11/2026)
+
+Trang job có nút "Dễ hiểu / Đầy đủ kỹ thuật" (`localStorage` `autotest.agent.view`, mặc định Dễ hiểu). Khung "Tóm tắt dễ hiểu"
+(`PlainSummary`): sơ đồ đường đi dữ liệu tô bước gây lỗi (theo cause của trọng tài, chưa có thì số đông hội đồng), kết luận,
+thanh tra, kết quả trước / sau sửa, việc tiếp theo, giải thích từ ngữ. Chữ đời thường lấy từ `plain` của trọng tài
+(`DECISION_SCHEMA`, bắt buộc) và agent sửa (`FIX_SCHEMA`), kết luận ghi `report.plain`. Chế độ Dễ hiểu thu gọn ý kiến hội đồng,
+file, patch, từng bộ test vào mục mở được (`Tech`).
+
 ## Duyệt kế hoạch sửa (trước khi agent sửa code)
 
 - Trọng tài chọn `fix_code` và tiêu chí chưa đạt trên code hiện tại thì `Orchestrator._await_plan` dừng ở giai đoạn `plan`, ghi

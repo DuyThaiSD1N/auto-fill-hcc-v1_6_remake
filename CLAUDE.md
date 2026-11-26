@@ -121,6 +121,9 @@ Người sửa code đọc `auto-test-hcc/README.md`, đội tester đọc `auto
 - Chạy trên cổng thật: người dùng chỉ đăng nhập VNeID, bot tự vào thủ tục qua panel như Auto Fill, tự xác nhận, tải lại trang và điền
   5 lần, chấm trên giá trị đọc từ form. Bot KHÔNG được nộp hồ sơ: không gỡ lớp chặn nộp trong `agents/browser.py`, không thêm cờ tắt.
 - Tab "Thêm thủ tục mới" (`agents/devjob.py`) đã gỡ ngày 2026-11-09 theo yêu cầu người dùng; web chỉ còn job sửa lỗi một ca.
+- Thủ tục có thanh tra (người dùng yêu cầu 26/11/2026, xem mục "Thủ tục có thanh tra" trong `auto-test-hcc/README.md`): chạy lại chờ
+  thanh tra rồi chấm trên giá trị cuối; hội đồng có vai "Soát thanh tra" và tự cân bằng sửa lượt điền đầu (mapper / prompt) với sửa
+  thanh tra. Trang job mặc định cách xem "Dễ hiểu" cho tester không biết code (trọng tài / agent sửa viết thêm câu `plain`).
 - Bộ công cụ Auto test trong Monitor 12007 (người dùng chọn ngày 22/11/2026): nhóm menu "Auto test" gồm 5 màn ở
   `monitor-fe/src/autotest/` (Tái hiện lượt, Nội dung đã điền, Bộ ca test, Lần chạy, Cấu hình ghi). Giao diện gọi `/agent-api/lab/*`
   của dịch vụ 12009 qua nginx Monitor (`AGENT_URL`); logic nằm ở `auto-test-hcc/agents/lab.py`, không thêm gì vào `app/`. Dịch vụ
