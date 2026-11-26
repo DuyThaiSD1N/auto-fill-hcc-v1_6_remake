@@ -22,6 +22,7 @@ của từng file và xếp vào đúng MỘT loại giấy tờ.
 - to_khai_mau_04
 - bien_ban_tiep_nhan
 - to_khai_kem_bien_ban
+- to_khai_khac
 - can_cuoc
 - giay_to_khac
 - other
@@ -36,6 +37,10 @@ của từng file và xếp vào đúng MỘT loại giấy tờ.
   bạo lực gia đình, bị xâm hại, bị mua bán, bị cưỡng bức lao động...) có chữ ký của người phát hiện, chính quyền
   hoặc công an cấp xã, đại diện cơ sở trợ giúp xã hội.
 - to_khai_kem_bien_ban: MỘT tệp chứa CẢ Tờ khai Mẫu số 04 LẪN Biên bản tiếp nhận (scan chung).
+- to_khai_khac: tờ khai / đơn đề nghị / giấy đề nghị của đối tượng hoặc người giám hộ nhưng KHÔNG phải Mẫu số 04
+  (tiêu đề khác "TỜ KHAI ĐỀ NGHỊ CHĂM SÓC, NUÔI DƯỠNG TẠI CƠ SỞ TRỢ GIÚP XÃ HỘI"), vd "TỜ KHAI ĐỀ NGHỊ TRỢ CẤP XÃ HỘI,
+  TRỢ CẤP HƯU TRÍ XÃ HỘI", "ĐƠN ĐỀ NGHỊ tiếp nhận vào cơ sở trợ giúp xã hội". Tệp có tiêu đề "TỜ KHAI" / "ĐƠN ĐỀ NGHỊ"
+  đọc rõ thì KHÔNG trả other.
 - can_cuoc: Căn cước công dân / thẻ căn cước / CMND / hộ chiếu (của đối tượng hoặc người giám hộ).
 - giay_to_khac: giấy tờ đọc rõ được loại nhưng không phải hai loại trên — Giấy xác nhận khuyết tật, Giấy khai
   sinh, Giấy xác nhận thông tin về cư trú, quyết định hưởng trợ cấp, giấy xác nhận hộ nghèo/cận nghèo...

@@ -231,6 +231,12 @@ _BB_TEXT = (
 _CCCD_TEXT = "CĂN CƯỚC CÔNG DÂN Số định danh cá nhân Họ, chữ đệm và tên khai sinh"
 _GXN_TEXT = "GIẤY XÁC NHẬN KHUYẾT TẬT Dạng khuyết tật Mức độ khuyết tật: Nặng"
 
+_TK_TCXH_TEXT = (
+    "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM Độc lập - Tự do - Hạnh phúc TỜ KHAI ĐỀ NGHỊ TRỢ CẤP XÃ HỘI, TRỢ CẤP HƯU TRÍ "
+    "XÃ HỘI Kính gửi: Chủ tịch UBND xã I. Thông tin chung 1.1. Họ và tên: NGUYỄN VĂN A Số căn cước 2. Thông tin "
+    "người giám hộ"
+)
+
 
 def _files(*names):
     return [{"name": n, "type": "application/pdf", "dataUrl": ""} for n in names]
@@ -308,8 +314,47 @@ def test_nhieu_trang_to_khai_cung_dong_va_tep_la_khong_dinh():
     assert classified[0]["source"] == "llm"
 
 
+def test_khong_co_mau_04_thi_dinh_to_khai_mau_khac_vao_dong_to_khai():
+    files = _files("cccd.pdf", "to_khai.pdf")
+    ocr = [{"name": "cccd.pdf", "text": _CCCD_TEXT}, {"name": "to_khai.pdf", "text": _TK_TCXH_TEXT}]
+    # LLM trả other cho tờ khai mẫu khác → rule đọc tiêu đề đầu tệp.
+    items, warnings, classified = ap.build_plan_items(files, ocr, {0: "can_cuoc", 1: "other"})
+
+    assert ap._rule_doc_type(_TK_TCXH_TEXT) == "to_khai_khac"
+    assert [(i["fileName"], i["componentName"]) for i in items] == [
+        ("to_khai.pdf", "Tờ khai đề nghị chăm sóc, nuôi dưỡng tại cơ sở trợ giúp xã hội"),
+    ]
+    assert classified[1] == {"fileName": "to_khai.pdf", "docType": "to_khai_khac", "source": "rule"}
+    assert any("to_khai.pdf" in w and "không phải Tờ khai Mẫu số 04" in w for w in warnings)
+    assert not any("Không thấy Tờ khai Mẫu số 04" in w for w in warnings)
+    assert any("chưa có Biên bản tiếp nhận" in w for w in warnings)
+
+
+def test_llm_goi_giay_to_khac_nhung_tieu_de_la_to_khai_thi_van_dinh():
+    files = _files("to_khai.pdf")
+    items, _, classified = ap.build_plan_items(files, [{"name": "to_khai.pdf", "text": _TK_TCXH_TEXT}],
+                                               {0: "giay_to_khac"})
+    assert [i["fileName"] for i in items] == ["to_khai.pdf"]
+    assert classified[0]["docType"] == "to_khai_khac"
+
+
+def test_da_co_mau_04_thi_to_khai_mau_khac_khong_dinh():
+    files = _files("tk04.pdf", "tk_khac.pdf")
+    ocr = [{"name": "tk04.pdf", "text": _TK04_TEXT}, {"name": "tk_khac.pdf", "text": _TK_TCXH_TEXT}]
+    items, warnings, _ = ap.build_plan_items(files, ocr, {0: "to_khai_mau_04", 1: "to_khai_khac"})
+
+    assert [i["fileName"] for i in items] == ["tk04.pdf"]
+    assert any("tk_khac.pdf" in w and "không đính" in w for w in warnings)
+
+
+def test_tieu_de_to_khai_chi_xet_dau_tep():
+    # Giấy tờ khác nhắc "tờ khai" ở thân (không phải tiêu đề) không thành tờ khai mẫu khác.
+    assert ap._rule_doc_type(_GXN_TEXT + " " + "x " * 400 + "theo tờ khai") == "giay_to_khac"
+
+
 def test_normalize_doc_type_tu_llm():
     assert ap._normalize_doc_type("to_khai_mau_04") == "to_khai_mau_04"
+    assert ap._normalize_doc_type("to_khai_khac") == "to_khai_khac"
     assert ap._normalize_doc_type("bien_ban_tiep_nhan") == "bien_ban_tiep_nhan"
     assert ap._normalize_doc_type("to_khai_kem_bien_ban") == "to_khai_kem_bien_ban"
     assert ap._normalize_doc_type("can_cuoc") == "can_cuoc"
@@ -338,6 +383,34 @@ async def test_plan_goi_ocr_va_llm(monkeypatch):
     assert [a["fileName"] for a in result["attachments"]] == ["b.pdf", "c.pdf"]
     assert result["extracted"]["notAttached"] == ["a.pdf"]
     assert not result["errors"]
+
+
+async def test_plan_to_khai_mau_khac_vao_dong_to_khai_cccd_khong_dinh(monkeypatch):
+    from app.process.schemas import FileItem
+    from app.services import ocr as ocr_service
+
+    async def fake_ocr(_files):
+        return [{"name": "a.pdf", "text": _CCCD_TEXT}, {"name": "b.pdf", "text": _TK_TCXH_TEXT}]
+
+    async def fake_classify(_docs, _system_prompt=None):
+        return {0: "can_cuoc", 1: "other"}
+
+    monkeypatch.setattr(ocr_service, "ocr_per_file", fake_ocr)
+    monkeypatch.setattr(ap, "_classify_with_llm", fake_classify)
+
+    files = [FileItem(name=n, type="application/pdf", dataUrl="data:application/pdf;base64,QUJD", role="attachment")
+             for n in ("a.pdf", "b.pdf")]
+    result = await ap.plan(files, {}, None)
+
+    assert [(a["fileName"], a["componentName"]) for a in result["attachments"]] == [
+        ("b.pdf", "Tờ khai đề nghị chăm sóc, nuôi dưỡng tại cơ sở trợ giúp xã hội"),
+    ]
+    assert result["extracted"]["notAttached"] == ["a.pdf"]
+
+
+def test_prompt_co_loai_to_khai_mau_khac():
+    assert "to_khai_khac" in ap.prompt.SYSTEM_PROMPT
+    assert "TỜ KHAI ĐỀ NGHỊ TRỢ CẤP XÃ HỘI" in ap.prompt.SYSTEM_PROMPT
 
 
 # ── Registry lõi, link kê khai và trợ lý người dân ──

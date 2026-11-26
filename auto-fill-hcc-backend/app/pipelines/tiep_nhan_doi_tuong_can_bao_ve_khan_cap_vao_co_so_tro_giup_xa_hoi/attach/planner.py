@@ -9,6 +9,9 @@ Mỗi dòng: mat-checkbox + rdo_File + ô upload multiple. Theo ánh xạ đính
     → chỉ dùng để điền bước 1, KHÔNG đính.
   - Biên bản scan CHUNG tệp với tờ khai → KHÔNG tách tệp: đính chính tệp đó ở cả hai dòng.
   - Hồ sơ thiếu biên bản → cảnh báo cán bộ scan bổ sung (dòng bắt buộc trên cổng).
+  - Hồ sơ không có Mẫu số 04 nhưng có tờ khai / đơn đề nghị MẪU KHÁC (vd Tờ khai đề nghị trợ cấp xã hội, trợ cấp
+    hưu trí xã hội) → vẫn đính tờ khai đó vào dòng Tờ khai, cảnh báo cán bộ kiểm tra mẫu. Có Mẫu số 04 thì tờ khai
+    mẫu khác không đính.
 Planner OCR tối đa ``attach_classify_max_pages`` trang đầu nên biên bản nằm sau tờ khai 3 trang không đọc thấy —
 cảnh báo thiếu biên bản nhắc luôn cách đính lại tệp chung.
 
@@ -32,12 +35,13 @@ _LOAI_BAN = "Scan tệp tin"
 _TO_KHAI = "to_khai_mau_04"
 _BIEN_BAN = "bien_ban_tiep_nhan"
 _COMBINED = "to_khai_kem_bien_ban"
+_TO_KHAI_KHAC = "to_khai_khac"
 _CAN_CUOC = "can_cuoc"
 _KHAC = "giay_to_khac"
 _OTHER = "other"
-_ALLOWED_DOC_TYPES = {_TO_KHAI, _BIEN_BAN, _COMBINED, _CAN_CUOC, _KHAC, _OTHER}
-# Không có dòng trên cổng → chỉ dùng để điền bước 1.
-_NOT_ATTACHED = {_CAN_CUOC, _KHAC}
+_ALLOWED_DOC_TYPES = {_TO_KHAI, _BIEN_BAN, _COMBINED, _TO_KHAI_KHAC, _CAN_CUOC, _KHAC, _OTHER}
+# CCCD + giấy tờ khác không có dòng trên cổng → chỉ dùng để điền bước 1 (extracted.notAttached = mọi tệp đã nhận
+# loại mà không vào dòng nào).
 
 # componentName = đoạn text đặc trưng của dòng (FE khớp substring đã fold dấu vào tên dòng lấy từ DOM).
 _ROW_TO_KHAI = "Tờ khai đề nghị chăm sóc, nuôi dưỡng tại cơ sở trợ giúp xã hội"
@@ -49,6 +53,9 @@ _DOC_BIEN_BAN = "Biên bản tiếp nhận"
 
 _TK_TITLE = re.compile(r"to khai de nghi cham soc,? nuoi duong|to khai .{0,60}tai co so tro giup xa hoi")
 _BB_TITLE = re.compile(r"\bbien ban (?:tiep nhan|ban giao|giao nhan|phat hien)")
+# Tờ khai / đơn đề nghị mẫu khác: tiêu đề nằm ở phần đầu tệp (sau quốc hiệu, tiêu ngữ).
+_TK_KHAC_TITLE = re.compile(r"\b(?:to khai|don de nghi|giay de nghi)\b")
+_TK_KHAC_HEAD_CHARS = 600
 
 
 def _is_identity_text(h: str) -> bool:
@@ -72,6 +79,8 @@ def _rule_doc_type(text: str) -> str:
         return _TO_KHAI
     if has_bb:
         return _BIEN_BAN
+    if _TK_KHAC_TITLE.search(h[:_TK_KHAC_HEAD_CHARS]):
+        return _TO_KHAI_KHAC
     if _is_identity_text(h):
         return _CAN_CUOC
     if any(m in h for m in ("xac nhan khuyet tat", "giam dinh y khoa", "giay khai sinh", "trich luc khai sinh",
@@ -88,6 +97,8 @@ def _normalize_doc_type(value: str) -> str:
         return _COMBINED
     if "bien ban" in text:
         return _BIEN_BAN
+    if "khac" in text and ("to khai" in text or "de nghi" in text):
+        return _TO_KHAI_KHAC
     if "04" in text or "to khai" in text:
         return _TO_KHAI
     if "can cuoc" in text or "cccd" in text or "cmnd" in text or "ho chieu" in text:
@@ -155,6 +166,9 @@ def build_plan_items(
             # Cả hai tiêu đề cùng nằm trong OCR thì chắc chắn là tệp chung, kể cả khi LLM chỉ gọi một loại.
             if rule_type == _COMBINED and llm_type in (_TO_KHAI, _BIEN_BAN):
                 doc_type, source = _COMBINED, "rule"
+            # Đầu tệp ghi tiêu đề "TỜ KHAI" / "ĐƠN ĐỀ NGHỊ" thì không phải giấy tờ khác.
+            elif rule_type == _TO_KHAI_KHAC and llm_type == _KHAC:
+                doc_type, source = _TO_KHAI_KHAC, "rule"
         elif rule_type:
             doc_type, source = rule_type, "rule"
         else:
@@ -163,6 +177,9 @@ def build_plan_items(
         classified.append({"fileName": file_name, "docType": doc_type, "source": source})
 
     to_khai = [(idx, file) for idx, file, t in typed if t in (_TO_KHAI, _COMBINED)]
+    # Không có Mẫu số 04 → tờ khai / đơn đề nghị mẫu khác là giấy duy nhất của dòng Tờ khai, vẫn đính.
+    to_khai_khac = [(idx, file) for idx, file, t in typed if t == _TO_KHAI_KHAC] if not to_khai else []
+    to_khai = to_khai or to_khai_khac
     bien_ban = [(idx, file) for idx, file, t in typed if t in (_BIEN_BAN, _COMBINED)] if bien_ban_row else []
 
     items: list[dict] = []
@@ -180,6 +197,13 @@ def build_plan_items(
             warnings.append(
                 f"'{file_name}' chứa cả Tờ khai Mẫu số 04 lẫn Biên bản tiếp nhận — không tách tệp, đính chính tệp "
                 "đó ở cả hai dòng."
+            )
+        elif doc_type == _TO_KHAI_KHAC:
+            warnings.append(
+                f"'{file_name}' là tờ khai / đơn đề nghị nhưng không phải Tờ khai Mẫu số 04 — đã đính vào dòng 'Tờ "
+                "khai đề nghị chăm sóc, nuôi dưỡng tại cơ sở trợ giúp xã hội', cán bộ kiểm tra lại mẫu."
+                if to_khai_khac else
+                f"'{file_name}' là tờ khai / đơn đề nghị mẫu khác — hồ sơ đã có Tờ khai Mẫu số 04 nên không đính."
             )
         elif doc_type == _OTHER:
             warnings.append(
@@ -243,7 +267,7 @@ async def plan_documents(files: list[FileItem], *, bien_ban_row: bool, system_pr
     attachments, warnings, classified = build_plan_items(raw_files, ocr_results, llm_types, bien_ban_row=bien_ban_row)
     errors.extend(warnings)
     skipped_ocr = [f["name"] for f in raw_files if f.get("type") not in _OCR_TYPES]
-    not_attached = _NOT_ATTACHED if bien_ban_row else _NOT_ATTACHED | {_BIEN_BAN}
+    attached_idx = {a["fileIndex"] for a in attachments}
 
     return {
         "attachments": attachments,
@@ -252,7 +276,8 @@ async def plan_documents(files: list[FileItem], *, bien_ban_row: bool, system_pr
             "ocrDocuments": [r.get("name") for r in ocr_results if r.get("text")],
             "llmDocuments": [raw_files[doc["index"]]["name"] for doc in llm_docs],
             "classified": classified,
-            "notAttached": [c["fileName"] for c in classified if c["docType"] in not_attached],
+            "notAttached": [c["fileName"] for i, c in enumerate(classified)
+                            if c["docType"] != _OTHER and i not in attached_idx],
             "skippedOcr": skipped_ocr,
             "rows": [_ROW_TO_KHAI, _ROW_BIEN_BAN] if bien_ban_row else [_ROW_TO_KHAI],
         },
