@@ -1,0 +1,231 @@
+{
+ "source": "dichvucong.bocongan.gov.vn/portal/p/home/dvc-CCCD-duoi-14-tuoi.html",
+ "title": "Tờ khai cấp thẻ căn cước cho người dưới 14 tuổi",
+ "capturedAt": "2026-11-25T00:00:00+07:00",
+ "inferred": true,
+ "note": "Mẫu SUY từ mapping Excel + id ô trong BE/extension (16–20/11/2026), CHƯA chụp trên trang thật: thứ tự khối, nhãn ô không có trong mapping, danh sách cơ quan Công an (dựng từ danh mục 34 tỉnh + xã, tiền tố \"Công an \") là suy. Chụp trang thật bằng monitor-fe/scripts/capture-bca-form.js rồi thay file này.",
+ "code": {
+  "field": "radCapThucHien",
+  "map": {
+   "Cấp Tỉnh": "1.012549",
+   "Cấp Xã": "1.014062"
+  }
+ },
+ "sections": [
+  {
+   "title": "Phần I. Thông tin người kê khai",
+   "note": "Cổng đổ theo tài khoản VNeID và khoá, trừ Số điện thoại / Thư điện tử.",
+   "fields": [
+    {
+     "id": "txtFULLNAME_NDN",
+     "kind": "text",
+     "label": "Họ, chữ đệm và tên",
+     "readonly": true,
+     "note": "Tài khoản đăng nhập (chọn ở thanh trên)"
+    },
+    {
+     "id": "txtIDENTIFY_NUMBER_NDN",
+     "kind": "text",
+     "label": "Số định danh cá nhân",
+     "readonly": true
+    },
+    {
+     "id": "txtPHONE_NUMBER_NDN",
+     "kind": "text",
+     "label": "Số điện thoại",
+     "required": true,
+     "portalMayFill": true
+    },
+    {
+     "id": "txtEMAIL_ADDRESS_NDN",
+     "kind": "text",
+     "label": "Thư điện tử",
+     "portalMayFill": true
+    }
+   ]
+  },
+  {
+   "title": "Phần II. Thông tin người cần cấp căn cước",
+   "note": "Nút \"Kiểm tra thông tin trong CSDL Quốc gia về Dân cư\" công dân tự bấm.",
+   "fields": [
+    {
+     "id": "txtFULLNAME_NCC",
+     "kind": "text",
+     "label": "Họ, chữ đệm và tên khai sinh",
+     "required": true
+    },
+    {
+     "id": "txtBIRTHDATE_NCC",
+     "kind": "date",
+     "label": "Ngày, tháng, năm sinh",
+     "required": true
+    },
+    {
+     "id": "cboGENDER_ID_NCC",
+     "kind": "select",
+     "label": "Giới tính",
+     "required": true,
+     "options": [
+      "Nam",
+      "Nữ"
+     ]
+    },
+    {
+     "id": "txtIDENTIFY_NUMBER_NCC",
+     "kind": "text",
+     "label": "Số định danh cá nhân",
+     "required": true
+    },
+    {
+     "id": "cboRELATIONSHIP_WITH_NDN",
+     "kind": "select",
+     "label": "Mối quan hệ của người kê khai với người cần cấp căn cước",
+     "required": true,
+     "options": [
+      "Cha",
+      "Mẹ",
+      "Người đại diện hợp pháp"
+     ]
+    },
+    {
+     "id": "cboLyDoCap",
+     "kind": "select",
+     "label": "Lý do cấp",
+     "readonly": true,
+     "note": "Cổng khoá"
+    },
+    {
+     "id": "cboLoaiHoSo",
+     "kind": "select",
+     "label": "Loại hồ sơ",
+     "readonly": true,
+     "note": "Cổng tự tính khi rời ô ngày sinh (onChangeBirthDate)"
+    }
+   ]
+  },
+  {
+   "title": "Cơ quan thực hiện",
+   "fields": [
+    {
+     "id": "radCapThucHien",
+     "kind": "radio",
+     "label": "Cấp thực hiện",
+     "required": true,
+     "options": [
+      "Cấp Tỉnh",
+      "Cấp Xã"
+     ],
+     "wide": true
+    },
+    {
+     "id": "cboORGTinh",
+     "kind": "select",
+     "label": "Công an tỉnh/thành phố",
+     "required": true,
+     "options": "@provinces",
+     "optionPrefix": "Công an "
+    },
+    {
+     "id": "cboORGXa",
+     "kind": "select",
+     "label": "Công an xã/phường/đặc khu",
+     "required": true,
+     "options": "@wards:cboORGTinh",
+     "optionPrefix": "Công an ",
+     "showWhen": {
+      "field": "radCapThucHien",
+      "is": [
+       "Cấp Xã"
+      ]
+     }
+    },
+    {
+     "id": "cboDiaChiTram",
+     "kind": "select",
+     "label": "Địa chỉ cơ quan Công an tiếp nhận hồ sơ",
+     "required": true,
+     "wide": true,
+     "note": "Cổng nạp theo cơ quan đã chọn"
+    }
+   ]
+  },
+  {
+   "title": "Nhận kết quả",
+   "fields": [
+    {
+     "id": "radNhanKetQua",
+     "kind": "radio",
+     "label": "Hình thức nhận kết quả",
+     "options": [
+      "Nhận kết quả tại cơ quan công an nơi tiếp nhận hồ sơ",
+      "Nhận kết quả qua dịch vụ bưu chính"
+     ],
+     "wide": true
+    },
+    {
+     "id": "cboGET_RESULT_CITY_ADDR",
+     "kind": "select",
+     "label": "Tỉnh/Thành phố",
+     "required": true,
+     "options": "@provinces",
+     "showWhen": {
+      "field": "radNhanKetQua",
+      "is": [
+       "Nhận kết quả qua dịch vụ bưu chính"
+      ]
+     }
+    },
+    {
+     "id": "cboGET_RESULT_VILLAGE_ADDR",
+     "kind": "select",
+     "label": "Xã/Phường/Đặc khu",
+     "required": true,
+     "options": "@wards:cboGET_RESULT_CITY_ADDR",
+     "showWhen": {
+      "field": "radNhanKetQua",
+      "is": [
+       "Nhận kết quả qua dịch vụ bưu chính"
+      ]
+     }
+    },
+    {
+     "id": "txtGET_RESULT_DETAIL_ADDR",
+     "kind": "text",
+     "label": "Địa chỉ chi tiết",
+     "required": true,
+     "showWhen": {
+      "field": "radNhanKetQua",
+      "is": [
+       "Nhận kết quả qua dịch vụ bưu chính"
+      ]
+     },
+     "wide": true
+    },
+    {
+     "id": "txtFULLNAME_NN",
+     "kind": "text",
+     "label": "Họ và tên người nhận",
+     "required": true,
+     "showWhen": {
+      "field": "radNhanKetQua",
+      "is": [
+       "Nhận kết quả qua dịch vụ bưu chính"
+      ]
+     }
+    },
+    {
+     "id": "txtPHONE_NUMBER_NN",
+     "kind": "text",
+     "label": "Số điện thoại người nhận",
+     "required": true,
+     "showWhen": {
+      "field": "radNhanKetQua",
+      "is": [
+       "Nhận kết quả qua dịch vụ bưu chính"
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}

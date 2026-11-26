@@ -1,0 +1,194 @@
+{
+ "source": "dichvucong.dancuquocgia.gov.vn/portal/p/home/thong-bao-luu-tru.html",
+ "title": "Thông báo lưu trú",
+ "capturedAt": "2026-11-26T00:00:00+07:00",
+ "inferred": true,
+ "note": "Mẫu SUY từ id ô trong BE (schema.py / mapper.py) + extension (fillBcaAgencyField, fillBcaGuestList: modal #addpersonLT, nút #btnAddPersonLT, Lưu #btnSaveNLT, bảng #listTTNguoiLuuTru); nhãn chữ là suy, CHƯA chụp trang thật. Trang không có đính kèm. Người lưu trú: mỗi người một dòng = một lượt modal, cột = id ô guest_*.",
+ "code": "2.001159",
+ "sections": [
+  {
+   "title": "Cơ quan thực hiện",
+   "note": "BE gửi bca-agency không kèm cityId/wardId → extension mặc định đúng cặp ô này; chỉ ghi khi Tỉnh/Xã còn trống (onlyIfEmpty).",
+   "fields": [
+    {
+     "id": "accomStay_cboPROVINCE_ID",
+     "kind": "select",
+     "label": "Tỉnh/Thành phố",
+     "required": true,
+     "options": "@provinces"
+    },
+    {
+     "id": "accomStay_cboADDRESS_ID",
+     "kind": "select",
+     "label": "Xã/Phường/Đặc khu",
+     "required": true,
+     "options": "@wards:accomStay_cboPROVINCE_ID"
+    }
+   ]
+  },
+  {
+   "title": "Thông tin người thông báo",
+   "note": "Cổng khoá, đổ theo tài khoản VNeID — BE không điền.",
+   "fields": [
+    {
+     "id": "txtIDENTIFIER_NUMBER",
+     "kind": "text",
+     "label": "Số định danh cá nhân",
+     "readonly": true,
+     "note": "Extension so số này với người lưu trú để tích \"Người khai thông tin là Người lưu trú\""
+    }
+   ]
+  },
+  {
+   "title": "Thông tin cơ sở lưu trú",
+   "note": "Cổng chép xã từ Cơ quan thực hiện; đổi Loại hình là cổng xoá Tên + Địa chỉ.",
+   "fields": [
+    {
+     "id": "accomStay_cboACCOMMODATION_TYPE",
+     "kind": "select",
+     "label": "Loại hình cơ sở lưu trú",
+     "required": true,
+     "options": [
+      "Hộ gia đình",
+      "Ký túc xá sinh viên",
+      "Nhà ngăn phòng cho thuê",
+      "Cơ sở lưu trú du lịch",
+      "Cơ sở chữa bệnh",
+      "Cơ sở khác"
+     ]
+    },
+    {
+     "id": "accomStay_txtNAME_T",
+     "kind": "text",
+     "label": "Tên cơ sở lưu trú",
+     "showWhen": {
+      "field": "accomStay_cboACCOMMODATION_TYPE",
+      "is": [
+       "Hộ gia đình",
+       "Cơ sở khác"
+      ]
+     },
+     "note": "4 loại hình còn lại cổng thay ô này bằng danh sách cơ sở đã đăng ký (nạp theo xã)"
+    },
+    {
+     "id": "accomStay_txtADDRESS",
+     "kind": "text",
+     "label": "Địa chỉ (dưới cấp xã)",
+     "required": true,
+     "wide": true
+    }
+   ]
+  },
+  {
+   "title": "Danh sách người lưu trú",
+   "id": "listTTNguoiLuuTru",
+   "note": "Mỗi dòng một lượt \"Thêm mới người lưu trú\". Trùng số định danh người thông báo thì extension tích chkIS_CHANGED_PERSON, cổng khoá ô nhân thân. Quốc tịch Việt Nam mới mở Tỉnh/Xã thường trú.",
+   "fields": [],
+   "table": {
+    "id": "listTTNguoiLuuTru",
+    "columns": [
+     {
+      "prefix": "guest_txtCITIZENNAME",
+      "label": "Họ, chữ đệm và tên",
+      "kind": "text"
+     },
+     {
+      "prefix": "guest_cboDOB_FMT",
+      "label": "Định dạng ngày sinh",
+      "kind": "select",
+      "options": [
+       "dd/mm/yyyy",
+       "mm/yyyy",
+       "yyyy"
+      ]
+     },
+     {
+      "prefix": "guest_txtDOB",
+      "label": "Ngày sinh",
+      "kind": "date",
+      "partialDate": true
+     },
+     {
+      "prefix": "guest_cboGENDER_ID",
+      "label": "Giới tính",
+      "kind": "select",
+      "options": [
+       "Nam",
+       "Nữ"
+      ]
+     },
+     {
+      "prefix": "guest_txtIDCARD_NUMBER",
+      "label": "Số ĐDCN/CCCD/CMND",
+      "kind": "text"
+     },
+     {
+      "prefix": "guest_txtPASSPORT_NO",
+      "label": "Số hộ chiếu",
+      "kind": "text"
+     },
+     {
+      "prefix": "guest_txtPHONE_NUMBER",
+      "label": "Số điện thoại",
+      "kind": "text"
+     },
+     {
+      "prefix": "guest_txtPLACE_OF_WORK",
+      "label": "Nơi làm việc",
+      "kind": "text"
+     },
+     {
+      "prefix": "guest_mulNATIONALITY",
+      "label": "Quốc tịch",
+      "kind": "select"
+     },
+     {
+      "prefix": "guest_cboETHNIC_ID",
+      "label": "Dân tộc",
+      "kind": "select"
+     },
+     {
+      "prefix": "guest_radADDRESS_TYPE",
+      "label": "Địa chỉ thường trú / tạm trú / khác (giá trị 0/1/2)",
+      "kind": "radio"
+     },
+     {
+      "prefix": "guest_cboRDPROVINCE_ID",
+      "label": "Tỉnh/Thành phố",
+      "kind": "select"
+     },
+     {
+      "prefix": "guest_cboRDADDRESS_ID",
+      "label": "Xã/Phường/Đặc khu",
+      "kind": "select"
+     },
+     {
+      "prefix": "guest_txtRDADDRESS",
+      "label": "Địa chỉ chi tiết",
+      "kind": "text"
+     },
+     {
+      "prefix": "guest_txtREASON",
+      "label": "Lý do lưu trú",
+      "kind": "text"
+     },
+     {
+      "prefix": "guest_txtSTART_DATE",
+      "label": "Lưu trú từ ngày",
+      "kind": "date"
+     },
+     {
+      "prefix": "guest_txtEND_DATE",
+      "label": "Đến ngày",
+      "kind": "date"
+     },
+     {
+      "prefix": "guest_txtROOM",
+      "label": "Số phòng",
+      "kind": "text"
+     }
+    ]
+   }
+  }
+ ]
+}

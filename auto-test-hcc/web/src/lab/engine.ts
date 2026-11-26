@@ -1,5 +1,6 @@
 // Hiển thị kết quả các lần chạy lại của một ca: chấm từng lượt bằng engine mô phỏng form của Monitor và so giữa các lần.
-import { findSim, loadAreaCatalog, loadForm, loadSurveyForm } from "../simulations/registry";
+import { findSim, loadAreaCatalog, loadBcaForm, loadForm, loadSurveyForm } from "../simulations/registry";
+import { bcaPersonas, defaultPersona, simulateBca } from "../simulations/bca";
 import { simulateEform, type SimStats } from "../simulations/eform";
 import { findComponentRow, simulateSurveyJs, type SjsComponent, type SjsPlanItem } from "../simulations/surveyjs";
 import { isSurveyJsOutput, toFields, type UiField } from "../simulations/fill";
@@ -89,6 +90,19 @@ export function loadScorer(procedure: string): Promise<Scorer> {
 async function buildScorer(procedure: string): Promise<Scorer> {
   const entry = findSim(procedure);
   if (!entry) return { form: () => null, components: null };
+  if (entry.bca) {
+    // Trang căn cước Bộ Công an: chấm với tài khoản mặc định suy từ giấy (như tab Mô phỏng form lúc mở).
+    const [bca, catalog] = await Promise.all([loadBcaForm(entry.bca), loadAreaCatalog()]);
+    return {
+      components: null,
+      form: (fields) => {
+        if (!fields.length) return null;
+        const personas = bcaPersonas(fields);
+        const key = defaultPersona(personas, fields);
+        return simulateBca(bca, fields, catalog, personas.find((p) => p.key === key)?.person ?? null).stats;
+      },
+    };
+  }
   const [eforms, survey, area] = await Promise.all([
     Promise.all((entry.forms ?? []).map(loadForm)),
     entry.surveyjs ? loadSurveyForm(entry.surveyjs) : Promise.resolve(null),

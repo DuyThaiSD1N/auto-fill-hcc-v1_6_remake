@@ -1,0 +1,227 @@
+{
+ "source": "dichvucong.dancuquocgia.gov.vn/portal/p/home/dang-ky-tam-tru.html?TT=TAMTRU_06",
+ "title": "Xóa đăng ký tạm trú",
+ "capturedAt": "2026-11-26T00:00:00+07:00",
+ "inferred": true,
+ "note": "Mẫu SUY từ id ô trong BE (schema.py / mapper.py) + id trong extension (BCA_AGENCY_IDS của trợ lý) + DOM khối nhận kết quả người dùng chụp 24/11; nhãn chữ của ô và thứ tự khối là suy, CHƯA chụp trang thật. Chụp bằng monitor-fe/scripts/capture-bca-form.js. Cùng trang + bộ id với Đăng ký tạm trú. Với TAMTRU_06 các khối Thông tin đề nghị đăng ký tạm trú (cả txtCHANGED_NOTE), người đại diện / thời hạn, xin ý kiến VNeID đều ẩn → không đưa vào mẫu.",
+ "code": "1.010028",
+ "sections": [
+  {
+   "title": "Cơ quan thực hiện",
+   "note": "Cổng chọn sẵn Hà Nội / Ba Đình → BE chọn đè (không onlyIfEmpty); chọn xong cổng mới nạp Trường hợp.",
+   "fields": [
+    {
+     "id": "cboRECEIVE_ADDR_CITY_CODE",
+     "kind": "select",
+     "label": "Tỉnh/Thành phố",
+     "required": true,
+     "options": "@provinces",
+     "portalDefault": "Thành phố Hà Nội"
+    },
+    {
+     "id": "cboRECEIVE_ADDR_VILLAGE_CODE",
+     "kind": "select",
+     "label": "Xã/Phường/Đặc khu",
+     "required": true,
+     "options": "@wards:cboRECEIVE_ADDR_CITY_CODE",
+     "portalDefault": "Phường Ba Đình"
+    }
+   ]
+  },
+  {
+   "title": "Thông tin thủ tục",
+   "note": "Ô \"Thủ tục\" cổng tự chọn theo TT= trên URL rồi khoá. Radio Khai hộ BE không điền.",
+   "fields": [
+    {
+     "id": "cboBPROC_CASE_CODE",
+     "kind": "select",
+     "label": "Trường hợp",
+     "required": true,
+     "wide": true,
+     "options": [
+      "Nhân khẩu do không còn chỗ ở hợp pháp",
+      "Cả hộ do không còn chỗ ở hợp pháp",
+      "Nhân khẩu do vắng mặt từ 6 tháng trở lên",
+      "Hộ do vắng mặt từ 6 tháng trở lên",
+      "Nhân khẩu do đã đăng ký thường trú tại chính nơi tạm trú",
+      "Hộ do đã đăng ký thường trú tại chính nơi tạm trú"
+     ],
+     "note": "Nhãn theo mapping (TAT-XOA-13…18); đổi Trường hợp là cổng nạp lại bảng giấy tờ + danh mục quan hệ"
+    }
+   ]
+  },
+  {
+   "title": "Thông tin người đề nghị",
+   "note": "Cổng có thể đổ sẵn theo tài khoản VNeID; đổi Định dạng là cổng đổi mặt nạ ô ngày sinh.",
+   "fields": [
+    {
+     "id": "txtFULLNAME",
+     "kind": "text",
+     "label": "Họ, chữ đệm và tên",
+     "required": true
+    },
+    {
+     "id": "cboDATE_FORMAT",
+     "kind": "select",
+     "label": "Định dạng ngày sinh",
+     "options": [
+      "Ngày tháng năm",
+      "Tháng năm",
+      "Năm"
+     ]
+    },
+    {
+     "id": "txtDOB",
+     "kind": "date",
+     "label": "Ngày sinh",
+     "required": true,
+     "partialDate": true
+    },
+    {
+     "id": "cboGENDER_CODE",
+     "kind": "select",
+     "label": "Giới tính",
+     "required": true,
+     "options": [
+      "Nam",
+      "Nữ"
+     ]
+    },
+    {
+     "id": "txtIDENTIFIER_NUMBER",
+     "kind": "text",
+     "label": "Số định danh cá nhân",
+     "required": true
+    },
+    {
+     "id": "txtPHONE_NUMBER",
+     "kind": "text",
+     "label": "Số điện thoại",
+     "portalMayFill": true
+    },
+    {
+     "id": "txtEMAIL",
+     "kind": "text",
+     "label": "Email",
+     "portalMayFill": true
+    }
+   ]
+  },
+  {
+   "title": "Thông tin chủ hộ",
+   "fields": [
+    {
+     "id": "txtHH_PERSON_FULLNAME",
+     "kind": "text",
+     "label": "Họ, chữ đệm và tên chủ hộ",
+     "required": true
+    },
+    {
+     "id": "cboHH_PERSON_RELATIONSHIP_CODE",
+     "kind": "select",
+     "label": "Quan hệ với chủ hộ",
+     "required": true,
+     "note": "Danh mục quan hệ của cổng chưa có"
+    },
+    {
+     "id": "txtHH_PERSON_IDENTIFIER_NUMBER",
+     "kind": "text",
+     "label": "Số định danh cá nhân của chủ hộ",
+     "required": true
+    }
+   ]
+  },
+  {
+   "title": "Những thành viên trong hộ gia đình cùng thay đổi",
+   "id": "listNormal",
+   "note": "Nút thêm dòng #listNormal .add_CUNGTD chưa thấy DOM thật; cột Định dạng chọn TRƯỚC ô ngày sinh.",
+   "fields": [],
+   "table": {
+    "id": "listNormal",
+    "columns": [
+     {
+      "prefix": "txtFULLNAME_CUNGTD",
+      "label": "Họ, chữ đệm và tên",
+      "kind": "text"
+     },
+     {
+      "prefix": "cboDATE_FORMAT_CUNGTD",
+      "label": "Định dạng ngày sinh",
+      "kind": "select",
+      "options": [
+       "Ngày tháng năm",
+       "Tháng năm",
+       "Năm"
+      ]
+     },
+     {
+      "prefix": "txtDOB_CUNGTD",
+      "label": "Ngày sinh",
+      "kind": "text"
+     },
+     {
+      "prefix": "cboGENDER_CUNGTD",
+      "label": "Giới tính",
+      "kind": "select",
+      "options": [
+       "Nam",
+       "Nữ"
+      ]
+     },
+     {
+      "prefix": "txtIDENTIFIER_NOCARD_NUMBER_CUNGTD",
+      "label": "Số định danh cá nhân",
+      "kind": "text"
+     },
+     {
+      "prefix": "cboRELATIONSHIP_CHUHO_CUNGTD",
+      "label": "Quan hệ với chủ hộ",
+      "kind": "select"
+     }
+    ]
+   }
+  },
+  {
+   "title": "Thông tin nhận thông báo tình trạng hồ sơ, kết quả giải quyết hồ sơ",
+   "note": "Theo DOM người dùng chụp 24/11 trên TAMTRU_06. Ô SĐT/email nhận thông báo và địa chỉ nhận kết quả (cboRECEIVER_PROVINCE/VILLAGE, txtRECEIVER_ADDRESS/PHONE) chưa rõ điều kiện hiện → chưa đưa vào mẫu.",
+   "fields": [
+    {
+     "id": "cboNOTIFICATION_TYPE",
+     "kind": "select",
+     "label": "Hình thức nhận thông báo",
+     "options": [
+      "Qua email",
+      "Nhận qua cổng thông tin"
+     ],
+     "portalDefault": "Nhận qua cổng thông tin",
+     "note": "select2 nhiều lựa chọn — BE không đụng"
+    },
+    {
+     "id": "cboRECEIVER_TYPE",
+     "kind": "select",
+     "label": "Hình thức nhận kết quả",
+     "required": true,
+     "options": [
+      "Nhận trực tiếp",
+      "Qua email",
+      "Nhận qua cổng thông tin"
+     ],
+     "portalDefault": "Qua email",
+     "note": "Giấy có email → Qua email, không → Nhận qua cổng thông tin (luôn tô vàng)"
+    },
+    {
+     "id": "txtRECEIVER_EMAIL",
+     "kind": "text",
+     "label": "Email nhận kết quả",
+     "required": true,
+     "showWhen": {
+      "field": "cboRECEIVER_TYPE",
+      "is": [
+       "Qua email"
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}

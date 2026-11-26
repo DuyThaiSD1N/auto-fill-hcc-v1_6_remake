@@ -1,8 +1,9 @@
 import { createElement, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { findSim, loadAngularForm, loadAreaCatalog, loadForm, loadSurveyForm, type SimEntry } from "../../simulations/registry";
+import { findSim, loadAngularForm, loadAreaCatalog, loadBcaForm, loadForm, loadSurveyForm, type SimEntry } from "../../simulations/registry";
 import { foldChoice, simulateEform, type Cell, type Eform, type EformResult, type SimStats, type Unmatched as UnmatchedRow } from "../../simulations/eform";
 import { simulateAngular, type AreaCatalog, type NgField, type NgForm } from "../../simulations/angular";
 import { simulateSurveyJs, type SjsField, type SjsForm, type SjsResult, type SjsRow, type SjsSection } from "../../simulations/surveyjs";
+import { bcaPersonas, defaultPersona, simulateBca, type BcaForm } from "../../simulations/bca";
 import { isSurveyJsOutput, toFields, type UiField } from "../../simulations/fill";
 import { useAsync } from "../../hooks";
 import { formatDateTime } from "../../format";
@@ -382,6 +383,100 @@ function SurveySimulation({ form, area, run }: { form: SjsForm; area: AreaCatalo
   );
 }
 
+/** Trang căn cước Cổng DVC Bộ Công an: khối → lưới ô như form Angular; radio người kê khai, Phần II, quan hệ và SĐT/email
+ *  Phần I tuỳ tài khoản VNeID đăng nhập (output không có) → chọn tài khoản để xem extension điền thế nào. */
+function BcaSimulation({ form, area, run }: { form: BcaForm; area: AreaCatalog; run: RunDetail }) {
+  const response = run.steps?.outputs?.response;
+  const fields = useMemo(() => toFields(response), [response]);
+  const personas = useMemo(() => bcaPersonas(fields), [fields]);
+  const [who, setWho] = useState<string | null>(null);
+  const active = who ?? defaultPersona(personas, fields);
+  const account = personas.find((p) => p.key === active)?.person ?? null;
+  const sim = useMemo(() => simulateBca(form, fields, area, account), [form, fields, area, account]);
+  const notFound = new Set(((run.trace?.report?.notFound as string[] | undefined) ?? []).map((n) => n.toLowerCase()));
+  const ctx: Ctx = { notFound };
+  return (
+    <div className="sim-form-wrap">
+      <Summary stats={sim.stats} cells={[...sim.cells.values()].filter((c) => sim.visible.has(c.key))}
+        source={<>{form.inferred ? "Mẫu dựng theo mapping (chưa chụp trang thật)" : "Mẫu chụp từ cổng"}: <span className="mono">{form.source}</span> · {formatDateTime(form.capturedAt)}</>}>
+        <div className="bca-bar">
+          {/* Chỉ có "Người khác" = output không có ô nào tuỳ tài khoản (vd đăng ký xe) → không cần chọn. */}
+          {personas.length > 1 ? (
+            <>
+              <label htmlFor="bca-account">Tài khoản đăng nhập</label>
+              <select id="bca-account" className="input" value={active} onChange={(e) => setWho(e.target.value)}>
+                {personas.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
+              </select>
+            </>
+          ) : null}
+          {sim.code ? <span className="bca-code">Mã thủ tục: <b className="mono">{sim.code}</b></span> : null}
+        </div>
+        {form.note ? <p className="faint ef-source">{form.note}</p> : null}
+      </Summary>
+      <div className="sim-form ng-form">
+        <h2 className="ng-form__title">{form.title}</h2>
+        {form.sections.map((sec, si) => {
+          const hidden = sim.hiddenSections.has(si);
+          const shown = sec.fields.filter((f) => sim.visible.has(f.id));
+          return (
+            <section key={`${si}-${sec.title}`} className={`ng-sec${hidden ? " bca-sec--hidden" : ""}`}>
+              <h3>{sec.title}{sec.id ? <code className="bca-sec__id">#{sec.id}</code> : null}</h3>
+              {hidden ? <small className="ef-note ef-note--info">Khối đang ẩn — chỉ hiện khi người kê khai là cha/mẹ/người đại diện hợp pháp.</small> : null}
+              {sec.portalDecides ? <small className="ef-note ef-note--info">{sec.portalDecides}</small> : null}
+              {sec.note && !hidden ? <small className="faint bca-sec__note">{sec.note}</small> : null}
+              {!hidden ? (
+                <div className="ng-grid">
+                  {shown.map((f) => {
+                    const cell = sim.cells.get(f.id);
+                    if (!cell) return null;
+                    return (
+                      <div key={f.id} className={`ng-field${f.wide || f.kind === "radio" ? " ng-field--wide" : ""}`}>
+                        <span className="ng-field__label">
+                          {f.label}{f.required ? <em className="ef-req"> *</em> : null}
+                          <code>{f.id}</code>
+                        </span>
+                        <Widget cell={cell} ctx={ctx} />
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+              {sec.table && !hidden ? (
+                (sim.rows.get(sec.table.id) ?? []).length ? (
+                  <div className="bca-table-wrap">
+                    <table className="mini-table bca-table">
+                      <thead><tr><th>#</th>{sec.table.columns.map((col) => <th key={col.prefix}>{col.label}<code>{col.prefix}n</code></th>)}</tr></thead>
+                      <tbody>
+                        {(sim.rows.get(sec.table.id) ?? []).map((line, ri) => (
+                          <tr key={ri}><td className="num">{ri + 1}</td>{line.map((cell) => <td key={cell.key}><Widget cell={cell} ctx={ctx} /></td>)}</tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : <small className="faint bca-sec__note">Bảng <code>{sec.table.id}</code>: BE không trả dòng nào.</small>
+              ) : null}
+            </section>
+          );
+        })}
+      </div>
+      {sim.held.length ? (
+        <div className="panel panel__body" style={{ marginTop: 12 }}>
+          <div className="section-title">Giá trị BE trả nhưng extension không ghi với tài khoản này ({sim.held.length})</div>
+          <table className="mini-table ef-unmatched">
+            <thead><tr><th>Field</th><th>comp</th><th>Giá trị</th><th>Lý do</th></tr></thead>
+            <tbody>
+              {sim.held.map(({ field, reason }) => (
+                <tr key={`${field.name}-${reason}`}><td className="mono">{field.name}</td><td className="mono">{field.comp ?? "—"}</td><td>{show(field.value)}</td><td>{reason}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+      <Unmatched list={sim.unmatched} />
+    </div>
+  );
+}
+
 function Simulation({ entry, forms, run }: { entry: SimEntry; forms: Eform[]; run: RunDetail }) {
   const response = run.steps?.outputs?.response;
   const fields = useMemo(() => toFields(response), [response]);
@@ -426,6 +521,10 @@ export default function FormSimulation({ run }: { run: RunDetail }) {
   const useSurvey = !!entry?.surveyjs && (isSurveyJsOutput(toFields(run.steps?.outputs?.response)) || !entry.forms?.length);
   const { data, error, loading, reload } = useAsync(async () => {
     if (!entry) return null;
+    if (entry.bca) {
+      const [form, area] = await Promise.all([loadBcaForm(entry.bca), loadAreaCatalog()]);
+      return { kind: "bca" as const, form, area };
+    }
     if (entry.angular) {
       const [form, area] = await Promise.all([loadAngularForm(entry.angular), loadAreaCatalog()]);
       return { kind: "angular" as const, form, area };
@@ -440,10 +539,11 @@ export default function FormSimulation({ run }: { run: RunDetail }) {
     return <EmptyState title={`Chưa có mẫu mô phỏng cho thủ tục "${procedure ?? "?"}"`} hint="Tạo thư mục monitor-fe/src/simulations/thu-tuc/<key thủ tục>/index.ts khai mẫu (xem docs/web-monitor/mo-phong-form.md)." />;
   }
   if (!toFields(run.steps?.outputs?.response).length) {
-    return <EmptyState title="Lượt này chưa có output trả FE (T5)" hint="Lượt ghi trước khi bật bộ ghi công đoạn không lưu output trả FE." />;
+    return <EmptyState title="Lượt này chưa có output trả FE (T5)" hint="Lượt ghi trước khi bật bộ ghi công đoạn, hoặc output đã chuyển sang kho lưu trữ (server có kho Spark gỡ output khỏi Mongo sau ~30 phút)." />;
   }
   if (error) return <ErrorNotice message={error} onRetry={reload} />;
   if (loading || !data) return <Spinner label="Đang tải mẫu form" />;
+  if (data.kind === "bca") return <BcaSimulation form={data.form} area={data.area} run={run} />;
   if (data.kind === "angular") return <AngularSimulation form={data.form} area={data.area} run={run} />;
   if (data.kind === "surveyjs") return <SurveySimulation form={data.form} area={data.area} run={run} />;
   return <Simulation entry={entry} forms={data.forms} run={run} />;

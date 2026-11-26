@@ -1,0 +1,442 @@
+{
+ "source": "dichvucong.bocongan.gov.vn — trang kê khai (vào từ tthc?matt=43474 → Chọn trường hợp hồ sơ)",
+ "title": "Đăng ký sang tên, di chuyển xe tại Công an cấp tỉnh",
+ "capturedAt": "2026-11-26T00:00:00+07:00",
+ "inferred": true,
+ "note": "Mẫu SUY từ bảng ô của BE (schema.py theo file Mapping_Dang_ky_sang_ten_xe_o_to_BCA, hai sheet chủ xe tự nộp / khai hộ): name ô và số mục (n) đúng schema, nhãn chữ suy, CHƯA chụp trang thật. BE tự chọn chủ xe / khai hộ theo tài khoản VNeID (options.formContext) rồi tích một trong hai ô Phần I — mô phỏng theo ô BE tích. Chưa chắc: cổng có tự bỏ tích ô còn lại, mở khoá ô chủ xe và hiện Phần IV khi tích khai hộ hay không.",
+ "code": "2.000076",
+ "sections": [
+  {
+   "title": "Phần I. Người nộp hồ sơ",
+   "note": "Chọn một trong hai; tích \"người khai hộ\" thì cổng mở ô chủ xe (Phần III) và khối Phần IV.",
+   "fields": [
+    {
+     "id": "CongDan__fsLaChuXe",
+     "kind": "checkbox",
+     "label": "(1) Người nộp hồ sơ là chủ xe"
+    },
+    {
+     "id": "CongDan__fsLaNguoiKhaiHo",
+     "kind": "checkbox",
+     "label": "(2) Người nộp hồ sơ là người khai hộ"
+    }
+   ]
+  },
+  {
+   "title": "Phần II. Tra cứu thông tin xe",
+   "note": "Người dân tự nhập Mã bảo mật rồi bấm \"Tra cứu\"; cổng điền + khoá chứng từ chuyển quyền, thông tin xe, LPTB điện tử.",
+   "fields": [
+    {
+     "id": "CongDan__fstracuuLoaiDangKy",
+     "kind": "select",
+     "label": "(3) Loại đăng ký",
+     "required": true,
+     "options": [
+      "Đăng ký sang tên xe",
+      "Đăng ký di chuyển xe"
+     ]
+    },
+    {
+     "id": "CongDan__fsRadioLoaiXe",
+     "kind": "select",
+     "label": "(4) Loại xe",
+     "required": true,
+     "options": [
+      "Xe máy",
+      "Ô tô"
+     ]
+    },
+    {
+     "id": "CongDan__fstracuuMauBien",
+     "kind": "select",
+     "label": "(5) Màu biển",
+     "required": true,
+     "options": [
+      "Nền màu trắng, chữ và số màu đen",
+      "Nền màu xanh, chữ và số màu trắng",
+      "Nền màu vàng, chữ và số màu đen",
+      "Nền màu vàng, chữ và số màu đỏ"
+     ],
+     "wide": true
+    },
+    {
+     "id": "CongDan__fstracuuBienSo",
+     "kind": "text",
+     "label": "(6) Biển số cũ",
+     "required": true
+    },
+    {
+     "id": "CongDan__fstracuuSoKhung",
+     "kind": "text",
+     "label": "(7) Số khung",
+     "required": true
+    },
+    {
+     "id": "CongDan__fstracuuSoMay",
+     "kind": "text",
+     "label": "(8) Số máy",
+     "required": true
+    },
+    {
+     "id": "CongDan__fsTraCuMaHsLPTB",
+     "kind": "text",
+     "label": "(9) Mã hồ sơ lệ phí trước bạ",
+     "note": "(*) theo mapping; di chuyển nguyên chủ không có LPTB mới → mẫu không tính đỏ"
+    }
+   ]
+  },
+  {
+   "title": "Phần III. Thông tin chủ xe",
+   "note": "Chủ xe tự nộp: Mã định danh, Họ tên, Ngày sinh cổng khoá theo tài khoản (BE không phát). Khai hộ: cổng mở các ô này, BE điền theo giấy. Nơi tạm trú / nơi ở hiện tại, ô Quận/Huyện ẩn: BE không phát.",
+   "fields": [
+    {
+     "id": "CongDan_soCmnd",
+     "kind": "text",
+     "label": "(12) Mã định danh của chủ xe",
+     "required": true,
+     "lockedWhen": {
+      "field": "CongDan__fsLaChuXe",
+      "is": [
+       "(1) Người nộp hồ sơ là chủ xe"
+      ],
+      "note": "chủ xe tự nộp: cổng đổ theo tài khoản VNeID và khoá"
+     }
+    },
+    {
+     "id": "CongDan__fsLoaiGiayToChuXe",
+     "kind": "select",
+     "label": "(13) Loại giấy tờ",
+     "required": true,
+     "options": [
+      "Căn cước công dân",
+      "Chứng minh thư nhân dân"
+     ]
+    },
+    {
+     "id": "CongDan__fsngayCapCmnd",
+     "kind": "date",
+     "label": "(14) Cấp ngày",
+     "required": true
+    },
+    {
+     "id": "CongDan__fsnoiCapCmnd",
+     "kind": "text",
+     "label": "(15) Nơi cấp",
+     "required": true
+    },
+    {
+     "id": "CongDan_tenCongDan",
+     "kind": "text",
+     "label": "(16) Họ và tên chủ xe",
+     "required": true,
+     "lockedWhen": {
+      "field": "CongDan__fsLaChuXe",
+      "is": [
+       "(1) Người nộp hồ sơ là chủ xe"
+      ],
+      "note": "chủ xe tự nộp: cổng đổ theo tài khoản VNeID và khoá"
+     }
+    },
+    {
+     "id": "CongDan__fsnamSinh",
+     "kind": "date",
+     "label": "(17) Ngày/tháng/Năm sinh",
+     "required": true,
+     "lockedWhen": {
+      "field": "CongDan__fsLaChuXe",
+      "is": [
+       "(1) Người nộp hồ sơ là chủ xe"
+      ],
+      "note": "chủ xe tự nộp: cổng đổ theo tài khoản VNeID và khoá"
+     }
+    },
+    {
+     "id": "CongDan__fsQuocTichChuXe",
+     "kind": "select",
+     "label": "(18) Quốc tịch",
+     "required": true
+    },
+    {
+     "id": "CongDan__fsBCAHKTTTinh",
+     "kind": "select",
+     "label": "(21) Tỉnh/Thành phố thường trú",
+     "required": true,
+     "options": "@provinces"
+    },
+    {
+     "id": "CongDan__fsBCAHKTTXa",
+     "kind": "select",
+     "label": "(23) Phường/Xã thường trú",
+     "options": "@wards:CongDan__fsBCAHKTTTinh",
+     "note": "Danh sách nạp qua API sau khi chọn Tỉnh"
+    },
+    {
+     "id": "CongDan__fsBCAHKTTDCChiTiet",
+     "kind": "text",
+     "label": "(24) Nơi thường trú (số nhà, tên đường)",
+     "required": true,
+     "wide": true
+    },
+    {
+     "id": "CongDan_diDong",
+     "kind": "text",
+     "label": "(30) Số điện thoại của chủ xe",
+     "required": true,
+     "portalMayFill": true
+    },
+    {
+     "id": "CongDan_email",
+     "kind": "text",
+     "label": "(31) Email của chủ xe",
+     "portalMayFill": true
+    }
+   ]
+  },
+  {
+   "title": "Phần IV. Người được ủy quyền làm thủ tục",
+   "note": "Chỉ mở khi tích \"người khai hộ\". BE điền theo tài khoản VNeID + giấy ủy quyền / thẻ người được ủy quyền.",
+   "fields": [
+    {
+     "id": "CongDan__fsNDUQHoTen",
+     "kind": "text",
+     "label": "(32) Họ và tên",
+     "showWhen": {
+      "field": "CongDan__fsLaNguoiKhaiHo",
+      "is": [
+       "(2) Người nộp hồ sơ là người khai hộ"
+      ]
+     }
+    },
+    {
+     "id": "CongDan__fsNDUQMaDinhDanh",
+     "kind": "text",
+     "label": "(33) Mã định danh",
+     "required": true,
+     "showWhen": {
+      "field": "CongDan__fsLaNguoiKhaiHo",
+      "is": [
+       "(2) Người nộp hồ sơ là người khai hộ"
+      ]
+     }
+    },
+    {
+     "id": "CongDan__fsNDUQLoaiGiayTo",
+     "kind": "select",
+     "label": "(34) Loại giấy tờ",
+     "required": true,
+     "options": [
+      "Căn cước công dân",
+      "Chứng minh thư nhân dân"
+     ],
+     "showWhen": {
+      "field": "CongDan__fsLaNguoiKhaiHo",
+      "is": [
+       "(2) Người nộp hồ sơ là người khai hộ"
+      ]
+     }
+    },
+    {
+     "id": "CongDan__fsNDUQNgayCap",
+     "kind": "date",
+     "label": "(35) Ngày cấp",
+     "required": true,
+     "showWhen": {
+      "field": "CongDan__fsLaNguoiKhaiHo",
+      "is": [
+       "(2) Người nộp hồ sơ là người khai hộ"
+      ]
+     }
+    },
+    {
+     "id": "CongDan__fsNDUQCoQuanCap",
+     "kind": "text",
+     "label": "(36) Cơ quan cấp",
+     "required": true,
+     "showWhen": {
+      "field": "CongDan__fsLaNguoiKhaiHo",
+      "is": [
+       "(2) Người nộp hồ sơ là người khai hộ"
+      ]
+     }
+    },
+    {
+     "id": "CongDan__fsDiDongNDUQ",
+     "kind": "text",
+     "label": "(37) Số điện thoại",
+     "required": true,
+     "showWhen": {
+      "field": "CongDan__fsLaNguoiKhaiHo",
+      "is": [
+       "(2) Người nộp hồ sơ là người khai hộ"
+      ]
+     }
+    },
+    {
+     "id": "CongDan__fsEmailNDUQ",
+     "kind": "text",
+     "label": "(38) Email",
+     "showWhen": {
+      "field": "CongDan__fsLaNguoiKhaiHo",
+      "is": [
+       "(2) Người nộp hồ sơ là người khai hộ"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "title": "Phần V. Kinh doanh vận tải",
+   "note": "Hồ sơ không có giấy phép thì BE chọn \"Không kinh doanh vận tải\" (mapping).",
+   "fields": [
+    {
+     "id": "CongDan__fsCoKinhDoanhvanTai",
+     "kind": "select",
+     "label": "(42) Kinh doanh vận tải",
+     "options": [
+      "Có kinh doanh vận tải",
+      "Không kinh doanh vận tải"
+     ],
+     "wide": true
+    },
+    {
+     "id": "CongDan__fsSoGiayPhepKinhDoanh",
+     "kind": "text",
+     "label": "(43) Số giấy phép kinh doanh vận tải",
+     "showWhen": {
+      "field": "CongDan__fsCoKinhDoanhvanTai",
+      "is": [
+       "Có kinh doanh vận tải"
+      ]
+     }
+    },
+    {
+     "id": "CongDan__fsngayCapGPKD",
+     "kind": "date",
+     "label": "(44) Ngày cấp",
+     "showWhen": {
+      "field": "CongDan__fsCoKinhDoanhvanTai",
+      "is": [
+       "Có kinh doanh vận tải"
+      ]
+     }
+    },
+    {
+     "id": "CongDan__fsNoiCapGPKD",
+     "kind": "text",
+     "label": "(45) Nơi cấp",
+     "showWhen": {
+      "field": "CongDan__fsCoKinhDoanhvanTai",
+      "is": [
+       "Có kinh doanh vận tải"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "title": "Phần VI. Chứng từ, thông tin xe, lệ phí trước bạ",
+   "note": "Cổng tự điền + khoá sau Tra cứu (readonly / disabled) — BE không phát, mẫu không liệt kê ô.",
+   "fields": []
+  },
+  {
+   "title": "Phần VII. Biển số trúng đấu giá",
+   "fields": [
+    {
+     "id": "CongDan__fs359581_checkbox_1",
+     "kind": "checkbox",
+     "label": "(62) Là biển số trúng đấu giá"
+    },
+    {
+     "id": "CongDan__fsBienSoTrungDauGia",
+     "kind": "text",
+     "label": "(63) Biển số trúng đấu giá",
+     "showWhen": {
+      "field": "CongDan__fs359581_checkbox_1",
+      "is": [
+       "(62) Là biển số trúng đấu giá"
+      ]
+     }
+    },
+    {
+     "id": "CongDan__fsSoGiayXnTrungDauGia",
+     "kind": "text",
+     "label": "(64) Số giấy xác nhận trúng đấu giá",
+     "showWhen": {
+      "field": "CongDan__fs359581_checkbox_1",
+      "is": [
+       "(62) Là biển số trúng đấu giá"
+      ]
+     }
+    },
+    {
+     "id": "CongDan__fsNGayCapBienDauGia",
+     "kind": "date",
+     "label": "(65) Ngày cấp",
+     "showWhen": {
+      "field": "CongDan__fs359581_checkbox_1",
+      "is": [
+       "(62) Là biển số trúng đấu giá"
+      ]
+     }
+    },
+    {
+     "id": "CongDan__fsCoQuanCapBienDauGia",
+     "kind": "text",
+     "label": "(66) Cơ quan cấp",
+     "showWhen": {
+      "field": "CongDan__fs359581_checkbox_1",
+      "is": [
+       "(62) Là biển số trúng đấu giá"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "title": "Phần VIII. Hình thức nhận kết quả",
+   "fields": [
+    {
+     "id": "CongDan__fsHinhThucNhanKQ",
+     "kind": "select",
+     "label": "(67) Hình thức nhận kết quả",
+     "required": true,
+     "options": [
+      "Đến cơ quan giải quyết để nhận kết quả",
+      "Gửi hồ sơ đến địa chỉ của tôi",
+      "Nhận kết quả qua mạng",
+      "Qua bưu điện, tại nhà"
+     ],
+     "wide": true
+    },
+    {
+     "id": "CongDan__fsTenNguoiNhanKQ",
+     "kind": "text",
+     "label": "(68) Tên người nhận"
+    },
+    {
+     "id": "CongDan__fsSoDienThoaiNguoiNhan",
+     "kind": "text",
+     "label": "(69) Số điện thoại người nhận"
+    },
+    {
+     "id": "CongDan__fsTinhNhanKQ",
+     "kind": "select",
+     "label": "(70) Tỉnh/Thành phố",
+     "options": "@provinces"
+    },
+    {
+     "id": "CongDan__fsXaNhanKQ",
+     "kind": "select",
+     "label": "(72) Xã/Phường/Đặc khu",
+     "options": "@wards:CongDan__fsTinhNhanKQ"
+    },
+    {
+     "id": "CongDan__fsDiaChiChiTietNhanKQ",
+     "kind": "text",
+     "label": "(73) Địa chỉ chi tiết",
+     "wide": true
+    }
+   ]
+  }
+ ]
+}
