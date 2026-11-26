@@ -380,3 +380,18 @@ def test_sdt_lech_mot_chu_so_o_mot_muc_thi_theo_cach_ghi_cua_da_so_muc():
     assert phones("0900000123", "0900000173", "") == ("0900000123", "0900000123", "")
     # Thuế lệch ≥2 chữ số với số đa số: là số khác, giữ.
     assert phones("0900000123", "0900000123", "0900000987") == ("0900000123", "0900000123", "0900000987")
+
+
+def test_sdt_9_chu_so_doc_sot_theo_so_day_du_o_muc_khac():
+    """OCR sót một chữ số (9 số, có 0 đầu): đúng một số 10 chữ số ở mục khác chèn một chữ số là khớp → theo số đó,
+    rồi luật đa số sửa tiếp mục lệch một chữ số. Không khớp / nhiều số khớp thì giữ nguyên."""
+    from app.pipelines.dang_ky_kinh_doanh.process.mapper import _contact_phones
+
+    out = _contact_phones({"ChuHo_DienThoai": "091234567", "TruSo_DienThoai": "0912345670",
+                           "Thue_DienThoai": "0912345678"})
+    assert out["ChuHo_DienThoai"] == "091234567"  # hai số cùng khớp → không đoán
+    out = _contact_phones({"ChuHo_DienThoai": "091234578", "TruSo_DienThoai": "0912345671",
+                           "Thue_DienThoai": "0912345678"})
+    assert out == {"ChuHo_DienThoai": "0912345678", "TruSo_DienThoai": "0912345678", "Thue_DienThoai": "0912345678"}
+    out = _contact_phones({"ChuHo_DienThoai": "091234578", "TruSo_DienThoai": "0987654321", "Thue_DienThoai": ""})
+    assert out["ChuHo_DienThoai"] == "091234578"

@@ -1,4 +1,4 @@
-"""Dùng lại giấy tờ trong Ví cá nhân của cổng Bộ Tư pháp (chứng thực bản sao).
+"""Dùng lại giấy tờ trong Ví cá nhân của cổng Bộ Tư pháp (chứng thực bản sao, cấp bản sao từ sổ gốc).
 
 Tới bước Thành phần hồ sơ, trước khi lập kế hoạch đính kèm:
 1. ``wallet_list`` — extension mở hộp thoại "Danh sách tài liệu điện tử" của dòng hồ sơ; chính trang gọi API danh
@@ -39,7 +39,9 @@ SETTING = "reuseWalletDocuments"
 # lại) giữ hành vi cũ: chỉ hỏi khi tài khoản đã tự bật cài đặt — router ghi giá trị đã lưu vào khoá này.
 SETTING_SAVED = "reuseWalletDocumentsSaved"
 TABS = ("uploaded", "issued")
-PROCEDURES = frozenset({"chung-thuc-ban-sao"})
+PROCEDURES = frozenset({"chung-thuc-ban-sao", "cap-ban-sao-so-goc"})
+# Thủ tục mở sau khi có nút "Chọn" của ví: bản extension chỉ có CAPABILITY (tải lên lại) không hỏi ví ở các thủ tục này.
+PICK_ONLY_PROCEDURES = frozenset({"cap-ban-sao-so-goc"})
 STATE = "wallet_reuse"
 LIMIT = 20
 # Mỗi lần trợ lý đính bằng "Tải lên từ thiết bị" là thêm một tệp CHƯA ký số lên đầu mục tải lên → chỉ đọc 20 tệp mới
@@ -58,9 +60,11 @@ _ORIGIN_RE = re.compile(r"https://[a-z0-9-]+(?:\.[a-z0-9-]+)*\.gov\.vn", re.IGNO
 
 
 def enabled(conv: dict, proc: dict | None) -> bool:
+    key = str((proc or {}).get("key") or conv.get("procedure_key") or "")
     return ((conv.get("client_capabilities") or {}).get(CAPABILITY) is True
             and (conv.get("lang") or "vi") == "vi"
-            and str((proc or {}).get("key") or conv.get("procedure_key") or "") in PROCEDURES)
+            and key in PROCEDURES
+            and (key not in PICK_ONLY_PROCEDURES or pick_enabled(conv)))
 
 
 def pick_enabled(conv: dict) -> bool:
@@ -516,6 +520,11 @@ def _sources(item: dict) -> list[dict]:
     segments = item.get("sourceSegments")
     if isinstance(segments, list) and segments:
         return [s for s in segments if isinstance(s, dict)]
+    # Gộp nguyên tệp (vd hai mặt căn cước chụp rời ở planner cấp bản sao từ sổ gốc): mỗi tệp một nguồn, không thì tệp
+    # ví đứng đầu bị coi là cả mục và các tệp gộp cùng bị rơi.
+    merged = item.get("sourceFileIndexes")
+    if isinstance(merged, list) and len(merged) > 1:
+        return [{"fileIndex": index, "pageIndexes": None} for index in dict.fromkeys(merged)]
     return [{"fileIndex": item.get("fileIndex"), "pageIndexes": None}]
 
 
@@ -563,9 +572,12 @@ def apply_picks(conv: dict, attachments: list[dict], session_files: list[dict]) 
         rest = [s for s in sources if not pickable(s)]
         parts: list[dict] = []
         if rest:
-            kept = dict(item)
+            kept = {k: v for k, v in item.items() if k != "sourceFileIndexes"}
             if len(rest) == 1 and rest[0].get("pageIndexes") is None:
                 kept.pop("sourceSegments", None)
+                kept["fileIndex"] = rest[0]["fileIndex"]
+            elif all(r.get("pageIndexes") is None for r in rest) and not item.get("sourceSegments"):
+                kept["sourceFileIndexes"] = [r["fileIndex"] for r in rest]
                 kept["fileIndex"] = rest[0]["fileIndex"]
             else:
                 kept["sourceSegments"] = rest

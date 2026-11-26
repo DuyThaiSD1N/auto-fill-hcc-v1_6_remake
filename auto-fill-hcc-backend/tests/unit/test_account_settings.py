@@ -48,14 +48,14 @@ def make_client(monkeypatch):
 
 def test_tai_khoan_chua_luu_nhan_mac_dinh_doi_ten(make_client):
     c, _ = make_client({"username": "a"})
-    assert c.get("/api/v1/account/settings").json() == {"renameAttachmentFiles": True, "submitterFromDeclaration": False, "reuseWalletDocuments": True,
+    assert c.get("/api/v1/account/settings").json() == {"renameAttachmentFiles": True, "submitterFromDeclaration": False, "reuseWalletDocuments": False,
                                                         "fontScale": 1.0, "ttsVoiceVi": "",
                                                         "ttsVoiceHmong": "", "ttsTempo": None}
 
 
 def test_gia_tri_da_luu_duoc_tra_ve(make_client):
     c, _ = make_client({"username": "a", "account_settings": {"renameAttachmentFiles": False}})
-    assert c.get("/api/v1/account/settings").json() == {"renameAttachmentFiles": False, "submitterFromDeclaration": False, "reuseWalletDocuments": True,
+    assert c.get("/api/v1/account/settings").json() == {"renameAttachmentFiles": False, "submitterFromDeclaration": False, "reuseWalletDocuments": False,
                                                         "fontScale": 1.0, "ttsVoiceVi": "",
                                                         "ttsVoiceHmong": "", "ttsTempo": None}
 
@@ -63,7 +63,7 @@ def test_gia_tri_da_luu_duoc_tra_ve(make_client):
 def test_patch_ghi_dung_khoa_va_tra_ve_ban_day_du(make_client):
     c, users = make_client({"username": "a"})
     r = c.patch("/api/v1/account/settings", json={"renameAttachmentFiles": False})
-    assert r.status_code == 200 and r.json() == {"renameAttachmentFiles": False, "submitterFromDeclaration": False, "reuseWalletDocuments": True,
+    assert r.status_code == 200 and r.json() == {"renameAttachmentFiles": False, "submitterFromDeclaration": False, "reuseWalletDocuments": False,
                                                         "fontScale": 1.0, "ttsVoiceVi": "",
                                                         "ttsVoiceHmong": "", "ttsTempo": None}
     assert users.calls == [{"$set": {"account_settings.renameAttachmentFiles": False}}]
@@ -72,7 +72,7 @@ def test_patch_ghi_dung_khoa_va_tra_ve_ban_day_du(make_client):
 def test_patch_khoa_la_bi_bo_qua(make_client):
     c, users = make_client({"username": "a"})
     r = c.patch("/api/v1/account/settings", json={"role": "admin", "xyz": 1})
-    assert r.status_code == 200 and r.json() == {"renameAttachmentFiles": True, "submitterFromDeclaration": False, "reuseWalletDocuments": True,
+    assert r.status_code == 200 and r.json() == {"renameAttachmentFiles": True, "submitterFromDeclaration": False, "reuseWalletDocuments": False,
                                                         "fontScale": 1.0, "ttsVoiceVi": "",
                                                         "ttsVoiceHmong": "", "ttsTempo": None}
     assert users.calls == [], "không có khoá hợp lệ thì không ghi DB"
@@ -92,12 +92,12 @@ def test_lay_nguoi_nop_theo_to_khai_mac_dinh_tat_va_luu_duoc(make_client):
     assert users.calls == [{"$set": {"account_settings.submitterFromDeclaration": True}}]
 
 
-def test_dung_lai_giay_to_vi_ca_nhan_mac_dinh_bat_va_tat_duoc(make_client):
+def test_dung_lai_giay_to_vi_ca_nhan_mac_dinh_tat_va_bat_duoc(make_client):
     c, users = make_client({"username": "a"})
-    assert c.get("/api/v1/account/settings").json()["reuseWalletDocuments"] is True
-    r = c.patch("/api/v1/account/settings", json={"reuseWalletDocuments": False})
-    assert r.status_code == 200 and r.json()["reuseWalletDocuments"] is False
-    assert users.calls == [{"$set": {"account_settings.reuseWalletDocuments": False}}]
+    assert c.get("/api/v1/account/settings").json()["reuseWalletDocuments"] is False
+    r = c.patch("/api/v1/account/settings", json={"reuseWalletDocuments": True})
+    assert r.status_code == 200 and r.json()["reuseWalletDocuments"] is True
+    assert users.calls == [{"$set": {"account_settings.reuseWalletDocuments": True}}]
 
 
 def test_co_chu_mac_dinh_100_phan_tram_va_luu_duoc(make_client):

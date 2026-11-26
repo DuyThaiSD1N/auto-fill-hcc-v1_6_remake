@@ -230,6 +230,15 @@ def _contact_phones(values: dict) -> dict[str, str]:
     đúng một chữ số ở một mục (cùng độ dài) → mục đó theo cách ghi mà NHIỀU mục hơn cùng ghi. Hoà thì không phân xử theo
     số mục; riêng trụ sở – chủ hộ vẫn theo _head_office_phone."""
     phones = {name: _clean_phone(values.get(name)) for name in _CONTACT_PHONES}
+    # OCR đọc sót một chữ số (9 số, đã có "0" đầu): đúng MỘT số 10 chữ số ở mục khác chèn thêm một chữ số là khớp
+    # → theo số đó. Nhiều số khớp / không khớp thì giữ nguyên.
+    for name, phone in list(phones.items()):
+        if len(phone) != 9 or not phone.startswith("0"):
+            continue
+        fits = {other for other in phones.values() if len(other) == 10
+                and any(other[:i] + other[i + 1:] == phone for i in range(10))}
+        if len(fits) == 1:
+            phones[name] = fits.pop()
     counts: dict[str, int] = {}
     for phone in phones.values():
         if phone:

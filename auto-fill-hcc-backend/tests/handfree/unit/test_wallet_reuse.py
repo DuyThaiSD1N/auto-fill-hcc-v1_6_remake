@@ -533,3 +533,40 @@ def test_loc_ky_so_moi_muc_van_toi_da_20_giay():
     info = {"hidden": [], "duplicates": 0}
     items = wallet_reuse._clean_items(raw, signed_only=True, info=info)
     assert len(items) == 20 and all(i["signed"] for i in items) and len(info["hidden"]) == 25
+
+
+# ── Cấp bản sao từ sổ gốc: cùng công tắc, chỉ bản có nút "Chọn" của ví ──
+SO_GOC = "cap-ban-sao-so-goc"
+
+
+async def test_so_goc_ban_chon_tu_vi_thi_hoi_vi():
+    conv = _conv(caps=PICK_CAPS, procedure_key=SO_GOC)
+    reply = await _arrive(conv)
+    assert _types(reply) == ["wallet_list"] and conv["state"] == wallet_reuse.STATE
+
+
+async def test_so_goc_ban_cu_khong_hoi_vi():
+    conv = _conv(procedure_key=SO_GOC)
+    await _arrive(conv)
+    assert conv["state"] != wallet_reuse.STATE
+
+
+async def test_so_goc_tai_khoan_chua_bat_thi_khong_hoi():
+    conv = _conv(caps=PICK_CAPS, procedure_key=SO_GOC,
+                 auth_user={"id": "u1", wallet_reuse.SETTING: False, wallet_reuse.SETTING_SAVED: False})
+    await _arrive(conv)
+    assert conv["state"] != wallet_reuse.STATE
+
+
+def test_hai_mat_can_cuoc_gop_tep_mot_mat_lay_tu_vi_khong_mat_mat_kia():
+    conv = {"client_capabilities": PICK_CAPS}
+    files = [{"name": "mat-truoc.pdf", "wallet": {"id": "w1", "name": "CCCD.pdf", "tab": "uploaded"}},
+             {"name": "mat-sau.jpg"}]
+    item = {"fileIndex": 0, "sourceFileIndexes": [0, 1], "documentName": "Căn cước công dân",
+            "componentName": "Một trong các giấy tờ sau", "target": "existing", "componentIndex": 2}
+    out = wallet_reuse.apply_picks(conv, [item], files)
+    assert sorted(o["fileIndex"] for o in out) == [0, 1]
+    kept = next(o for o in out if o["fileIndex"] == 1)
+    assert "walletPick" not in kept and kept.get("sourceFileIndexes") in (None, [1])
+    picked = next(o for o in out if o["fileIndex"] == 0)
+    assert picked["walletPick"]["id"] == "w1" and "sourceFileIndexes" not in picked

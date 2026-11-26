@@ -199,6 +199,7 @@ QUY TẮC TRÍCH XUẤT:
   BỎ HẾT dấu chấm ở phần trước @, giữ nguyên phần domain sau @ (email cá nhân trên form gần như luôn gmail,
   dấu chấm không có ý nghĩa). Ví dụ "tai.nguyen@gmail.com" -> "tainguyen@gmail.com".
 - Số điện thoại VN là 10 chữ số bắt đầu bằng "0". Nếu số xuất hiện ở nhiều chỗ, chọn bản đầy đủ 10 số có "0" đứng đầu; nếu bản đọc được thiếu "0" đứng đầu (vd "974455009") thì THÊM "0" vào trước (-> "0974455009"). Sửa lỗi OCR phổ biến: S->5, O->0; bỏ dấu cách trong dãy số.
+  Số 9 chữ số ĐÃ có "0" đứng đầu là OCR đọc sót một chữ số ở giữa/cuối: chép NGUYÊN 9 chữ số đó, KHÔNG được tự thêm, chèn hay đoán chữ số nào (kể cả "0") — Python tự đối chiếu với số ở mục khác.
 - CHỈ có 3 nhóm liên hệ cần trích từ hồ sơ:
   + TruSo_DienThoai/TruSo_Email: mục "2. Trụ sở của hộ kinh doanh".
   + ChuHo_DienThoai/ChuHo_Email: phần thông tin cá nhân của chủ hộ.
