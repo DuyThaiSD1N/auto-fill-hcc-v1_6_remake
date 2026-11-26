@@ -9,6 +9,10 @@ from app.pipelines.dang_ky_tam_tru.process.schema import (
     DATE_FORMAT_MONTH,
     DATE_FORMAT_YEAR,
     HOUSEHOLD_HEAD,
+    RECEIVER_BY_EMAIL,
+    RECEIVER_EMAIL_ID,
+    RECEIVER_PORTAL,
+    RECEIVER_TYPE_ID,
     ROLE_OWNER,
     UI_COMP_BY_NAME,
 )
@@ -95,6 +99,15 @@ def _email(value: Any) -> str | None:
     return clean_email(_text(value))
 
 
+def receiver_fields(email: str | None) -> tuple[dict[str, str], set[str]]:
+    """Khối nhận kết quả cuối trang tạm trú → (ô, ô tô vàng). Giấy không ghi hình thức nhận nên ô hình thức luôn tô
+    vàng để công dân xem lại: có email → "Qua email" + email đó; không → "Nhận qua cổng thông tin" (khỏi ô Email bắt
+    buộc bị trống)."""
+    if email:
+        return {RECEIVER_TYPE_ID: RECEIVER_BY_EMAIL, RECEIVER_EMAIL_ID: email}, {RECEIVER_TYPE_ID}
+    return {RECEIVER_TYPE_ID: RECEIVER_PORTAL}, {RECEIVER_TYPE_ID}
+
+
 def _address_below_ward(value: Any) -> str | None:
     """Giữ phần dưới cấp xã: "Số 12 ngõ 45, phường X, thành phố Y" → "Số 12 ngõ 45"."""
     text = _text(value)
@@ -156,6 +169,9 @@ def enrich(fields: list[dict]) -> list[dict]:
     picked["cboHH_PERSON_RELATIONSHIP_CODE"] = HOUSEHOLD_HEAD
     defaults = set() if relation and fold(relation) == fold(HOUSEHOLD_HEAD) else {"cboHH_PERSON_RELATIONSHIP_CODE"}
     picked.update(_owner_consent_row(values, identity, picked.get("txtFULLNAME")))
+    receiver, receiver_defaults = receiver_fields(picked.get("txtEMAIL"))
+    picked.update(receiver)
+    defaults |= receiver_defaults
 
     out = []
     for name, comp in UI_COMP_BY_NAME.items():
@@ -167,4 +183,6 @@ def enrich(fields: list[dict]) -> list[dict]:
         out.append(field)
     # Ô người đề nghị = chủ tài khoản VNeID: cổng đổ sẵn thì giữ nguyên, trống mới điền theo giấy (user 20/11/2026).
     keep_portal_values(out, ('txtPHONE_NUMBER', 'txtEMAIL'))
+    # Email nhận kết quả: cổng đổ sẵn (VNeID) thì giữ như ô email người đề nghị.
+    keep_portal_values(out, (RECEIVER_EMAIL_ID,))
     return out

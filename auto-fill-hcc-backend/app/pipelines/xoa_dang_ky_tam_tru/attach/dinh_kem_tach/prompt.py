@@ -3,7 +3,7 @@
 import json
 from typing import Any
 
-from ..dinh_kem_khong_tach.prompt import DOC_TYPE_RULES
+from ..dinh_kem_khong_tach.prompt import DOC_TYPE_RULES, TO_KHAI_NAME_RULES
 
 SYSTEM_PROMPT = f"""
 <persona>
@@ -27,18 +27,20 @@ Bạn đọc các tài liệu đính kèm của hồ sơ xóa đăng ký tạm t
    định → "". Riêng thẻ căn cước / CCCD / CMND: BẮT BUỘC trả "matThe" = "truoc" (mặt có ảnh, họ tên), "sau" (mặt có
    nơi cư trú, ngày cấp, MRZ) hoặc "ca_hai" (một trang có cả hai mặt) và "chuThe" = họ tên chủ thẻ (mặt sau lấy dòng
    MRZ cuối, vd "NGUYEN<<VAN<A" → "NGUYEN VAN A"); không đọc được → "". Giấy khác: "matThe" = "".
-6. Làm HAI bước trong CÙNG một JSON:
+6. Tên người trên tờ khai:
+{TO_KHAI_NAME_RULES}
+7. Làm HAI bước trong CÙNG một JSON:
    a. "tep": MỖI tệp có từ 2 trang trở lên một mục {{"fileIndex","tieuDeTrang"}} (tệp 1 trang KHÔNG liệt kê) —
       tieuDeTrang có ĐÚNG một mục cho MỖI trang của tệp, theo thứ tự trang. Trang ĐẦU của một giấy tờ → tên loại
       giấy đó như documentName; trang KHÔNG phải trang đầu của giấy (trang 2, 3… của cùng văn bản, mặt sau thẻ,
       trang ký, trang trắng) → "".
    b. "documents": chia giấy THEO bước a — trang có tiêu đề khác rỗng LUÔN bắt đầu giấy MỚI; trang tiêu đề rỗng
       thuộc giấy liền trước CỦA CÙNG TỆP; trang đầu mỗi tệp luôn bắt đầu phần tử mới.
-7. Trả DUY NHẤT một JSON object, không markdown, không giải thích.
+8. Trả DUY NHẤT một JSON object, không markdown, không giải thích.
 </critical_rules>
 
 <output_contract>
-{{"tep":[{{"fileIndex":0,"tieuDeTrang":["Tờ khai thay đổi thông tin cư trú","Biên bản thanh lý hợp đồng thuê nhà"]}}],"documents":[{{"fileIndex":0,"pages":[1],"docType":"to_khai","documentName":"Tờ khai thay đổi thông tin cư trú","matThe":"","chuThe":""}}]}}
+{{"tep":[{{"fileIndex":0,"tieuDeTrang":["Tờ khai thay đổi thông tin cư trú","Biên bản thanh lý hợp đồng thuê nhà"]}}],"documents":[{{"fileIndex":0,"pages":[1],"docType":"to_khai","documentName":"Tờ khai thay đổi thông tin cư trú","matThe":"","chuThe":"","nguoiDeNghi":"Nguyễn Văn A","yKienChuHo":"Nguyễn Văn A","yKienChuSoHuu":"Trần Văn B","yKienChaMe":""}}]}}
 </output_contract>
 """.strip()
 

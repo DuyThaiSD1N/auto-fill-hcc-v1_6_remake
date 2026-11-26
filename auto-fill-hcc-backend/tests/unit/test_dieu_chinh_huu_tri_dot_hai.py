@@ -59,6 +59,20 @@ def test_chi_tiet_doc_lech_tren_don_sua_theo_giay_khac():
     assert dia_chi.detail_fix("Số 12 Đông Ngạc", _trang(don, giay, the)) is None
 
 
+def test_chi_tiet_doc_lech_ca_chu_cai_dau_tren_don_sua_theo_giay_khac():
+    don = "VĂN BẢN ĐỀ NGHỊ trợ cấp hưu trí xã hội\n1.3. Nơi ở hiện nay: Tổ dân phố Hồng Nhai - Phường Tân An"
+    muc2 = "VĂN BẢN ĐỀ NGHỊ trợ cấp hưu trí xã hội\n2.2. Nơi cư trú: TDP Đồng Nhơn, phường Tân An"
+    the = "CĂN CƯỚC\nNơi thường trú / Place of residence: Thôn Đồng Nhơn\nTân An, Khánh Hòa"
+    the2 = "CĂN CƯỚC\nNơi thường trú / Place of residence: Thôn Đồng Nhơn, Tân An"
+    fix = dia_chi.detail_fix("Tổ dân phố Hồng Nhai", _trang(don, muc2, the, the2))
+    assert fix["diaChi"] == "Tổ dân phố Đồng Nhơn"
+    # Lệch quá xa (≥ 3 chữ ở một từ) hay tên ngắn → không đoán.
+    assert dia_chi.detail_fix("Tổ dân phố Hồng Nhai", _trang(don, the.replace("Đồng Nhơn", "Đông Khánh"),
+                                                              the2.replace("Đồng Nhơn", "Đông Khánh"))) is None
+    assert dia_chi.detail_fix("Tổ Hà An", _trang(don, the.replace("Đồng Nhơn", "Lý An"),
+                                                 the2.replace("Đồng Nhơn", "Lý An"))) is None
+
+
 def test_dia_chi_loi_tinh_tu_suy_do_ma_chi_ra():
     proposed = {"quocGia": "Việt Nam", "tinh": "Quảng Trị", "xa": "Phường Đông Hà", "diaChi": "Tổ 1"}
     ours = {"quocGia": "Việt Nam", "tinh": "TP Hồ Chí Minh", "xa": "Phường Đông Hà", "diaChi": "Tổ 1"}

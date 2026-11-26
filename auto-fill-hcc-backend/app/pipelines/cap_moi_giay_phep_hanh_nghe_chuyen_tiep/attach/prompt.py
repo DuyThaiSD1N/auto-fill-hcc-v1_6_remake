@@ -53,7 +53,12 @@ nào cũng trả anh_chan_dung:
   · vài mẩu chữ vụn KHÔNG thành câu, không có tiêu đề, không có tên giấy tờ hành chính nào;
   · chỉ MỘT VÀI TỪ lẻ (khoảng dưới một dòng), kể cả từ có nghĩa — OCR đọc nhầm nét mặt/tóc/áo/nền ảnh thành
     chữ (vd một từ ngắn bất kỳ đứng một mình). Có nghĩa hay không không quan trọng: không có tiêu đề, không có
-    câu văn, không có tên cơ quan/giấy tờ thì vẫn là ảnh.
+    câu văn, không có tên cơ quan/giấy tờ thì vẫn là ảnh;
+  · vài chữ IN HOA 2–4 ký tự và/hoặc một dãy số / mã ngắn có gạch nối (kiểu "123-45", dấu tiệm ảnh, số ảnh) —
+    vẫn không thành câu, vẫn là ảnh.
+Tệp NHIỀU TRANG (mốc "───── Trang 1/2 ─────", "───── Trang 2/2 ─────"…) thường là 02 ảnh chân dung, mỗi trang
+một ảnh: xét từng trang, trang nào cũng chỉ có các dạng trên thì vẫn trả anh_chan_dung. Mốc trang là chữ của
+hệ thống OCR, không phải chữ trên giấy.
 OCR_TEXT rơi vào các dạng trên thì KHÔNG trả other: tệp gần như không có chữ trong hồ sơ này chỉ có thể là ảnh
 chân dung (mọi giấy tờ khác của thủ tục đều có tiêu đề và nhiều dòng chữ).
 Tên tệp kiểu "ảnh thẻ", "ảnh chân dung", "anh 4x6", "photo", "portrait", hoặc tên ảnh chụp từ điện thoại/máy

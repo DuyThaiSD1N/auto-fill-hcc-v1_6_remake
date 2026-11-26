@@ -5,6 +5,7 @@ Collection: traces. Ghi best-effort (lỗi không được làm hỏng request /
 import asyncio
 import copy
 import re
+import unicodedata
 import uuid
 from datetime import datetime, timezone
 from typing import Literal
@@ -163,6 +164,8 @@ async def create_trace(
     timing: dict | None = None,
     outcome: str | None = None,
     errors: list[str] | None = None,
+    # Lượt điền đúng MỘT trang của form nhiều trang (trợ lý hộ kinh doanh lưu từng khối): tên trang cho màn quản trị.
+    fill_page: str | None = None,
 ) -> str | None:
     doc = {
         "request_id": request_id,
@@ -203,6 +206,8 @@ async def create_trace(
         doc["outcome"] = outcome
     if errors:
         doc["errors"] = [str(e)[:500] for e in errors[:20]]
+    if fill_page:
+        doc["fill_page"] = fill_page
     if archive_settings.enabled:
         doc["archive_pending"] = True
     try:
@@ -327,6 +332,11 @@ async def get_trace_by_request(request_id: str, kind: str | None = None) -> dict
     return _serialize(doc) if doc else None
 
 
+def _vi_sort_key(text: str) -> str:
+    folded = unicodedata.normalize("NFD", str(text).replace("Đ", "D").replace("đ", "d"))
+    return "".join(ch for ch in folded if not unicodedata.combining(ch)).casefold()
+
+
 async def facets(experience: Experience | None = None) -> dict:
     """Giá trị phục vụ bộ lọc: danh sách phường (user) và thủ tục đã xuất hiện trong traces."""
     db = get_db()
@@ -342,10 +352,12 @@ async def facets(experience: Experience | None = None) -> dict:
     ]
     await _apply_current_account_names(db, facet_users)
     facet_users.sort(key=lambda user: str(user.get("name") or "").casefold())
+    # Lấy đủ mọi thủ tục (registry đã vượt 300 key); sắp ở Python vì Mongo so theo byte,
+    # đẩy nhãn mở đầu bằng "Đ" xuống cuối danh sách.
     procedures = await db.traces.aggregate([*source_match,
         {"$group": {"_id": "$procedure", "label": {"$first": "$procedure_label"}}},
-        {"$sort": {"label": 1}},
-    ]).to_list(length=200)
+    ]).to_list(length=None)
+    procedures.sort(key=lambda p: _vi_sort_key(p.get("label") or p["_id"] or ""))
     return {
         "users": [
             {"userId": user["user_id"], "username": user.get("username"),

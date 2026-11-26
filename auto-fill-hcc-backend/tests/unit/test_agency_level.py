@@ -141,6 +141,37 @@ def test_xay_dung_tinh_vao_so_xa_chon_xa(key, user, select_so):
     assert "agencyByProvince" not in proc
 
 
+CHAT_HA_XA_CARD = "Cơ quan thực hiện: UBND"
+
+
+@pytest.mark.parametrize(("user", "card"), [
+    ({"role": "commune", "tinh": "Tỉnh Quảng Ngãi", "xa": "Phường Cẩm Thành"}, CHAT_HA_XA_CARD),
+    ({"role": "user", "tinh": "Thành phố Đà Nẵng", "xa": "Phường Hải Châu"}, CHAT_HA_XA_CARD),
+    ({"role": "province", "tinh": "Tỉnh Quảng Ngãi", "xa": ""}, None),
+])
+def test_chat_ha_xa_chot_the_ubnd_khong_bam_the_so_dau(user, card):
+    """1.002693 (26/11/2026): có xã chọn Phường/Xã mà cổng vẫn ra thẻ "Sở Xây dựng" đứng đầu, thẻ UBND xã thứ hai →
+    nhánh xã chốt thẻ theo chữ UBND ở cả Auto Fill lẫn trợ lý; nhánh Sở giữ nguyên (thẻ đầu sau khi gạt Sở)."""
+    from app.channels.handfree.procedure_registry import get_procedure
+
+    link = _link(user, CHAT_HA_KEY)
+    assert link.get("submitCardIncludes") == card
+    proc = with_agency_level(get_procedure(CHAT_HA_KEY), user["role"], user["xa"])
+    assert proc.get("agencyCardIncludes") == card
+
+
+def test_chat_ha_chuoi_the_xa_chon_the_thu_hai_nhu_tren_cong():
+    """Hai thẻ y như trang kết quả khi chọn Phường Nghĩa Lộ: thẻ Sở đứng đầu, chuỗi xã phải trúng thẻ thứ hai."""
+    cards = [
+        "Cấp giấy phép chặt hạ, dịch chuyển cây xanh DVCTT toàn trình Cơ quan thực hiện: Sở Xây dựng - tỉnh Quảng Ngãi "
+        "Nộp trực tuyến",
+        "Cấp giấy phép chặt hạ, dịch chuyển cây xanh DVCTT toàn trình Cơ quan thực hiện: UBND phường Nghĩa Lộ "
+        "Nộp trực tuyến",
+    ]
+    hits = [i for i, text in enumerate(cards) if _fold(CHAT_HA_XA_CARD) in _fold(text)]
+    assert hits == [1]
+
+
 def _fold(value: str) -> str:
     """Bản Python của fold() trong extension content/agency-select.js (so chuỗi thẻ)."""
     import re

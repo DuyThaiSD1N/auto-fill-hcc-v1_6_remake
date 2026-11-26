@@ -17,6 +17,9 @@ import fitz  # PyMuPDF
 import httpx
 
 from app.config import settings
+from app.monitor import recorder as mon
+from app.services.endpoint_pool import Target
+from app.services.llm import client as llm_client
 
 _DATA_URL_RE = re.compile(r"^data:([^;,]*)(;base64)?,(.*)$", re.DOTALL)
 # Cạnh dài tối đa khi gửi ảnh: đủ nét cho chữ viết tay trên trang A4, không phình token ảnh.
@@ -56,32 +59,44 @@ async def chat(messages: list[dict], *, max_tokens: int, timeout_s: float = _TIM
     temperature 0. ``ocr_server`` → gọi máy OCR riêng (OCR_QWEN_*) nếu có cấu hình. Trả
     ``{content, finish_reason, usage, ms}``; lỗi HTTP ném RuntimeError.
     """
-    base_url, model = settings.llm_base_url, settings.llm_model
     if ocr_server and settings.ocr_qwen_base_url:
-        base_url, model = settings.ocr_qwen_base_url, settings.ocr_qwen_model or settings.llm_model
-    payload = {
-        "model": model,
-        "messages": messages,
-        "temperature": 0,
-        **(sampling or {}),
-        "max_tokens": max_tokens,
-        "stream": False,
-        "chat_template_kwargs": {"enable_thinking": thinking},
-    }
-    t0 = time.monotonic()
-    async with httpx.AsyncClient(timeout=httpx.Timeout(timeout_s), verify=False) as client:
-        resp = await client.post(_endpoint(base_url), json=payload)
-    ms = int((time.monotonic() - t0) * 1000)
-    if resp.status_code >= 400:
-        raise RuntimeError(f"Qwen HTTP {resp.status_code}: {resp.text[:300]}")
-    data = resp.json()
-    choice = (data.get("choices") or [{}])[0]
-    return {
-        "content": (choice.get("message") or {}).get("content") or "",
-        "finish_reason": choice.get("finish_reason"),
-        "usage": data.get("usage") or {},
-        "ms": ms,
-    }
+        targets = [Target(settings.ocr_qwen_base_url, "ocr_qwen", settings.ocr_qwen_model or settings.llm_model)]
+    else:
+        # Không có máy OCR riêng → chạy trên các máy LLM, cùng bộ chọn máy / đo tải với client LLM (LB → chính / phụ).
+        targets = llm_client.POOL.order(llm_client.llm_targets())
+    headers = {"Authorization": f"Bearer {settings.llm_api_key}"} if settings.llm_api_key else None
+    last_exc: Exception | None = None
+    for target in targets:
+        payload = {
+            "model": target.model,
+            "messages": messages,
+            "temperature": 0,
+            **(sampling or {}),
+            "max_tokens": max_tokens,
+            "stream": False,
+            "chat_template_kwargs": {"enable_thinking": thinking},
+        }
+        t0 = time.monotonic()
+        try:
+            with llm_client.POOL.track(target.url) as m:
+                async with httpx.AsyncClient(timeout=httpx.Timeout(timeout_s), verify=False) as client:
+                    resp = await client.post(_endpoint(target.url), json=payload, headers=headers)
+                if resp.status_code >= 400:
+                    raise RuntimeError(f"Qwen HTTP {resp.status_code}: {resp.text[:300]}")
+                data = resp.json()
+                m["units"] = llm_client.work_units(data.get("usage") or {})
+        except Exception as e:  # noqa: BLE001
+            last_exc = e
+            continue
+        mon.count(f"llm_{target.kind}")
+        choice = (data.get("choices") or [{}])[0]
+        return {
+            "content": (choice.get("message") or {}).get("content") or "",
+            "finish_reason": choice.get("finish_reason"),
+            "usage": data.get("usage") or {},
+            "ms": int((time.monotonic() - t0) * 1000),
+        }
+    raise last_exc if last_exc else RuntimeError("Không có máy Qwen nào khả dụng")
 
 
 def _decode(file: dict) -> tuple[bytes, str]:

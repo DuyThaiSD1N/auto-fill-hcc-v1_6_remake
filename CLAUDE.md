@@ -205,6 +205,62 @@ Chỉ chạy hai cây `tests/unit` và `tests/integration`. Cây `tests/handfree
 Baseline hiện tại có sẵn một số test đỏ không liên quan đến code mới; so số fail trước và sau khi
 sửa thay vì cố đưa về 0.
 
+Baseline ngày 2026-11-25, sau khi thêm pipeline 1.012796 đính chính GCN đã cấp lần đầu có sai sót Khánh Hòa
+(`dinh_chinh_gcn_cap_lan_dau_sai_sot_khanh_hoa`, máy local, plugin win_socketpair, có PYTHONUTF8=1):
+`23 failed, 6428 passed, 42 skipped, 13 errors`. Vẫn đúng 23 đỏ như dòng dưới.
+
+Baseline ngày 2026-11-25, sau khi thêm pipeline 1.115591 tổ chức kinh tế nhận chuyển nhượng QSDĐ Lai Châu
+(`to_chuc_kinh_te_nhan_chuyen_nhuong_qsdd_du_an_lai_chau`, máy local, plugin win_socketpair, có PYTHONUTF8=1):
+`23 failed, 6397 passed, 42 skipped, 13 errors`. Vẫn đúng 23 đỏ như dòng dưới.
+
+Baseline ngày 2026-11-25, sau khi khôi phục form cũ eForm Bộ Tư pháp xác nhận TTHN 1.004873
+(`xac-nhan-tinh-trang-hon-nhan-eform` → pipeline cũ `xac_nhan_tthn`, máy local, plugin win_socketpair, có PYTHONUTF8=1):
+`23 failed, 6365 passed, 42 skipped, 13 errors`; khôi phục thêm form cũ trích lục 2.000635 (`trich-luc-ks-eform` → pipeline
+cũ `trich_luc`) cùng ngày: `23 failed, 6368 passed, 42 skipped, 13 errors`. Vẫn đúng 23 đỏ như dòng dưới.
+
+Baseline ngày 2026-11-25, sau khi thêm pipeline 1.115692 cấp GCN phần diện tích còn lại Lào Cai
+(`dang_ky_cap_gcn_phan_dien_tich_con_lai_du_dieu_kien_lao_cai`, máy local, plugin win_socketpair, có PYTHONUTF8=1):
+`23 failed, 6346 passed, 42 skipped, 13 errors`. Vẫn đúng 23 đỏ như dòng dưới; `test_cap_moi_gphn_chuyen_tiep_attach.py::
+test_giay_co_chu_llm_tra_other_van_canh_bao_vao_dong_don` thỉnh thoảng đỏ khi chạy cả cây (chạy riêng pass) — chập chờn.
+
+Baseline ngày 2026-11-25, sau khi thêm pipeline 1.115683 gia hạn phương án sử dụng đất kết hợp Lào Cai
+(`gia_han_phuong_an_su_dung_dat_ket_hop_da_muc_dich_lao_cai`, máy local, plugin win_socketpair, có PYTHONUTF8=1):
+`23 failed, 6313 passed, 42 skipped, 13 errors`. Vẫn đúng 23 đỏ như dòng dưới.
+
+Baseline ngày 2026-11-25, sau khi thêm pipeline 1.115684 giao đất ở Lào Cai cấp xã (`giao_dat_o_khong_dau_gia_lao_cai`,
+máy local, plugin win_socketpair, có PYTHONUTF8=1): `23 failed, 6285 passed, 42 skipped, 13 errors`; thêm chế độ "Lấy người nộp theo tờ khai" cùng ngày: `23 failed, 6292 passed, 42 skipped, 13 errors`. Vẫn đúng 23 đỏ như dòng dưới.
+
+Baseline ngày 2026-11-25, sau khi thêm link 1.115684 giao đất ở Lào Cai cấp xã (máy local, plugin win_socketpair, có
+PYTHONUTF8=1): `23 failed, 6264 passed, 42 skipped, 13 errors`. 17 đỏ như dòng dưới + 6 đỏ
+`tests/unit/test_dashboard_xuat_danh_gia.py` (đến từ commit 9aae1f9b8: `strftime` có chữ tiếng Việt vỡ locale Windows ở
+`app/dashboard/export.py`, cùng loại đỏ dashboard cũ).
+
+Baseline ngày 2026-11-24, sau khi thêm 3.000333 cấp Phiếu lý lịch tư pháp Công an cấp tỉnh (máy local, plugin
+win_socketpair, có PYTHONUTF8=1): `17 failed, 6249 passed, 42 skipped, 13 errors`. Vẫn đúng 17 đỏ và 13 lỗi collect như dòng dưới.
+
+Baseline ngày 2026-11-24, sau khi thêm khối nhận kết quả (cboRECEIVER_TYPE) cho trang tạm trú (máy local, plugin
+win_socketpair, có PYTHONUTF8=1): `17 failed, 6233 passed, 42 skipped, 13 errors`. Vẫn đúng 17 đỏ và 13 lỗi collect như dòng dưới.
+
+Baseline ngày 2026-11-24, sau khi thêm 1.115148 tính lại tiền sử dụng đất Khánh Hòa (máy local, plugin win_socketpair, có
+PYTHONUTF8=1): `17 failed, 6223 passed, 42 skipped, 13 errors`. Vẫn đúng 17 đỏ và 13 lỗi collect như dòng dưới.
+
+Baseline ngày 2026-11-24, sau khi thêm đính kèm cho 1.010041 xác nhận thông tin về cư trú (máy local, plugin win_socketpair,
+có PYTHONUTF8=1): `17 failed, 6230 passed, 42 skipped, 13 errors`. Vẫn đúng 17 đỏ và 13 lỗi collect như dòng dưới.
+
+Baseline ngày 2026-11-24, sau khi thêm 1.013061 cấp phép thi công công trình trên đường bộ đang khai thác (máy local, plugin
+win_socketpair, có PYTHONUTF8=1): `17 failed, 6194 passed, 42 skipped, 13 errors` (gồm test khối "Thông tin chi tiết" thêm cùng ngày). Vẫn đúng 17 đỏ và 13 lỗi collect như dòng dưới.
+
+Baseline ngày 2026-11-24, sau khi thêm 1.115462 xác nhận tiếp tục sử dụng đất nông nghiệp Bắc Ninh (máy local, plugin
+win_socketpair, có PYTHONUTF8=1): `17 failed, 6177 passed, 42 skipped, 13 errors`. Vẫn đúng 17 đỏ và 13 lỗi collect như dòng dưới.
+
+Baseline ngày 2026-11-24, sau khi thêm 1.001766 khai tử có yếu tố nước ngoài (máy local, plugin win_socketpair, có
+PYTHONUTF8=1): `17 failed, 6145 passed, 42 skipped, 13 errors`. Vẫn đúng 17 đỏ của bản 2026-11-20; lỗi collect thứ 13 là
+`tests/unit/test_submit_quota_theo_ke_hoach.py` (đến từ commit d98443ea5), cũng thiếu `mongomock`.
+
+Baseline ngày 2026-11-24, sau khi thêm 1.001766 khai tử có yếu tố nước ngoài + 1.000419 khai tử lưu động (máy local,
+plugin win_socketpair, có PYTHONUTF8=1): `17 failed, 6161 passed, 42 skipped, 13 errors`. Vẫn đúng 17 đỏ của bản 2026-11-18;
+lỗi collect thứ 13 là `tests/unit/test_submit_quota_theo_ke_hoach.py` (đến từ commit d98443ea5), cũng thiếu `mongomock`.
+
 Baseline ngày 2026-11-23, sau khi kéo BE thai_dev 9b368bef (cây = main 786eefa2) về monorepo (máy local, plugin win_socketpair, có
 PYTHONUTF8=1): `17 failed, 6061 passed, 42 skipped, 12 errors`. Vẫn đúng 17 đỏ môi trường của bản 2026-11-18 (4 heic, 9 v2 422,
 3 dashboard `strftime`, 1 glob `\` khai sinh liên thông tách trang); 12 lỗi collect như cũ (thiếu `mongomock`).

@@ -227,6 +227,12 @@ def _owner(values: dict, people: list[Person], ocr_text: str | None = None) -> P
         values.get("DangKy_NguoiDaiDien"),
         values.get("ThuyetMinh_DaiDienCoSo"),
     ))
+    # Cơ sở là cá nhân (chủ tàu, hộ cá thể) mà người ký đơn là người khác: chủ hồ sơ là chủ cơ sở, không phải người
+    # ký; nhân thân DaiDien_* (giấy của người ký) không gán cho chủ cơ sở.
+    owner_name = _text(values.get("ChuCoSo_HoTen"))
+    by_representative = not owner_name or (bool(representative) and _same_name(owner_name, representative))
+    if not by_representative:
+        representative = owner_name
     if not representative:
         return None
     # Đơn hay ghi tên ký lẫn hoa/thường ("TRần văn thơ"); ô họ tên chủ hồ sơ trên cổng dùng chữ in hoa.
@@ -249,6 +255,13 @@ def _owner(values: dict, people: list[Person], ocr_text: str | None = None) -> P
     # Không có CCCD đúng người: bổ sung từng thuộc tính từ giấy tờ khác của chính người đại diện (giấy khám sức
     # khỏe...). Ngày phải đủ dd/mm/yyyy; nơi cấp chỉ đi kèm ngày cấp cùng nguồn.
     # Ngày phải nằm sát số định danh trong OCR (cùng giấy), không thì bỏ.
+    if not by_representative:
+        person.residence = person.residence or _area(_pick(
+            values.get("Don_DiaChiCoSo"),
+            values.get("DangKy_DiaChiCoSo"),
+            values.get("ThuyetMinh_DiaChiCoSo"),
+        ))
+        return person
     person.identity = person.identity or _identity(values.get("DaiDien_SoDinhDanh"))
     birthday = _full_date(values.get("DaiDien_NgaySinh"))
     if not person.birthday and _near_identity(ocr_text, person.identity, birthday):

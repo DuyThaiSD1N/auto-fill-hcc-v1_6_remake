@@ -14,10 +14,12 @@ Cố ý KHÔNG phát:
   nơi thường trú / tạm trú / ở hiện tại, điểm đăng ký xe, loại xe mô tô) và ô khoá theo thủ tục (Xe nhập khẩu, Loại
   địa chỉ đăng ký).
 - Mã bảo mật (captcha) và nút Tra cứu — người dân tự nhập / bấm.
-- Ảnh phương tiện, ảnh chứng từ nguồn gốc (người dân tự tải lên), ô ẩn kỹ thuật (đánh dấu tra cứu, mã cơ quan thu,
+- Ô ẩn kỹ thuật (đánh dấu tra cứu, mã cơ quan thu,
   mã điểm đăng ký), seri phiếu KTCLXX (chỉ xe trong nước, đang ẩn), khối biển số trúng đấu giá, Mã hồ sơ nguồn gốc /
   Mã nhóm / Mã loại phương tiện và thông số chỉ CSDL Hải quan / Cục Đăng kiểm trả về, ô người khai hộ / doanh nghiệp
   đang ẩn.
+Ba ô ảnh đầu trang (ảnh phương tiện, hai mặt chứng từ nguồn gốc) không qua LLM: process/runner.py chọn ảnh và phát comp
+``bca-photo`` (user 24/11/2026).
 """
 
 FIELDS: list[dict] = [

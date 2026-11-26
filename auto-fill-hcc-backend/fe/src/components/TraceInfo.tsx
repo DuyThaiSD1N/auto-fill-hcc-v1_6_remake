@@ -154,7 +154,7 @@ export default function TraceInfo({ trace, wide = false }: { trace: TraceDetail;
         </div>
         <div>
           <dt>Thao tác</dt>
-          <dd>{trace.kind === "attach" ? "Đính kèm" : "Auto-fill"}</dd>
+          <dd>{trace.kind === "attach" ? "Đính kèm" : trace.fill_page ? `Điền trang ${trace.fill_page}` : "Auto-fill"}</dd>
         </div>
         <div>
           <dt>Số trường điền</dt>

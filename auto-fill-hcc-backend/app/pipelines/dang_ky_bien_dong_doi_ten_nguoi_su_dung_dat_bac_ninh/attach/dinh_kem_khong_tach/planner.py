@@ -1,8 +1,8 @@
 """Đính kèm 1.115460 Bắc Ninh — chế độ KHÔNG tách (cài đặt "Tách giấy tờ" tắt / client cũ).
 
-Khuôn 1.011442 cùng cổng: hồ sơ scan CHUNG một tệp thì đính NGUYÊN tệp vào MỌI dòng có giấy tương ứng trong tệp — Đơn
-Mẫu 18 → TP-H05.000026, giấy chứng minh thay đổi → TP-H05.000049, GCN → TP-H05.000040, … CCCD / khác → "File đính kèm
-khác" (một lần mỗi tệp). Tệp nào cũng sinh ít nhất một mục, không rớt tệp.
+Theo ảnh ánh xạ 25/11/2026: mỗi tệp giữ NGUYÊN, đính vào MỌI dòng có giấy tương ứng trong tệp — Đơn → TP-H05.000026,
+GCN → TP-H05.000040, Văn bản cam kết thành viên hộ → CHUNG TP-H05.000049 + TP-H05.000051, CCCD → TP-H05.000049 Bản sao,
+giấy khác → "File đính kèm khác". Mỗi dòng nhận một tệp một lần; tệp nào cũng sinh ít nhất một mục, không rớt tệp.
 """
 
 import re
@@ -16,8 +16,8 @@ from ..phan_trang import read_documents
 
 
 def build_item(file_index: int, file_name: str, document_name: str, label: str,
-               sources: list[dict] | None = None) -> dict:
-    target, component_name, slot_key = catalog.resolve(label)
+               sources: list[dict] | None = None, row: tuple[str, str, str] | None = None) -> dict:
+    target, component_name, slot_key = row or catalog.resolve(label)
     item = {
         "fileIndex": file_index,
         "fileName": file_name,
@@ -31,6 +31,12 @@ def build_item(file_index: int, file_name: str, document_name: str, label: str,
     if sources is not None:
         item["sourceSegments"] = sources
     return item
+
+
+def build_items(file_index: int, file_name: str, document_name: str, label: str,
+                sources: list[dict] | None = None) -> list[dict]:
+    """Một giấy → một mục cho MỖI dòng nhận nó (Văn bản cam kết thành viên hộ đính chung 000049 + 000051)."""
+    return [build_item(file_index, file_name, document_name, label, sources, row) for row in catalog.targets(label)]
 
 
 def unique_name(base: str, used: set[str], fallback: str) -> str:
@@ -57,14 +63,17 @@ def whole_file_items(raw_files: list[dict], documents: list[dict]) -> list[dict]
     for file_index, file in enumerate(raw_files):
         name = str(file.get("name") or f"file-{file_index + 1}")
         docs = [d for d in documents if d["fileIndex"] == file_index] or [{"label": "khac", "name": ""}]
-        supplementary_done = False
+        rows_done: set[tuple[str, str, str]] = set()  # mỗi dòng (kể cả File đính kèm khác) nhận tệp này một lần
         for label in dict.fromkeys(d["label"] for d in docs):
-            if catalog.is_supplementary(label):
-                if supplementary_done:
-                    continue
-                supplementary_done = True
+            items = [it for it in build_items(file_index, name, "", label)
+                     if (it["target"], it["componentName"], it["slotKey"]) not in rows_done]
+            if not items:
+                continue
             fallback = catalog.display_name(label)
-            attachments.append(build_item(file_index, name, unique_name(fallback, used, fallback), label))
+            document_name = unique_name(fallback, used, fallback)
+            for it in items:
+                rows_done.add((it["target"], it["componentName"], it["slotKey"]))
+                attachments.append({**it, "documentName": document_name})
     return attachments
 
 

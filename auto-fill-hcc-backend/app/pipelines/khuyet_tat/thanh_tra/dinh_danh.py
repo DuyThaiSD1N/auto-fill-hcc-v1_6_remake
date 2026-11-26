@@ -78,6 +78,9 @@ dẫn là họ tên của người khác (không phải người nêu ở tên m
 Số định danh / ngày sinh / giới tính lấy ở vùng MRZ mặt sau thẻ mang họ tên (không dấu) của đúng người đó, năm sinh trong số
 khớp ngày sinh in ở MRZ → chọn B: ba dòng MRZ in máy đọc ổn định hơn chữ số viết tay. Ô số định danh chỉ nhận số căn cước 12
 chữ số: A là số CMND 9 số / số thiếu chữ số → chọn B (số trên thẻ của chính người đó).
+Số của A chỉ có trên đơn (chữ số viết tay), còn trang giấy in cơ quan cấp mang ĐỦ họ tên và ngày sinh của chính người đó
+ghi số 12 chữ số lệch đúng MỘT chữ số → chọn B: OCR hay đọc lệch một chữ số viết tay. Trang giấy in đó là của người khác
+(họ tên hoặc ngày sinh khác người nêu ở tên mục) → KHONG_DU_CAN_CU.
 </so_ngay>
 
 <quan_he>
@@ -203,6 +206,45 @@ def card_findings(person: Person, values: dict, documents: list[dict]) -> list[F
     return out
 
 
+_ID_RE = re.compile(r"(?<!\d)\d{12}(?!\d)")
+_DATE_RE = re.compile(r"(?<!\d)\d{1,2}\s*[/.-]\s*\d{1,2}\s*[/.-]\s*\d{4}(?!\d)")
+
+
+def printed_number_finding(person: Person, values: dict, page_list: list[dict]) -> Finding | None:
+    """Số định danh của A chỉ có trên đơn (chữ số viết tay) mà trang giấy in cơ quan cấp mang ĐỦ họ tên + ngày sinh của
+    chính người này ghi số 12 chữ số lệch đúng MỘT chữ số → đề xuất số in. Số của A có trên giấy khác, nhiều số lệch khác
+    nhau, hay trang thiếu họ tên / ngày sinh của người này thì không đoán (không ghép số của người khác)."""
+    current = trang.digits(values.get(person.number))
+    name = " ".join(fold(values.get(person.name)).split())
+    born = parse_date(values.get(person.birth))
+    if len(current) != 12 or len(name.split()) < 2 or not born:
+        return None
+    found: dict[str, tuple[str, int]] = {}
+    for page in page_list:
+        if page["kind"] == "don":
+            continue
+        numbers = [number for line in page["lines"] for number in _ID_RE.findall(line)]
+        if current in numbers:
+            return None
+        if page["kind"] != "ban_in" or not numbers:
+            continue
+        text = " ".join(page["lines"])
+        if f" {name} " not in f" {' '.join(re.findall(r'[0-9a-z]+', fold(text)))} ":
+            continue
+        if not any(parse_date(re.sub(r"\s+", "", date)) == born for date in _DATE_RE.findall(text)):
+            continue
+        for line in page["lines"]:
+            for number in _ID_RE.findall(line):
+                if sum(a != b for a, b in zip(number, current)) == 1:
+                    found.setdefault(number, (line, page["doc"]))
+    if len(found) != 1:
+        return None
+    number, (line, doc) = next(iter(found.items()))
+    return _finding(person, "so_dinh_danh", number, line, doc, f"số định danh in trên giấy của {person.label}",
+                    "trang giấy in cơ quan cấp mang đủ họ tên và ngày sinh của người này; số của A chỉ có trên đơn và "
+                    "lệch đúng một chữ số so với số in")
+
+
 _RELATION_LINE_RE = re.compile(r"(?i)quan\s*h[eệ]\s*v[oớ]i\s*ng[uư][oờ]i\s*(?:[đd][uư][oợ]c\s*x[aá]c\s*[đd][iị]nh\s*)?"
                                r"(?:m[uứ]c\s*[đd][oộ]\s*)?khuy[eế]t\s*t[aậ]t\s*:\s*(.*)")
 
@@ -234,7 +276,11 @@ def findings_from(case: Case) -> list[Finding]:
     out = []
     for person in PERSONS:
         name = name_finding(person, case.values, page_list)
-        out += [*([name] if name else []), *card_findings(person, case.values, case.documents)]
+        cards = card_findings(person, case.values, case.documents)
+        # Số trên MRZ thẻ đúng người đã đủ căn cứ; chỉ đối chiếu số in trên giấy khác khi không có thẻ.
+        printed = None if _card(person, case.values, case.documents) else printed_number_finding(
+            person, case.values, page_list)
+        out += [*([name] if name else []), *cards, *([printed] if printed else [])]
     relation = relation_finding(case.values, page_list)
     return out + ([relation] if relation else [])
 

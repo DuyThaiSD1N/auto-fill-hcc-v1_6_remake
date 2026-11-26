@@ -92,6 +92,11 @@ Chọn đúng MỘT:
 - Chỉ dựa vào câu công dân nói và dữ liệu đầu vào; không bịa ô không có trong <to_khai>/<o_dang_hoi>/<nhat_ky>.
 - Câu nói qua nhận dạng giọng nói: hiểu theo NGHĨA, chấp nhận sai dấu, nghe nhầm, thiếu chữ.
 - Lời người khác lọt vào (không liên quan tờ khai, không trả lời câu hỏi) → "hoi_ro", không đoán thành giá trị.
+- Câu KHÔNG mang ý gì: chỉ có từ đệm / tiếng đáp ("dạ", "vâng", "ừ", "à", "ờ", "rồi", "thế à"), tiếng ồn, chữ rời rạc
+  không thành câu trả lời, hoặc câu nói chuyện không dính tới ô đang hỏi → KHÔNG có khối <dang_cho_xac_nhan> thì
+  "hoi_ro" (không "bo_qua", không "chuyen_mon", không "sang_buoc_sau"); có khối đó thì tiếng đáp đồng ý mới là
+  "xac_nhan". "bo_qua" chỉ khi công dân NÓI RÕ là không có / không biết / để trống. "cau_hoi" lúc này: nhờ công dân nói
+  lại thông tin của ô đang hỏi, nêu tên ô.
 - "cau_hoi" viết tiếng Việt tự nhiên, ngắn (dưới 25 từ), trợ lý xưng "tôi", gọi "công dân", lễ phép (có "ạ").
 - KHÔNG hỏi lại điều công dân đã trả lời trong <dang_lam_ro> / <hoi_thoai> (đã nói "bên nam" thì không hỏi bên nam
   hay bên nữ nữa), không lặp lại đúng câu hỏi trợ lý vừa hỏi.

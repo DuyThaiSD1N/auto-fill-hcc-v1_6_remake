@@ -38,6 +38,7 @@ FIELDS: list[dict] = [
     {"name": "Don_MatHang", "desc": "Mục 6 - Mặt hàng sản xuất, kinh doanh trên Đơn."},
     {"name": "Don_LyDoCap", "desc": "Nội dung sau nhãn Lý do cấp trên Đơn, ví dụ Cấp mới; không tự suy diễn nếu bỏ trống."},
     {"name": "Don_DaiDienCoSo", "desc": "Họ tên người tại mục Đại diện cơ sở hoặc người ký cuối Đơn; không lấy tên cơ sở ở mục 1."},
+    {"name": "ChuCoSo_HoTen", "desc": "Họ tên CÁ NHÂN chủ cơ sở khi cơ sở là cá nhân/hộ cá thể: tên cơ sở ở mục 1 của Đơn là họ tên một người (hay kèm số hiệu tàu trong ngoặc), hoặc dòng \"Tên chủ tàu\" trên danh sách xác nhận kiến thức ATTP/giấy đăng ký tàu. Chỉ phần họ tên, bỏ số hiệu tàu, ngoặc và chữ \"Cơ sở\". Cơ sở là doanh nghiệp, hợp tác xã, tên thương hiệu → bỏ trống."},
 
     # Nhân thân NGƯỜI ĐẠI DIỆN CƠ SỞ từ giấy tờ KHÁC CCCD: hồ sơ nhiều khi không kèm CCCD của đại diện, nhưng giấy
     # khám sức khỏe/giấy xác nhận kiến thức ATTP của chính người đó có ghi đủ ngày sinh, số định danh, ngày cấp.

@@ -89,3 +89,14 @@ def test_ho_so_mot_nguoi_khong_vo():
     assert d["SoNYC"]["value"] == "000000000009"
     assert d["3HopDongTheChapSoNeuCo"]["value"] == "03412.TC.003"
     assert d["KyKetNgayHDTC"]["value"] == "05/11/2025"
+
+
+def test_dia_chi_thua_dat_theo_ban_doi_chieu_chi_khi_lech_dau():
+    base = {"Gcn_DiaChiThuaDat": "thôn Ngấm Xa, xã Lạc Vệ, tỉnh Bắc Ninh"}
+    ui = _run({**base, "Gcn_DiaChiThuaDat_DoiChieu": "thôn Ngăm Xa, xã Lạc Vệ, tỉnh Bắc Ninh"})
+    assert ui["212DiaChiThuaDat"]["value"] == "thôn Ngăm Xa, xã Lạc Vệ, tỉnh Bắc Ninh"
+    # Bản đối chiếu đổi chữ cái / thêm bớt phần địa chỉ → giữ GCN mục 1.b.
+    for other in ("thôn Ngăm Xa, xã Lạc Vệ, huyện Tiên Du, tỉnh Bắc Ninh", "thôn Đông Xa, xã Lạc Vệ, tỉnh Bắc Ninh"):
+        ui = _run({**base, "Gcn_DiaChiThuaDat_DoiChieu": other})
+        assert ui["212DiaChiThuaDat"]["value"] == base["Gcn_DiaChiThuaDat"]
+    assert _run(base)["212DiaChiThuaDat"]["value"] == base["Gcn_DiaChiThuaDat"]

@@ -47,6 +47,35 @@ def test_ho_ten_da_dung_khong_co_phat_hien():
     assert not dinh_danh.findings_from(Case(_docs(), "", values, {}))
 
 
+_TK_TEN_TRE = """TỜ KHAI ĐĂNG KÝ NHẬN CHA, MẸ, CON
+Họ, chữ đệm, tên: TRẦN NHÃ YÊN
+Ý kiến của người hiện đang là mẹ hoặc cha
+Tôi đồng ý cho ông Trần Văn Bình nhận bé Trần Nhã Uyên là con
+"""
+_ADN = """CÔNG TY XÉT NGHIỆM ADN
+KẾT QUẢ PHÂN TÍCH ADN
+Họ tên: TRẦN NHÃ UYÊN Ngày sinh: 01/01/2026
+Mẫu ADN ký hiệu TRẦN VĂN BÌNH và mẫu ADN ký hiệu TRẦN NHÃ UYÊN có quan hệ huyết thống
+"""
+
+
+def test_ten_tre_chi_tren_dong_to_khai_lech_mot_chu_cai_theo_cac_trang_khac():
+    values = {"Child_FullName": "TRẦN NHÃ YÊN"}
+    docs = [{"name": "tk.pdf", "text": _TK_TEN_TRE}, {"name": "adn.pdf", "text": _ADN}]
+    found = {f.unit.key: f for f in dinh_danh.findings_from(Case(docs, "", values, {}))}
+    assert found["con.ho_ten"].values == {"Child_FullName": "TRẦN NHÃ UYÊN"}
+
+
+def test_ten_tre_lech_chu_cai_ma_chi_mot_trang_hoac_lech_hai_chu_thi_giu():
+    values = {"Child_FullName": "TRẦN NHÃ YÊN"}
+    only_adn = [{"name": "tk.pdf", "text": _TK_TEN_TRE.splitlines()[0] + "\nHọ, chữ đệm, tên: TRẦN NHÃ YÊN\n"},
+                {"name": "adn.pdf", "text": "KẾT QUẢ PHÂN TÍCH ADN\nHọ tên: TRẦN NHÃ UYÊN\n"}]
+    assert not dinh_danh.findings_from(Case(only_adn, "", values, {}))
+    far = [{"name": "tk.pdf", "text": _TK_TEN_TRE.replace("Uyên", "Quyên")},
+           {"name": "adn.pdf", "text": _ADN.replace("UYÊN", "QUYÊN")}]
+    assert not dinh_danh.findings_from(Case(far, "", values, {}))
+
+
 def test_ten_duong_theo_cccd_cua_chinh_nguoi_do():
     pages = trang.pages(_docs())
     assert dia_chi.street_fix("12 Lê Văn Lới", _SO_ME, pages)["diaChi"] == "12 Lê Văn Lợi"

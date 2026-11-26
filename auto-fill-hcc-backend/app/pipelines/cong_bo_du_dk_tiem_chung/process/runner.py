@@ -44,6 +44,9 @@ def _matches_anchor(text: str, name: str, identity: str) -> bool:
 
 async def _submitter_context(documents: list[dict], options: dict) -> str:
     """Neo NGƯỜI NỘP (tài khoản đăng nhập) vào đúng CCCD của họ trong hồ sơ."""
+    # Cài đặt "Lấy người nộp theo tờ khai": không neo CCCD tài khoản, người nộp = người đứng đầu cơ sở.
+    if str((options or {}).get("submitterMode") or "") == mapper.OWNER_AS_SUBMITTER:
+        return ""
     context = (options or {}).get("formContext") or {}
     raw_name = context.get("applicantFullname") or context.get("fullname") or ""
     name = _norm_text(raw_name)
@@ -90,6 +93,7 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         extra_rules=EXTRA_RULES,
         options=options,
         context_builder=_submitter_context,
+        compact_field_fallback=mapper.head_name_ocr_fallback,
     )
     mapped_fields, warnings = mapper.enrich(res["fields"], options)
     res["fields"] = mapped_fields

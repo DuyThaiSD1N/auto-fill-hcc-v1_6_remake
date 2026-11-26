@@ -86,6 +86,7 @@ async def record_process(
     pipe_ms: int,
     rec=None,
     form_context: dict | None = None,
+    fill_page: str | None = None,
 ) -> str | None:
     """Trace kind=autofill sau khi pipeline trích field xong. Trả request_id để flow
     cập nhật kết quả điền THẬT (fill_report) vào đúng trace."""
@@ -122,6 +123,7 @@ async def record_process(
             timing=monitor_persist.timing(rec),
             outcome=rec.outcome if rec is not None else None,
             errors=result.get("errors") or None,
+            fill_page=fill_page,
         )
         return request_id
     except Exception as e:  # noqa: BLE001 — ghi vết là phụ, không chặn luồng điền

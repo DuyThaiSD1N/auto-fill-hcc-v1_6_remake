@@ -84,6 +84,7 @@ def test_cau_hinh_bo_sung_o_doc_dau_bat_buoc_cua_form_io():
     ("dang-ky-nha-o-xa-hoi-tuyen-quang", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
     ("cap-giay-phep-chat-ha-cay-xanh", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
     ("chap-thuan-dau-noi-tam", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
+    ("cap-giay-phep-thi-cong-cong-trinh-tren-duong-bo-dang-khai-thac", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
     ("dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan", ("tenHoSo", "AuthorityApplicantPhoneNumber")),
     ("xoa-dang-ky-phuong-tien-thuy", ("tenHoSo", "AuthorityApplicantPhoneNumber", "nguoiDaiDien", "dongSoHuu")),
     # Cổng Bộ Y tế cùng nền iGate (stepper 4 bước, tờ khai Form.io) → cùng luồng.
@@ -238,6 +239,8 @@ def test_cong_tuyen_quang_can_co_rieng_ban_cu_giu_luong_cu(key):
     "dang-ky-tai-san-gan-lien-thua-dat-da-cap-gcn-khanh-hoa",
     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa",
     "dinh-chinh-gcn-da-cap-khanh-hoa",
+    "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa",
+    "dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa",
 ])
 def test_cong_khanh_hoa_can_co_rieng_ban_cu_giu_luong_cu(key):
     """Cổng tỉnh Khánh Hòa (dichvucong.khanhhoa.gov.vn, nền iGate): bản extension cũ chưa đọc trang chọn trường hợp /
@@ -256,6 +259,14 @@ def test_cong_khanh_hoa_can_co_rieng_ban_cu_giu_luong_cu(key):
     assert not {"fullname", "identityNumber", "birthday", "phoneNumber", "ownerFullname"} & set(config["noAsk"])
     assert flow._resolve_page_docs_target(proc, {"wizardStep": 1}) == "declaration"
     assert flow._resolve_page_docs_target(proc, {"wizardStep": 2}) == "attachment"
+
+
+def test_tinh_tien_su_dung_dat_khanh_hoa_hoi_phuong_xa_nguoi_nop():
+    """1.115148 Khánh Hòa: form KHÔNG phải template ba khối — data[district] là ô "Phường/xã" bắt buộc → vẫn hỏi."""
+    from app.channels.handfree.chat.field_review import registry
+
+    config = registry.get("tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa")
+    assert "district" not in config["noAsk"] and "village" in config["noAsk"]
 
 
 _KH_CAPS = {**CAPS, "supportsBxdFlowKhanhHoa": True}

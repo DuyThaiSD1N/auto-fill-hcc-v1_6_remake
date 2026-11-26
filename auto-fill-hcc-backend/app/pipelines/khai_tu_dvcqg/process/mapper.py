@@ -276,7 +276,14 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add_choice("citizenLoaiGiaytotuythan_NgdcKT",
                    _snap(LOAI_GIAY_TO, _id_doc_type_with_number(number, values.get("NguoiMat_LoaiGiayTo"), issuer)))
         add("citizenSogiaytotuythan_NgdcKT", number)
-        add_date("citizenField19", issue_date)
+        if issue_date:
+            add_date("citizenField19", issue_date)
+        elif "citizenField19" not in seen:
+            # Giấy không đọc được ngày cấp (OCR hay làm rơi cụm "cấp ngày" viết tay) → trả ô về TRỐNG: cổng tra CSDL
+            # dân cư theo số định danh rồi tự đổ ngày cấp khác giấy, để trống cho cán bộ nhập đúng hơn để ngày đó lại.
+            out.append({"name": "citizenField19", "comp": UI_COMP_BY_NAME["citizenField19"], "value": "", "clear": True})
+            seen.add("citizenField19")
+            warnings.append("Không đọc được ngày cấp giấy tờ tùy thân của người mất — cán bộ nhập ô Ngày cấp.")
         # Ô chữ tự do: tên Cục ghi dạng viết tắt như trên thẻ và trên mẫu tờ khai.
         add("citizenNoicapgiaytotuythan_NgdcKT", short_issuer(issuer))
 

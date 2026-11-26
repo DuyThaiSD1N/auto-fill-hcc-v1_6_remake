@@ -77,7 +77,7 @@ def test_nhan_tep_khong_hua_so_giay_va_dung_the_chang_dien():
     conv = _conv("filling", flow2_card="")
     old = flow.Reply(*flow._fmt(vi.DOCS_COMPLETE_NEXT_STEP, files_count=2))
     reply = tu_phap_v2.docs_received_reply(conv, flow.get_procedure("ket-hon"), old, 2, all_received=True)
-    assert reply.display_md == "✓ Đã nhận **2 tệp**.\n\nEm đang đọc giấy tờ để điền tờ khai, công dân chờ chút ạ…"
+    assert reply.display_md == "✓ Đã nhận **2 tệp**.\n\nTôi đang đọc giấy tờ để điền tờ khai, công dân chờ chút ạ…"
     assert _steps(reply) == [{"type": "pipeline_steps", "active": 0, "steps": list(vi.FLOW2_FILL_STEPS)}]
 
 
@@ -282,7 +282,7 @@ def test_cap_ban_sao_noi_kem_so_ban_o_giam_ho_va_nhan_cha_me_con_khai_sinh_co_ho
 def _asking(conv, required):
     field = {"key": "SoDinhDanhBenNam", "name": "SoDinhDanhBenNam", "role": "", "kind": "text",
              "label": "Số định danh cá nhân:", "group": "", "section": "II. Thông tin bên nam",
-             "required": False, "options": []}
+             "required": required > 0, "options": []}  # hỏi ô bắt buộc trước: còn ô bắt buộc thì ô đang hỏi là ô đó
     return field, {"filled": 30, "optional": 3, "required": required}
 
 
@@ -365,10 +365,15 @@ async def test_het_o_bat_buoc_sang_o_khong_bat_buoc_thi_bao_mot_lan_va_co_nut_xe
     assert not _preview(second).get("cta")
 
 
-async def test_o_khong_bat_buoc_ma_con_o_bat_buoc_bi_bo_qua_thi_chua_co_nut_xem_truoc():
+async def test_bo_qua_het_o_bat_buoc_thi_dung_vong_khong_hoi_sang_o_khong_bat_buoc():
     conv, _ = await _started()
     reply = await _turn(conv, "event", "field_review_focus", {"field": _orange(), "stats": MISSING})
-    assert "__action:field_review_preview" not in _sends(reply)
+    assert reply.display_md.startswith("✓ Tôi đã hỏi qua các ô bắt buộc. Tờ khai còn **1 ô bắt buộc**")
+    assert {"type": "field_review_stop"} in reply.actions and not field_review.asking(conv)
+    # Bấm Bổ sung lần nữa: vòng mới hỏi lại ô bắt buộc trước rồi đi tiếp sang ô không bắt buộc.
+    await _turn(conv, "action", "field_review_start")
+    again = await _turn(conv, "event", "field_review_focus", {"field": _orange(), "stats": MISSING})
+    assert field_review.asking(conv) and "Ghi chú" in again.display_md
 
 
 async def test_bam_xem_truoc_giua_vong_hoi_thi_dung_hoi_va_mo_xem_truoc(monkeypatch):

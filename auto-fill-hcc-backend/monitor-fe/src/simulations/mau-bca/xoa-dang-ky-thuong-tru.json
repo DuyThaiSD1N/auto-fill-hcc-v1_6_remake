@@ -1,0 +1,189 @@
+{
+ "source": "dichvucong.dancuquocgia.gov.vn/portal/p/home/dang-ky-thuong-tru.html?TT=THUONGTRU_02",
+ "title": "Xóa đăng ký thường trú",
+ "capturedAt": "2026-11-26T00:00:00+07:00",
+ "inferred": true,
+ "note": "Mẫu SUY từ id ô trong BE (schema.py / mapper.py) + id trong extension, cùng trang + bộ id với Đăng ký thường trú; nhãn chữ của ô và thứ tự khối là suy, CHƯA chụp trang thật. Chụp bằng monitor-fe/scripts/capture-bca-form.js. Link kê khai là trang thủ tục bocongan tthc?matt=26348 → \"Nộp hồ sơ\" → trang này (chưa chạy thật). Trường hợp chỉ có 6 nhãn theo ảnh người dùng (cổng còn mã TT-XOA khác chưa chụp). Khối Nơi đề nghị ẩn với Xóa ĐKTT.",
+ "code": "1.003197",
+ "sections": [
+  {
+   "title": "Cơ quan thực hiện",
+   "note": "Chọn cơ quan xong cổng mới nạp Thủ tục + Trường hợp + nhóm giấy tờ.",
+   "fields": [
+    {
+     "id": "cboRECEIVE_ADDR_CITY_ID",
+     "kind": "select",
+     "label": "Tỉnh/Thành phố",
+     "required": true,
+     "options": "@provinces"
+    },
+    {
+     "id": "cboRECEIVE_ADDR_VILLAGE_ID",
+     "kind": "select",
+     "label": "Xã/Phường/Đặc khu",
+     "required": true,
+     "options": "@wards:cboRECEIVE_ADDR_CITY_ID"
+    }
+   ]
+  },
+  {
+   "title": "Thông tin thủ tục",
+   "note": "Ô \"Thủ tục\" cổng tự chọn theo TT= trên URL rồi khoá. Radio Khai hộ BE không điền.",
+   "fields": [
+    {
+     "id": "cboBPROC_CASE_CODE",
+     "kind": "select",
+     "label": "Trường hợp",
+     "required": true,
+     "wide": true,
+     "options": [
+      "Cả hộ do không còn chỗ ở hợp pháp",
+      "Nhân khẩu do không còn chỗ ở hợp pháp",
+      "Cả hộ do vắng mặt trên 12 tháng",
+      "Nhân khẩu do vắng mặt trên 12 tháng",
+      "Cả hộ do định cư nước ngoài",
+      "Nhân khẩu do định cư nước ngoài"
+     ],
+     "note": "Chọn Trường hợp là cổng tự sinh Nội dung đề nghị + nạp bảng giấy tờ"
+    }
+   ]
+  },
+  {
+   "title": "Thông tin người đề nghị",
+   "note": "Cổng có thể đổ sẵn theo tài khoản VNeID; đổi Trường hợp là cổng xoá khối này, đổi Định dạng là cổng xoá ô ngày sinh.",
+   "fields": [
+    {
+     "id": "txtFULLNAME",
+     "kind": "text",
+     "label": "Họ, chữ đệm và tên",
+     "required": true
+    },
+    {
+     "id": "cboFORMAT_DATE",
+     "kind": "select",
+     "label": "Định dạng ngày sinh",
+     "options": [
+      "Ngày tháng năm",
+      "Tháng năm",
+      "Năm"
+     ]
+    },
+    {
+     "id": "txtBIRTH_DATE",
+     "kind": "date",
+     "label": "Ngày sinh",
+     "required": true,
+     "partialDate": true
+    },
+    {
+     "id": "cboGENDER_ID",
+     "kind": "select",
+     "label": "Giới tính",
+     "required": true,
+     "options": [
+      "Nam",
+      "Nữ"
+     ]
+    },
+    {
+     "id": "txtID_CARD_NUMBER",
+     "kind": "text",
+     "label": "Số định danh cá nhân",
+     "required": true
+    },
+    {
+     "id": "txtPHONE_NUMBER",
+     "kind": "text",
+     "label": "Số điện thoại",
+     "portalMayFill": true
+    },
+    {
+     "id": "txtEMAIL",
+     "kind": "text",
+     "label": "Email",
+     "portalMayFill": true
+    }
+   ]
+  },
+  {
+   "title": "Nội dung đề nghị",
+   "note": "Cổng tự sinh \"Xóa đăng ký thường trú - <trường hợp>\"; BE chỉ ghi đè khi câu CT01 đúng là đề nghị xóa.",
+   "fields": [
+    {
+     "id": "txtCHANGED_CONTENT_NOTE",
+     "kind": "text",
+     "label": "Nội dung đề nghị",
+     "wide": true
+    }
+   ]
+  },
+  {
+   "title": "Thông tin chủ hộ",
+   "note": "JS cổng chèn khi Thủ tục khác THUONGTRU_01; bắt buộc với Xóa ĐKTT.",
+   "fields": [
+    {
+     "id": "txtHH_HEAD_FULLNAME",
+     "kind": "text",
+     "label": "Họ, chữ đệm và tên chủ hộ",
+     "required": true
+    },
+    {
+     "id": "cboRELATIONSHIP_WITH_HHHEAD_ID",
+     "kind": "select",
+     "label": "Quan hệ với chủ hộ",
+     "required": true,
+     "note": "Chưa có danh mục quan hệ của cổng (nhóm Nhân khẩu bỏ \"Chủ hộ\")"
+    },
+    {
+     "id": "txtID_CARD_NUMBER_HHEAD",
+     "kind": "text",
+     "label": "Số định danh cá nhân của chủ hộ",
+     "required": true
+    }
+   ]
+  },
+  {
+   "title": "Những thành viên trong hộ gia đình cùng thay đổi",
+   "fields": [],
+   "table": {
+    "id": "tblNguoi_CUNGTD",
+    "columns": [
+     {
+      "prefix": "txtFULLNAME_CUNGTD",
+      "label": "Họ, chữ đệm và tên",
+      "kind": "text"
+     },
+     {
+      "prefix": "txtDOB_CUNGTD",
+      "label": "Ngày sinh",
+      "kind": "text"
+     },
+     {
+      "prefix": "cboGENDER_CUNGTD",
+      "label": "Giới tính",
+      "kind": "select",
+      "options": [
+       "Nam",
+       "Nữ"
+      ]
+     },
+     {
+      "prefix": "txtIDENTIFIER_NOCARD_NUMBER_CUNGTD",
+      "label": "Số định danh cá nhân",
+      "kind": "text"
+     },
+     {
+      "prefix": "cboRELATIONSHIP_CHUHO_CUNGTD",
+      "label": "Quan hệ với chủ hộ",
+      "kind": "select"
+     }
+    ]
+   }
+  },
+  {
+   "title": "Nhận thông báo / kết quả",
+   "note": "Để mặc định của cổng — BE không điền.",
+   "fields": []
+  }
+ ]
+}

@@ -898,7 +898,8 @@ def _finish_reply(conv: dict, proc: dict | None, *, stopped: bool, lead: tuple[s
         if stats["required"]:
             from app.channels.handfree.chat import script_mong as mong
 
-            name = "FLOW2_REVIEW_STOP_LEAD" if stopped else "FLOW2_REVIEW_DONE_LEAD"
+            name = ("FLOW2_REVIEW_STOP_LEAD" if stopped else "FLOW2_REVIEW_RED_DONE_LEAD" if st.get("red_done")
+                    else "FLOW2_REVIEW_DONE_LEAD")
             lead_vi = getattr(vi, name)
             lead_hm = getattr(mong, name, lead_vi) if _hmong_turn() else lead_vi
             r = Reply(*_say(vi.FLOW2_REVIEW_MISSING, required=stats["required"], lead_md=_Bi(lead_vi[0], lead_hm[0]),
@@ -1229,14 +1230,16 @@ async def handle(conv: dict, proc: dict | None, intent):
     if intent.value.startswith(("field_review_preview", "field_review_confirm")):
         return _preview_step(proc, st, intent)
     if intent.value == "field_review_start":
+        red_done = st.pop("red_done", False)
         st.update(running=True, current=None, skip=[], intro=True, visited=[], single_page=_one_page(proc),
                   asked_where="", required_first=flow_v2(conv, proc), phase_chips=[], told_how=False)
         for key in ("pending", "skipped_label", "back_label", "last", "optional_said", *v2.STATE_KEYS):
             st.pop(key, None)
         if v2.enabled(conv, proc):
             st["v2"] = True
-            # Bắt đầu khi đã đủ ô bắt buộc (bấm "Bổ sung ô còn thiếu") = công dân muốn điền ô không bắt buộc.
-            st["optional_go"] = not (st.get("stats") or {}).get("required")
+            # Bắt đầu khi đã đủ ô bắt buộc, hoặc vòng trước đã hỏi qua hết ô bắt buộc (bấm "Bổ sung ô còn thiếu" lần
+            # nữa) = công dân muốn điền ô không bắt buộc: vẫn hỏi lại ô bắt buộc còn trống trước rồi mới tới ô cam.
+            st["optional_go"] = red_done or not (st.get("stats") or {}).get("required")
         r = Reply()
         r.actions = [_next_action(proc, st)]
         return r

@@ -135,3 +135,20 @@ def test_giay_to_nhan_than_ghep_du_so_ngay_noi_cap():
     assert by_name[S.L_GIAYTO] == (
         "CCCD số 027055006075, cấp 18/12/2021, Cục Cảnh sát quản lý hành chính về trật tự xã hội"
     )
+
+
+def test_thanh_vien_ho_theo_giay_to_chi_doi_ten_chinh_lech_it_chu():
+    def _ui(chep, theo):
+        fields = mapper.enrich([{"name": "Don_ThanhVienHo", "value": chep},
+                                {"name": "Don_ThanhVienHo_TheoGiayTo", "value": theo}])
+        return {f["name"]: f["value"] for f in fields}[S.L_THANHVIEN]
+
+    # Tên chính viết tay đọc lệch dấu/chữ → theo bản đối chiếu giấy khác.
+    assert _ui("Trần Văn Anh, Lê Thị Bụ", "Trần Văn Anh, Lê Thị Bạ") == "Trần Văn Anh, Lê Thị Bạ"
+    # Bản đối chiếu thêm/bớt người, bỏ "Ông/bà", đổi họ/chữ đệm hay đổi hẳn tên → giữ như Đơn.
+    assert _ui("Trần Văn Anh, Lê Thị Bụ", "Trần Văn Anh") == "Trần Văn Anh, Lê Thị Bụ"
+    assert _ui("Ông Trần Văn Anh, bà Lê Thị Bụ", "Trần Văn Anh, Lê Thị Bạ") == "Ông Trần Văn Anh, bà Lê Thị Bụ"
+    assert _ui("Trần Văn Anh, Lê Thị Bụ", "Trần Văn Anh, Lê Văn Bụ") == "Trần Văn Anh, Lê Thị Bụ"
+    assert _ui("Trần Văn Anh, Lê Thị Bụ", "Trần Văn Anh, Lê Thị Hoàng") == "Trần Văn Anh, Lê Thị Bụ"
+    # Không có bản đối chiếu → như Đơn.
+    assert _ui("Trần Văn Anh", None) == "Trần Văn Anh"

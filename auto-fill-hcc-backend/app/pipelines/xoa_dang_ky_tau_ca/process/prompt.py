@@ -31,6 +31,9 @@ NGUỒN VÀ ƯU TIÊN:
   phép này. Tau_NgayDangKy chỉ là ngày cấp GCN đăng ký; GCN không ghi ngày thì bỏ field, không bịa 01/01.
 - Cơ quan đăng ký: dòng trên Tờ khai chép vào ToKhai_CoQuanDangKy, cơ quan cấp GCN vào Tau_CoQuanDangKy;
   Python ưu tiên Tờ khai.
+- Tau_NoiDangKy là tỉnh/thành phố nơi tàu đăng ký, phải CÙNG tỉnh với cơ quan đăng ký (UBND quận/huyện, Chi cục
+  thủy sản… của tỉnh nào thì nơi đăng ký là tỉnh đó). Tờ khai viết tay hay bị OCR đọc lệch thành địa danh tỉnh
+  khác (nhất là tỉnh không giáp biển) → trả tên tỉnh/thành phố của cơ quan đăng ký, không chép địa danh lệch.
 - Tên tàu và hô hiệu/IMO bị bỏ trống trên giấy thì bỏ field, không lấy số đăng ký thay thế.
 - ToKhai_NguoiKy lấy đúng người ký ở cuối Tờ khai. Nhãn in sẵn 'CHỦ SỞ HỮU/Owner' không đủ để tự đổi sang
   chủ tàu cũ; trong hồ sơ mua bán, chữ ký có thể là người đề nghị/bên mua.

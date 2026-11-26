@@ -33,11 +33,14 @@ c. Chỉ có đúng 2 CCCD/CMND (không tờ khai, không giấy báo tử) và 
 d. Người đi khai tử trên trích lục, người ký, người nhận công văn, chủ hộ không phải người mất.
 e. Chủ tài khoản là người đang đăng nhập để nộp hồ sơ, còn sống: KHÔNG BAO GIỜ ghi chủ tài khoản vào <nguoi_mat>. Hồ sơ
    chỉ có thẻ của chủ tài khoản và một thẻ của người khác (không giấy khai tử) → người mang thẻ kia là người mất.
+f. Người yêu cầu trên tờ khai TRÙNG HỌ TÊN chủ tài khoản mà số định danh chỉ lệch MỘT chữ số (chép nhầm / đọc nhầm một
+   số) → vẫn là CHÍNH người nộp: "Có trong hồ sơ: Có", vai "Người yêu cầu". Họ tên khác, hoặc số lệch từ hai chữ số trở
+   lên → không phải.
 
 QUAN HỆ (người nộp là gì CỦA người mất) — ghi VAI CỦA NGƯỜI NỘP, không ghi vai của người mất: giấy ghi "ông nội tôi
 là ...", "bố đẻ tôi là ..." → người nộp là "Cháu nội", "Con đẻ" (không ghi "Ông nội", "Bố"); "con gái tôi là ..." →
 người nộp là "Mẹ" / "Cha".
-- Người nộp chính là người yêu cầu trên tờ khai (trùng số định danh; thiếu số thì trùng họ tên) → lấy đúng dòng
+- Người nộp chính là người yêu cầu trên tờ khai (trùng số định danh; thiếu số thì trùng họ tên; luật f) → lấy đúng dòng
   "Quan hệ với người đã chết" của tờ khai.
 - Giấy tờ khác ghi rõ quan hệ (giấy khai sinh của người nộp ghi người mất là cha/mẹ, giấy kết hôn vợ/chồng...) →
   quan hệ đó.

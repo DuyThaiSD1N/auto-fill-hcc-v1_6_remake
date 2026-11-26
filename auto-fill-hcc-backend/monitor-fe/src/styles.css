@@ -2743,3 +2743,58 @@ ul.plain {
     transition-duration: 0.01ms !important;
   }
 }
+/* Trang căn cước Cổng DVC Bộ Công an: chọn tài khoản đăng nhập + mã thủ tục; khối ẩn theo người kê khai */
+.bca-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 8px 0 4px;
+  font-size: 12.5px;
+}
+
+.bca-bar select {
+  max-width: 100%;
+  min-width: 0;
+  flex: 1 1 260px;
+}
+
+.bca-code {
+  margin-left: auto;
+}
+
+.bca-sec--hidden h3 {
+  color: var(--ink-3);
+}
+
+.bca-sec__id {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+  margin-left: 8px;
+  text-transform: none;
+}
+
+.bca-sec__note {
+  display: block;
+  font-size: 12px;
+  margin: -2px 0 8px;
+}
+
+.bca-table-wrap {
+  overflow-x: auto;
+  margin-top: 8px;
+}
+
+.bca-table th code {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-3);
+  font-weight: 400;
+}
+
+.bca-table td .ef-w {
+  min-width: 120px;
+  margin: 0;
+}

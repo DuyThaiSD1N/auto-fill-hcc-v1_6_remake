@@ -125,7 +125,8 @@ async def test_dinh_kem_giay_to_sau_khi_tai_to_khai_chi_lap_ke_hoach_dinh_roi_ve
     st = conv["hkd"]
     conv["state"] = "filling"
     hkd._finish(conv, ("", ""))
-    assert hkd.ATTACH_DOCS_SEND not in [c["send"] for c in hkd._phase_chips(conv)], "chưa tải tờ khai thì chưa có nút"
+    plain = {c["send"]: c["label"] for c in hkd._phase_chips(conv)}
+    assert plain.get(hkd.ATTACH_DOCS_SEND) == vi.HKD_ATTACH_DOCS_DONE_LABEL, "chưa tải tờ khai vẫn đính được giấy tờ"
     r = await hkd.handle(conv, PROC, Intent("action", "hkd_docx"))
     assert [c["send"] for c in r.chips] == ["__action:hkd_prepare", hkd.ATTACH_DOCS_SEND, hkd.DOCX_SEND]
 

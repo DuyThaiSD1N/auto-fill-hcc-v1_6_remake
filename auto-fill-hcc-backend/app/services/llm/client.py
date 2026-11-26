@@ -1,6 +1,5 @@
-"""Client LLM: primary vLLM/Qwen (OpenAI-compatible) → fallback OpenAI khi primary lỗi.
-
-Nếu base LLM (LLM_BASE_URL) lỗi và có OPENAI_API_KEY → tự gọi OpenAI thay thế.
+"""Client LLM: vLLM/Qwen (OpenAI-compatible) — LB ngoài (nếu có) → máy chính / phụ do BE tự chia
+(app/services/endpoint_pool.py). Hết máy thì ném lỗi, không gửi ra dịch vụ ngoài.
 """
 import hashlib
 import json
@@ -15,6 +14,7 @@ import httpx
 from app.archive.config import archive_settings
 from app.config import settings
 from app.monitor import recorder as mon
+from app.services.endpoint_pool import Pool, Target
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +22,10 @@ _FENCE_RE = re.compile(r"```json\s*([\s\S]*?)\s*```", re.IGNORECASE)
 _BRACE_RE = re.compile(r"\{[\s\S]*\}")
 _THINK_RE = re.compile(r"<think>[\s\S]*?</think>", re.IGNORECASE)
 
-# OpenAI client khởi tạo lazy (chỉ khi cần fallback) để không bắt buộc có key.
-_openai_client = None
+# Máy LLM vừa lỗi bị xếp sau 60 s (lỗi kết nối bỏ sau _CONNECT_TIMEOUT_S thay vì chờ hết trần đọc). OCR Qwen dùng
+# chung pool này vì chạy trên cùng các máy vLLM.
+POOL = Pool(down_s=60)
+_CONNECT_TIMEOUT_S = 10
 
 # Bản ghi của lần gọi đang chạy (web Monitor) — các hàm nội bộ ghi token/endpoint vào đây thay
 # vì đổi kiểu trả về (test và code cũ vẫn nhận ``str``). None = không ghi.
@@ -71,19 +73,10 @@ def from_model_keys(text: str) -> str:
     return text.replace(ADDRESS_DETAIL_KEY, "diaChi") if isinstance(text, str) else text
 
 
-def _get_openai_client():
-    global _openai_client
-    if _openai_client is None:
-        from openai import AsyncOpenAI
-
-        _openai_client = AsyncOpenAI(api_key=settings.openai_api_key)
-    return _openai_client
-
-
 async def _chat_vllm(messages: list[dict], temperature: float, max_tokens: int,
-                     enable_thinking: bool, *, base_url: str, model: str) -> str:
-    """Gọi 1 endpoint vLLM/Qwen (OpenAI-compatible). Dùng chung cho primary và fallback vLLM."""
-    timeout = httpx.Timeout(settings.llm_timeout_ms / 1000)
+                     enable_thinking: bool, *, base_url: str, model: str, usage: dict | None = None) -> str:
+    """Gọi 1 endpoint vLLM/Qwen (OpenAI-compatible). ``usage`` (nếu truyền) nhận token của lượt để đo tải máy."""
+    timeout = httpx.Timeout(settings.llm_timeout_ms / 1000, connect=_CONNECT_TIMEOUT_S)
     payload = {
         "model": model,
         "messages": messages,
@@ -96,18 +89,21 @@ async def _chat_vllm(messages: list[dict], temperature: float, max_tokens: int,
     # tránh nối "/v1" lần hai gây 404 {"detail":"Not Found"} rồi rơi hết sang fallback.
     base = base_url.rstrip("/")
     url = base + ("/chat/completions" if base.endswith("/v1") else "/v1/chat/completions")
+    headers = {"Authorization": f"Bearer {settings.llm_api_key}"} if settings.llm_api_key else None
     async with httpx.AsyncClient(timeout=timeout, verify=False) as client:
-        r = await client.post(url, json=payload)
+        r = await client.post(url, json=payload, headers=headers)
     if r.status_code >= 400:
         raise RuntimeError(f"LLM HTTP {r.status_code}: {r.text[:300]}")
     data = r.json()
     choices = data.get("choices") or []
     content = (choices[0].get("message", {}).get("content", "") if choices else "") or ""
+    if usage is not None:
+        usage.update(data.get("usage") or {})
     call = _call.get()
     if call is not None:
-        usage = data.get("usage") or {}
-        call["tokens_in"] = usage.get("prompt_tokens")
-        call["tokens_out"] = usage.get("completion_tokens")
+        u = data.get("usage") or {}
+        call["tokens_in"] = u.get("prompt_tokens")
+        call["tokens_out"] = u.get("completion_tokens")
         call["finish_reason"] = choices[0].get("finish_reason") if choices else None
         call["model"] = data.get("model") or model
     if not content:
@@ -115,61 +111,44 @@ async def _chat_vllm(messages: list[dict], temperature: float, max_tokens: int,
     return content
 
 
-def _vllm_targets() -> list[tuple[str, str, str]]:
-    """Danh sách endpoint vLLM theo thứ tự ưu tiên: primary rồi fallback (nếu cấu hình)."""
-    targets = [(settings.llm_base_url, settings.llm_model, "primary")]
+def llm_targets() -> list[Target]:
+    """Các máy LLM theo vai: LB (nếu có), máy chính, máy phụ (nếu có). Thứ tự gọi do POOL.order quyết."""
+    targets = []
+    if settings.llm_lb_base_url:
+        targets.append(Target(settings.llm_lb_base_url, "lb", settings.llm_model))
+    targets.append(Target(settings.llm_base_url, "chinh", settings.llm_model))
     if settings.fallback_llm_base_url:
-        targets.append((
-            settings.fallback_llm_base_url,
-            settings.fallback_llm_model or settings.llm_model,
-            "fallback-vllm",
-        ))
+        targets.append(Target(settings.fallback_llm_base_url, "phu",
+                              settings.fallback_llm_model or settings.llm_model))
     return targets
+
+
+def work_units(usage: dict) -> float:
+    """Khối việc của một lượt để so thời gian giữa lượt to và nhỏ: token sinh ra + token đọc vào (đọc nhanh hơn
+    sinh nhiều lần nên quy đổi 20 : 1)."""
+    return (usage.get("completion_tokens") or 0) + (usage.get("prompt_tokens") or 0) / 20 or 1
 
 
 async def _chat_primary(messages: list[dict], temperature: float, max_tokens: int,
                         enable_thinking: bool = False) -> str:
-    """Thử lần lượt các endpoint vLLM (primary → fallback vLLM). Ném lỗi cuối nếu tất cả fail.
-
-    Tách khỏi fallback OpenAI (tầng cuối) để giữ nguyên: hết vLLM mới rơi sang OpenAI.
-    """
+    """Thử lần lượt các máy theo POOL.order (LB → máy chính / phụ do BE tự chia). Ném lỗi cuối nếu tất cả fail."""
     last_exc: Exception | None = None
     call = _call.get()
-    for base_url, model, tag in _vllm_targets():
+    for target in POOL.order(llm_targets()):
         t0 = time.perf_counter()
         try:
-            out = await _chat_vllm(messages, temperature, max_tokens, enable_thinking,
-                                   base_url=base_url, model=model)
-            if tag != "primary":
-                logger.warning("LLM %s [%s model=%s] OK sau khi primary lỗi", tag, base_url, model)
-            _note_try(call, tag, t0, None)
+            with POOL.track(target.url) as m:
+                usage: dict = {}
+                out = await _chat_vllm(messages, temperature, max_tokens, enable_thinking,
+                                       base_url=target.url, model=target.model, usage=usage)
+                m["units"] = work_units(usage)
+            _note_try(call, target.kind, t0, None)
             return out
         except Exception as e:  # noqa: BLE001
             last_exc = e
-            _note_try(call, tag, t0, e)
-            logger.warning("LLM %s lỗi [%s]: %r", tag, type(e).__name__, e)
+            _note_try(call, target.kind, t0, e)
+            logger.warning("LLM %s lỗi [%s]: %r", target.kind, type(e).__name__, e)
     raise last_exc if last_exc else RuntimeError("Không có endpoint LLM nào khả dụng")
-
-
-async def _chat_openai(messages: list[dict], temperature: float) -> str:
-    # Ép JSON object output cho ổn định (giống pattern callbot evaluator).
-    resp = await _get_openai_client().chat.completions.create(
-        model=settings.openai_model,
-        messages=messages,
-        temperature=temperature,
-        response_format={"type": "json_object"},
-    )
-    return resp.choices[0].message.content or ""
-
-
-async def _chat_openai_text(messages: list[dict], temperature: float) -> str:
-    """Fallback OpenAI cho agent cần text tự do, không ép response_format JSON."""
-    resp = await _get_openai_client().chat.completions.create(
-        model=settings.openai_model,
-        messages=messages,
-        temperature=temperature,
-    )
-    return resp.choices[0].message.content or ""
 
 
 def _note_try(call: dict | None, target: str, t0: float, exc: Exception | None) -> None:
@@ -213,7 +192,10 @@ async def _monitored(fn, fn_name: str, caller: str, purpose: str | None,
             call["think_chars"] = sum(len(m) for m in _THINK_RE.findall(out))
         if call.get("finish_reason") == "length":
             rec.flag("llm_cut")
-        if call.get("target") not in (None, "primary"):
+        # Máy phục vụ (lb / chinh / phu) đếm vào timing.n; phải thử máy khác sau một máy lỗi → cờ llm_fallback.
+        if call.get("target"):
+            rec.count(f"llm_{call['target']}")
+        if len(call.get("tries") or []) > 1:
             rec.flag("llm_fallback")
         return out
     except Exception as e:  # noqa: BLE001
@@ -254,24 +236,10 @@ async def _chat(
     temperature = settings.llm_temperature if temperature is None else temperature
     max_tokens = settings.llm_max_tokens if max_tokens is None else max_tokens
 
-    try:
-        out = await _chat_primary(messages, temperature, max_tokens, enable_thinking)
-        if (settings.llm_debug and not archive_settings.enabled):
-            logger.info("[LLM primary OK] model=%s len=%d content=%r", settings.llm_model, len(out), out[:1500])
-        return out
-    except Exception as e:  # noqa: BLE001
-        # Log RÕ loại lỗi (str có thể rỗng) để debug vì sao primary fail.
-        logger.warning("LLM primary lỗi [%s]: %r → fallback OpenAI %s",
-                       type(e).__name__, e, settings.openai_model)
-        if not settings.openai_api_key:
-            raise  # không cấu hình fallback → ném lỗi gốc
-        t0 = time.perf_counter()
-        out = await _chat_openai(messages, temperature)
-        _note_try(_call.get(), "openai", t0, None)
-        if (settings.llm_debug and not archive_settings.enabled):
-            logger.info("[LLM fallback OpenAI OK] model=%s len=%d content=%r",
-                        settings.openai_model, len(out), out[:1500])
-        return out
+    out = await _chat_primary(messages, temperature, max_tokens, enable_thinking)
+    if (settings.llm_debug and not archive_settings.enabled):
+        logger.info("[LLM OK] model=%s len=%d content=%r", settings.llm_model, len(out), out[:1500])
+    return out
 
 
 async def chat_text(
@@ -282,7 +250,7 @@ async def chat_text(
     *,
     purpose: str | None = None,
 ) -> str:
-    """Chat trả text; primary như cũ, fallback OpenAI không ép JSON object."""
+    """Chat trả text (không ép JSON object)."""
     return from_model_keys(await _monitored(_chat_text, "chat_text", _caller_module(), purpose,
                                             to_model_keys(messages), temperature, max_tokens, enable_thinking))
 
@@ -296,21 +264,7 @@ async def _chat_text(
     temperature = settings.llm_temperature if temperature is None else temperature
     max_tokens = settings.llm_max_tokens if max_tokens is None else max_tokens
 
-    try:
-        return await _chat_primary(messages, temperature, max_tokens, enable_thinking)
-    except Exception as e:  # noqa: BLE001
-        logger.warning(
-            "LLM primary text lỗi [%s]: %r → fallback OpenAI %s",
-            type(e).__name__,
-            e,
-            settings.openai_model,
-        )
-        if not settings.openai_api_key:
-            raise
-        t0 = time.perf_counter()
-        out = await _chat_openai_text(messages, temperature)
-        _note_try(_call.get(), "openai", t0, None)
-        return out
+    return await _chat_primary(messages, temperature, max_tokens, enable_thinking)
 
 
 async def chat_self_hosted(

@@ -1,0 +1,268 @@
+{
+ "source": "dichvucong.bocongan.gov.vn — trang kê khai (nhap-thong-tin-nguoi-nop-ho-so?sid=…) sau bước chọn trường hợp hồ sơ (ma-thu-tuc-public=29497)",
+ "title": "Cấp hộ chiếu phổ thông ở trong nước",
+ "capturedAt": "2026-11-26T00:00:00+07:00",
+ "inferred": true,
+ "note": "Mẫu SUY từ bảng ô của BE (schema.py theo file Mapping_Cap_ho_chieu_pho_thong_trong_nuoc_1.001456): name ô và số mục theo mapping, nhãn chữ theo chú thích mapping. Chưa biết id các ô khoá Giới tính / Sinh ngày / Dân tộc / Tôn giáo / Họ tên cha, mẹ nên không đưa vào; option Nơi cấp CCCD chỉ ghi 2 mục BE chọn (cổng 66 mục, chữ SUY); khối hoàn tiền + nhận qua bưu chính chưa có id. CHƯA chụp trang thật.",
+ "code": "1.001456",
+ "sections": [
+  {
+   "title": "Ảnh chân dung",
+   "fields": [
+    {
+     "id": "filename46",
+     "kind": "file",
+     "label": "Ảnh chân dung 4x6 (.jpg, dưới 2 MB)",
+     "required": true,
+     "note": "Cổng bắt buộc; BE tự gắn tệp ảnh ít chữ trong bộ giấy"
+    }
+   ]
+  },
+  {
+   "title": "Thông tin người đề nghị",
+   "note": "Ô khoá cổng đổ từ CSDLQG (BE không phát): Họ và tên, Số CCCD, Giới tính, Sinh ngày, Dân tộc, Tôn giáo.",
+   "fields": [
+    {
+     "id": "CongDan__fsBCAHoCongDan",
+     "kind": "text",
+     "label": "(1) Họ",
+     "required": true
+    },
+    {
+     "id": "CongDan__fsBCAChuDemTen",
+     "kind": "text",
+     "label": "Chữ đệm và tên",
+     "required": true
+    },
+    {
+     "id": "CongDan_tenCongDan",
+     "kind": "text",
+     "label": "Họ và tên",
+     "readonly": true,
+     "note": "Cổng ghép từ Họ + Chữ đệm và tên / CSDLQG"
+    },
+    {
+     "id": "CongDan__fs_BCANoiKhaiSinhCD",
+     "kind": "select",
+     "label": "(3) Nơi sinh (theo giấy khai sinh)",
+     "required": true,
+     "options": "@provinces",
+     "note": "Cổng có 34 tỉnh + danh mục quốc gia; mẫu chỉ có 34 tỉnh"
+    },
+    {
+     "id": "CongDan_soCmnd",
+     "kind": "text",
+     "label": "(4) Số CCCD",
+     "readonly": true
+    },
+    {
+     "id": "CongDan__fs_BCANgayCapCCCD",
+     "kind": "date",
+     "label": "Ngày cấp CCCD",
+     "required": true
+    },
+    {
+     "id": "CongDan__fs_BCANoiCapCCCD",
+     "kind": "select",
+     "label": "Nơi cấp CCCD",
+     "options": [
+      "Cục CS QLHC về TTXH",
+      "Cục CS ĐKQL cư trú và DLQG về dân cư"
+     ],
+     "note": "Cổng 66 mục; mẫu chỉ ghi 2 mục BE chọn (chữ SUY theo mapping)"
+    },
+    {
+     "id": "CongDan_diDong",
+     "kind": "text",
+     "label": "(7) Số điện thoại",
+     "required": true,
+     "portalMayFill": true
+    },
+    {
+     "id": "CongDan_email",
+     "kind": "text",
+     "label": "Email",
+     "required": true,
+     "portalMayFill": true
+    }
+   ]
+  },
+  {
+   "title": "(8) Địa chỉ thường trú",
+   "fields": [
+    {
+     "id": "CongDan__fs_BCAQueQuanMaTinh",
+     "kind": "select",
+     "label": "Tỉnh/Thành phố",
+     "required": true,
+     "options": "@provinces"
+    },
+    {
+     "id": "CongDan__fs_BCAQueQuanMaQH",
+     "kind": "select",
+     "label": "Phường/Xã",
+     "required": true,
+     "options": "@wards:CongDan__fs_BCAQueQuanMaTinh"
+    },
+    {
+     "id": "CongDan__fs_BCAQueQuanChiTiet",
+     "kind": "text",
+     "label": "Địa chỉ chi tiết",
+     "required": true,
+     "wide": true
+    }
+   ]
+  },
+  {
+   "title": "(9) Địa chỉ tạm trú",
+   "fields": [
+    {
+     "id": "CongDan__fs_BCANoiOHienTaiMaTinh",
+     "kind": "select",
+     "label": "Tỉnh/Thành phố",
+     "options": "@provinces"
+    },
+    {
+     "id": "CongDan__fs_BCANoiOHienTaiMaQH",
+     "kind": "select",
+     "label": "Phường/Xã",
+     "options": "@wards:CongDan__fs_BCANoiOHienTaiMaTinh"
+    },
+    {
+     "id": "CongDan__fs_BCADiaChiThuongTruCD",
+     "kind": "text",
+     "label": "Địa chỉ chi tiết",
+     "wide": true,
+     "note": "Tên kỹ thuật \"ThuongTru\" nhưng nằm ở mục 9"
+    }
+   ]
+  },
+  {
+   "title": "Nghề nghiệp, cơ quan",
+   "fields": [
+    {
+     "id": "CongDan__fs_BCANgheNghiepCD",
+     "kind": "text",
+     "label": "(10) Nghề nghiệp"
+    },
+    {
+     "id": "CongDan__fs_BCADiaChiCoQuanCD",
+     "kind": "text",
+     "label": "(11) Tên và địa chỉ cơ quan",
+     "wide": true
+    }
+   ]
+  },
+  {
+   "title": "(12) Cha, mẹ, vợ/chồng",
+   "note": "Họ tên Cha, Mẹ: cổng khoá theo CSDLQG (BE không phát).",
+   "fields": [
+    {
+     "id": "CongDan__fs_BCANgaySinhChaCD",
+     "kind": "date",
+     "label": "Ngày sinh (Cha)",
+     "required": true,
+     "partialDate": true,
+     "note": "Chỉ có năm → BE gửi dateFormat, extension bấm nút định dạng Năm / Tháng/Năm trước khi gõ"
+    },
+    {
+     "id": "CongDan__fs_BCANgaySinhMeCD",
+     "kind": "date",
+     "label": "Ngày sinh (Mẹ)",
+     "required": true,
+     "partialDate": true
+    },
+    {
+     "id": "CongDan__fsBCAHoVaTenVoChong",
+     "kind": "text",
+     "label": "Họ và tên Vợ/Chồng"
+    },
+    {
+     "id": "CongDan__fs_BCANgaySinhVoChong",
+     "kind": "date",
+     "label": "Ngày sinh Vợ/Chồng",
+     "partialDate": true
+    }
+   ]
+  },
+  {
+   "title": "(13) Hộ chiếu phổ thông lần gần nhất",
+   "fields": [
+    {
+     "id": "CongDan__fs_BCAHoChieuPT",
+     "kind": "text",
+     "label": "Số hộ chiếu"
+    },
+    {
+     "id": "CongDan__fs_BCANgayCapHoChieuPT",
+     "kind": "date",
+     "label": "Ngày cấp"
+    },
+    {
+     "id": "CongDan__fs_BCANoiCapHCGanNhat",
+     "kind": "text",
+     "label": "Nơi cấp"
+    }
+   ]
+  },
+  {
+   "title": "(14) Nội dung đề nghị",
+   "fields": [
+    {
+     "id": "CongDan__fs_BCANoiDungDeNghi",
+     "kind": "select",
+     "label": "Nội dung đề nghị",
+     "required": true,
+     "wide": true,
+     "options": [
+      "Cấp hộ chiếu lần đầu",
+      "Cấp lại HC do HC cũ hết hạn",
+      "Cấp lại HC do HC cũ sắp hết hạn",
+      "Cấp lại HC do HC cũ hết trang",
+      "Cấp lại hộ chiếu do bị mất",
+      "Cấp lại hộ chiếu do bị hư hỏng",
+      "Đề nghị khác"
+     ],
+     "note": "7 option theo mapping; thứ tự SUY"
+    },
+    {
+     "id": "CongDan__fs_BCAChiTietDeNghi",
+     "kind": "text",
+     "label": "Chi tiết nội dung đề nghị",
+     "wide": true,
+     "note": "BE chỉ ghi khi chọn \"Đề nghị khác\""
+    },
+    {
+     "id": "CongDan__fsBCAHoKhongChieuGanChip",
+     "kind": "checkbox",
+     "label": "Cấp hộ chiếu không gắn chip điện tử"
+    },
+    {
+     "id": "CongDan__fsBCAHoChieuGanChip",
+     "kind": "checkbox",
+     "label": "Cấp hộ chiếu có gắn chip điện tử"
+    }
+   ]
+  },
+  {
+   "title": "(17) Nơi tiếp nhận, nơi nhận hộ chiếu",
+   "note": "\"Nhận qua bưu chính\" + Tỉnh/Phường xã/Địa chỉ nhận: id chưa biết, BE chỉ cảnh báo. Đăng ký thông tin hoàn tiền (*): giấy tờ không có, người nộp nhập tay.",
+   "fields": [
+    {
+     "id": "CongDan__fs_BCANoiNopHS",
+     "kind": "select",
+     "label": "(17) Cơ quan tiếp nhận",
+     "required": true,
+     "wide": true,
+     "note": "Danh sách chỉ có cơ quan đã chọn ở bước chọn trường hợp — extension chọn mục thật đầu tiên"
+    },
+    {
+     "id": "CongDan__fs_BCANoiNhanHoChieu",
+     "kind": "checkbox",
+     "label": "Nhận trực tiếp",
+     "note": "Cổng tick sẵn"
+    }
+   ]
+  }
+ ]
+}

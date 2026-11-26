@@ -60,6 +60,11 @@ TRA_CUU_WARNING = (
     "Nhập Mã bảo mật rồi bấm \"Tra cứu\" để cổng lấy dữ liệu lệ phí trước bạ, hóa đơn, hải quan và thông tin xe từ "
     "CSDL; tự tải ảnh phương tiện và ảnh hai mặt chứng từ nguồn gốc (tờ khai hàng hóa nhập khẩu) trước khi nộp."
 )
+# Runner đã gắn ba ô ảnh đầu trang (hoặc nói rõ ô nào còn thiếu) → câu Tra cứu không nhắc tải ảnh nữa.
+TRA_CUU_NO_PHOTO_WARNING = (
+    "Nhập Mã bảo mật rồi bấm \"Tra cứu\" để cổng lấy dữ liệu lệ phí trước bạ, hóa đơn, hải quan và thông tin xe từ "
+    "CSDL trước khi nộp."
+)
 HOA_DON_THEO_HOP_DONG_WARNING = (
     "Hồ sơ không có hóa đơn bán xe — Phần IV (hóa đơn) điền tương đương theo Hợp đồng mua bán xe (số công chứng, bên "
     "bán, bên mua, giá mua bán, ngày công chứng); kiểm tra lại sau khi Tra cứu."

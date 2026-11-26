@@ -607,6 +607,59 @@ def test_giay_khai_tu_ban_sao_don_vi_cau_hinh_lay_so_goc():
     assert not mapper.with_account_process_options({}, {"tinh": "Tỉnh Quảng Ngãi", "xa": "Xã Bình Sơn"}, "khac")
 
 
+TAY_NHA_TRANG = {"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Tây Nha Trang"}
+MARRIAGE = {"TinhTrangHonNhan": "co_vo_chong", "Marriage_SpouseName": "Trần Thị C", "Marriage_Number": "12",
+            "Marriage_Date": "1/2/2020", "Marriage_Agency": "UBND xã A"}
+
+
+def _enrich_account(values: dict, user: dict):
+    options = mapper.with_account_process_options({"formContext": ACCOUNT}, user, mapper.PROCEDURE_KEY)
+    fields = [{"name": k, "comp": "x-input", "value": v} for k, v in values.items()]
+    out, warnings = mapper.enrich(fields, {**options, "_reasoning_context": _context()})
+    return {f["name"]: f for f in out}, warnings
+
+
+def test_tay_nha_trang_dang_co_vo_chong_chon_option_khoang_thoi_gian():
+    assert mapper.married_as_period(mapper.with_account_process_options({}, TAY_NHA_TRANG, mapper.PROCEDURE_KEY))
+    # Khớp đúng tên phường: Nha Trang / Bắc / Nam Nha Trang, thủ tục khác, client tự gửi cờ đều không bật.
+    for xa in ("Phường Nha Trang", "Phường Bắc Nha Trang", "Phường Nam Nha Trang"):
+        assert not mapper.married_as_period(mapper.with_account_process_options(
+            {}, {"tinh": "Tỉnh Khánh Hòa", "xa": xa}, mapper.PROCEDURE_KEY))
+    assert not mapper.married_as_period(mapper.with_account_process_options({}, TAY_NHA_TRANG, "khac"))
+    assert not mapper.married_as_period(mapper.with_account_process_options(
+        {mapper.MARRIED_AS_PERIOD_OPTION: True}, {"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Nha Trang"}, mapper.PROCEDURE_KEY))
+
+    v, warnings = _enrich_account({**BASE, **MARRIAGE}, TAY_NHA_TRANG)
+    assert v["citizenTinhtranghonnhan"]["code"] == "5"
+    assert v["citizenField531"]["value"] == "TRẦN THỊ C"
+    assert (v["citizenField53"]["value"], v["citizenField54"]["value"], v["citizenField55"]["code"]) == (
+        "UBND xã A", "12", "2020-02-01")
+    # Tờ khai không ghi khoảng thời gian → hai mốc để trống cho cán bộ (xoá + tô đỏ), có cảnh báo.
+    assert all(v[n]["clear"] and v[n]["markEmpty"] and v[n]["value"] == "" for n in ("citizenField56", "citizenField57"))
+    assert any("khoảng thời gian" in w for w in warnings)
+    assert "citizenHovatencuavochongnguoicoyeucauxacnhantinhtranghonnhan" not in v and "citizenField40" not in v
+
+    # Tờ khai có ghi khoảng thời gian → lấy theo tờ khai.
+    v, warnings = _enrich_account({**BASE, **MARRIAGE, "Period_TuNgay": "27/04/2016", "Period_DenNgay": "14/09/2016"},
+                                  TAY_NHA_TRANG)
+    assert (v["citizenField56"]["code"], v["citizenField57"]["code"]) == ("2016-04-27", "2016-09-14")
+    assert not any(f.get("clear") for f in v.values()) and not any("khoảng thời gian" in w for w in warnings)
+
+    # Phường khác vẫn chọn "Hiện tại đang có vợ/chồng"; tình trạng khác ở Tây Nha Trang không đổi.
+    v, _ = _enrich_account({**BASE, **MARRIAGE}, {"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Nam Nha Trang"})
+    assert v["citizenTinhtranghonnhan"]["code"] == "2" and "citizenField56" not in v
+    v, _ = _enrich_account({**BASE, "TinhTrangHonNhan": "chua_ket_hon"}, TAY_NHA_TRANG)
+    assert v["citizenTinhtranghonnhan"]["code"] == "1" and "citizenField56" not in v
+
+
+def test_tay_nha_trang_thieu_giay_ket_hon_thi_xoa_trong_o_vung_khoang_thoi_gian():
+    v, warnings = _enrich_account({**BASE, "TinhTrangHonNhan": "co_vo_chong", "Marriage_SpouseName": "Trần Thị C"},
+                                  TAY_NHA_TRANG)
+    assert v["citizenTinhtranghonnhan"]["code"] == "5" and v["citizenField531"]["value"] == "TRẦN THỊ C"
+    assert all(v[n].get("clear") for n in ("citizenField53", "citizenField54", "citizenField55"))
+    assert any("giấy chứng nhận kết hôn" in w for w in warnings)
+
+
 def _ly_hon(dau=None, so=None):
     return {"docType": "divorce_decision", "trangDau": dau, "trangSo": so}
 
@@ -655,3 +708,39 @@ def test_ten_chu_the_khong_in_tren_mat_sau_thi_khong_ghep_theo_ten():
     assert planner.pair_card_sides(docs) == [[0], [1]]
     docs[1]["_tenTrenMat"] = True
     assert planner.pair_card_sides(docs) == [[0, 1]]
+
+
+CCCD_MAT_SAU = ("Đặc điểm nhận dạng / Personal identification:\nsẹo chấm mép trái\n"
+                "Ngày, tháng, năm / Date, month, year: 25/05/2022\nCỤC TRƯỞNG CỤC CẢNH SÁT\n"
+                "QUẢN LÝ HÀNH CHÍNH VỀ TRẬT TỰ XÃ HỘI\nIDVNM0900000022001090000002<<2\n"
+                "9003055M3003051VNM<<<<<<<<<<<<6\nNGUYEN<<VAN<B<<<<<<<<<<<<<<<\n")
+CCCD_MAT_TRUOC = ("CĂN CƯỚC CÔNG DÂN\nSố / No.: 001090000002\nHọ và tên / Full name:\nNGUYỄN VĂN B\n"
+                  "Ngày sinh / Date of birth: 05/03/1990\nCó giá trị đến: 05/03/2030\n")
+
+
+def _enrich_the(values: dict, ocr_text: str):
+    fields = [{"name": k, "comp": "x-input", "value": v} for k, v in values.items()]
+    out, _ = mapper.enrich(fields, {"formContext": {"applicantFullname": "TRAN THI C",
+                                                    "applicantIdentityNumber": "001190000009"},
+                                    "_reasoning_context": _context(relation="Con"), "_ocr_text": ocr_text})
+    return {f["name"]: f for f in out}
+
+
+def test_llm_bo_sot_ngay_cap_mat_sau_cccd_thi_doc_lai_theo_mrz():
+    values = {**BASE, "NguoiDuocCap_LoaiGiayTo": "Căn cước công dân", "NguoiDuocCap_SoGiayTo": "001090000002"}
+    v = _enrich_the(values, _ocr(("sau.jpg", CCCD_MAT_SAU), ("truoc.jpg", CCCD_MAT_TRUOC)))
+    assert v["citizenNDKNgaycap"]["value"] == "25/05/2022" and v["citizenNDKNgaycap"]["code"] == "2022-05-25"
+    assert v["citizenNDKNocap"]["value"] == "Cục Cảnh sát QLHC về TTXH"
+
+
+def test_ngay_cap_mat_sau_cua_nguoi_khac_hoac_ngay_het_han_thi_khong_lay():
+    values = {**BASE, "NguoiDuocCap_LoaiGiayTo": "Căn cước công dân", "NguoiDuocCap_SoGiayTo": "001090000002"}
+    other = CCCD_MAT_SAU.replace("001090000002", "001190000009")
+    v = _enrich_the(values, _ocr(("sau.jpg", other), ("truoc.jpg", CCCD_MAT_TRUOC)))
+    assert "citizenNDKNgaycap" not in v and "citizenNDKNocap" not in v
+    assert mapper._card_back_issue_date(_ocr(("a.jpg", CCCD_MAT_TRUOC + CCCD_MAT_SAU.split("Ngày, tháng")[0]
+                                              + "IDVNM0900000022001090000002<<2\n")), "001090000002") == ""
+    # Căn cước 2024: ngày cấp rơi xuống dòng dưới nhãn, không nhầm với ngày hết hạn.
+    moi = ("Ngày, tháng, năm hết hạn / Date of expiry: 05/03/2040\nNgày, tháng, năm cấp / Date of issue:\n"
+           "10/08/2024\nIDVNM0900000022001090000002<<2\n")
+    assert mapper._card_back_issue_date(_ocr(("a.jpg", moi)), "001090000002") == "10/08/2024"

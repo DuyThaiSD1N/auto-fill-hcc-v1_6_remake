@@ -264,7 +264,14 @@ def _execution_subject_config(proc: dict | None = None) -> dict:
     config = (proc or {}).get("executionSubject")
     if not isinstance(config, dict):
         config = (FLOW_PROFILES.get("tu-phap") or {}).get("executionSubject")
-    return config if isinstance(config, dict) else {}
+    if not isinstance(config, dict):
+        return {}
+    # Thủ tục khai executionSubjectKeys: chỉ hiện các đối tượng hợp với thủ tục (kết hôn không có doanh nghiệp / tổ chức).
+    keys = (proc or {}).get("executionSubjectKeys")
+    if isinstance(keys, list):
+        config = {**config, "options": [o for o in config.get("options", [])
+                                        if isinstance(o, dict) and o.get("key") in keys]}
+    return config
 
 
 def execution_subject_options(proc: dict | None = None) -> list[dict]:
@@ -288,9 +295,16 @@ def _execution_subject_selection(conv: dict, proc: dict | None = None) -> dict |
     return dict(selected) if selected else None
 
 
+def _card_subject_config(conv: dict) -> dict:
+    """Thẻ nơi làm hiện danh sách đối tượng của hồ sơ tư pháp như trước, chỉ lọc theo executionSubjectKeys nếu thủ
+    tục có khai."""
+    keys = (get_procedure(conv.get("procedure_key") or "") or {}).get("executionSubjectKeys")
+    return _execution_subject_config({"executionSubjectKeys": keys} if keys else None)
+
+
 def _location_card(conv: dict) -> dict:
     loc = conv.get("location") or {}
-    subject_config = _execution_subject_config()
+    subject_config = _card_subject_config(conv)
     selected = _execution_subject_selection(conv)
     card = {
         "kind": "location_picker",
@@ -371,6 +385,23 @@ def _hmong_procedure_name(label) -> str:
     return text
 
 
+_VI_LETTERS = re.compile(r"[à-ỹđÀ-ỸĐ]")
+
+
+def _short_error(error) -> str:
+    """Lỗi chèn vào câu cho công dân: exception/thông điệp kỹ thuật (không có chữ Việt) đổi thành câu chung, câu tiếng
+    Việt của trang/cổng giữ nhưng cắt gọn. Bản đầy đủ đã nằm ở trace + log."""
+    text = " ".join(str(error or "").split())
+    low = text.lower()
+    if not _VI_LETTERS.search(text):
+        if "timeout" in low or "timed out" in low:
+            return "máy chủ xử lý quá lâu"
+        if any(k in low for k in ("network", "connect", "fetch")):
+            return "mất kết nối mạng"
+        return "lỗi kỹ thuật"
+    return text if len(text) <= 80 else text[:80].rsplit(" ", 1)[0] + "…"
+
+
 def _fmt(tpl: dict, *, note: dict | None = None, **kw) -> tuple[str, str]:
     """Dựng (markdown, lời đọc) cho MỘT lượt, kèm câu phụ tuỳ chọn.
 
@@ -379,6 +410,8 @@ def _fmt(tpl: dict, *, note: dict | None = None, **kw) -> tuple[str, str]:
       - và nối vào tts là bắt GIỌNG MÔNG ĐỌC CHỮ VIỆT — nghe không ra tiếng gì.
         Đã gặp thật: câu "Xong hết, công dân bấm Đã đưa đủ giấy tờ…" lọt vào cuối lời đọc Mông.
     """
+    if "error" in kw:
+        kw["error"] = _short_error(kw["error"])
     md, tts = tpl["md"].format(**kw), tpl["tts"].format(**kw)
     note_md = note["md"].format(**kw) if note else ""
     note_tts = note["tts"].format(**kw) if note else ""
@@ -550,9 +583,12 @@ def _bca_form_before_attach(conv: dict | None, proc: dict, page_context: dict | 
 
 
 def _bca_same_page(proc: dict, page_context: dict | None) -> bool:
-    """eForm Nth Bộ Công an mà trang vừa báo form kê khai VÀ bảng Thành phần hồ sơ cùng HIỆN (thị thực 1.001194)."""
+    """eForm Nth Bộ Công an mà trang vừa báo form kê khai VÀ bảng Thành phần hồ sơ cùng HIỆN (thị thực 1.001194).
+    ``bcaPagePhotos`` (đăng ký xe nhập khẩu 1.013066, user 24/11): chỗ đính kèm là các ô tải ảnh đầu trang kê khai, không
+    có bảng (extension không báo attachmentTarget) → cứ còn form kê khai là đính cùng trang."""
     ctx = _docs_page_context(page_context)
-    return _bca_nth(proc) and ctx["bcaKeKhaiForm"] is True and ctx["attachmentTarget"]
+    return (_bca_nth(proc) and ctx["bcaKeKhaiForm"] is True
+            and bool(ctx["attachmentTarget"] or proc.get("bcaPagePhotos")))
 
 
 def _bca_nth_next_to_attach(conv: dict, proc: dict) -> bool:
@@ -561,6 +597,15 @@ def _bca_nth_next_to_attach(conv: dict, proc: dict) -> bool:
     host bocongan) rồi chờ trang đính kèm như cũ — user 20/11/2026 "giống các thủ tục tư pháp". Cần extension có engine
     trang chọn trường hợp Bộ Công an (lai_chau.enabled); bản cũ giữ câu bảo công dân tự sang trang."""
     return _bca_nth(proc) and not _same_page_attach(conv, proc) and lai_chau.enabled(conv, proc)
+
+
+def _declaration_next_chip(conv: dict, proc: dict | None) -> dict:
+    """Nút đi tiếp ở bước Kê khai. eForm Nth Bộ Công an có bảng đính kèm ở trang sau (_bca_nth_next_to_attach): nút
+    "Sang Thành phần hồ sơ" (cta — câu kết luận gọi đúng tên nút, còn ô bắt buộc trống thì ẩn như nút đi tiếp khác), không
+    phải "Đính kèm giấy tờ" — user 24/11/2026 (2.001428) "giống tư pháp". Còn lại giữ nút Đính kèm giấy tờ."""
+    if _bca_nth_next_to_attach(conv, proc or {}):
+        return {"label": vi.BCA_NTH_TO_ATTACH_CHIP, "send": "__action:confirm_review", "solid": True, "cta": True}
+    return {"label": "📎 Đính kèm giấy tờ ▶", "send": "__action:confirm_review", "solid": True}
 
 
 def _bca_nth_next_reply(conv: dict, proc: dict) -> Reply | None:
@@ -1014,8 +1059,9 @@ def _attachment_page_reached(conv: dict, proc: dict, page_context: dict | None) 
     current = _docs_page_context(page_context)
     if _bca_nth(proc) and current["bcaKeKhaiForm"] is True:
         # Form kê khai eForm Nth Bộ Công an còn hiện: đã tới chỗ đính kèm chỉ khi bảng Thành phần hồ sơ HIỆN cùng trang
-        # (thị thực 1.001194); bảng ẩn / chưa có thì chờ công dân bấm "Đồng ý và tiếp tục" sang trang đính kèm.
-        return bool(current["attachmentTarget"])
+        # (thị thực 1.001194); bảng ẩn / chưa có thì chờ công dân bấm "Đồng ý và tiếp tục" sang trang đính kèm. Chỗ đính
+        # kèm là ô ảnh đầu trang (bcaPagePhotos) thì form còn hiện là đã tới.
+        return bool(current["attachmentTarget"] or proc.get("bcaPagePhotos"))
     if proc.get("samePageAttach"):
         # Cổng 2-tab cùng trang (Bắc Ninh): ô đính kèm nằm ngay trên trang kê khai, engine FE
         # tự bấm tab "Tải thành phần hồ sơ" — chỉ cần trang còn báo có ô đính kèm là đủ.
@@ -1826,7 +1872,7 @@ def _apply_location(conv: dict, payload: dict) -> Reply:
 
 def _apply_execution_subject(conv: dict, payload: dict) -> Reply:
     requested = str(payload.get("key") or payload.get("value") or "")
-    config = _execution_subject_config()
+    config = _card_subject_config(conv)
     valid_keys = {
         str(option.get("key") or "")
         for option in config.get("options", [])
@@ -5457,6 +5503,9 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
             if auto_wait_attachment
             # eForm Nth Bộ Công an hỏi trước khi đính (askBeforeAttach) mà bảng Thành phần hồ sơ cùng trang: hỏi đính kèm,
             # nhắc nói "điền lại tờ khai" nếu form chưa đúng (user 19/11/2026).
+            # Chỗ đính kèm là ô ảnh đầu trang (bcaPagePhotos, 1.013066): nói đúng ô ảnh, không nói bảng bên dưới.
+            else vi.REVIEW_ATTACHMENT_PAGE_PHOTOS_BCA if (proc.get("bcaPagePhotos")
+                                                          and _bca_same_page(proc, conv.get("docs_page_context")))
             else vi.REVIEW_ATTACHMENT_SAME_PAGE_BCA if _bca_same_page(proc, conv.get("docs_page_context"))
             # Bảng đính kèm ở trang sau: bấm "Đính kèm giấy tờ" là trợ lý tự sang trang rồi đính (user 20/11/2026).
             else (vi.REVIEW_RESULT_METHOD_NEXT_BCA if result_hint else vi.REVIEW_ATTACHMENT_NEXT_BCA)
@@ -5510,7 +5559,9 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
             # Extension chưa trả số ô (luồng cũ): tệp đã đính còn trên trang → về bước cuối, đính lại là lệnh riêng.
             conv["state"] = "done"
             conv["pipeline_status"] = ""
-            r.chips = [{"label": "🔁 Điền lại thông tin", "send": "__action:refill"},
+            # Ô cam kết cùng trang tờ khai (extension bỏ tích khi điền lại): nút tích ô đứng đầu, tích xong mới Nộp.
+            commit = _bca_commit_or_submit(conv, proc) if _bca_flow(conv, proc) else _commit_chip(conv, proc)
+            r.chips = [*commit, {"label": "🔁 Điền lại thông tin", "send": "__action:refill"},
                        _supplement_documents_chip(), _reattach_chip()]
         elif auto_wait_attachment:
             r.chips = [
@@ -5518,7 +5569,7 @@ async def _handle_filling(conv: dict, intent: Intent) -> Reply:
                 _supplement_documents_chip(),
             ]
         else:
-            r.chips = [{"label": "📎 Đính kèm giấy tờ ▶", "send": "__action:confirm_review", "solid": True},
+            r.chips = [_declaration_next_chip(conv, proc),
                        {"label": "🔁 Điền lại thông tin", "send": "__action:refill"},
                        _supplement_documents_chip()]
         field_review.decorate_fill_report(conv, proc, r, intent.payload.get("review"), tail)
@@ -5790,7 +5841,7 @@ async def _handle_reviewing(conv: dict, intent: Intent) -> Reply:
         return tu_phap_v2.attach_planning_reply(conv, get_procedure(conv.get("procedure_key") or ""))
     r = Reply(*_fmt(vi.FILL_REPORT_REVIEW, filled=(conv.get("fill_report") or {}).get("filled", 0),
                     missing_note=""))
-    r.chips = [{"label": "📎 Đính kèm giấy tờ ▶", "send": "__action:confirm_review", "solid": True},
+    r.chips = [_declaration_next_chip(conv, proc),
                {"label": "🔁 Điền lại thông tin", "send": "__action:refill"},
                _supplement_documents_chip()]
     return r
@@ -6013,7 +6064,10 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
                 r = Reply(*_fmt(vi.ATTACH_SPLIT_DONE, succeeded=succeeded, total=total,
                                 note=recap, **recap_kw))
         elif attached == 0 and skipped > 0:
-            r = Reply(*_fmt(vi.ATTACH_ALL_FILES_EXIST, note=recap, **recap_kw))
+            # Cổng bắt tích ô cam kết (Bộ Công an — tách hộ, ảnh 24/11/2026): tệp có sẵn cũng nhắc tích ô trước khi nộp.
+            _tpl, commit = _attach_done_template(proc_done)
+            r = Reply(*_fmt(vi.ATTACH_ALL_FILES_EXIST_COMMIT if commit else vi.ATTACH_ALL_FILES_EXIST,
+                            note=recap, commit=commit, **recap_kw))
         elif errors:
             err_list = "\n".join(f"- {e}" for e in errors[:5])
             # recap_kw đã mang sẵn "attached" khi có câu tóm tắt → gộp dict, không truyền trùng khoá.
@@ -6021,7 +6075,10 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
                             note=recap, **{**recap_kw, "attached": attached}))
         else:
             done_tpl, commit = _attach_done_template(proc_done)
-            if not commit and proc_done.get("resultMethodHint") and _bca_same_page(proc_done, conv.get("docs_page_context")):
+            if proc_done.get("bcaPagePhotos") and _bca_same_page(proc_done, conv.get("docs_page_context")):
+                # Ô ảnh đầu trang (1.013066): báo đã gắn ảnh, không có bảng Thành phần hồ sơ; kết luận số ô theo sau.
+                done_tpl = vi.ATTACH_DONE_PAGE_PHOTOS_BCA
+            elif not commit and proc_done.get("resultMethodHint") and _bca_same_page(proc_done, conv.get("docs_page_context")):
                 # eForm Nth Bộ Công an cùng trang: còn chọn Nơi nhận (cùng trang, trên bảng) rồi "Đồng ý và tiếp tục".
                 done_tpl = vi.ATTACH_DONE_SAME_PAGE_BCA
             r = Reply(*_fmt(done_tpl, note=recap, commit=commit, **{**recap_kw, "attached": attached}))
@@ -6046,7 +6103,8 @@ async def _handle_attaching(conv: dict, intent: Intent) -> Reply:
         r.chips = [_supplement_documents_chip()]
         if guided_step:
             r.chips.append(guided.attach_cta_chip())
-        elif not errors and not (attached == 0 and skipped > 0):
+        elif not errors:
+            # Tệp đã có sẵn (không đính trùng) vẫn phải qua ô cam kết trước nút Nộp hồ sơ.
             r.chips += _commit_chip(conv, proc_done)
         if lien_thong.enabled(conv, proc_done):
             r = lien_thong.attach_done_reply(conv, proc_done, r, attached=attached, skipped=skipped, errors=errors,
@@ -6623,7 +6681,7 @@ def _bca_nth_fill_report_reply(conv: dict, proc: dict, rep: dict, review, *, not
     r = Reply(*_fmt(vi.FILL_REPORT_REVIEW, filled=rep["filled"], missing_note=note, note=tail))
     r.chips = [_bca_nth_refill_chip(), _supplement_documents_chip()]
     if not auto_wait:
-        r.chips.insert(0, {"label": "📎 Đính kèm giấy tờ ▶", "send": "__action:confirm_review", "solid": True})
+        r.chips.insert(0, _declaration_next_chip(conv, proc))
     # Đính cùng trang chạy ngay sau lượt này → chưa mời bổ sung (con trỏ hỏi ô và lượt tải tệp cùng cuộn một trang),
     # đính xong mới kết luận (_bca_nth_attach_done_reply).
     field_review.decorate_single_page_fill(conv, proc, r, review, offer=not same_page)
@@ -6808,12 +6866,10 @@ _HANDLERS = {
 
 def build_progress(conv: dict) -> dict:
     state = conv.get("state", "greet")
-    try:
-        # Bước Ví cá nhân nằm ngay trước đính kèm, không chen vào thứ tự chung (đổi tổng số bước của mọi thủ tục).
-        step = vi.STEP_ORDER.index("attaching" if state == wallet_reuse.STATE else state) + 1
-    except ValueError:
-        step = 1
-    progress = {"step": step, "total": len(vi.STEP_ORDER), "label": vi.STEP_LABELS.get(state, "")}
+    # Bước Ví cá nhân nằm ngay trước đính kèm, không chen vào thứ tự chung (đổi tổng số bước của mọi thủ tục).
+    phase_state = "attaching" if state == wallet_reuse.STATE else state
+    step = next((i for i, states in enumerate(vi.STEP_PHASES, 1) if phase_state in states), 1)
+    progress = {"step": step, "total": len(vi.STEP_PHASES), "label": vi.STEP_LABELS.get(state, "")}
     if (state == "guide_login" and (conv.get("bca_agency_pending") or conv.get("agency_done"))
             and (get_procedure(conv.get("procedure_key") or "") or {}).get("bcaPortal")):
         progress["label"] = vi.BCA_AGENCY_STEP_LABEL  # đã qua đăng nhập, ở khối cơ quan (cổng Bộ Công an)

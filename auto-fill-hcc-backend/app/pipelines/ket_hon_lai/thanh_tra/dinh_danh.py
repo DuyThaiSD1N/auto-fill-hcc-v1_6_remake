@@ -310,19 +310,24 @@ def _printed_spelling_finding(side: Side, case: Case, records: list[dict]) -> Fi
         return None
     scores: dict[str, float] = {}
     sample: dict[str, dict] = {}
+    pages: dict[str, set] = {}
     for record in records:
         if _is_card(record) or not _of_side(record, side, identity):
             continue
         key = _exact(record["name"])
         weight = (0.5 if record["handwritten"] else 1) * (2 if record.get("number") == identity["number"] else 1)
         scores[key] = scores.get(key, 0) + weight
+        pages.setdefault(key, set()).add((record["doc"], record["text"]))
         if key not in sample or (not record["handwritten"] and sample[key]["handwritten"]):
             sample[key] = record
     if not scores:
         return None
     best = max(scores, key=scores.get)
     others = [score for key, score in scores.items() if key != best] + [scores.get(current, 0)]
-    if best == current or scores[best] < _MIN_SPELLING_SCORE or scores[best] <= max(others):
+    # Phải có ít nhất hai trang giấy ghi cách viết đó: một dòng duy nhất (vd dòng chủ hộ trên giấy xác nhận cư trú, đủ
+    # điểm nhờ trùng số định danh) có thể chính giấy in sai hoặc OCR rơi dấu — không đủ để đè chữ trên thẻ.
+    if (best == current or scores[best] < _MIN_SPELLING_SCORE or scores[best] <= max(others)
+            or len(pages[best]) < 2):
         return None
     record = sample[best]
     quote = next((line.strip() for line in record["text"].splitlines() if fold(record["name"]) in fold(line)), "")

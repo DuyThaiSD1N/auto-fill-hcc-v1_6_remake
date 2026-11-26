@@ -4,7 +4,8 @@ EXTRA_RULES = """Hồ sơ trình báo mất hộ chiếu phổ thông của mộ
 
 ĐƠN TRÌNH BÁO (DonTrinhBao_*):
 - Đọc đúng mục theo số thứ tự in trên đơn. Mục 7 là hộ chiếu BỊ MẤT (số, ngày cấp, cơ quan cấp) — KHÔNG phải giấy tờ tùy thân; mục 4 là số định danh cá nhân 12 số.
-- Dòng để trống (chỉ có nhãn, chấm chấm "……", "…/…/…") → bỏ field, không ghi "Không" hay "Trống".
+- Mục 7 có ghi thì trả đủ cả ba field DonTrinhBao_SoHoChieu, DonTrinhBao_NgayCapHoChieu, DonTrinhBao_CoQuanCapHoChieu; chép đúng chữ người viết, không tự kiểm khuôn số hộ chiếu.
+- Dòng để trống (chỉ có nhãn, chấm chấm "……", "…/…/…") → bỏ field, không ghi "Không" hay "Trống". Giá trị viết chen giữa dấu chấm ("....C1234567....", "...31/12/2023") là CÓ ghi → lấy phần chữ / số, bỏ dấu chấm.
 - Mục 9 (hoàn cảnh, lý do mất) chép NGUYÊN VĂN cả đoạn, giữ đúng chính tả của người viết, không sửa, không tóm tắt.
 
 TỜ KHAI (ToKhai_*): mục 13 là hộ chiếu cấp lần gần nhất; mục 11 "Tên và địa chỉ cơ quan" và dòng "Địa chỉ nhận hộ chiếu" KHÔNG phải nơi thường trú; ô "Đã đối chiếu" (Ngày / Họ tên cán bộ / Tên đơn vị) do cán bộ ghi — KHÔNG dùng cho field nào.

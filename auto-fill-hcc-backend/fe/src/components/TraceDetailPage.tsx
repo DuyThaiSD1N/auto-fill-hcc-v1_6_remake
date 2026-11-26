@@ -50,7 +50,7 @@ export default function TraceDetailPage({ id, user, onLogout, onNavigate }: Prop
                 {trace.experience === "handfree" ? "Handfree" : "No handfree"}
               </span>
               <span className={`badge ${trace.kind === "attach" ? "warn" : "ok"}`}>
-                {trace.kind === "attach" ? "Đính kèm" : "Auto-fill"}
+                {trace.kind === "attach" ? "Đính kèm" : trace.fill_page ? `Điền trang ${trace.fill_page}` : "Auto-fill"}
               </span>
               {trace.ocr_label && (
                 <span className={`badge ocr-${trace.ocr_provider}`}>{trace.ocr_label}</span>

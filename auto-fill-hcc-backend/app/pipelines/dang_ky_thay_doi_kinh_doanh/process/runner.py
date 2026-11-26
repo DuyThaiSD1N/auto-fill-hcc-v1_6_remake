@@ -1,6 +1,7 @@
 """Compact-agent runner cho thay đổi nội dung đăng ký HKD."""
 
 from app.pipelines._shared.compact_agent import runner
+from app.pipelines.dang_ky_kinh_doanh.process import mapper as creation_mapper
 from app.pipelines.dang_ky_thay_doi_kinh_doanh.process import mapper
 from app.pipelines.dang_ky_thay_doi_kinh_doanh.process.prompt import EXTRA_RULES
 from app.pipelines.dang_ky_thay_doi_kinh_doanh.process.schema import ALIASES, ALLOWED, COMPACT_COMP_BY_NAME, FIELDS
@@ -16,7 +17,7 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         extra_rules=EXTRA_RULES,
     )
     compact = result["fields"]
-    pages, business_flow = mapper.build(compact)
+    pages, business_flow = mapper.build(compact, str((options or {}).get(creation_mapper.LINE_DETAIL_OPTION) or ""))
     result["pages"] = pages
     result["businessFlow"] = business_flow
     first_page = business_flow["pageOrder"][0] if business_flow["pageOrder"] else "nguoi-nop-ho-so"

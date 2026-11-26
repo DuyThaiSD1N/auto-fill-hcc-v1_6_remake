@@ -8,7 +8,7 @@ from typing import Literal
 from app.core.errors import AppError
 from app.procedures.registry import PROCEDURES
 from app.reports.integration import account_unit_key, canonical_procedure_id, province_name
-from app.reports.procedure_meta import cap_thu_tuc, ma_thu_tuc, pham_vi_ho_tro
+from app.reports.procedure_meta import KEY_CU, cap_thu_tuc, ma_thu_tuc, pham_vi_ho_tro
 from app.reports.schemas import ExcelExportRequest
 from app.stats import cutover
 from app.traces import repo as traces_repo
@@ -39,6 +39,7 @@ def _procedure_rows(stats: dict, user_to_unit: dict[str, str]) -> dict[str, list
             continue
         for procedure in ward.get("procedures") or []:
             procedure_key = str(procedure.get("key") or "").strip()
+            procedure_key = KEY_CU.get(procedure_key, procedure_key)
             if not procedure_key:
                 continue
             entry = registry.get(procedure_key)

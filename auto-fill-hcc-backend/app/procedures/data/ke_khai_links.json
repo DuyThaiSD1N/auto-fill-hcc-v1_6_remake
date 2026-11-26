@@ -710,7 +710,7 @@
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-230c-75d8-8979-11b8bdc68e6c",
       "needsAgencySelect": true,
       "agencyLevelByAccount": {
-        "xa": {},
+        "xa": {"submitCardIncludes": "Cơ quan thực hiện: UBND"},
         "so": {"selectSo": true}
       },
       "autoConfirm": false
@@ -1535,6 +1535,15 @@
       "directSubmit": true,
       "bcaSubmit": true,
       "autoConfirm": false
+    },
+    {
+      "key": "cap-phieu-ly-lich-tu-phap-cong-an-cap-tinh",
+      "code": "3.000333",
+      "label": "Cấp Phiếu lý lịch tư pháp cho công dân Việt Nam, người nước ngoài đang cư trú tại Việt Nam (thực hiện tại Công an cấp tỉnh)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf7-bd79-75fb-a4c6-ba1bf85d20ad",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "autoConfirm": true
     },
     {
       "key": "thong-bao-ket-qua-dai-hoi-phe-duyet-dieu-le-hoi-cap-bo",
@@ -3087,6 +3096,14 @@
       "autoConfirm": true
     },
     {
+      "key": "dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa",
+      "code": "1.012796",
+      "label": "Khánh Hòa - Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76cb-741b-996e-33d1ef50be50",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "dang-ky-cap-gcn-da-chuyen-quyen-truoc-01-8-2024",
       "code": "1.115666",
       "label": "Đăng ký, cấp Giấy chứng nhận đối với trường hợp đã chuyển quyền sử dụng đất trước ngày 01 tháng 8 năm 2024 mà bên chuyển quyền đã được cấp Giấy chứng nhận nhưng chưa thực hiện thủ tục chuyển quyền theo quy định",
@@ -3233,6 +3250,30 @@
       "code": "1.115693",
       "label": "(Lào Cai - Cấp phường/xã) Đăng ký, cấp Giấy chứng nhận đối với thửa đất có diện tích tăng thêm do thay đổi ranh giới so với giấy chứng nhận đã cấp đối với trường hợp thửa đất gốc đã có Giấy chứng nhận, phần diện tích đất tăng thêm chưa được cấp Giấy chứng nhận",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f4b1d-dcd3-70c4-8e82-0d6b9eecdb0f",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "giao-dat-o-khong-dau-gia-lao-cai",
+      "code": "1.115684",
+      "label": "Lào Cai - Giao đất ở có thu tiền sử dụng đất không thông qua đấu giá, không đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất đối với cá nhân là cán bộ, công chức, viên chức, sĩ quan tại ngũ, quân nhân chuyên nghiệp, công chức quốc phòng, công nhân và viên chức quốc phòng, sĩ quan, hạ sĩ quan, công nhân công an, người làm công tác cơ yếu và người làm công tác khác trong tổ chức cơ yếu hưởng lương từ ngân sách nhà nước mà chưa được giao đất ở, nhà ở; giáo viên, nhân viên y tế đang công tác tại các xã biên giới thuộc vùng có điều kiện kinh tế - xã hội khó khăn, vùng có điều kiện kinh tế - xã hội đặc biệt khó khăn nhưng chưa có đất ở, nhà ở tại nơi công tác hoặc chưa được hưởng chính sách hỗ trợ về nhà ở theo quy định của pháp luật về nhà ở; cá nhân thường trú tại xã mà không có đất ở và chưa được Nhà nước giao đất ở hoặc chưa được hưởng chính sách hỗ trợ về nhà ở theo quy định của pháp luật về nhà ở (cấp xã)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f4aed-8f5a-73fd-9c80-85f86af93723",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "gia-han-phuong-an-su-dung-dat-ket-hop-da-muc-dich-lao-cai",
+      "code": "1.115683",
+      "label": "Lào Cai - Gia hạn phương án sử dụng đất kết hợp đa mục đích",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f4ae8-d581-739f-ab7d-3d2ce3261750",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-cap-gcn-phan-dien-tich-con-lai-du-dieu-kien-lao-cai",
+      "code": "1.115692",
+      "label": "Lào Cai - Đăng ký, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất đối với trường hợp hộ gia đình, cá nhân đã được cấp giấy chứng nhận đối với một phần diện tích của thửa đất, phần diện tích còn lại chưa đủ điều kiện cấp giấy chứng nhận theo quy định của pháp luật tại thời điểm cấp giấy chứng nhận trước đây mà nay đủ điều kiện cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f4b1a-f8ad-75ba-895b-680a1e144d2d",
       "needsAgencySelect": true,
       "autoConfirm": true
     },
@@ -3661,6 +3702,16 @@
       "label": "Xóa đăng ký tạm trú",
       "url": "https://dichvucong.dancuquocgia.gov.vn/portal/p/home/dang-ky-tam-tru.html?ma_thu_tuc=1.004194&TT=TAMTRU_06&TT_NAME=X%C3%B3a%20%C4%91%C4%83ng%20k%C3%BD%20t%E1%BA%A1m%20tr%C3%BA",
       "needsAgencySelect": false,
+      "autoConfirm": false
+    },
+    {
+      "key": "xoa-dang-ky-thuong-tru",
+      "code": "1.003197",
+      "label": "Xóa đăng ký thường trú",
+      "url": "https://dichvucong.bocongan.gov.vn/bocongan/bothutuc/tthc?matt=26348",
+      "needsAgencySelect": false,
+      "directSubmit": true,
+      "bcaSubmit": true,
       "autoConfirm": false
     },
     {
@@ -4096,6 +4147,14 @@
       "autoConfirm": true
     },
     {
+      "key": "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an-lai-chau",
+      "code": "1.115591",
+      "label": "Lai Châu - Tổ chức kinh tế nhận chuyển nhượng, thuê quyền sử dụng đất, nhận góp vốn bằng quyền sử dụng đất để thực hiện dự án đầu tư",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f3bbd-8f99-737a-b15a-1a7e10f94cbd",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau",
       "code": "1.115578",
       "label": "Lai Châu - Chuyển mục đích sử dụng đất; chuyển hình thức sử dụng đất; gia hạn sử dụng đất khi hết thời hạn sử dụng đất; điều chỉnh thời hạn sử dụng đất của dự án đầu tư (Đối với các xã miền núi, biên giới; đảo; vùng có điều kiện kinh tế - xã hội khó khăn; vùng có điều kiện kinh tế - xã hội đặc biệt khó khăn)",
@@ -4174,6 +4233,40 @@
         "xa": {},
         "so": {"selectSo": true}
       },
+      "autoConfirm": true
+    },
+    {
+      "key": "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa",
+      "code": "1.115148",
+      "label": "Khánh Hòa - Thủ tục tính hoặc tính lại tiền sử dụng đất theo quy định tại các điểm a, b, c và d khoản 2 Điều 12 Nghị định số 50/2026/NĐ-CP ngày 31/01/2026 của Chính phủ",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019e8732-a3da-753b-85f5-0590fe1e27c7",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-giay-phep-thi-cong-cong-trinh-tren-duong-bo-dang-khai-thac",
+      "code": "1.013061",
+      "label": "Cấp giấy phép thi công công trình trên đường bộ đang khai thác",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-88c8-7734-ad0e-b5e2bc20de96",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-bac-ninh",
+      "code": "1.115462",
+      "label": "Bắc Ninh - Xác nhận tiếp tục sử dụng đất nông nghiệp",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f1295-8758-714f-8aa7-330de9b7d93d",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "selectSo": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "khai-tu-luu-dong",
+      "code": "1.000419",
+      "label": "Thủ tục đăng ký khai tử lưu động",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfd-380b-73c4-9566-9e8b26bbfec6",
+      "needsAgencySelect": true,
       "autoConfirm": true
     }
   ]

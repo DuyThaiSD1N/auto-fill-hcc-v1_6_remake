@@ -54,6 +54,9 @@ from app.pipelines.tach_ho.process.mapper import (
 from app.pipelines.xoa_dang_ky_tam_tru.process.mapper import (
     with_account_process_options as with_xoa_tam_tru_account_process_options,
 )
+from app.pipelines.xoa_dang_ky_thuong_tru.process.mapper import (
+    with_account_process_options as with_xoa_thuong_tru_account_process_options,
+)
 from app.pipelines.cap_doi_the_can_cuoc.process.mapper import (
     with_account_process_options as with_cap_doi_the_can_cuoc_account_process_options,
 )
@@ -189,6 +192,9 @@ async def process(body: ProcessReq, background: BackgroundTasks,
         prepared.pipeline_options = with_xoa_tam_tru_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )
+        prepared.pipeline_options = with_xoa_thuong_tru_account_process_options(
+            prepared.pipeline_options, user, body.procedure
+        )
         prepared.pipeline_options = with_cap_doi_the_can_cuoc_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )
@@ -241,8 +247,9 @@ async def process(body: ProcessReq, background: BackgroundTasks,
     review_token = create_review_capability(request_id) if review_data else None
     # Lượt soát chạy nền sau khi trả lượt điền đầu; trạng thái "đang soát" ghi trước để lượt hỏi đầu tiên đã thấy.
     second = result.pop("_second_pass", None)
-    if second:
-        await second_pass.start(request_id, user["id"], second, result["fields"])
+    if second and not await second_pass.start(request_id, user["id"], second, result["fields"]):
+        # Lượt soát không chạy: dọn tác vụ nền lượt đầu để dành cho nó (vd lượt đọc ảnh hộ kinh doanh).
+        getattr(second, "cancel", lambda: None)()
 
     # TẤT CẢ việc lưu vết (disk + 4 lượt Mongo) đẩy sang NỀN: fields đã sẵn sàng ngay đây,
     # người dùng KHÔNG cần chờ audit/trace/finish ghi xong. Cắt phần "im lặng" sau OCR+LLM.

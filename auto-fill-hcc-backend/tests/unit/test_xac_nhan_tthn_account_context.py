@@ -119,3 +119,52 @@ def test_account_address_codes_from_portal_are_decoded():
         "tinh": "40", "xa": "17059", "diaChi": "Xóm Tam Long"}}})
     assert ctx["NoiCuTru"]["tinh"].endswith("Nghệ An")
     assert "Tam Hợp" in ctx["NoiCuTru"]["xa"] and ctx["NoiCuTru"]["diaChi"] == "Xóm Tam Long"
+
+
+# --- Form cũ eForm Bộ Tư pháp (key xac-nhan-tinh-trang-hon-nhan-eform) ---------------------------------------------
+
+_EFORM_KEY = "xac-nhan-tinh-trang-hon-nhan-eform"
+
+
+def _popup_detect_key(url: str) -> str | None:
+    """Mô phỏng bước khớp URL của popup: urlScope chặn host trước, rồi mới xét urlIncludes (đã lower-case)."""
+    from app.procedures.ke_khai_links import with_ke_khai_detect_urls
+    from app.procedures.registry import public_list
+
+    url = url.lower()
+    for proc in with_ke_khai_detect_urls(public_list()):
+        detect = proc.get("detect") or {}
+        scope = detect.get("urlScope") or []
+        if scope and not any(s and str(s).lower() in url for s in scope):
+            continue
+        if any(u and str(u).lower() in url for u in detect.get("urlIncludes") or []):
+            return proc["key"]
+    return None
+
+
+def test_eform_cu_noi_ve_pipeline_xac_nhan_tthn():
+    from app.pipelines.xac_nhan_tthn.attach import plan as old_attach
+    from app.pipelines.xac_nhan_tthn.process import run as old_run
+    from app.procedures.registry import get_attach_pipeline, get_pipeline, get_procedure
+
+    entry = get_procedure(_EFORM_KEY)
+    assert entry["formVariantOf"] == "xac-nhan-tinh-trang-hon-nhan"
+    assert entry["hasAttachmentStep"] is True and entry["supportsSplitDocuments"] is True
+    assert entry["collectFormContext"] is True
+    assert get_pipeline(_EFORM_KEY) is old_run
+    assert get_attach_pipeline(_EFORM_KEY) is old_attach
+    # Key gốc vẫn chạy Cổng DVC quốc gia mới.
+    assert get_pipeline("xac-nhan-tinh-trang-hon-nhan") is not old_run
+
+
+def test_eform_cu_nhan_dien_theo_url_moj_khong_tranh_voi_dvc_moi():
+    moj = "https://dichvucongnganhtuphap.moj.gov.vn/nop-ho-so/100001?tinhThanhId=1&maThuTuc=1.004873&MaDVC=1.004873.01"
+    assert _popup_detect_key(moj) == _EFORM_KEY
+    dvc_moi = "https://dichvucong.gov.vn/nop-ho-so?formalityId=019d2bfd-6eb3-7019-bf3f-fc58c9ee44b9"
+    assert _popup_detect_key(dvc_moi) == "xac-nhan-tinh-trang-hon-nhan"
+
+
+def test_eform_cu_chi_cho_auto_fill_khong_len_tro_ly():
+    from app.channels.handfree.procedure_registry import PROCEDURES as HANDFREE_PROCEDURES
+
+    assert all(p.get("key") != _EFORM_KEY for p in HANDFREE_PROCEDURES)

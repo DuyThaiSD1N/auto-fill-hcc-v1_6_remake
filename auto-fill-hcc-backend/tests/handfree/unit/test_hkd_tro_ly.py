@@ -4,7 +4,7 @@ import time
 import pytest
 
 from app.channels.handfree.chat import hkd_tro_ly as hkd
-from app.channels.handfree.chat import pipeline_runner, router
+from app.channels.handfree.chat import flow, pipeline_runner, router, tracing
 from app.channels.handfree.chat import script_vi as vi
 from app.channels.handfree.chat.hkd_tro_ly import hoi_dap, nganh_nghe
 from app.channels.handfree.chat.intents import Intent
@@ -26,9 +26,16 @@ def _no_db(monkeypatch):
     async def no_user(conv, sess):
         return None
     monkeypatch.setattr(pipeline_runner, "_load_owner_user", no_user)
+    traces = []
+
+    async def fake_record(conv, key, proc, files, result, pipe_ms, *a, **k):
+        traces.append({"key": key, "files": files, "fields": result.get("fields"), "page": k.get("fill_page")})
+        return "req_test"
+    monkeypatch.setattr(tracing, "record_process", fake_record)
     # Test luồng khối giả lập cách hiểu một lượt (hoi_dap.interpret); hai lớp agent có test riêng
     # (test_hkd_agents.py) — không để test này gọi LLM thật.
     monkeypatch.setattr(hkd.agents, "ENABLED", False)
+    return traces
 
 
 def _fake_lookup(monkeypatch, rows, chinh="", hoi_lai=""):
@@ -96,6 +103,11 @@ async def _drive(conv, first, limit=80, same=None):
     raise AssertionError(f"kẹt: khối {hkd._page(conv['hkd'])} mục {conv['hkd'].get('field')}")
 
 
+def _leads(r):
+    """Bong bóng riêng đứng trước câu chính (lead_message) — kết quả kiểm trùng tên."""
+    return [a["md"] for a in r.actions if a["type"] == "lead_message"]
+
+
 _ANSWERS = {
     "dia_chi_kd": {"tinh": "Bắc Ninh", "xa": "Kinh Bắc", "diaChi": "Số 5 Ngô Gia Tự", "quocGia": "Việt Nam"},
     "dien_thoai": "0912345678", "email": "__skip__", "fax": "__skip__", "website": "__skip__", "nganh_them": False,
@@ -154,6 +166,19 @@ async def test_khong_giay_to_di_tung_khoi_hoi_toi_dau_dien_toi_do(monkeypatch):
     assert not any(f["name"].endswith("FULL_NAMEFld") for f in owner), "không hỏi/bịa nhân thân"
     assert set(conv["hkd"]["skipped"]) == {"email", "fax", "website", "ten_nuoc_ngoai", "ten_viet_tat"}
     assert conv["state"] == "done" and vi.HKD_DONE["md"].split("{")[0] in r.display_md
+
+
+async def test_khong_giay_to_moi_trang_luu_xong_ghi_mot_luot_dien_va_ho_so_duoc_tinh(monkeypatch, _no_db):
+    _fake_lookup(monkeypatch, [("Mở quán phở bò", ["5610"], True, "Bán phở bò")], chinh="5610")
+    _fake_answers(monkeypatch, _ANSWERS)
+    conv = _conv(procedure_key="dang-ky-kinh-doanh")
+    first = await hkd.start_no_docs(conv)
+    assert not flow.dossier_has_real_work(conv) and not _no_db
+    await _drive(conv, first)
+    assert [t["page"] for t in _no_db] == [hkd._label(p) for p in ORDER], "mỗi trang lưu xong là một lượt, mang tên trang"
+    assert all(t["key"] == "dang-ky-kinh-doanh" and t["files"] == [] for t in _no_db)
+    assert all(t["fields"] for t in _no_db), "lượt ghi mang các ô của trang vừa lưu"
+    assert flow.dossier_has_real_work(conv), "cú bấm nộp sau đó được tính như hồ sơ có việc điền"
 
 
 async def test_ho_gia_dinh_co_khoi_thanh_vien(monkeypatch):
@@ -285,6 +310,41 @@ async def test_co_giay_dien_luon_moi_khoi_roi_bao_o_thieu_va_bo_sung(monkeypatch
     assert all(not s["attachments"] for s in log["saves"][1:]), "tệp đã đính ở lượt điền luôn"
     owner = log["saves"][0]["pages"]["chu-ho-kinh-doanh"]
     assert not any(f["name"] == "__copyAccount" for f in owner), "chủ hộ lấy từ giấy tờ"
+
+
+async def test_co_giay_dien_luon_xong_tu_kiem_trung_ten_chi_canh_bao_roi_doc_o_thieu(monkeypatch):
+    _fake_answers(monkeypatch, _ANSWERS)
+    docs = _DOCS_FULL + [{"name": "HoKinhDoanh_TenVietTat", "value": "HKD A"}]
+    conv = _conv(business_facts=docs, pipeline_status="business_ready",
+                 client_capabilities={hkd.CAPABILITY: True, hkd.NAME_CHECK_CAPABILITY: True})
+    await hkd.start_review(conv)
+    r = await hkd.handle(conv, PROC, Intent("action", "business_report", {"ok": True}))
+    check = next(a for a in r.actions if a["type"] == "hkd_check_name")
+    assert (check["slot"], check["name"], check["kind"]) == ("ten_ho", "A", "vi")
+    assert conv["hkd"]["phase"] == "check_name" and "Còn thiếu" not in r.display_md, "chờ kết quả kiểm rồi mới đọc ô thiếu"
+    r = await hkd.handle(conv, PROC, Intent("event", "hkd_name_checked", {
+        "slot": "ten_ho", "name": "A", "ok": True, "names": ["A", "A B"],
+        "text": "Có 2 Hộ kinh doanh (đơn vị trực thuộc) có tên trùng, tương tự như : A"}))
+    check = next(a for a in r.actions if a["type"] == "hkd_check_name")
+    assert check["slot"] == "ten_viet_tat", "tên viết tắt trên giấy cũng kiểm"
+    # Kết quả tên viết tắt không về, công dân nói luôn → coi là chưa kiểm được, đọc danh sách ô thiếu.
+    r = await hkd.handle(conv, PROC, Intent("action", "hkd_answer", {"text": "xong chưa"}))
+    assert conv["hkd"]["phase"] == "offer" and not conv["hkd"].get("fill_all_check")
+    notes = _leads(r)
+    assert len(notes) == 2 and notes[0].startswith("⛔ Cổng có **2 hộ kinh doanh**") and "1 hộ trùng hẳn" in notes[0], \
+        "cảnh báo trùng tên (đỏ đậm) là bong bóng riêng trước danh sách ô thiếu"
+    assert "chưa kiểm được trùng tên" in notes[1] and "Còn thiếu" in r.display_md and "Cổng có" not in r.display_md
+    assert "kiểm tra trùng tên" not in r.display_md.split("Còn thiếu")[1] and "giữ hay đổi" not in r.display_md, \
+        "chỉ cảnh báo: không đưa kiểm tên / giữ hay đổi tên vào danh sách ô thiếu"
+    assert not any(hkd._needed(conv["hkd"], k) for k in ("ten_ho_giu", "ten_viet_tat_giu"))
+
+
+async def test_co_giay_extension_chua_khai_kiem_ten_thi_doc_o_thieu_ngay(monkeypatch):
+    _fake_answers(monkeypatch, _ANSWERS)
+    conv = _conv(business_facts=_DOCS_FULL, pipeline_status="business_ready")
+    await hkd.start_review(conv)
+    r = await hkd.handle(conv, PROC, Intent("action", "business_report", {"ok": True}))
+    assert conv["hkd"]["phase"] == "offer" and not any(a["type"] == "hkd_check_name" for a in r.actions)
 
 
 async def test_co_giay_thieu_von_bao_thieu_roi_chi_hoi_von(monkeypatch):
@@ -622,7 +682,8 @@ async def test_ten_ho_kiem_trung_tren_cong_trung_thi_hoi_giu_hay_doi(monkeypatch
     r = await hkd.handle(conv, PROC, Intent("event", "hkd_name_checked", {
         "slot": "ten_ho", "name": "PHỞ HÙNG", "ok": True, "names": ["PHỞ HÙNG CƯỜNG", "PHỞ HÙNG", "PHỞ HÙNG"],
         "text": "Có 7 Hộ kinh doanh (đơn vị trực thuộc) có tên trùng, tương tự như : PHỞ HÙNG"}))
-    assert conv["hkd"]["field"] == "ten_ho_giu" and "7 hộ kinh doanh" in r.display_md and "2 hộ trùng hẳn" in r.display_md
+    assert conv["hkd"]["field"] == "ten_ho_giu" and "7 hộ kinh doanh" in _leads(r)[0] and "2 hộ trùng hẳn" in _leads(r)[0]
+    assert _leads(r)[0].endswith(": PHỞ HÙNG; PHỞ HÙNG CƯỜNG"), "tên lặp chỉ đọc một lần"
     assert [c["label"] for c in r.chips] == [vi.HKD_NAME_KEEP_LABEL, vi.HKD_NAME_CHANGE_LABEL]
     r = await hkd.handle(conv, PROC, Intent("action", "hkd_value", {"v": False}))
     assert conv["hkd"]["field"] == "ten_ho", "đổi tên → hỏi lại tên"
@@ -632,7 +693,34 @@ async def test_ten_ho_kiem_trung_tren_cong_trung_thi_hoi_giu_hay_doi(monkeypatch
     r = await hkd.handle(conv, PROC, Intent("event", "hkd_name_checked", {
         "slot": "ten_ho", "name": "PHỞ HÙNG MẪU", "ok": True, "names": [],
         "text": "Không có Hộ kinh doanh (đơn vị trực thuộc) nào có tên trùng, tương tự như : PHỞ HÙNG MẪU"}))
-    assert "không có hộ kinh doanh nào trùng" in r.display_md and conv["hkd"]["field"] == "ten_nuoc_ngoai"
+    assert "không có hộ kinh doanh nào trùng" in _leads(r)[0] and conv["hkd"]["field"] == "ten_nuoc_ngoai"
+
+
+async def test_ten_noi_kem_ho_kinh_doanh_thi_kiem_dung_chu_trong_o_ten_va_danh_sach_co_ten_la_trung(monkeypatch):
+    _fake_answers(monkeypatch, {**_ANSWERS, "ten_ho": "Hộ kinh doanh Phở Hùng."})
+    conv = _conv(client_capabilities={hkd.CAPABILITY: True, hkd.NAME_CHECK_CAPABILITY: True})
+    conv["hkd"] = await hkd._base_state(conv, "khong_giay")
+    conv["hkd"].update(block=hkd._blocks(conv["hkd"]).index("ten-ho-kinh-doanh"), phase="ask", field="ten_ho")
+    r = await hkd.handle(conv, PROC, Intent("action", "hkd_answer", {"text": "hộ kinh doanh phở hùng"}))
+    assert next(a for a in r.actions if a["type"] == "hkd_check_name")["name"] == "PHỞ HÙNG"
+    # Câu đếm của cổng không đọc được nhưng bảng có tên → vẫn là trùng; tên chứa nguyên tên này đọc lên trước.
+    r = await hkd.handle(conv, PROC, Intent("event", "hkd_name_checked", {
+        "slot": "ten_ho", "name": "PHỞ HÙNG", "ok": True, "names": ["BÚN BÒ HÙNG", "PHỞ HÙNG 1990", "PHỞ HÙNG"],
+        "text": "Kết quả tìm kiếm"}))
+    assert conv["hkd"]["field"] == "ten_ho_giu" and "3 hộ kinh doanh" in _leads(r)[0]
+    assert "PHỞ HÙNG; PHỞ HÙNG 1990; BÚN BÒ HÙNG" in _leads(r)[0]
+
+
+async def test_ten_viet_tat_cung_kiem_trung_bang_api_ten_tieng_viet(monkeypatch):
+    _fake_answers(monkeypatch, {**_ANSWERS, "ten_ho": "Phở Hùng"})
+    conv = _conv(client_capabilities={hkd.CAPABILITY: True, hkd.NAME_CHECK_CAPABILITY: True})
+    conv["hkd"] = await hkd._base_state(conv, "khong_giay")
+    conv["hkd"]["values"].update(ten_ho="Phở Hùng", ten_nuoc_ngoai="__skip__", ten_viet_tat="PH")
+    conv["hkd"]["name_check"] = {"ten_ho": {"name": "PHỞ HÙNG", "count": 0}}
+    conv["hkd"].update(block=hkd._blocks(conv["hkd"]).index("ten-ho-kinh-doanh"), phase="ask")
+    r = hkd._ask_next(conv)
+    check = next(a for a in r.actions if a["type"] == "hkd_check_name")
+    assert (check["slot"], check["kind"], check["name"]) == ("ten_viet_tat", "vi", "PH")
 
 
 async def test_extension_cu_khong_khai_kiem_ten_thi_khong_cho_ket_qua(monkeypatch):
@@ -1037,3 +1125,62 @@ async def test_luu_khoi_thue_chon_giong_tru_so_gui_trang_thue_hai_lan_de_dao_rad
                                                                "quocGia": "Việt Nam"})
     save = next(a for a in hkd._save(conv).actions if a["type"] == "start_business_registration")
     assert save["businessFlow"]["pageOrder"] == ["thong-tin-ve-thue"]
+
+
+# ── Có giấy tờ: điều chỉnh giấy tờ / điền lại / đi tắt chuẩn bị; chờ máy điền quá lâu ──
+
+async def _offer(monkeypatch, **caps):
+    _fake_answers(monkeypatch, _ANSWERS)
+    conv = _conv(business_facts=_DOCS_FULL, pipeline_status="business_ready", upload_session_id="s1",
+                 client_capabilities={hkd.CAPABILITY: True, **caps})
+    await hkd.start_review(conv)
+    r = await hkd.handle(conv, PROC, Intent("action", "business_report", {"ok": True, "attached": 2}))
+    assert conv["hkd"]["phase"] == "offer"
+    return conv, r
+
+
+async def test_co_giay_o_buoc_con_thieu_co_nut_dieu_chinh_dien_lai_va_di_tat_chuan_bi(monkeypatch):
+    conv, r = await _offer(monkeypatch, **{hkd.PREPARE_CAPABILITY: True})
+    sends = [c["send"] for c in r.chips]
+    assert sends == ["__action:hkd_fill_missing", "__action:hkd_prepare", "__action:add_documents", hkd.REFILL_SEND]
+    prepare = await hkd.handle(conv, PROC, Intent("action", "hkd_prepare"))
+    assert prepare.actions == [{"type": "hkd_prepare"}] and conv["hkd"]["phase"] == "prepare"
+
+
+async def test_khong_giay_khong_co_nut_dieu_chinh_dien_lai(monkeypatch):
+    conv = _conv()
+    await hkd.start_no_docs(conv)
+    conv["hkd"]["phase"] = "ready_prepare"
+    assert hkd.REFILL_SEND not in [c["send"] for c in hkd._phase_chips(conv)]
+
+
+async def test_dien_lai_day_lai_moi_khoi_khong_dinh_lai_va_giu_so_tep_da_dinh(monkeypatch):
+    conv, _ = await _offer(monkeypatch)
+    conv["hkd"]["values"]["fax"] = "0241234567"  # câu trả lời của vòng hỏi phải có trong lượt điền lại
+    r = await hkd.handle(conv, PROC, Intent("action", "hkd_refill"))
+    fill = r.actions[0]
+    assert fill["type"] == "start_business_registration" and fill["attachments"] == [] and fill["session_id"] == ""
+    assert any(f.get("value") == "0241234567" for f in fill["pages"]["dia-chi"])
+    await hkd.handle(conv, PROC, Intent("action", "business_report", {"ok": True, "attached": 0}))
+    assert conv["hkd"]["attached"] == 2
+
+
+async def test_cho_luu_qua_lau_thi_cau_noi_ke_tiep_nhan_nut_thu_lai(monkeypatch):
+    conv, _ = await _offer(monkeypatch)
+    await hkd.handle(conv, PROC, Intent("action", "hkd_refill"))
+    st = conv["hkd"]
+    waiting = await hkd.handle(conv, PROC, Intent("action", "hkd_skip"))
+    assert "đang điền các khối" in waiting.display_md and not waiting.chips
+    assert not hkd.asking(conv), "chưa quá mốc: câu nói vẫn đi bộ phân loại chung"
+    st["saving_at"] = time.time() - 200
+    assert hkd.asking(conv)
+    stuck = await hkd.handle(conv, PROC, Intent("action", "hkd_answer", {"text": "sao lâu thế"}))
+    assert [c["send"] for c in stuck.chips] == ["__action:hkd_retry"]
+    again = await hkd.handle(conv, PROC, Intent("action", "hkd_retry"))
+    assert again.actions[0]["type"] == "start_business_registration" and time.time() - st["saving_at"] < 5
+
+
+def test_loi_doc_nganh_chi_doc_ten_khong_doc_ma():
+    st = {"nganh": [{"hoatDong": "bán tạp hóa", "ma": ["4711"]}]}
+    md, tts = hkd._question(st, "nganh_chon")  # một mã chưa chắc → câu nganh_chon_mot
+    assert "4711" in md and "4711" not in tts and nganh_nghe.ten("4711") in tts

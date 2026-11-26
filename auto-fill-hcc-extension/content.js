@@ -50,7 +50,7 @@
   // header hiện "1.17 · 8/9" trong khi manifest đã là 1.17.0.6. Đúng lúc cần trả
   // lời "bản vá đã tới máy này chưa?" thì nhãn lại nói sai.
   // NGÀY vẫn ghi tay (để hỗ trợ), đổi cùng mục đầu changelog.js — tests/release-version.test.js kiểm.
-  const APP_RELEASE_DATE = "23/11";
+  const APP_RELEASE_DATE = "26/11";
   const APP_VERSION_LABEL = (() => {
     let v = "?";
     try { v = chrome.runtime.getManifest().version; } catch (e) { /* context đã mất */ }
@@ -1217,6 +1217,9 @@
     try {
       chrome.storage.local.remove([FILLALL_STATE_KEY, ATTACHALL_STATE_KEY, ENTERPRISE_FILLALL_STATE_KEY]);
     } catch (e) { /* ignore */ }
+    // Bản sao state trong sessionStorage (business-registration.js đọc khi storage trống) — không xoá thì engine đang chờ
+    // (vd chờ kết quả soát) đọc lại bản sao rồi điền tiếp.
+    try { window.sessionStorage.removeItem("__af_fillall_state_mirror"); } catch (e) { /* ignore */ }
     sessDel(SS_FILLALL);
     sessDel(SS_FILLALL_STEP);
     reopenPanelWithFillAllResult("Đã dừng tiến trình tự động. Bạn có thể thao tác lại trên trang.", "warn");
@@ -1540,6 +1543,9 @@
         businessDefaults: (msg && msg.businessDefaults) || null,
         // Gộp đính kèm: điền xong 8 trang → tự chạy state machine đính kèm (nếu popup gửi kèm).
         attachPayload: (msg && msg.attachPayload) || null,
+        // Điền đợt 2 ({requestId, at}): đính kèm TRƯỚC trong lúc BE soát, đính xong lấy các trang đã soát rồi mới điền.
+        secondPass: (msg && msg.secondPass && msg.secondPass.requestId) ? msg.secondPass : null,
+        attachFirst: !!(msg && msg.secondPass && msg.secondPass.requestId && msg.attachPayload),
         // Còn đứng ở wizard (Chọn loại đăng ký / Xác nhận) thì tự bấm Thành lập mới → Tiếp theo → Bắt đầu
         // trước khi điền; đã ở trong hồ sơ thì bước này tự đánh dấu xong ngay lượt đầu.
         createBootstrap: true,
@@ -1793,6 +1799,12 @@
       try { fields = H.applyBusinessLocalDefaults(fields, msg.businessDefaults, msg.businessPage); }
       catch (e) { console.warn("[AutoFill] default theo địa bàn:", e); }
     }
+    // Giấy không ghi mã ngành → BE gửi tên ngành OCR vào ô "Ngành, nghề chưa khớp mã". Tài khoản có câu ghi chú cố định
+    // (Xuân Hương, Lâm Đồng…) thì ô đó vẫn phải là đúng câu cố định như khi có mã.
+    const businessActText = String(msg.businessDefaults?.businessActText || "").trim();
+    if (msg.businessPage === "nganh-nghe-kinh-doanh" && businessActText) {
+      fields = fields.map((f) => (String(f?.name || "").endsWith("BUSINESS_ACT_TEXTFld") ? { ...f, value: businessActText } : f));
+    }
     if (!fields.length) { sendResponse({ error: "Không có trường nào để điền." }); return; }
     // comp "bca-*" (cổng Bộ Công an) chỉ engine standard biết; bước đính kèm hộ chiếu gửi riêng ô ảnh chân dung
     // "bca-photo" (không kèm ô dom-*) → vẫn phải vào fillFormStandard.
@@ -2036,7 +2048,9 @@
             // Đang chạy fill-all / đính-kèm nhiều bước → không mount panel; giữ cờ sync + banner cho nhịp sau.
             if (fillSt || attachSt) {
               sessSet(SS_FILLALL, "1");
-              if (fillSt && typeof fillSt.step === "number" && Array.isArray(fillSt.order)) {
+              // Đang đính kèm trước khi điền (điền đợt 2): banner đính kèm, không phải "Đang điền trang 1/8".
+              if (fillSt && fillSt.phase !== "attaching-first" && typeof fillSt.step === "number"
+                && Array.isArray(fillSt.order)) {
                 setFillAllProgress(fillSt.step + 1, fillSt.order.length, "");
               } else if (attachSt && !document.getElementById(FILLALL_BANNER_ID)) {
                 showFillAllProgress("Đang đính kèm hồ sơ...");
@@ -2392,6 +2406,8 @@
     console.log("[FillAll] chèn lượt chốt địa chỉ thuế vào cuối order");
     return [...order, taxKey];
   }
+  // Trang thuế có thể đổi sau điền đợt 2 (engine HkdOnline tính lại thứ tự trước khi điền).
+  H.withFinalTaxPass = withFinalTaxPass;
 
   // readAcctContact: đọc sđt/email tài khoản (span _Vw chế độ xem, fallback input). Dùng bởi business-registration.js.
   function readAcctContact(baseId) {
@@ -5064,13 +5080,22 @@
     const call = `load_table_tphs_new(${index})`;
     const byHandler = Array.from(document.querySelectorAll("a[href], [onclick]")).find((el) =>
       `${el.getAttribute("href") || ""} ${el.getAttribute("onclick") || ""}`.replace(/\s+/g, "").includes(call));
-    if (byHandler) return byHandler;
     const want = bcaText(label);
-    const hit = Array.from(document.querySelectorAll("a p, a span, a")).find((el) => {
+    // Trang khác thủ tục (vd xác nhận thông tin cư trú TT=THUONGTRU_09) có thể đánh số nhóm khác trang thường trú →
+    // link đúng số nhưng KHÁC chữ nhóm thì dò lại theo chữ; không thấy mới dùng link theo số.
+    if (byHandler && (!want || bcaText(byHandler.textContent).includes(want))) return byHandler;
+    const hit = want && Array.from(document.querySelectorAll("a p, a span, a")).find((el) => {
       const text = bcaText(el.textContent);
       return text.includes(want) && text.length <= want.length + 20;
     });
-    return hit?.closest("a") || null;
+    return hit?.closest("a") || byHandler || null;
+  }
+
+  // Số nhóm thật của link mở nhóm (load_table_tphs_new(i)) — null khi link không mang số.
+  function bcaToggleIndex(toggle) {
+    const match = `${toggle?.getAttribute?.("href") || ""} ${toggle?.getAttribute?.("onclick") || ""}`
+      .replace(/\s+/g, "").match(/load_table_tphs_new\((\d+)\)/);
+    return match ? Number(match[1]) : null;
   }
 
   // Bảng của nhóm: trong #tphs_new_<i>, hoặc (cổng vẽ ra chỗ khác) bảng có ô chọn tệp MỚI xuất hiện sau cú bấm.
@@ -5122,11 +5147,12 @@
   }
 
   async function bcaOpenGroup(index, label) {
+    const toggle = bcaGroupToggle(index, label);
+    index = bcaToggleIndex(toggle) ?? index; // link tìm theo chữ nhóm → dùng số nhóm thật của trang
     const current = document.getElementById(`tphs_new_${index}`);
     if (bcaGroupRows(current).length && isVisible(current)) return current; // đang mở — bấm nữa là đóng lại
     const before = new Set(document.querySelectorAll('input[type="file"]'));
     const loaded = () => bcaLoadedContainer(index, before);
-    const toggle = bcaGroupToggle(index, label);
     if (toggle) {
       toggle.scrollIntoView?.({ block: "center" });
       toggle.click(); // MỘT lần: bấm lại là hỏi/chuyển lần nữa
@@ -5167,7 +5193,8 @@
     return row ? (row.closest("table") || row.parentElement) : null;
   }
 
-  // Ô phụ của dòng giấy tờ — Loại giấy tờ (cboKIND_OF_FILE<i>), Số lượng (txtNUM_OF_DOC<i>), Ghi chú (txtNOTE_OF_DOC<i>):
+  // Ô phụ của dòng giấy tờ — Loại giấy tờ (cboKIND_OF_FILE<i>), Số lượng (txtNUM_OF_DOC<i>), Ghi chú (txtNOTE_OF_DOC<i>
+  // trang thường trú, txtFILE_NOTE<i> trang tạm trú):
   // BE gửi `rowFields` {kind, count, note}. Ô không có trên dòng thì bỏ qua; Số lượng / Ghi chú chỉ ghi khi đang trống
   // (đính kèm lại không ghi đè chữ cán bộ đã sửa).
   function bcaFillRowFields(row, fields) {
@@ -5181,8 +5208,8 @@
         kind.dispatchEvent(new Event("change", { bubbles: true }));
       }
     }
-    for (const [prefix, value] of [["txtNUM_OF_DOC", fields.count], ["txtNOTE_OF_DOC", fields.note]]) {
-      const input = row.querySelector(`input[id^="${prefix}"], textarea[id^="${prefix}"]`);
+    for (const [prefixes, value] of [[["txtNUM_OF_DOC"], fields.count], [["txtNOTE_OF_DOC", "txtFILE_NOTE"], fields.note]]) {
+      const input = row.querySelector(prefixes.map((p) => `input[id^="${p}"], textarea[id^="${p}"]`).join(", "));
       // Cổng điền sẵn Số lượng "0" — coi như trống.
       const current = String(input?.value || "").trim();
       if (input && value && !input.disabled && (!current || current === "0")) {
@@ -6297,7 +6324,9 @@
         readInputLikeValue("CongDan_tenCongDan") ||
         readBacNinhAccountValue("hoTen") ||
         readLizAccountValue(["ten nguoi"]) ||
-        readSurveyJsAccountValue("citizenName"),
+        readSurveyJsAccountValue("citizenName") ||
+        // Lý lịch tư pháp (3.000333) đã chọn "Khai hộ": tài khoản là người được ủy quyền.
+        readSurveyJsAccountValue("citizenHoVaTen_NYC_UyQuyen"),
       applicantIdentityNumber:
         readInputLikeValue("data[identityNumber]") ||
         readNgReflectValue("ng-reflect-identity-number") ||
@@ -6305,7 +6334,10 @@
         readInputLikeValue("CongDan_soCmnd") ||
         readBacNinhAccountValue("soDinhDanh") ||
         readLizAccountValue(["cmnd", "so dinh danh"]) ||
-        readSurveyJsAccountValue("citizenIdentity"),
+        readSurveyJsAccountValue("citizenIdentity") ||
+        // Lý lịch tư pháp (3.000333): số giấy tờ của tài khoản ở khối Cá nhân / Khai hộ.
+        readSurveyJsAccountValue("citizenSoGiayTo") ||
+        readSurveyJsAccountValue("citizenSoGiayTo_NYC_UyQuyen"),
       ownerFullname: readInputLikeValue("data[ownerFullname]"),
       ownerIdentityNumber: readInputLikeValue("data[ownerIdentityNumber]"),
       ownerDossierChecked: !!checkbox?.checked,
@@ -8882,13 +8914,46 @@
   // đó mở hộp chọn tệp của Windows). Cổng đọc tệp lúc change (kiểm .jpg + dung lượng, hiện tên / ảnh xem trước) — SUY theo
   // DOM đã ghi ở attach-core.js, chưa chạy cổng thật.
   // Bản copy ở tro-ly-nguoi-dan-extension-main/content/fill-core.js (fillBcaPhotoField) — sửa một bên thì port bên kia.
-  function findBcaPhotoInput(name) {
+  // Chữ của RIÊNG một ô tải ảnh (chữ + placeholder / title / aria-label): khung = tổ tiên lớn nhất (tối đa 5 cấp) chỉ
+  // chứa đúng một input file. Cha đã chứa nhiều ô (ba ô đứng phẳng một hàng) → lấy các phần tử anh em đứng trước input,
+  // dừng ở ô tải ảnh liền trước.
+  function bcaPhotoSlotText(input) {
+    const FILE = 'input[type="file"]';
+    const hasFile = (el) => !!(el?.matches?.(FILE) || el?.querySelector?.(FILE));
+    let parts = [];
+    let box = input.parentElement;
+    if (box && box.querySelectorAll(FILE).length > 1) {
+      for (let el = input.previousElementSibling; el && !hasFile(el); el = el.previousElementSibling) parts.push(el);
+    } else {
+      for (let up = box?.parentElement, level = 0; up && up !== document.body && level < 4; up = up.parentElement, level++) {
+        if (up.querySelectorAll(FILE).length > 1) break;
+        box = up;
+      }
+      parts = box ? [box] : [];
+    }
+    const attrs = (el) => ["placeholder", "title", "aria-label"].map((a) => el?.getAttribute?.(a) || "");
+    const text = [input, ...parts].flatMap((el) => [
+      el === input ? "" : el.textContent || "", ...attrs(el),
+      ...Array.from(el?.querySelectorAll?.("[placeholder], [title], [aria-label]") || []).flatMap(attrs),
+    ]);
+    return foldChoiceText(text.filter(Boolean).join(" "));
+  }
+
+  function findBcaPhotoInput(name, match) {
     const key = String(name || "");
     const byName = key ? document.querySelector(`input[type="file"][name="${CSS.escape(key)}"]`) : null;
     if (byName) return byName;
     const suffix = key.replace(/^filename/i, "");
     const byId = suffix ? document.getElementById(`custom-file-input-${suffix}`) : null;
     if (byId) return byId;
+    // Ô không biết trước name (đăng ký xe nhập khẩu 1.013066, ảnh 24/11: "Ảnh phương tiện (*)", "Ảnh chứng từ nguồn gốc
+    // mặt trước / mặt sau (*)" + nút Tải ảnh): BE gửi `match` = cụm chữ đã bỏ dấu trên ô → input file có cụm đó trong chữ
+    // của riêng ô. Không rơi xuống dò "chân dung" bên dưới để khỏi gắn nhầm ô.
+    const want = foldChoiceText(match || "");
+    if (want) {
+      return Array.from(document.querySelectorAll('input[type="file"]'))
+        .find((input) => bcaPhotoSlotText(input).includes(want)) || null;
+    }
     // Trang biến thể đổi name: ô ảnh có chữ "chân dung" (ô trang hộ chiếu filenamehc của thẻ tạm trú 1.003460: "nhân
     // thân") quanh nó trong khối tải ảnh đầu trang.
     const inputs = Array.from(document.querySelectorAll('#A08-checkimg input[type="file"], input[type="file"][typeimg]'));
@@ -8912,7 +8977,7 @@
   }
 
   async function fillBcaPhotoField(f, result) {
-    const input = findBcaPhotoInput(f.name) || await waitFor(() => findBcaPhotoInput(f.name), 2500, 100);
+    const input = findBcaPhotoInput(f.name, f.match) || await waitFor(() => findBcaPhotoInput(f.name, f.match), 2500, 100);
     const file = input ? bcaPhotoFile(f.value) : null;
     if (!input || !file) {
       result.notFound.push(f.name);

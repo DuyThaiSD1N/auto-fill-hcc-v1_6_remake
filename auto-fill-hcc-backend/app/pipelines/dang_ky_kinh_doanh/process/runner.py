@@ -2,6 +2,7 @@
 
 import asyncio
 import contextlib
+import copy
 
 from app.pipelines._shared.compact_agent import runner
 from app.pipelines.dang_ky_kinh_doanh.process import mapper, ten_ho, vision
@@ -43,33 +44,65 @@ def _from_to_khai(form) -> dict:
 
 async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
     opts = options or {}
+    # Điền đợt 2 (lớp soát chạy nền trong lúc extension đính kèm) cần OCR từng tài liệu, field TRƯỚC mapper và lượt đọc
+    # ảnh — runner chung chỉ trả chuỗi OCR đã nối.
+    page = opts.get("page") or opts.get("businessPage") or DEFAULT_PAGE
+    all_pages = bool(opts.get("allPages")) or str(page).lower() in _ALL_PAGES
+    read: dict | None = {} if opts.get("_secondPass") and all_pages else None
     if mapper.TO_KHAI_OPTION in opts:
         res = _from_to_khai(opts[mapper.TO_KHAI_OPTION])
+        read = None  # tờ khai cán bộ nhập tay, không có giấy để soát
     else:
-        res = await _from_files(files_by_role)
-    page = opts.get("page") or opts.get("businessPage") or DEFAULT_PAGE
+        res = await _from_files(files_by_role, read)
     compact = res["fields"]  # facts thô (LLM hoặc tờ khai) — dùng để map cho từng trang
     skip_start_date = bool(opts.get(mapper.SKIP_START_DATE_OPTION))  # server đặt theo tài khoản
+    line_mode = str(opts.get(mapper.LINE_DETAIL_OPTION) or "")  # server đặt theo tài khoản
 
     # Chế độ FILL TẤT CẢ 8 trang trong 1 lần (extension tự lặp fill→lưu→sang trang).
-    if opts.get("allPages") or str(page).lower() in _ALL_PAGES:
-        res["pages"] = mapper.enrich_all(compact, skip_start_date=skip_start_date)
+    if all_pages:
+        res["pages"] = mapper.enrich_all(compact, skip_start_date=skip_start_date, line_mode=line_mode)
         res["fields"] = res["pages"].get(DEFAULT_PAGE, [])
         if opts.get("returnFacts"):
             # Handfree (trợ lý hộ kinh doanh) cần facts thô để hỏi bổ sung mục thiếu rồi map lại; API core không gửi cờ này.
             res["facts"] = compact
         res.setdefault("extracted", {})["page"] = "__all__"
+        if read and read.get("documents"):
+            from ..thanh_tra import dot_hai
+
+            raw_fields = copy.deepcopy(compact)
+
+            def second(base_fields):
+                return dot_hai.patch(read["documents"], raw_fields, opts, vision=read.get("vision"),
+                                     skip_start_date=skip_start_date)
+
+            # Đợt soát không được chạy (quá tải, lỗi ghi trạng thái) thì nơi gọi huỷ lượt đọc ảnh còn chạy dở.
+            second.cancel = lambda: _cancel(read.get("vision"))
+            # Nơi gọi pipeline lấy khoá này ra khỏi kết quả rồi chạy ở nền sau khi đã trả lượt điền đầu.
+            res["_second_pass"] = second
+        elif read:
+            _cancel(read.get("vision"))
         return res
 
-    res["fields"] = mapper.enrich(compact, page=page, skip_start_date=skip_start_date)
+    res["fields"] = mapper.enrich(compact, page=page, skip_start_date=skip_start_date, line_mode=line_mode)
     res.setdefault("extracted", {})["page"] = page
     return res
 
 
-async def _from_files(files_by_role: dict[str, list[dict]]) -> dict:
+def _cancel(task) -> None:
+    if isinstance(task, asyncio.Future) and not task.done():
+        task.cancel()
+
+
+async def _from_files(files_by_role: dict[str, list[dict]], read: dict | None = None) -> dict:
     # Qwen đọc ảnh chạy SONG SONG với OCR + LLM: hồ sơ đọc hỏng không phải chờ thêm một lượt nối tiếp; hồ sơ đọc ổn
-    # thì hủy lượt ảnh ngay khi biết, không chờ.
+    # thì hủy lượt ảnh ngay khi biết, không chờ — trừ khi có đợt soát (``read`` khác None): lượt ảnh là nguồn đọc độc lập
+    # của đợt soát, để chạy tiếp ở nền.
     vision_task = asyncio.create_task(vision.read_application(runner.flatten(files_by_role)))
+
+    async def keep_documents(documents: list[dict], _opts: dict) -> str:
+        read["documents"] = documents
+        return ""
+
     try:
         res = await runner.run(
             files_by_role,
@@ -78,6 +111,7 @@ async def _from_files(files_by_role: dict[str, list[dict]]) -> dict:
             comp_by_name=COMPACT_COMP_BY_NAME,
             aliases=ALIASES,
             extra_rules=EXTRA_RULES,
+            context_builder=keep_documents if read is not None else None,
         )
     except BaseException:
         vision_task.cancel()
@@ -93,12 +127,16 @@ async def _from_files(files_by_role: dict[str, list[dict]]) -> dict:
     # OCR đọc hỏng (số định danh/điện thoại sai độ dài, bảng ngành vỡ / mã cụt, mất vốn) → lấy kết quả Qwen đọc ảnh,
     # chỉ thay trường hỏng.
     broken = vision.broken_fields({f.get("name"): f.get("value") for f in compact}, res.get("ocr_text") or "")
-    if not broken:
+    if not broken and read is not None:
+        read["vision"] = vision_task
+    elif not broken:
         vision_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await vision_task
     else:
         data = await vision_task
+        if read is not None:
+            read["vision"] = data
         if data:
             patched = vision.patch(compact, broken, data)
             res.setdefault("extracted", {})["visionPatched"] = patched

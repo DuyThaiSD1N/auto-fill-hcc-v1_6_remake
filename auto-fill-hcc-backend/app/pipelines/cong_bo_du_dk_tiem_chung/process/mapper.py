@@ -7,6 +7,13 @@ không phát ô nào của Phần I, tránh ghi đè bằng nhân thân người
 Phần II "Thông tin chủ hồ sơ" bỏ tích "Người nộp hồ sơ là chủ hồ sơ" rồi điền theo tờ Thông báo:
   - họ tên = người đứng đầu cơ sở; địa chỉ, SĐT, email = của cơ sở ghi trên Thông báo;
   - ngày sinh, giới tính, CCCD, ngày cấp, nơi cấp ← CCCD người đứng đầu (hoặc CCCD người nộp nếu cùng người).
+
+⚑ Cài đặt "Lấy người nộp theo tờ khai" (`options.submitterMode="owner_as_submitter"`, Auto Fill + trợ lý): bỏ mốc tài
+  khoản, người nộp = người đứng đầu cơ sở → Phần I ghi giống Phần II. Người đứng đầu khác tài khoản thì Họ tên + CC/CCCD
+  phát kèm enableInput (cổng khoá theo VNeID); hồ sơ không có ngày sinh người đứng đầu thì xoá ngày sinh của tài khoản.
+
+LLM có lúc trả sai tên khoá người đứng đầu ("CoSo_NguoiDauCoSo") hoặc bỏ sót → `head_name_ocr_fallback` đổi về
+CoSo_NguoiDungDau, vẫn thiếu thì đọc dòng "Người đứng đầu cơ sở:" trong chữ OCR tờ Thông báo.
 """
 
 from __future__ import annotations
@@ -29,7 +36,47 @@ _TITLE_PREFIX = re.compile(
     re.IGNORECASE,
 )
 
+# Chức vụ ghi sau tên trên tờ Thông báo ("Nguyễn Văn A – Giám đốc Trạm Y tế xã").
+_ROLE_SUFFIX = re.compile(
+    r"\s*(?:[–—-]|,)\s*(?:phó\s*)?(?:giám\s*đốc|trưởng|trạm\s*trưởng|chủ\s*tịch|chủ\s*cơ\s*sở|phụ\s*trách|người\s*đứng"
+    r"\s*đầu).*$",
+    re.IGNORECASE,
+)
+
 _PERSON_KEYS = ("HoTen", "NgaySinh", "GioiTinh", "SoDinhDanh", "NgayCap", "NoiCap", "ThuongTru")
+
+OWNER_AS_SUBMITTER = "owner_as_submitter"
+
+_HEAD_KEY = "CoSo_NguoiDungDau"
+_HEAD_IN_OCR = re.compile(r"người\s*đứng\s*đầu(?:\s*cơ\s*sở)?\s*[:：]\s*([^\n]+)", re.IGNORECASE)
+
+
+def head_name_ocr_fallback(raw_fields: Any, documents: list[dict]) -> dict:
+    """compact_field_fallback: đưa họ tên người đứng đầu về đúng khoá CoSo_NguoiDungDau.
+
+    LLM hay đặt lệch tên khoá ("CoSo_NguoiDauCoSo") → validate bỏ, Phần II mất họ tên chủ hồ sơ. Khoá lệch (CoSo_* có
+    chữ "Dau", ngoài các khoá đã khai) được đổi về; vẫn trống thì đọc dòng "Người đứng đầu cơ sở:" trong chữ OCR."""
+    if isinstance(raw_fields, dict):
+        fields = dict(raw_fields)
+    else:
+        fields = {item.get("name"): item.get("value") for item in raw_fields or []
+                  if isinstance(item, dict) and item.get("name")}
+    if _text(fields.get(_HEAD_KEY)):
+        return fields
+    for name in list(fields):
+        key = str(name or "")
+        if key == _HEAD_KEY or not key.startswith("CoSo_") or "dau" not in key.lower():
+            continue
+        if _person_name(fields.get(name)):
+            fields[_HEAD_KEY] = fields.pop(name)
+            return fields
+    for doc in documents or []:
+        match = _HEAD_IN_OCR.search(str(doc.get("text") or ""))
+        name = _person_name(match.group(1)) if match else None
+        if name:
+            fields[_HEAD_KEY] = name
+            break
+    return fields
 
 
 def _by_name(fields: list[dict]) -> dict:
@@ -57,6 +104,7 @@ def _person_name(value: Any) -> str | None:
     text = _text(value)
     if not text:
         return None
+    text = _ROLE_SUFFIX.sub("", text).strip(" .,:-–—") or text
     return _TITLE_PREFIX.sub("", text).strip(" .,:-") or text
 
 
@@ -100,7 +148,7 @@ def _area(value: Any) -> dict | None:
             "quocGia": value.get("quocGia") or "Việt Nam",
             "tinh": value.get("tinh") or value.get("tỉnh") or "",
             "xa": value.get("xa") or value.get("xã") or value.get("phuong") or "",
-            "diaChi": value.get("diaChi") or value.get("chiTiet") or "",
+            "diaChi": value.get("diaChi") or value.get("chiTiet") or value.get("chiTietDuoiXa") or "",
         }
     else:
         return None
@@ -158,14 +206,22 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     out: list[dict] = []
     warnings: list[str] = []
     seen: set[str] = set()
+    theo_to_khai = str((options or {}).get("submitterMode") or "") == OWNER_AS_SUBMITTER
 
-    def add(name: str, value) -> None:
+    def add(name: str, value, extra: dict | None = None) -> None:
         if name in seen or value in (None, "", {}, []):
             return
         comp = UI_COMP_BY_NAME.get(name)
         if not comp:
             return
-        out.append({"name": name, "comp": comp, "value": value})
+        out.append({"name": name, "comp": comp, "value": value, **(extra or {})})
+        seen.add(name)
+
+    def clear(name: str) -> None:
+        # Cổng đổ sẵn giá trị của tài khoản VNeID, không phải của người đứng đầu → xoá trắng + tô đỏ.
+        if name in seen or name not in UI_COMP_BY_NAME:
+            return
+        out.append({"name": name, "comp": UI_COMP_BY_NAME[name], "value": "", "clear": True, "markEmpty": True})
         seen.add(name)
 
     co_so = _text(values.get("CoSo_Ten"))
@@ -182,7 +238,9 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     nop_name = _text(nop.get("HoTen"))
     nop_identity = _identity(nop.get("SoDinhDanh"))
     nop_matched = False
-    if _has_person(nop):
+    if theo_to_khai:
+        pass  # Theo tờ khai: không neo CCCD tài khoản, người nộp = người đứng đầu cơ sở.
+    elif _has_person(nop):
         if ctx_identity and nop_identity:
             nop_matched = ctx_identity == nop_identity
         elif ctx_name and nop_name:
@@ -200,8 +258,53 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         dau = nop
     submitter_is_head = bool(nop and dung_dau and _same_person(nop.get("HoTen"), dung_dau))
 
-    # === Phần I — người nộp (chỉ khi có CCCD khớp tài khoản) ===
-    if nop:
+    owner_name = dung_dau or _person_name(dau.get("HoTen"))
+    owner_identity = _identity(dau.get("SoDinhDanh"))
+    owner_birthday = _date(dau.get("NgaySinh"))
+    owner_area = dia_chi_co_so
+    if not owner_area and dau:
+        owner_area = _area(dau.get("ThuongTru"))
+        if owner_area:
+            warnings.append(
+                "Tờ Thông báo không có địa chỉ cơ sở — mục Thông tin chủ hồ sơ đang lấy nơi thường trú trên CCCD "
+                "người đứng đầu, vui lòng kiểm tra lại."
+            )
+
+    # === Phần I — người nộp ===
+    if theo_to_khai and owner_name:
+        # Người nộp = người đứng đầu cơ sở → Phần I ghi giống Phần II.
+        same_as_account = False
+        if ctx_identity and owner_identity:
+            same_as_account = ctx_identity == owner_identity
+        elif ctx_name:
+            same_as_account = _same_person(ctx_name, owner_name)
+        unlock: dict | None = None
+        if not same_as_account:
+            unlock = {"enableInput": True}
+            add("data[fullname]", owner_name, unlock)
+            add("data[identityNumber]", owner_identity, unlock)
+            if ctx_name or ctx_identity:
+                warnings.append(
+                    f"Đang bật \"Lấy người nộp theo tờ khai\": Thông tin người nộp ghi theo người đứng đầu cơ sở "
+                    f"({owner_name}), khác tài khoản đăng nhập ({ctx_name or ctx_identity}) — kiểm tra lại trước "
+                    "khi nộp."
+                )
+            if not owner_identity:
+                clear("data[identityNumber]")
+        if owner_birthday or not unlock:
+            add("data[birthday]", owner_birthday)
+        else:
+            clear("data[birthday]")
+        add("data[gender]", _gender(dau.get("GioiTinh")))
+        add("data[identityDate]", _date(dau.get("NgayCap")))
+        add("data[idIssuePlace]", normalize_issuer(dau.get("NoiCap")) or None)
+        if owner_area:
+            add("data[province]", _province_label(owner_area.get("tinh")))
+            add("data[district]", _text(owner_area.get("xa")))
+            add("data[address]", _text(owner_area.get("diaChi")))
+        add("data[phoneNumber]", phone_co_so)
+        add("data[email]", email_co_so)
+    elif nop:
         if not ctx_name:
             add("data[fullname]", nop_name)
         if not ctx_identity:
@@ -222,21 +325,12 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
 
     # === Phần II — chủ hồ sơ theo tờ Thông báo ===
     add("data[isOwnerDossierCheck]", False)
-    owner_name = dung_dau or _text(dau.get("HoTen"))
     add("data[ownerFullname]", owner_name)
-    add("data[ownerBirthday]", _date(dau.get("NgaySinh")))
+    add("data[ownerBirthday]", owner_birthday)
     add("data[ownerGender]", _gender(dau.get("GioiTinh")))
-    add("data[ownerIdentityNumber]", _identity(dau.get("SoDinhDanh")))
+    add("data[ownerIdentityNumber]", owner_identity)
     add("data[ownerIdentityDate]", _date(dau.get("NgayCap")))
     add("data[ownerIdIssuePlace]", normalize_issuer(dau.get("NoiCap")) or None)
-    owner_area = dia_chi_co_so
-    if not owner_area and dau:
-        owner_area = _area(dau.get("ThuongTru"))
-        if owner_area:
-            warnings.append(
-                "Tờ Thông báo không có địa chỉ cơ sở — mục Thông tin chủ hồ sơ đang lấy nơi thường trú trên CCCD "
-                "người đứng đầu, vui lòng kiểm tra lại."
-            )
     if owner_area:
         add("data[ownerProvince]", _province_label(owner_area.get("tinh")))
         add("data[ownerDistrict]", _text(owner_area.get("xa")))
@@ -246,7 +340,13 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     add("data[ownerNation]", "Việt Nam" if owner_name else None)
 
     # --- Cảnh báo ---
-    if not ctx_name and not ctx_identity:
+    if theo_to_khai:
+        if not owner_name:
+            warnings.append(
+                "Bật \"Lấy người nộp theo tờ khai\" nhưng chưa đọc được người đứng đầu cơ sở trên tờ Thông báo — "
+                "Thông tin người nộp giữ nguyên theo tài khoản, vui lòng kiểm tra."
+            )
+    elif not ctx_name and not ctx_identity:
         warnings.append(
             "Không đọc được tài khoản đang đăng nhập trên form — chưa điền mục Thông tin người nộp hồ sơ."
         )

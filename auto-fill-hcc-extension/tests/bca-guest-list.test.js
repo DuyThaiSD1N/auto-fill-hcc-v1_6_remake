@@ -90,7 +90,8 @@ test("điều chỉnh thông tin cư trú: bcaPlainTable lấy bảng đang hi�
   assert.match(fn, /if \(ok\) bcaFillRowFields\(row, item\.rowFields\);/);
   const fill = content.slice(content.indexOf("function bcaFillRowFields("), content.indexOf("function bcaAddRowButton("));
   assert.match(fill, /select\[id\^="cboKIND_OF_FILE"\]/);
-  assert.match(fill, /\["txtNUM_OF_DOC", fields\.count\], \["txtNOTE_OF_DOC", fields\.note\]/);
+  // Ghi chú: trang thường trú txtNOTE_OF_DOC<i>, trang tạm trú txtFILE_NOTE<i> (xóa đăng ký tạm trú 1.010028).
+  assert.match(fill, /\[\["txtNUM_OF_DOC"\], fields\.count\], \[\["txtNOTE_OF_DOC", "txtFILE_NOTE"\], fields\.note\]/);
   assert.match(fill, /\(!current \|\| current === "0"\)/);
   // Trang có sẵn bảng #tblGiayToDinhKem (ô chọn tệp ẩn, không có nút chữ "Chọn tệp") vẫn là trang đính kèm.
   const gate = content.slice(content.indexOf("function hasAttachmentTarget("), content.indexOf("const ATTACHMENT_STEP_SNIPPETS"));
@@ -582,4 +583,93 @@ test("keepPortalValue: ô chủ tài khoản cổng đổ sẵn (VNeID) giữ ng
   // Vòng điền chuẩn: ô giữ nguyên tính là đã điền; ô tự ghi thì nhớ giá trị đã ghi.
   assert.match(RELATION_SRC, /else if \(standardKeepsPortalValue\(f, el\)\) \{[\s\S]{0,200}?ok = true;/);
   assert.match(RELATION_SRC, /if \(ok && f\.keepPortalValue && el\?\.dataset\) el\.dataset\.autofillValue = String\(el\.value \?\? ""\);/);
+});
+
+// ── Ô ảnh không biết trước name (đăng ký xe nhập khẩu 1.013066, ảnh 24/11): BE gửi `match` = cụm chữ trên ô ──
+test("ảnh đầu trang theo chữ trên ô: Ảnh phương tiện / chứng từ nguồn gốc mặt trước / mặt sau, cả khi ba ô đứng phẳng", () => {
+  const vm = require("node:vm");
+  const src = fs.readFileSync(path.join(__dirname, "..", FILE_STD), "utf8");
+  assert.match(src, /findBcaPhotoInput\(f\.name, f\.match\)/);
+  const fn = src.slice(src.indexOf("function bcaPhotoSlotText("), src.indexOf("function bcaPhotoFile("));
+  const FILE = 'input[type="file"]';
+  function el(tag, attrs = {}, children = [], text = "") {
+    const node = { tagName: tag.toUpperCase(), children, parentElement: null };
+    node.getAttribute = (a) => (a in attrs ? attrs[a] : null);
+    node.matches = (sel) => sel === FILE && tag === "input" && attrs.type === "file";
+    node.all = () => children.flatMap((c) => [c, ...c.all()]);
+    node.querySelectorAll = (sel) => node.all().filter((c) => (sel === FILE ? c.matches(FILE)
+      : sel.split(",").some((s) => c.getAttribute(s.trim().replace(/^\[|\]$/g, "")) != null)));
+    node.querySelector = (sel) => node.querySelectorAll(sel)[0] || null;
+    Object.defineProperty(node, "textContent", { get: () => [text, ...children.map((c) => c.textContent)].join(" ") });
+    Object.defineProperty(node, "previousElementSibling", { get() {
+      const siblings = node.parentElement?.children || [];
+      return siblings[siblings.indexOf(node) - 1] || null;
+    } });
+    children.forEach((c) => { c.parentElement = node; });
+    return node;
+  }
+  const labels = ["Ảnh phương tiện (*)", "Ảnh chứng từ nguồn gốc mặt trước (*)", "Ảnh chứng từ nguồn gốc mặt sau (*)"];
+  const slot = (label, file) => [el("input", { type: "text", placeholder: label }), el("button", {}, [], "Tải ảnh"), file];
+  const run = (body, files) => {
+    const ctx = {
+      document: { body, querySelector: () => null, getElementById: () => null,
+        querySelectorAll: (sel) => (sel === FILE ? files : []) },
+      CSS: { escape: (s) => s },
+      foldChoiceText: (s) => String(s || "").replace(/đ/gi, "d").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase(),
+    };
+    vm.createContext(ctx);
+    vm.runInContext(`${fn}\nthis.find = findBcaPhotoInput;`, ctx);
+    return ctx.find;
+  };
+  // Mỗi ô một khung riêng (input-group) trong cùng một hàng.
+  const nested = labels.map(() => el("input", { type: "file" }));
+  const row = el("div", {}, labels.map((label, i) => el("div", { class: "col" }, [el("div", {}, slot(label, nested[i]))])));
+  let find = run(el("body", {}, [row]), nested);
+  assert.equal(find("AnhPhuongTien", "anh phuong tien"), nested[0]);
+  assert.equal(find("AnhNguonGocMatTruoc", "nguon goc mat truoc"), nested[1]);
+  assert.equal(find("AnhNguonGocMatSau", "nguon goc mat sau"), nested[2]);
+  assert.equal(find("AnhKhac", "giay phep lai xe"), null, "không khớp thì không gắn bừa ô khác");
+  // Ba ô đứng phẳng trong cùng một cha: chữ của ô = các phần tử đứng trước input, dừng ở ô tải ảnh liền trước.
+  const flat = labels.map(() => el("input", { type: "file" }));
+  find = run(el("body", {}, [el("div", {}, labels.flatMap((label, i) => slot(label, flat[i])))]), flat);
+  assert.equal(find("AnhPhuongTien", "anh phuong tien"), flat[0]);
+  assert.equal(find("AnhNguonGocMatTruoc", "nguon goc mat truoc"), flat[1]);
+  assert.equal(find("AnhNguonGocMatSau", "nguon goc mat sau"), flat[2]);
+});
+
+// User 24/11/2026: đăng ký xe nhập khẩu 1.013066 — bấm "Đính kèm" gắn ba ô ảnh đầu trang (pageFields mang nhãn ô), kế hoạch
+// không có mục bảng (nothingToAttach) → câu kết quả nói đúng tên ô.
+test("đính kèm 1.013066: gắn ảnh phương tiện + hai mặt chứng từ nguồn gốc, câu kết quả theo nhãn ô BE gửi", async () => {
+  const vm = require("node:vm");
+  const popup = fs.readFileSync(path.join(root, "popup.js"), "utf8");
+  const fn = popup.slice(popup.indexOf("async function fillAttachPageFields("),
+    popup.indexOf("// Thay tệp theo `replaceFiles`"));
+  const sent = [];
+  let reply = { filled: 3, notFound: [] };
+  const ctx = { setStatus: () => {}, console: { warn: () => {} },
+    sendToContent: async (msg) => { sent.push(msg); return reply; } };
+  vm.createContext(ctx);
+  vm.runInContext(`${fn}\nthis.fillAttachPageFields = fillAttachPageFields;`, ctx);
+  const value = { name: "a.jpg", type: "image/jpeg", dataUrl: "data:," };
+  const fields = [
+    { name: "AnhPhuongTien", comp: "bca-photo", match: "anh phuong tien", label: "Ảnh phương tiện", value },
+    { name: "AnhNguonGocMatTruoc", comp: "bca-photo", match: "nguon goc mat truoc",
+      label: "Ảnh chứng từ nguồn gốc mặt trước", value },
+    { name: "AnhNguonGocMatSau", comp: "bca-photo", match: "nguon goc mat sau",
+      label: "Ảnh chứng từ nguồn gốc mặt sau", value },
+  ];
+  const ok = await ctx.fillAttachPageFields("dang-ky-xe-lan-dau-nhap-khau", fields);
+  assert.equal(ok.ok, true);
+  assert.match(ok.note, /Đã gắn ảnh phương tiện \+ ảnh chứng từ nguồn gốc mặt trước \+ ảnh chứng từ nguồn gốc mặt sau/);
+  assert.doesNotMatch(ok.note, /4x6/);
+  assert.deepEqual(sent[0].fields.map((f) => f.match), ["anh phuong tien", "nguon goc mat truoc", "nguon goc mat sau"]);
+  reply = { filled: 2, notFound: ["AnhNguonGocMatSau"] };
+  const half = await ctx.fillAttachPageFields("dang-ky-xe-lan-dau-nhap-khau", fields);
+  assert.equal(half.ok, false);
+  assert.match(half.note, /Chưa gắn được ảnh chứng từ nguồn gốc mặt sau/);
+  // Kế hoạch rỗng có chủ ý + có ô ảnh → xong, không báo "Chưa đính kèm tệp nào".
+  const run = popup.slice(popup.indexOf("async function runAttachmentPlanForCurrentFiles("),
+    popup.indexOf("// Lấy plan item của BE cho file thứ `origIndex`"));
+  assert.match(run, /if \(!rawAttachments\.length && planRes\.nothingToAttach === true\) \{\s*return pageFill \?/);
 });

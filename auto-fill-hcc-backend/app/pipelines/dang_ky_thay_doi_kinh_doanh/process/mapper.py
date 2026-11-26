@@ -194,9 +194,13 @@ def _identity_candidates(values: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
-def build(fields: list[dict]) -> tuple[dict[str, list[dict]], dict[str, Any]]:
+def build(fields: list[dict], line_mode: str = "") -> tuple[dict[str, list[dict]], dict[str, Any]]:
     values = _by_name(fields)
     additions = _clean_lines(values.get("DeNghi_NganhNgheBoSung"), allow_text_only=True)
+    # Ô mô tả dòng ngành thêm mới: BE quyết chữ ghi (cùng quy tắc với thành lập mới, theo địa bàn tài khoản).
+    for item in additions:
+        if item["code"]:
+            item["detail"], item["detailReplace"] = creation_mapper.line_detail(item["code"], item["name"], line_mode)
     removals = _clean_lines(values.get("DeNghi_NganhNgheBaiBo"), allow_text_only=False)
 
     flags = {

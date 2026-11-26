@@ -40,6 +40,11 @@ TRA_CUU_WARNING = (
     "Nhập Mã bảo mật rồi bấm \"Tra cứu\" để cổng lấy dữ liệu lệ phí trước bạ, hóa đơn và thông tin xe từ CSDL; tự tải "
     "ảnh phương tiện và ảnh chứng từ nguồn gốc (Phiếu kiểm tra chất lượng xuất xưởng) trước khi nộp."
 )
+# Runner đã gắn ba ô ảnh đầu trang (hoặc nói rõ ô nào còn thiếu) → câu Tra cứu không nhắc tải ảnh nữa (user 24/11/2026).
+TRA_CUU_NO_PHOTO_WARNING = (
+    "Nhập Mã bảo mật rồi bấm \"Tra cứu\" để cổng lấy dữ liệu lệ phí trước bạ, hóa đơn và thông tin xe từ CSDL trước khi "
+    "nộp."
+)
 _NUMBER_RE = re.compile(r"\d+(?:[.,]\d+)*")
 _THOUSANDS_RE = re.compile(r"^\d{1,3}(?:\.\d{3})+$")
 

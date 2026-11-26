@@ -268,3 +268,38 @@ def test_clear_email_flag_emits_clear_after_requester_block():
 def test_without_flag_email_untouched():
     got, _ = _run_mode(_DANG_VAN_LAM)
     assert "data[email]" not in got
+
+
+def _addr(detail):
+    return {"quocGia": "Việt Nam", "tinh": "Tỉnh A", "xa": "Xã B", "diaChi": detail}
+
+
+def test_ten_thon_theo_chu_in_khi_llm_doi_chieu_cung_thon():
+    """Tờ khai viết tay OCR lệch một chữ; LLM chỉ ra cách viết trên giấy in → thay đúng phần tên ở mọi địa chỉ có tên đó,
+    giữ số thôn kiểu tờ khai; field đối chiếu không đi tiếp."""
+    from app.pipelines.ho_tro_mai_tang_huu_tri_xa_hoi.process.mapper import apply_village_spelling
+
+    fields = [
+        {"name": "ChuHoSo_NoiCuTru", "value": _addr("Xóm 6, thôn Tân Điền II")},
+        {"name": "NguoiMat_NoiCuTru", "value": _addr("Xóm 6, Thôn Tân Điền II")},
+        {"name": "NguoiNop_NoiCuTru", "value": _addr("Thôn Hạ")},
+        {"name": "TenThon_DoiChieu", "value": {"to_khai": "Tân Điền II", "chu_in": "Tân Điềm 2"}},
+    ]
+    out = apply_village_spelling(fields, "TRÍCH LỤC KHAI TỬ Nơi chết: Xóm 6, Thôn Tân Điềm 2, xã B")
+    assert [f["value"]["diaChi"] for f in out] == ["Xóm 6, thôn Tân Điềm II", "Xóm 6, Thôn Tân Điềm II", "Thôn Hạ"]
+    assert all(f["name"] != "TenThon_DoiChieu" for f in out)
+
+
+def test_ten_thon_khong_doi_khi_chu_in_khong_co_trong_ocr_hoac_khac_han():
+    from app.pipelines.ho_tro_mai_tang_huu_tri_xa_hoi.process.mapper import apply_village_spelling
+
+    base = [{"name": "ChuHoSo_NoiCuTru", "value": _addr("Thôn Tân Điền")}]
+    for pair, ocr in (
+        ({"to_khai": "Tân Điền", "chu_in": "Tân Điềm"}, "không có tên thôn in"),        # chữ in không có trong OCR
+        ({"to_khai": "Tân Điền", "chu_in": "Phú Lộc"}, "Thôn Phú Lộc"),                # địa danh khác hẳn
+        ({"to_khai": "Tân Điền", "chu_in": "Tân Điền Mới"}, "Thôn Tân Điền Mới"),      # khác số từ
+        ({"to_khai": "Tân Điền", "chu_in": "Tân Điền"}, "Thôn Tân Điền"),              # giống hệt
+        ("Tân Điềm", "Thôn Tân Điềm"),                                                # sai kiểu
+    ):
+        out = apply_village_spelling([*base, {"name": "TenThon_DoiChieu", "value": pair}], ocr)
+        assert out == base

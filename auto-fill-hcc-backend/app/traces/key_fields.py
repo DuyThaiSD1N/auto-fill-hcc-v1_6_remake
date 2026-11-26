@@ -84,12 +84,28 @@ _TRICH_LUC = [
     "citizencauhoi5", "citizenSoLuongBanSao",
 ]  # 10
 
+_TRICH_LUC_EFORM = [
+    # eForm Bộ Tư pháp bản cũ (package trich_luc, key trich-luc-ks-eform).
+    "HoVaTenC", "SoDinhDanhC", "NgayCapDDC", "NoiCapDDC", "NYC_NoiCuTru_TrongNuoc",
+    "NDK_HoVaTen", "NDK_NgaySinh", "NDK_GioiTinh", "NDK_DanToc", "NDK_SoDinhDanh",
+    "NDK_NgayCap", "NDK_NoiCap", "NDK_NoiCuTru_TrongNuoc",
+    "HoSo_TenGiayTo", "HoSo_CoQuanDangKy", "HoSo_So", "HoSo_QuyenSo", "HoSo_NgayCapSo",
+]  # 18
+
 _TTHN = [
     # Biểu mẫu SurveyJS Cổng DVC quốc gia mới (package xac_nhan_tthn_dvc_moi).
     "citizenQuanhevoinguoiduoccapGiayxacnhantinhtranghonnhan",
     "citizenNDKHochudemtenngdccap", "citizenNDKNgaythangnamsinh", "citizenNDKSoDinhDanh",
     "citizenNDKTinh_ThTru", "citizenNDKXa_ThTru", "citizenTinhtranghonnhan", "citizenField60", "citizenField70",
 ]  # 9
+
+_TTHN_EFORM = [
+    # eForm Bộ Tư pháp bản cũ (package xac_nhan_tthn, key xac-nhan-tinh-trang-hon-nhan-eform).
+    "HoVaTenC", "SoDinhDanhC", "NgayCapDDC", "NoiCapDDC", "nycNoiCuTru_TrongNuoc",
+    "HoVaTenC1", "NgaySinhC1", "GioiTinhC1", "DanTocC1", "SoDinhDanhC1",
+    "NgayCapDDC1", "NoiCapDDC1", "nxnNoiCuTru_TrongNuoc", "TinhTrangHonNhanC1",
+    "quanhevoinguoiduocxacminh",
+]  # 15
 
 _DAT_DAI = [
     "CongDan_tenCongDan", "CongDan_ngaySinhCongDan", "CongDan_gioiTinhCongDan", "CongDan_danTocCongDan",
@@ -178,7 +194,9 @@ KEY_FIELDS_BY_PROCEDURE: dict[str, list] = {
     "khai-tu": _KHAI_TU,
     "thay-doi-cai-chinh-ho-tich": _THAY_DOI_HO_TICH,
     "trich-luc-ks": _TRICH_LUC,
+    "trich-luc-ks-eform": _TRICH_LUC_EFORM,
     "xac-nhan-tinh-trang-hon-nhan": _TTHN,
+    "xac-nhan-tinh-trang-hon-nhan-eform": _TTHN_EFORM,
     "dinh-chinh-sai-sot": _DAT_DAI,
     "dang-ky-lap-dat-su-dung-nuoc-sach": _CAP_NUOC_SACH,
     "chuyen-doi-ten-hop-dong-nuoc-sach": _CAP_NUOC_SACH,

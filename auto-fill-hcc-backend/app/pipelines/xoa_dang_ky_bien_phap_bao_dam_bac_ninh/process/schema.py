@@ -59,6 +59,10 @@ FIELDS: list[dict] = [
     {"name": "Gcn_DiaChiThuaDat",
      "desc": "Địa chỉ THỬA ĐẤT (GCN trang II mục 1.b). ĐÂY LÀ ĐỊA CHỈ TÀI SẢN — KHÁC địa chỉ liên hệ của "
              "người yêu cầu, KHÔNG nhầm."},
+    {"name": "Gcn_DiaChiThuaDat_DoiChieu",
+     "desc": "Gcn_DiaChiThuaDat viết lại sau khi đối chiếu tên thôn/xã với CÙNG địa danh ở chỗ khác trong hồ "
+             "sơ (trang 1 GCN, Phiếu 03a, tờ khai — xem ĐỐI CHIẾU CÁCH VIẾT ĐỊA DANH). Chỉ được khác "
+             "Gcn_DiaChiThuaDat ở DẤU, giữ nguyên mọi phần khác. Không có gì lệch thì bằng Gcn_DiaChiThuaDat."},
     {"name": "Gcn_DienTich",
      "desc": "Diện tích đất thế chấp (m2), chỉ CHỮ SỐ (vd '105'). Ưu tiên diện tích trên Hợp đồng thế chấp; "
              "nếu thế chấp toàn bộ thì bằng diện tích GCN trang II mục 1.c."},

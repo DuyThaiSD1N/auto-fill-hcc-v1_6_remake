@@ -139,9 +139,10 @@ def test_hinh_thuc_nhan_ket_qua_va_nguoi_lam_thu_tuc_khac():
 def test_registry_link_va_detect():
     assert {"Pkt_SoSeri", "Lptb_MaHoSo", "Xe_SoKhung"} <= ALLOWED
     assert registry.get_pipeline(KEY) is not None
-    assert registry.get_attach_pipeline(KEY) is None
+    # Bước "Đính kèm" = ba ô ảnh đầu trang (user 24/11/2026), như xe nhập khẩu 1.013066.
+    assert registry.get_attach_pipeline(KEY) is not None
     proc = registry.get_procedure(KEY)
-    assert proc["hasAttachmentStep"] is False and proc["mode"] == "agent"
+    assert proc["hasAttachmentStep"] is True and proc["supportsSplitDocuments"] is True and proc["mode"] == "agent"
     assert proc["detect"]["urlScope"] == ["dichvucong.bocongan.gov.vn"]
     link = next(item for item in KE_KHAI_LINKS if item["key"] == KEY)
     assert link["code"] == "1.012575" and "ma-thu-tuc-public=56952" in link["url"]
@@ -151,9 +152,11 @@ def test_registry_link_va_detect():
 
 # ── Trợ lý người dân (handfree) ──
 from app.channels.handfree.chat import flow  # noqa: E402
+from app.channels.handfree.chat import script_vi as vi  # noqa: E402
 from app.channels.handfree.chat.intents import Intent  # noqa: E402
 
-CAPS = {"supportsBcaDangKyXe": True}
+# Bản trợ lý biết gắn ô ảnh đầu trang ở bước đính kèm (supportsBcaPagePhotos) mới được dẫn vào thủ tục này (24/11).
+CAPS = {"supportsBcaDangKyXe": True, "supportsBcaPagePhotos": True}
 
 
 def test_tro_ly_cung_key_url_detect_hien_moi_tinh_va_chi_xin_giay_o_trang_nhap_thong_tin():
@@ -162,7 +165,7 @@ def test_tro_ly_cung_key_url_detect_hien_moi_tinh_va_chi_xin_giay_o_trang_nhap_t
     proc = hf.get_procedure(KEY)
     link = next(item for item in KE_KHAI_LINKS if item["key"] == KEY)
     assert proc["keKhaiUrl"] == link["url"] and proc["detect"] == registry.get_procedure(KEY)["detect"]
-    assert proc["requiresCapability"] == "supportsBcaDangKyXe" and proc["hasAttachmentStep"] is False
+    assert proc["requiresCapability"] == "supportsBcaPagePhotos" and proc["hasAttachmentStep"] is True
     assert hf.get_pipeline(KEY) is registry.get_pipeline(KEY)
     for slug in ("khanhhoa", "laichau", "bacninh", "quangninh", ""):
         assert KEY in {p["key"] for p in hf.public_list_for(slug)}, slug
@@ -186,7 +189,7 @@ def test_tro_ly_cung_key_url_detect_hien_moi_tinh_va_chi_xin_giay_o_trang_nhap_t
 
 
 # ── Trợ lý: trang "Chọn trường hợp hồ sơ" (Loại xe…) — thẻ chọn + nút "Đồng ý và tiếp tục" (luồng trang 1 Lai Châu) ──
-CASE_CAPS = {"supportsBcaDangKyXe": True, "supportsLaiChauFeeStep": True, "supportsBcaCaseStep": True}
+CASE_CAPS = {**CAPS, "supportsLaiChauFeeStep": True, "supportsBcaCaseStep": True}
 LOAI_XE = {"name": "maLoaiXe", "present": True, "value": "", "options": ["Ô tô", "Xe mô tô"], "fixed": False,
            "label": "Loại xe", "required": True}
 
@@ -216,14 +219,15 @@ def test_tro_ly_trang_chon_truong_hop_doc_o_tu_do_va_hien_the_chon():
     r = _turn(conv, "event", "page_status", {"loggedIn": True, "formKind": "", "lcStep": 1})
     assert "Chọn trường hợp hồ sơ" in r.display_md
     assert r.actions == [{"type": "lc_result_scan", "groups": [{"name": "*"}]}] and conv["state"] == "guide_login"
-    # Đọc được ô Loại xe (bắt buộc, chưa chọn) → thẻ chọn + mời chọn Loại xe + nút cam Đồng ý và tiếp tục.
+    # Đọc được ô Loại xe (bắt buộc, chưa chọn) → thẻ chọn + mời chọn Loại xe; user 24/11: chưa chọn đủ thì ẩn nút cam
+    # Đồng ý và tiếp tục, câu đuôi báo chọn đủ nút mới hiện.
     r = _turn(conv, "action", "lc_result_report", {"groups": [LOAI_XE], "prepared": []})
     rows = r.cards[0]["rows"]
     assert [row["label"] for row in rows] == ["Loại xe"]
     assert [o["label"] for o in rows[0]["options"]] == ["Ô tô", "Xe mô tô"]
     trail = r.actions[0]["md"]
-    assert "**Loại xe**" in trail and "Đồng ý và tiếp tục" in trail
-    assert r.chips == [lai_chau.next_chip()]
+    assert "**Loại xe**" in trail and trail.endswith(vi.LC_CASE_WAIT["md"])
+    assert not r.chips
     # Bấm "Xe mô tô" trên thẻ → extension chọn ô đó (tự dò lại ô sau khi chọn).
     r = _turn(conv, "action", "lc_result_pick", {"name": "maLoaiXe", "value": "Xe mô tô"})
     assert r.actions == [{"type": "lc_result_set", "name": "maLoaiXe", "value": "Xe mô tô", "groups": [{"name": "*"}]}]
@@ -238,10 +242,13 @@ def test_tro_ly_trang_chon_truong_hop_doc_o_tu_do_va_hien_the_chon():
     assert [row["label"] for row in r.cards[0]["rows"]] == ["Loại xe", "Cơ quan giải quyết", "Trường hợp đăng ký"]
     assert "chọn sẵn" in r.display_md and "**Trường hợp đăng ký**" in r.actions[0]["md"]
     assert "**Loại xe**" not in r.actions[0]["md"]
-    # Đủ ô → câu hướng dẫn bấm Đồng ý và tiếp tục; bấm nút cam → trợ lý bấm nút cổng.
+    # Cổng hiện thêm ô bắt buộc còn trống (ảnh 24/11: chọn Ô tô xong còn Loại biển số) → vẫn ẩn nút.
+    assert not r.chips
+    # Đủ ô → câu hướng dẫn bấm Đồng ý và tiếp tục + hiện nút cam; bấm nút cam → trợ lý bấm nút cổng.
     groups[2]["value"] = "Đăng ký lần đầu"
     r = _turn(conv, "action", "lc_result_report", {"groups": groups, "prepared": []})
-    assert "Thông tin người" in r.actions[0]["md"]
+    assert "Thông tin người" in r.actions[0]["md"] and vi.LC_CASE_WAIT["md"] not in r.actions[0]["md"]
+    assert r.chips == [lai_chau.next_chip()]
     assert _turn(conv, "action", "lc_next").actions == [{"type": "lc_next"}]
     # Nói "bước tiếp theo" ở trang này cũng bấm Đồng ý và tiếp tục.
     assert flow.next_step_by_voice(conv, "bước tiếp theo", {"lcStep": 1}).value == "lc_next"
@@ -253,11 +260,90 @@ def test_tro_ly_trang_chon_truong_hop_doc_o_tu_do_va_hien_the_chon():
     assert lai_chau.fill_report_reply(conv, proc, reply) is reply and not reply.chips
 
 
+PC08 = ["PC08-Điểm ĐK Đường Láng", "PC08-Điểm ĐK Thái Hà", "PC08-Điểm ĐK Hà Đông"]
+CONG_AN_XA = [f"Công an {x}" for x in ("Xã Hương Sơn", "Xã Hồng Sơn", "Phường Yên Sở", "Phường Hoàng Liệt",
+                                         "Phường Láng", "Phường Ngọc Hà", "Phường Ba Đình", "Xã Ba Đình")]
+DIEM_DANG_KY = {"name": "diemDangKy", "present": True, "value": "", "options": PC08 + CONG_AN_XA, "fixed": False,
+                "label": "Điểm đăng ký", "required": True}
+
+
+def _diem_row(r):
+    return next(row for row in r.cards[0]["rows"] if row["name"] == "diemDangKy")
+
+
+def test_tro_ly_diem_dang_ky_chi_bay_pc08_va_cong_an_xa_phuong_cua_tai_khoan():
+    """User 24/11: ô Điểm đăng ký chỉ hiện các điểm PC08 + một nút đăng ký tại Công an xã/phường của tài khoản."""
+    import json
+
+    from app.channels.handfree.chat import lai_chau
+
+    conv = _case_conv()
+    conv["auth_user"] = {"id": "u1", "tinh": "Thành phố Hà Nội", "xa": "Phường Ba Đình"}
+    _turn(conv, "event", "page_status", {"loggedIn": True, "formKind": "", "lcStep": 1})
+    loai_xe = {**LOAI_XE, "value": "Xe mô tô"}
+    r = _turn(conv, "action", "lc_result_report", {"groups": [loai_xe, DIEM_DANG_KY], "prepared": []})
+    row = _diem_row(r)
+    assert [o["label"] for o in row["options"]] == [*PC08, "Đăng ký tại Công an Phường Ba Đình"]
+    assert not r.chips
+    # Bấm nút xã/phường → extension chọn đúng lựa chọn của cổng (không kèm chữ "Đăng ký tại").
+    picked = json.loads(row["options"][-1]["send"].split("lc_result_pick:", 1)[1])
+    r = _turn(conv, "action", "lc_result_pick", picked)
+    assert r.actions[0]["type"] == "lc_result_set" and r.actions[0]["value"] == "Công an Phường Ba Đình"
+    # Cổng đã chọn → nút xã/phường sáng, đủ ô nên hiện nút cam.
+    chosen = {**DIEM_DANG_KY, "value": "Công an Phường Ba Đình"}
+    r = _turn(conv, "action", "lc_result_report", {
+        "groups": [loai_xe, chosen], "changed": {"name": "diemDangKy", "value": "Công an Phường Ba Đình", "ok": True}})
+    assert [o["selected"] for o in _diem_row(r)["options"]] == [False, False, False, True]
+    assert r.chips == [lai_chau.next_chip()]
+    # Công dân tự chọn xã khác trên trang → thẻ hiện thêm đúng xã đang chọn.
+    other = {**DIEM_DANG_KY, "value": "Công an Phường Láng"}
+    r = _turn(conv, "action", "lc_result_report", {"groups": [loai_xe, other], "prepared": []})
+    assert [o["label"] for o in _diem_row(r)["options"]][-2:] == ["Đăng ký tại Công an Phường Ba Đình",
+                                                                 "Công an Phường Láng"]
+
+    # Tài khoản chỉ ghi tên xã trùng cả phường lẫn xã → không đoán; tài khoản thiếu xã thì theo nơi làm thủ tục.
+    conv["auth_user"]["xa"] = "Ba Đình"
+    conv["location"]["ward"] = "Phường Ngọc Hà"
+    r = _turn(conv, "action", "lc_result_report", {"groups": [loai_xe, DIEM_DANG_KY], "prepared": []})
+    assert [o["label"] for o in _diem_row(r)["options"]][-1] == "Đăng ký tại Công an Phường Ngọc Hà"
+    # Ảnh 24/11: tài khoản Khánh Hòa, cổng liệt kê xã của Hà Nội (thường trú của công dân) → vẫn đúng 4 nút; nút xã/phường
+    # bấm thì nói rõ không có trong danh sách, gửi lại thẻ (sidebar khoá nút khi bấm), không chọn gì trên cổng.
+    conv["auth_user"]["xa"], conv["location"]["ward"] = "Phường Nam Nha Trang", "Phường Nam Nha Trang"
+    r = _turn(conv, "action", "lc_result_report", {"groups": [loai_xe, DIEM_DANG_KY], "prepared": []})
+    row = _diem_row(r)
+    assert [o["label"] for o in row["options"]] == [*PC08, vi.LC_WARD_POINT_ANY]
+    card = r.cards
+    picked = json.loads(row["options"][-1]["send"].split("lc_result_pick:", 1)[1])
+    r = _turn(conv, "action", "lc_result_pick", picked)
+    assert "**Công an Phường Nam Nha Trang**" in r.display_md and "trực tiếp trên trang" in r.display_md
+    assert not r.actions and r.cards == card and not r.chips
+    # Tài khoản không ghi xã nào → câu riêng.
+    conv["auth_user"]["xa"], conv["location"]["ward"] = "", ""
+    _turn(conv, "action", "lc_result_report", {"groups": [loai_xe, DIEM_DANG_KY], "prepared": []})
+    assert "chưa ghi xã/phường" in _turn(conv, "action", "lc_result_pick", picked).display_md
+    # Danh sách không có điểm PC08 (cổng khác) → giữ danh sách cũ.
+    plain = {**DIEM_DANG_KY, "options": CONG_AN_XA}
+    r = _turn(conv, "action", "lc_result_report", {"groups": [loai_xe, plain], "prepared": []})
+    assert [o["label"] for o in _diem_row(r)["options"]] == CONG_AN_XA
+
+
+def test_tro_ly_diem_dang_ky_nhan_diem_phong_csgt_khong_ghi_pc08():
+    """Ảnh 25/11 (Ninh Bình): điểm PC08 ghi "Phòng CSGT <tỉnh>-Điểm ĐK …" → vẫn gộp Công an xã/phường thành một nút."""
+    conv = _case_conv()
+    conv["auth_user"] = {"id": "u1", "tinh": "Tỉnh Ninh Bình", "xa": "Xã Yên Mô"}
+    _turn(conv, "event", "page_status", {"loggedIn": True, "formKind": "", "lcStep": 1})
+    csgt = ["Phòng CSGT Ninh Bình-Điểm ĐK P.Phủ Lý", "Phòng CSGT Ninh Bình-Điểm ĐK P.Mỹ Lộc"]
+    xa = ["Công an Xã Đồng Thái", "Công an Phường Yên Thắng", "Công an Xã Yên Mô"]
+    diem = {**DIEM_DANG_KY, "options": csgt + xa}
+    r = _turn(conv, "action", "lc_result_report", {"groups": [{**LOAI_XE, "value": "Ô tô"}, diem], "prepared": []})
+    assert [o["label"] for o in _diem_row(r)["options"]] == [*csgt, "Đăng ký tại Công an Xã Yên Mô"]
+
+
 def test_tro_ly_ban_cu_chua_co_co_trang_chon_truong_hop_thi_giu_luong_cu():
     from app.channels.handfree.chat import lai_chau
     from app.channels.handfree import procedure_registry as hf
 
-    conv = _case_conv({"supportsBcaDangKyXe": True, "supportsLaiChauFeeStep": True})
+    conv = _case_conv({**CAPS, "supportsLaiChauFeeStep": True})
     assert not lai_chau.enabled(conv, hf.get_procedure(KEY))
     r = _turn(conv, "event", "page_status", {"loggedIn": True, "formKind": "", "lcStep": 1})
     assert not any(a.get("type") == "lc_result_scan" for a in r.actions) and conv["state"] == "guide_login"
@@ -281,16 +367,243 @@ def test_tro_ly_trang_chon_truong_hop_cong_hien_them_o_va_chan_nut_tiep_tuc():
     assert [o["label"] for o in rows["loaiBienSo"]["options"]] == groups[1]["options"]
     assert rows["tinh"]["fixed"] and rows["tinh"]["value"] == "Công an Thành phố Hà Nội"
     assert "**Điểm đăng ký**" in r.actions[0]["md"] and "chọn trực tiếp trên trang" in r.actions[0]["md"]
+    # Ô bắt buộc trống mà chưa đọc được lựa chọn cũng tính là chưa chọn → ẩn nút, chọn trên trang xong mới hiện.
+    assert r.actions[0]["md"].endswith(vi.LC_CASE_WAIT["md"]) and not r.chips
     # Có danh sách → mời chọn trên thẻ.
     groups[3] = {**groups[3], "options": ["Đội CSGT số 1", "Công an phường Từ Liêm"], "fixed": False}
     r = _turn(conv, "action", "lc_result_report", {"groups": groups, "prepared": []})
-    assert "Công dân chọn **Điểm đăng ký**" in r.actions[0]["md"]
-    # Bấm Đồng ý và tiếp tục mà cổng chặn → báo lời chặn + đọc lại thẻ (không làm sẵn gì).
+    assert "Công dân chọn **Điểm đăng ký**" in r.actions[0]["md"] and not r.chips
+    # Bấm Đồng ý và tiếp tục (nói "tiếp tục") mà cổng chặn → báo lời chặn + đọc lại thẻ (không làm sẵn gì), không kèm nút
+    # bấm lại: lượt đọc lại tự hiện nút khi đủ ô.
     r = _turn(conv, "action", "lc_step_report", {"clicked": True, "message": "Còn trống: Điểm đăng ký"})
-    assert "Còn trống: Điểm đăng ký" in r.display_md
+    assert "Còn trống: Điểm đăng ký" in r.display_md and not r.chips
     assert r.actions == [{"type": "lc_result_scan", "groups": [{"name": "*"}], "prepare": False}]
     # Ô trên trang đổi sau lượt đọc (cổng tải chậm / công dân tự chọn) → đọc lại.
     assert _turn(conv, "action", "lc_case_changed").actions == r.actions
     # Đã rời trang chọn trường hợp → im.
     _turn(conv, "event", "page_status", {"loggedIn": True, "formKind": "standard", "lcStep": 0})
     assert not _turn(conv, "action", "lc_case_changed").actions
+
+
+# ── Ba ô ảnh đầu trang (user 24/11/2026): Ảnh phương tiện + hai mặt chứng từ nguồn gốc (Phiếu kiểm tra chất lượng xuất
+# xưởng) — khuôn xe nhập khẩu 1.013066. ──
+def _data_url(mime: str, data: bytes) -> str:
+    import base64
+
+    return f"data:{mime};base64," + base64.b64encode(data).decode("ascii")
+
+
+def _photo(color=(30, 90, 160)) -> bytes:
+    import io
+
+    from PIL import Image
+
+    buffer = io.BytesIO()
+    Image.new("RGB", (900, 600), color).save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def _pdf(pages: int) -> bytes:
+    import fitz
+
+    with fitz.open() as doc:
+        for number in range(pages):
+            doc.new_page().insert_text((72, 72), f"Trang {number + 1}")
+        return doc.tobytes()
+
+
+PHIEU_P1 = ("CÔNG TY TNHH XE MÁY MẪU\nPHIẾU KIỂM TRA CHẤT LƯỢNG XUẤT XƯỞNG\nDùng cho xe mô tô, xe gắn máy\n"
+            "Số seri phiếu: AB 0000001\nNhãn hiệu: HIEUXE  Số loại: MX1")
+PHIEU_P2 = ("THÔNG SỐ KỸ THUẬT\nKhối lượng bản thân: 98 kg\nKích thước bao: 1850 x 680 x 1080 mm\n"
+            "Chiều dài cơ sở: 1250 mm\nDung tích xi lanh: 109 cm3\nCông suất lớn nhất: 6,4 kW")
+GIAY_KHAI = ("GIẤY KHAI ĐĂNG KÝ XE (Mẫu ĐKX10)\nTên chủ xe: NGUYỄN VĂN AN\nSố seri Phiếu kiểm tra chất lượng xuất "
+             "xưởng: AB 0000001\nDung tích xi lanh, công suất lớn nhất, khối lượng bản thân, kích thước")
+CCCD_TEXT = "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM CĂN CƯỚC CÔNG DÂN Số định danh cá nhân Họ, chữ đệm và tên khai sinh " * 2
+
+
+def _run_with_photos(monkeypatch, files, texts, options=None):
+    import asyncio
+
+    from app.pipelines._shared.compact_agent import runner as compact_runner
+    from app.pipelines.dang_ky_xe_lan_dau_san_xuat_lap_rap_trong_nuoc.process import runner as xe_runner
+    from app.services import ocr
+
+    async def fake_ocr(ocr_files, **_kwargs):
+        return [{"name": f["name"], "text": texts.get(f["name"], "")} for f in ocr_files]
+
+    async def fake_run(files_by_role, **kwargs):
+        await kwargs["ocr_fn"](compact_runner.flatten(files_by_role))
+        return {"fields": [{"name": k, "value": v} for k, v in HO_SO.items()]}
+
+    monkeypatch.setattr(ocr, "ocr_per_file", fake_ocr)
+    monkeypatch.setattr(compact_runner, "run", fake_run)
+    return asyncio.run(xe_runner.run({"": files}, dict(options or {})))
+
+
+def test_runner_gan_anh_phuong_tien_va_hai_mat_phieu_xuat_xuong_vao_o_dau_trang(monkeypatch):
+    import base64
+
+    files = [
+        {"name": "giay_khai.png", "type": "image/png", "dataUrl": _data_url("image/png", _photo((240, 240, 240)))},
+        {"name": "phieu_xuat_xuong.pdf", "type": "application/pdf", "dataUrl": _data_url("application/pdf", _pdf(2))},
+        {"name": "IMG_0001.png", "type": "image/png", "dataUrl": _data_url("image/png", _photo())},
+    ]
+    texts = {"giay_khai.png": GIAY_KHAI,
+             "phieu_xuat_xuong.pdf": f"───── Trang 1/2 ─────\n{PHIEU_P1}\n───── Trang 2/2 ─────\n{PHIEU_P2}"}
+    res = _run_with_photos(monkeypatch, files, texts)
+    photos = res["fields"][:3]
+    assert [f["name"] for f in photos] == ["AnhPhuongTien", "AnhNguonGocMatTruoc", "AnhNguonGocMatSau"]
+    assert [f["match"] for f in photos] == ["anh phuong tien", "nguon goc mat truoc", "nguon goc mat sau"]
+    assert {f["comp"] for f in photos} == {"bca-photo"}
+    # Giấy khai có nhắc "phiếu kiểm tra chất lượng xuất xưởng" + thông số xe nhưng KHÔNG lấy làm chứng từ nguồn gốc.
+    assert [f["sourceFileName"] for f in photos] == ["IMG_0001.png", "phieu_xuat_xuong.pdf", "phieu_xuat_xuong.pdf"]
+    for field in photos:
+        jpeg = base64.b64decode(field["value"]["dataUrl"].split(",", 1)[1])
+        assert jpeg[:2] == b"\xff\xd8" and len(jpeg) < 2_000_000  # cổng chỉ nhận .jpg / .png dưới 2 MB
+    note = next(e for e in res["errors"] if e.startswith("Đã gắn ảnh"))
+    assert "trang 1 của 'phieu_xuat_xuong.pdf' → ô Ảnh chứng từ nguồn gốc mặt trước" in note
+    assert "trang 2 của 'phieu_xuat_xuong.pdf' → ô Ảnh chứng từ nguồn gốc mặt sau" in note
+    assert "Phiếu kiểm tra chất lượng xuất xưởng" in note and "nhập khẩu" not in note
+    # Câu Tra cứu thôi nhắc tự tải ảnh.
+    assert mapper.TRA_CUU_NO_PHOTO_WARNING in res["errors"] and mapper.TRA_CUU_WARNING not in res["errors"]
+    assert not any(e.startswith("Chưa có ảnh") for e in res["errors"])
+
+
+def test_runner_phieu_chup_roi_hai_mat_va_thieu_anh_xe_thi_bao_o_phai_tai_tay(monkeypatch):
+    from app.pipelines.dang_ky_xe_lan_dau_nhap_khau.process import runner as nk_runner
+    from app.pipelines.dang_ky_xe_lan_dau_san_xuat_lap_rap_trong_nuoc.process import runner as xe_runner
+
+    page = xe_runner.phieu_xuat_xuong_page
+    assert page(PHIEU_P1) and page(PHIEU_P2)
+    assert not page(GIAY_KHAI) and not page(CCCD_TEXT) and not page("HÓA ĐƠN GIÁ TRỊ GIA TĂNG\nDung tích xi lanh")
+    # Hai mặt phiếu chụp rời (mỗi mặt một tệp ảnh): mặt sau không có tiêu đề vẫn nhận nhờ bảng thông số kỹ thuật.
+    pages = {0: [PHIEU_P1], 1: ["Ảnh xe"], 2: [PHIEU_P2]}
+    assert nk_runner.find_origin_pages(pages, skip={1}, is_origin=page) == [(0, 0), (2, 0)]
+    # Tệp gộp: trang 1 phiếu, trang 2 thẻ căn cước → KHÔNG lấy trang căn cước làm mặt sau; không có ảnh xe.
+    files = [{"name": "ho_so.pdf", "type": "application/pdf", "dataUrl": _data_url("application/pdf", _pdf(2))}]
+    texts = {"ho_so.pdf": f"───── Trang 1/2 ─────\n{PHIEU_P1}\n───── Trang 2/2 ─────\n{CCCD_TEXT}"}
+    res = _run_with_photos(monkeypatch, files, texts)
+    assert [f["name"] for f in res["fields"] if f.get("comp") == "bca-photo"] == ["AnhNguonGocMatTruoc"]
+    missing = next(e for e in res["errors"] if e.startswith("Chưa có ảnh"))
+    assert "Ảnh phương tiện" in missing and "Ảnh chứng từ nguồn gốc mặt sau" in missing and "mặt trước" not in missing
+    assert "Phiếu kiểm tra chất lượng xuất xưởng" in missing
+
+
+def test_tro_ly_luot_dien_khong_gan_anh_buoc_dinh_kem_tach_hay_khong_cung_ke_hoach(monkeypatch):
+    import asyncio
+
+    from app.pipelines.dang_ky_xe_lan_dau_san_xuat_lap_rap_trong_nuoc.attach import plan
+    from app.process.schemas import FileItem
+
+    files = [
+        {"name": "phieu_xuat_xuong.pdf", "type": "application/pdf", "dataUrl": _data_url("application/pdf", _pdf(2))},
+        {"name": "IMG_0001.png", "type": "image/png", "dataUrl": _data_url("image/png", _photo())},
+    ]
+    texts = {"phieu_xuat_xuong.pdf": f"───── Trang 1/2 ─────\n{PHIEU_P1}\n───── Trang 2/2 ─────\n{PHIEU_P2}"}
+    # Lượt điền của trợ lý (pagePhotosAtAttach): không gắn ảnh, câu Tra cứu không nhắc tự tải ảnh.
+    res = _run_with_photos(monkeypatch, files, texts, {"pagePhotosAtAttach": True})
+    assert not [f for f in res["fields"] if f.get("comp") == "bca-photo"]
+    assert mapper.TRA_CUU_NO_PHOTO_WARNING in res["errors"]
+    assert not any(e.startswith(("Đã gắn ảnh", "Chưa có ảnh")) for e in res["errors"])
+
+    # Bước đính kèm: kế hoạch không có mục bảng, chỉ ba ô ảnh; bật / tắt / client cũ "Tách giấy tờ" ra cùng kết quả.
+    items = [FileItem(name=f["name"], type=f["type"], dataUrl=f["dataUrl"], role="") for f in files]
+    results = [asyncio.run(plan(items, {"splitDocuments": split})) for split in (True, False, None)]
+    for result in results:
+        assert result["attachments"] == [] and result["nothingToAttach"] is True
+        assert [f["name"] for f in result["pageFields"]] == ["AnhPhuongTien", "AnhNguonGocMatTruoc", "AnhNguonGocMatSau"]
+        assert [f["sourceFileName"] for f in result["pageFields"]] == [
+            "IMG_0001.png", "phieu_xuat_xuong.pdf", "phieu_xuat_xuong.pdf"]
+        assert result["errors"] == []
+    assert results[0]["pageFields"][1]["value"] == results[1]["pageFields"][1]["value"]
+    # Thiếu ảnh xe → nói rõ ô nào, mời "đính kèm lại", tên đúng chứng từ của thủ tục này.
+    only_phieu = asyncio.run(plan(items[:1], {}))
+    assert [f["name"] for f in only_phieu["pageFields"]] == ["AnhNguonGocMatTruoc", "AnhNguonGocMatSau"]
+    assert any("Ảnh phương tiện" in e and "đính kèm lại" in e and "xuất xưởng" in e for e in only_phieu["errors"])
+
+
+def test_tro_ly_thanh_phan_ho_so_co_anh_xe_va_hai_mat_phieu_buoc_dinh_kem_la_o_anh_dau_trang():
+    from app.channels.handfree import procedure_registry as hf
+    from app.channels.handfree.chat import field_review
+    from app.upload_session import classify
+
+    proc = hf.get_procedure(KEY)
+    sibling = hf.get_procedure("dang-ky-xe-lan-dau-nhap-khau")
+    for field in ("requiresCapability", "hasAttachmentStep", "bcaPagePhotos", "askBeforeAttach", "docsAdjustRefill",
+                  "supportsSplitDocuments", "laiChauFeeStep"):
+        assert proc.get(field) == sibling.get(field), field
+    assert field_review.bca_nth(proc) and flow._bca_nth(proc)
+    docs = proc["requiredDocs"]
+    slot = next(d for d in docs if d["key"] == "anh_phuong_tien")
+    assert not slot.get("optional") and slot["sides"] == 1
+    assert "2 mặt" in next(d for d in docs if d["key"] == "phieu_xuat_xuong")["name"]
+    assert "Ảnh chụp phương tiện" in proc["uploadHint"]
+    files = [{"name": "IMG_0002.png", "type": "image/png", "dataUrl": _data_url("image/png", _photo())},
+             {"name": "cccd.png", "type": "image/png", "dataUrl": _data_url("image/png", _photo((240, 240, 240)))}]
+    assert classify._vehicle_photo_indexes(files, [{"text": ""}, {"text": CCCD_TEXT}], docs, None) == {0}
+    # Câu hỏi trước khi đính / báo đính xong dùng chung với xe nhập khẩu → không nói "nhập khẩu", "hải quan".
+    for text in (vi.REVIEW_ATTACHMENT_PAGE_PHOTOS_BCA["md"], vi.ATTACH_DONE_PAGE_PHOTOS_BCA["md"]):
+        assert "nhập khẩu" not in text and "hải quan" not in text
+
+
+# ── Trợ lý, vòng "Bổ sung các thông tin còn thiếu" (user 24/11/2026): trước bản 24/11 entry trợ lý khai
+# hasAttachmentStep False → field_review.bca_nth() sai → điền xong không có nút Bổ sung. Khuôn xe nhập khẩu 1.013066. ──
+def test_tro_ly_dien_xong_con_o_trong_co_nut_bo_sung_va_chan_dong_y_tiep_tuc(monkeypatch):
+    import asyncio
+
+    from app.channels.handfree import procedure_registry as hf
+    from app.channels.handfree.chat import field_review, lai_chau, pipeline_runner
+
+    proc = hf.get_procedure(KEY)
+    caps = {**CASE_CAPS, "supportsFieldReview": True, "supportsBcaNthReview": True, "supportsBcaNthSubmit": True,
+            "supportsPageBoundDocsComplete": True}
+    ke_khai = {"pageContextCaptured": True, "formKind": "standard", "attachmentTarget": False,
+               "attachmentComponentCount": 0, "bcaKeKhaiForm": True}
+    calls = []
+
+    async def progress(_sid):
+        return {"received": 5, "total": 5, "files_count": 5}
+
+    async def save(_conv):
+        return None
+
+    monkeypatch.setattr(pipeline_runner, "run_process", lambda *a: calls.append("process"))
+    monkeypatch.setattr(pipeline_runner, "run_attach", lambda *a: calls.append("attach"))
+    monkeypatch.setattr(pipeline_runner, "spawn", lambda _job: None)
+    monkeypatch.setattr(flow.upload_service, "progress_of", progress)
+    monkeypatch.setattr(flow.conv_store, "save", save)
+
+    def text(r) -> str:
+        return r.display_md + " " + " ".join(a.get("md", "") for a in r.actions if a.get("type") == "trail_message")
+
+    conv = {"_id": "t-xe-lr", "state": "collecting_docs", "history": [], "procedure_key": KEY,
+            "upload_session_id": "s1", "docs_target": "declaration", "client_capabilities": caps}
+    asyncio.run(flow._docs_complete(conv, ke_khai))
+    assert calls == ["process"] and field_review.fill_action_extra(conv, proc) is not None
+
+    # Điền xong còn ô trống → báo số ô + nút Bổ sung; chưa có "Đồng ý và tiếp tục".
+    conv["pipeline_status"] = "fields_ready"
+    r = asyncio.run(flow._handle_filling(conv, Intent("action", "fill_report", {
+        "filled": 40, "notFound": [], "review": {"filled": 40, "optional": 12, "required": 5}})))
+    assert "🟥 **5** ô bắt buộc còn trống" in text(r)
+    sends = [c["send"] for c in r.chips]
+    assert "__action:field_review_start" in sends and "__action:confirm_review" in sends
+    assert lai_chau.NEXT_SEND not in sends
+
+    # Gắn ảnh xong mà còn ô bắt buộc trống → vẫn Bổ sung + Điền lại, không nút cam; gõ đủ trên trang → hiện nút cam.
+    _turn(conv, "action", "confirm_review")
+    conv.update(attach_plan=[{"target": "bca-photo", "fileIndex": 1, "fileName": "IMG_0001.png",
+                              "documentName": "Ảnh phương tiện", "componentName": "Ảnh phương tiện",
+                              "slotName": "Ảnh phương tiện", "fieldName": "AnhPhuongTien", "match": "anh phuong tien",
+                              "photoFid": "f-photo-1", "photoName": "anh_phuong_tien.jpg", "photoType": "image/jpeg"}],
+                pipeline_status="attach_ready", attach_errors=[])
+    r = asyncio.run(flow._handle_attaching(conv, Intent("event", "attach_ready")))
+    action = next(a for a in r.actions if a.get("type") == "attach_plan")
+    r = asyncio.run(flow._handle_attaching(conv, Intent("action", "attach_report", {
+        "attached": 3, "skipped": 0, "errors": [], "dispatch_id": action.get("dispatch_id") or "",
+        "review": {"filled": 43, "optional": 12, "required": 2}})))
+    sends = [c["send"] for c in r.chips]
+    assert "__action:field_review_start" in sends and "__action:refill" in sends
+    assert not [c for c in r.chips if c.get("cta")]
+    r = _turn(conv, "event", "field_review_status", {"stats": {"filled": 45, "optional": 12, "required": 0}})
+    assert [c for c in r.chips if c.get("cta")] == [lai_chau.next_chip()]

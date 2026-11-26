@@ -218,6 +218,109 @@ def test_tro_ly_tu_chon_tinh_thanh_pho_o_trang_chon_truong_hop():
     assert not rows or rows["maCoQuan"]["options"] == []  # không bày dãy nút tỉnh
 
 
+WARDS = [f"Phường {x}" for x in ("Bắc Nha Trang", "Tây Nha Trang", "Nha Trang", "Bắc Cam Ranh", "Cam Ranh", "Ba Ngòi",
+                                 "Cam Linh", "Ninh Hòa", "Đông Ninh Hòa", "Nam Nha Trang")]
+
+
+def _ward_case(xa: str):
+    caps = {**CAPS, "supportsLaiChauFeeStep": True, "supportsBcaCaseStep": True}
+    conv = {"_id": "c1", "state": "greet", "procedure_key": None, "client_capabilities": caps,
+            "auth_user": {"tinh": "Khánh Hòa", "province_slug": "khanhhoa", "xa": xa},
+            "location": {"province": "Tỉnh Khánh Hòa", "province_slug": "khanhhoa", "ward": ""}}
+    flow._to_confirm_procedure(conv, KEY)
+    flow._start_guide_login(conv)
+    turn = lambda kind, value, payload=None: asyncio.run(flow._handle_turn_inner(conv, Intent(kind, value, payload or {})))  # noqa: E731
+    turn("event", "page_status", {"loggedIn": True, "formKind": "", "lcStep": 1})
+    return conv, turn
+
+
+PROVINCE = {"name": "maCoQuan", "present": True, "value": "Công an Tỉnh Khánh Hòa",
+            "options": ["Công an Tỉnh Nghệ An", "Công an Tỉnh Khánh Hòa"], "fixed": False, "label": "Tỉnh/Thành phố",
+            "required": True}
+
+
+def _ward(value: str = "", options=WARDS) -> dict:
+    return {"name": "maPhuongXa", "present": True, "value": value, "options": list(options), "fixed": False,
+            "label": "Phường/Xã", "required": True}
+
+
+def test_tro_ly_tu_chon_phuong_xa_theo_tai_khoan_o_trang_chon_truong_hop():
+    # Ảnh 24/11: chọn tỉnh xong cổng hiện ô "Phường/Xã" (*) — trợ lý đang bắt công dân bấm. User 24/11: thủ tục có ô chọn
+    # phường/xã thì trợ lý tự chọn theo xã/phường của tài khoản.
+    from app.channels.handfree.chat import lai_chau
+    from app.channels.handfree.chat import script_vi as vi
+
+    conv, turn = _ward_case("Phường Nam Nha Trang")
+    r = turn("action", "lc_result_report", {"groups": [PROVINCE, _ward()], "prepared": ["preset:maCoQuan"]})
+    # Xã của tài khoản đứng thứ 10 (thẻ chỉ bày 8 nút) — BE khớp trên cả danh sách, gửi lệnh chọn trước khi hiện thẻ.
+    assert r.actions == [{"type": "lc_result_set", "name": "maPhuongXa", "value": "Phường Nam Nha Trang",
+                          "groups": [{"name": "*"}]}]
+    assert "Tôi đã chọn sẵn **Tỉnh/Thành phố**: **Công an Tỉnh Khánh Hòa**" in r.display_md
+    assert "Tôi đang chọn **Phường/Xã**: **Phường Nam Nha Trang** theo xã/phường của tài khoản" in r.display_md
+    assert not r.cards and not r.chips
+    # Cổng đã chọn → tóm tắt + câu "chọn theo tài khoản", xã đang chọn đứng đầu dòng thẻ, đủ ô nên hiện nút cam.
+    r = turn("action", "lc_result_report", {
+        "groups": [PROVINCE, _ward("Phường Nam Nha Trang")], "prepared": [],
+        "changed": {"name": "maPhuongXa", "value": "Phường Nam Nha Trang", "ok": True}})
+    assert "**Phường/Xã**: Phường Nam Nha Trang" in r.display_md
+    assert "Tôi đã chọn sẵn **Phường/Xã**: **Phường Nam Nha Trang** theo xã/phường của tài khoản" in r.display_md
+    row = next(row for row in r.cards[0]["rows"] if row["name"] == "maPhuongXa")
+    assert row["options"][0] == {**row["options"][0], "label": "Phường Nam Nha Trang", "selected": True}
+    assert len(row["options"]) == 8 and r.chips == [lai_chau.next_chip()]
+    assert vi.LC_CASE_WAIT["md"] not in r.actions[0]["md"]
+    # Công dân đổi xã trên thẻ → câu "đã đổi" như cũ, không chọn đè lại theo tài khoản.
+    picked = turn("action", "lc_result_pick", {"name": "maPhuongXa", "value": "Phường Bắc Nha Trang"})
+    assert picked.actions[0]["value"] == "Phường Bắc Nha Trang"
+    r = turn("action", "lc_result_report", {
+        "groups": [PROVINCE, _ward("Phường Bắc Nha Trang")], "prepared": [],
+        "changed": {"name": "maPhuongXa", "value": "Phường Bắc Nha Trang", "ok": True}})
+    assert "Đã đổi **Phường/Xã** sang **Phường Bắc Nha Trang**" in r.display_md and r.cards
+
+
+def test_tro_ly_phuong_xa_khong_co_trong_danh_sach_hoac_chon_hong_thi_de_cong_dan_chon():
+    conv, turn = _ward_case("Phường Hòa Thắng")
+    r = turn("action", "lc_result_report", {"groups": [PROVINCE, _ward()], "prepared": []})
+    assert not any(a.get("type") == "lc_result_set" for a in r.actions)
+    assert "không có **Phường Hòa Thắng** (xã/phường của tài khoản)" in r.display_md
+    assert "**Phường/Xã**" in r.actions[0]["md"] and not r.chips  # ô bắt buộc còn trống: mời chọn, ẩn nút cam
+    # Đọc lại cùng danh sách: không nhắc lại.
+    r = turn("action", "lc_result_report", {"groups": [PROVINCE, _ward()], "prepared": []})
+    assert "không có" not in r.display_md
+
+    # Chọn hỏng (cổng không nhận) → báo chọn tay, lượt đọc cùng trạng thái không thử lại.
+    conv, turn = _ward_case("Phường Đông Ninh Hòa")
+    r = turn("action", "lc_result_report", {"groups": [PROVINCE, _ward()], "prepared": []})
+    assert r.actions[0] == {"type": "lc_result_set", "name": "maPhuongXa", "value": "Phường Đông Ninh Hòa",
+                            "groups": [{"name": "*"}]}
+    r = turn("action", "lc_result_report", {"groups": [PROVINCE, _ward()], "prepared": [],
+                                            "changed": {"name": "maPhuongXa", "value": "Phường Đông Ninh Hòa", "ok": False}})
+    assert "chưa đổi được **Phường/Xã**" in r.display_md and r.cards
+    r = turn("action", "lc_result_report", {"groups": [PROVINCE, _ward()], "prepared": []})
+    assert not any(a.get("type") == "lc_result_set" for a in r.actions) and r.cards
+    # Thẻ vẫn bày xã của tài khoản ở đầu dòng để công dân bấm.
+    assert next(row for row in r.cards[0]["rows"] if row["name"] == "maPhuongXa")["options"][0]["label"] == \
+        "Phường Đông Ninh Hòa"
+
+
+def test_khop_phuong_xa_cua_tai_khoan_trong_danh_sach_cong():
+    from app.channels.handfree.chat.lai_chau import _account_ward_option
+
+    def pick(xa, options, ward=""):
+        return _account_ward_option({"auth_user": {"xa": xa}, "location": {"ward": ward}}, options)
+
+    # Cổng viết "Hoà" (dấu đặt khác), có / không chữ "Công an".
+    assert pick("Phường Hiệp Hòa", ["Phường Bồ Hạ", "Phường Hiệp Hoà"]) == "Phường Hiệp Hoà"
+    assert pick("Phường Hiệp Hòa", ["Công an phường Hiệp Hoà", "Công an xã Hợp Thịnh"]) == "Công an phường Hiệp Hoà"
+    # Không nhận khớp một phần tên ("Hòa" ≠ "Hiệp Hòa").
+    assert pick("Phường Hòa", ["Phường Hiệp Hoà", "Xã Hòa Sơn"]) == ""
+    # Chỉ ghi tên mà trùng cả phường lẫn xã → không đoán, sang nơi làm thủ tục.
+    assert pick("Ba Đình", ["Phường Ba Đình", "Xã Ba Đình"]) == ""
+    assert pick("Ba Đình", ["Phường Ba Đình", "Xã Ba Đình"], ward="Xã Ba Đình") == "Xã Ba Đình"
+    # Danh mục cũ ghi "Xã" mà cổng ghi "Phường" (chỉ một mục cùng tên) → vẫn khớp.
+    assert pick("Xã Chũ", ["Phường Chũ", "Phường Bắc Giang"]) == "Phường Chũ"
+    assert pick("", ["Phường Chũ"]) == ""
+
+
 # ── Đính kèm: bảng Thành phần hồ sơ 1 dòng (đơn TK05) ──
 from app.pipelines.trinh_bao_mat_ho_chieu_pho_thong_cap_xa.attach import planner as attach_planner  # noqa: E402
 from app.pipelines.trinh_bao_mat_ho_chieu_pho_thong_cap_xa.attach.dinh_kem_khong_tach import (  # noqa: E402

@@ -4,7 +4,8 @@ Hồ sơ hay dồn nhiều giấy vào một PDF (tờ khai + biên bản thanh 
 lượt, chia thành từng giấy; mỗi giấy thành một mục có `sourceSegments` (extension cắt đúng trang) đặt vào đúng dòng
 của bảng (bảng ở chế độ không tách). Cơ chế chia trang dùng chung với Điều chỉnh thông tin về cư trú / Tách hộ; chỉ
 prompt và bảng dòng là riêng. Giấy có loại rõ mà bảng không có dòng → dòng "+ Thêm mới" mang tên giấy; giấy chưa rõ
-loại → dòng Tờ khai + cảnh báo. OCR / LLM lỗi → quay về chế độ không tách.
+loại → dòng Tờ khai + cảnh báo. OCR / LLM lỗi → quay về chế độ không tách. Bảng theo Trường hợp (trường hợp vắng mặt /
+đã đăng ký thường trú chỉ có dòng Tờ khai) và Ghi chú dòng Tờ khai dùng chung hàm của chế độ không tách.
 """
 
 import time
@@ -21,13 +22,17 @@ from app.pipelines.khai_sinh_dvc_moi.attach.dinh_kem_tach.planner import _BLANK,
 from app.process.schemas import FileItem
 
 from ..dinh_kem_khong_tach.planner import (
+    CHO_O,
     LEFTOVER_ROW,
     NEW_ROW_TYPES,
     ROWS,
+    TO_KHAI,
     finalize_rows,
     new_row_item,
     ocr_pages,
     plan_item,
+    table_has_no_home_row,
+    to_khai_note,
 )
 from ..dinh_kem_khong_tach.planner import plan as plan_without_split
 from .prompt import SYSTEM_PROMPT, build_user_prompt
@@ -80,7 +85,10 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
         s["doc"] = {**s["doc"], "_soThe": so_dinh_danh_the(text), "_matTheOcr": mat_the(text),
                     "chuThe": ho_ten_co_dau(s["doc"].get("chuThe") or "", text)}
 
+    # Trường hợp vắng mặt / đã đăng ký thường trú: bảng chỉ có dòng Tờ khai → giấy chứng minh chỗ ở đi dòng "+".
+    no_home_row = table_has_no_home_row(pages_by_file, options)
     attachments: list[dict] = []
+    notes: list[str] = []
     leftovers: list[str] = []
     seen: dict[str, int] = {}
     # Hai mặt thẻ của CÙNG một người (dù khác trang, khác tệp) luôn gộp thành MỘT giấy.
@@ -97,7 +105,9 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
         seen[document_name.lower()] = seen.get(document_name.lower(), 0) + 1
         if seen[document_name.lower()] > 1:
             document_name = f"{document_name} {seen[document_name.lower()]}"
-        if doc_type in ROWS:
+        if doc_type == CHO_O and no_home_row is False:
+            item = new_row_item(file_index, name, document_name, doc_type)
+        elif doc_type in ROWS:
             item = plan_item(file_index, name, document_name, doc_type)
         elif doc_type in NEW_ROW_TYPES:
             item = new_row_item(file_index, name, document_name, doc_type)
@@ -109,8 +119,11 @@ async def plan(files: list[FileItem], options: dict | None = None, session: dict
         if not whole:
             item["sourceSegments"] = [{"fileIndex": p["fileIndex"], "pageIndexes": p["pages"]} for p in parts]
         attachments.append(item)
+        pages = sum(len(p["pages"]) if p["pages"] is not None else len(pages_by_file.get(p["fileIndex"], []))
+                    for p in parts)
+        notes.append(to_khai_note(doc, pages) if doc_type == TO_KHAI else "")
 
-    finalize_rows(attachments)
+    finalize_rows(attachments, notes)
     if leftovers:
         errors.append(f"Giấy tờ chưa rõ loại đã đính vào dòng \"{ROWS[LEFTOVER_ROW]['componentName']}\": "
                       + ", ".join(leftovers))

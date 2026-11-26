@@ -21,7 +21,7 @@ FIELDS: list[dict] = [
              '"Khác" (ông, bà, anh, chị, em, con, cháu, người được ủy quyền...). Không có tờ khai thì bỏ field.'},
     {"name": "Requester_FullName", "desc": "Họ tên người yêu cầu ghi trên TỜ KHAI đăng ký lại khai sinh (dòng 'Họ, chữ đệm, tên người yêu cầu')."},
     {"name": "Requester_IdNumber", "desc": "Số định danh/CCCD/CMND của người yêu cầu (từ tờ khai/CCCD của chính người yêu cầu), chỉ trả khi có."},
-    {"name": "Requester_IdIssueDate", "desc": "Ngày cấp giấy tờ định danh người yêu cầu, dd/mm/yyyy."},
+    {"name": "Requester_IdIssueDate", "desc": "Ngày cấp giấy tờ định danh người yêu cầu, dd/mm/yyyy. Chỉ lấy ở dòng ngày cấp: mặt sau CCCD ('Ngày, tháng, năm / Date, month, year') hoặc 'Ngày, tháng, năm cấp / Date of issue' trên thẻ căn cước; KHÔNG BAO GIỜ lấy 'Có giá trị đến / Date of expiry' hay 'Ngày, tháng, năm hết hạn'. Hồ sơ chỉ có mặt trước thẻ (không thấy dòng ngày cấp) thì bỏ field."},
     {"name": "Requester_IdIssuePlace", "desc": "Nơi cấp giấy tờ định danh người yêu cầu."},
     {"name": "Requester_ResidenceDomestic", "desc": "Nơi cư trú người yêu cầu, object {quocGia,tinh,xa,chiTietDuoiXa}."},
     {"name": "Requester_Relationship",
@@ -68,7 +68,9 @@ FIELDS: list[dict] = [
              "hồ sơ có CCCD/CMND của chính người đó, và đọc thẳng từ THẺ — KHÔNG chép lại từ tờ khai. Trả kể "
              "cả khi trùng Subject_BirthDate: đây là nguồn ưu tiên của ô ngày sinh mục II vì thẻ in sẵn, còn "
              "tờ khai là chữ viết tay. KHÔNG lấy ngày sinh trên thẻ của cha/mẹ/người nộp hộ."},
-    {"name": "Subject_IdIssueDate", "desc": "Ngày cấp CCCD/CMND của chính người được đăng ký lại khai sinh, dd/mm/yyyy."},
+    {"name": "Subject_IdIssueDate",
+     "desc": "Ngày cấp CCCD/CMND của chính người được đăng ký lại khai sinh, dd/mm/yyyy. "
+             "Chỉ lấy ở dòng ngày cấp: mặt sau CCCD ('Ngày, tháng, năm / Date, month, year') hoặc 'Ngày, tháng, năm cấp / Date of issue' trên thẻ căn cước; KHÔNG BAO GIỜ lấy 'Có giá trị đến / Date of expiry' hay 'Ngày, tháng, năm hết hạn'. Hồ sơ chỉ có mặt trước thẻ (không thấy dòng ngày cấp) thì bỏ field."},
     {"name": "Subject_IdIssuePlace",
      "desc": "Nơi cấp CCCD/CMND của chính người được đăng ký lại khai sinh — lấy từ mặt sau CCCD; RIÊNG "
              "Giấy CMND (~9 số) lấy 'Công an tỉnh/thành phố ...' ghi cùng dòng số CMND."},

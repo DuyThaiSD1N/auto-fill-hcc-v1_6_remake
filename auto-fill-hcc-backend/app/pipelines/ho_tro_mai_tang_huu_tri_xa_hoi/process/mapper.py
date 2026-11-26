@@ -333,6 +333,49 @@ def _same_person(first: Person, second: Person) -> bool:
     return bool(first_name and first_name == second_name)
 
 
+def _fold_name(text: str) -> str:
+    text = unicodedata.normalize("NFD", str(text).replace("Đ", "D").replace("đ", "d"))
+    return "".join(ch for ch in text if not unicodedata.combining(ch)).casefold()
+
+
+def _edits(a: str, b: str) -> int:
+    row = list(range(len(b) + 1))
+    for i, x in enumerate(a, start=1):
+        prev, row[0] = row[0], i
+        for j, y in enumerate(b, start=1):
+            prev, row[j] = row[j], min(row[j] + 1, row[j - 1] + 1, prev + (x != y))
+    return row[-1]
+
+
+_VILLAGE_NUMBER = re.compile(r"\s+(?:[IVX]+|\d+)$")
+
+
+def apply_village_spelling(fields: list[dict], ocr_text: str) -> list[dict]:
+    """Áp TenThon_DoiChieu (LLM đối chiếu tên thôn tờ khai viết tay ↔ giấy in) vào chi tiết các địa chỉ rồi bỏ field đó.
+
+    LLM quyết hai cách viết là cùng một thôn; mã chỉ chặn đổi sang địa danh khác: cùng số từ, lệch ≤ 2 chữ cái sau khi
+    bỏ dấu, chữ in phải có thật trong OCR, và chỉ thay đúng chuỗi tên thôn tờ khai đang có trong địa chỉ."""
+    pair = next((f.get("value") for f in fields if f.get("name") == "TenThon_DoiChieu"), None)
+    fields = [f for f in fields if f.get("name") != "TenThon_DoiChieu"]
+    if not isinstance(pair, dict):
+        return fields
+    # Số thôn (I, II, 2…) không thuộc tên: tờ khai và giấy in hay ghi khác kiểu → bỏ trước khi so, chỉ thay phần tên.
+    old, new = (_VILLAGE_NUMBER.sub("", unicodedata.normalize("NFC", " ".join(str(pair.get(k) or "").split())))
+                for k in ("to_khai", "chu_in"))
+    ocr = unicodedata.normalize("NFC", " ".join(str(ocr_text or "").split()))
+    if (not old or not new or old == new or len(old.split()) != len(new.split())
+            or _edits(_fold_name(old), _fold_name(new)) > 2 or new not in ocr):
+        return fields
+    pattern = re.compile(rf"(?<!\w){re.escape(old)}(?!\w)")
+    for field in fields:
+        value = field.get("value")
+        if str(field.get("name") or "").endswith("_NoiCuTru") and isinstance(value, dict):
+            detail = str(value.get("diaChi") or "")
+            if pattern.search(detail):
+                field["value"] = {**value, "diaChi": pattern.sub(new, detail)}
+    return fields
+
+
 def enrich(
     fields: list[dict],
     options: dict | None = None,

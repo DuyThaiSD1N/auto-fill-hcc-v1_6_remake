@@ -37,6 +37,7 @@ Chép đúng chữ/số NHÌN THẤY, so từng chữ số. Ô trống hoặc kh
 - "dien_thoai": dòng "Điện thoại" ở đầu đơn — chỉ chữ số.
 - "von": mục "4. Vốn kinh doanh — Tổng số" — chỉ chữ số, đơn vị đồng (dòng chữ "bằng chữ" dùng để đối chiếu).
 - "so_lao_dong": mục "5.3 Tổng số lao động" — chỉ chữ số.
+- "ten_ho": mục "1. Tên hộ kinh doanh" — dòng "Tên hộ kinh doanh viết bằng tiếng Việt", chép đúng từng chữ và DẤU nhìn thấy.
 - "phuong_phap_thue": ô được đánh dấu ở mục "5.4 Phương pháp tính thuế GTGT" — "Phương pháp kê khai" hoặc
   "Phương pháp khoán"; không ô nào được đánh dấu → "".
 - "nganh_nghe": bảng "3. Ngành, nghề kinh doanh", mỗi dòng có ghi dữ liệu là 1 phần tử:
@@ -45,7 +46,7 @@ Chép đúng chữ/số NHÌN THẤY, so từng chữ số. Ô trống hoặc kh
   Xác định cột theo vị trí ngang so với đường kẻ dọc, chữ viết xuống nhiều dòng trong cùng ô → ghép lại.
 
 Trả DUY NHẤT một JSON, không giải thích:
-{"so_dinh_danh": "", "dien_thoai": "", "von": "", "so_lao_dong": "", "phuong_phap_thue": "",
+{"so_dinh_danh": "", "dien_thoai": "", "von": "", "so_lao_dong": "", "phuong_phap_thue": "", "ten_ho": "",
  "nganh_nghe": [{"ten": "", "ma": "", "chinh": false}]}"""
 
 

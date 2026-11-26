@@ -96,7 +96,8 @@ def test_business_lines_keep_extracted_name_for_description_fill():
     assert raw["value"]["codes"] == ["5630"]
     assert raw["value"]["main"] == "5630"
     assert raw["value"]["items"] == [
-        {"code": "5630", "name": "Dịch vụ phục vụ đồ uống (cà phê)", "main": True}
+        {"code": "5630", "name": "Dịch vụ phục vụ đồ uống (cà phê)", "main": True,
+         "detail": "Dịch vụ phục vụ đồ uống (cà phê)", "detailReplace": False}
     ]
 
 
@@ -116,7 +117,8 @@ def test_business_line_codes_strip_spaces_before_extension_fill():
 
     assert raw["value"]["codes"] == ["5610"]
     assert raw["value"]["main"] == "5610"
-    assert raw["value"]["items"] == [{"code": "5610", "name": "Ăn uống", "main": True}]
+    assert raw["value"]["items"] == [{"code": "5610", "name": "Ăn uống", "main": True, "detail": "Ăn uống",
+                                      "detailReplace": False}]
     assert main_input["value"] == "5610"
 
 
@@ -315,3 +317,66 @@ def test_so_tru_so_lech_1_2_chu_so_voi_so_chu_ho_thi_lay_so_chu_ho():
     assert phone("0900000953") == "0900000123"
     assert phone("0900000123") == "0900000123"
     assert phone("0911222333") == "0911222333"
+
+
+def test_ten_nganh_tren_giay_chi_la_ten_chuan_cua_ma_thi_khong_dien_mo_ta():
+    rows = [
+        {"ma": "4933", "ten": "vận tải hàng hoá bằng đường bọ", "chinh": True},  # lệch vài ký tự do OCR
+        {"ma": "5630", "ten": "Dịch vụ phục vụ đồ uống (cà phê)", "chinh": False},  # có chi tiết thêm
+        {"ma": "3102", "ten": "Sản xuất giường, tủ, bàn, ghế bằng gỗ kim loại", "chinh": False},  # thêm chữ "gỗ"
+    ]
+    fields = mapper.enrich([{"name": "NganhNghe_DanhSach", "value": rows}], page="nganh-nghe-kinh-doanh")
+    items = next(f["value"]["items"] for f in fields if f["name"] == "__businessLines")
+    assert [(i["code"], i["name"]) for i in items] == [
+        ("4933", ""), ("5630", "Dịch vụ phục vụ đồ uống (cà phê)"), ("3102", "Sản xuất giường, tủ, bàn, ghế bằng gỗ kim loại")]
+
+
+def test_o_mo_ta_dong_nganh_do_be_quyet_theo_dia_ban_tai_khoan():
+    rows = [{"ma": "5630", "ten": "Dịch vụ phục vụ đồ uống (cà phê)", "chinh": True},
+            {"ma": "4933", "ten": "Vận tải hàng hóa bằng đường bộ", "chinh": False}]
+
+    def details(user, procedure="dang-ky-kinh-doanh"):
+        opts = mapper.with_account_process_options({}, user, procedure)
+        fields = mapper.enrich([{"name": "NganhNghe_DanhSach", "value": rows}], page="nganh-nghe-kinh-doanh",
+                               line_mode=opts.get(mapper.LINE_DETAIL_OPTION, ""))
+        items = next(f["value"]["items"] for f in fields if f["name"] == "__businessLines")
+        return [(i["detail"], i["detailReplace"]) for i in items]
+
+    # Mặc định: ghi thêm tên trên giấy dưới tên chính thức; chỉ là tên chuẩn của mã → không điền.
+    assert details({"tinh": "Thành phố Hà Nội", "xa": "Phường Hoàn Kiếm"}) == [
+        ("Dịch vụ phục vụ đồ uống (cà phê)", False), ("", False)]
+    # Xã Đơn Dương / phường Nam Nha Trang: chỉ phần trong ngoặc, ghi đè cả ô.
+    assert details({"tinh": "Tỉnh Lâm Đồng", "xa": "Xã Đơn Dương"}) == [("Cà phê", True), ("", True)]
+    # Phường Yên Bái / Bắc Nha Trang / Đắk Bla: không ghi ô mô tả — cả luồng thay đổi nội dung.
+    for user in ({"tinh": "Tỉnh Lào Cai", "xa": "Phường Yên Bái"}, {"tinh": "Tỉnh Khánh Hòa", "xa": "Phường Bắc Nha Trang"},
+                 {"tinh": "Tỉnh Quảng Ngãi", "xa": "Phường Đăk Bla"}):
+        assert details(user) == [("", False), ("", False)]
+        assert mapper.with_account_process_options({}, user, "dang-ky-thay-doi-noi-dung-ho-kinh-doanh") == {
+            mapper.LINE_DETAIL_OPTION: "skip"}
+    # Client không tự bật được cho xã khác.
+    assert mapper.with_account_process_options({mapper.LINE_DETAIL_OPTION: "skip"}, {"tinh": "Hà Nội"},
+                                                "dang-ky-kinh-doanh") == {}
+
+
+def test_sdt_lech_mot_chu_so_o_mot_muc_thi_theo_cach_ghi_cua_da_so_muc():
+    """Chủ hộ / trụ sở / thuế ghi cùng một số, OCR đọc lệch đúng một chữ số ở một mục → mục đó theo cách ghi mà nhiều mục
+    hơn cùng ghi (kể cả khi mục lệch là chủ hộ). Hoà, hoặc lệch ≥2 chữ số với số đa số → không phân xử theo số mục."""
+    keys = {"dia-chi": "HO_PHONEFld", "chu-ho-kinh-doanh": "PHONEFld", "thong-tin-ve-thue": "REP_RECEIVER_PHONEFld"}
+
+    def phones(chu_ho, tru_so, thue):
+        fields = [{"name": "ChuHo_DienThoai", "value": chu_ho}, {"name": "TruSo_DienThoai", "value": tru_so},
+                  {"name": "Thue_DienThoai", "value": thue}]
+        pages = mapper.enrich_all(fields)
+        return tuple(next((f["value"] for f in pages[page] if f["name"].endswith("$" + key)), "")
+                     for page, key in keys.items())
+
+    # Chủ hộ lệch, trụ sở + thuế cùng ghi → chủ hộ (và trụ sở) theo trụ sở + thuế.
+    assert phones("0900000723", "0900000123", "0900000123") == ("0900000123",) * 3
+    # Thuế lệch, chủ hộ + trụ sở cùng ghi → thuế theo.
+    assert phones("0900000123", "0900000123", "0900000173") == ("0900000123",) * 3
+    # Hoà chủ hộ – thuế (trụ sở trống): giữ từng mục.
+    assert phones("0900000123", "", "0900000173") == ("", "0900000123", "0900000173")
+    # Hoà chủ hộ – trụ sở: trụ sở vẫn theo chủ hộ như trước.
+    assert phones("0900000123", "0900000173", "") == ("0900000123", "0900000123", "")
+    # Thuế lệch ≥2 chữ số với số đa số: là số khác, giữ.
+    assert phones("0900000123", "0900000123", "0900000987") == ("0900000123", "0900000123", "0900000987")

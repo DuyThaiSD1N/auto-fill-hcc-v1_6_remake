@@ -3,7 +3,8 @@
 Lượt trích hay bỏ trống số điện thoại dù giấy có ghi, hoặc lấy số của người khác trong hồ sơ (người yêu cầu ghi trên tờ
 khai khi người nộp là người được ủy quyền). Cách kiểm do MÃ làm, không qua LLM: nhận chủ của từng số theo CHỖ GHI —
 (a) cùng dòng với họ tên người nộp; (b) dòng "Số điện thoại / ĐT" thuộc khối có họ tên người nộp (khối người yêu cầu của
-tờ khai, mục người được ủy quyền); (c) dãy số đứng riêng ngay dưới họ tên / chữ ký người nộp. Chỉ đề xuất khi mã nhận
+tờ khai, mục người được ủy quyền); (c) dãy số đứng riêng ngay dưới họ tên / chữ ký người nộp; (d) số không gắn với
+ai khác trên tờ khai mà người nộp là người yêu cầu của chính tờ khai đó. Chỉ đề xuất khi mã nhận
 được đúng MỘT số của người nộp mà lượt trích bỏ trống hoặc ghi số khác. Người nộp lấy từ khối <nguoi_nop> của bước phân
 vai (người đăng nhập cổng), chỉ khi khối đó ghi "Có trong hồ sơ: Có".
 """
@@ -23,7 +24,9 @@ RULES = """
 Vụ xét số điện thoại của NGƯỜI NỘP (người đăng nhập cổng — khối <nguoi_nop> của phân vai). Mã đã nhận chủ của số theo
 CHỖ GHI trên giấy: cùng dòng với họ tên người nộp; dòng "Số điện thoại"/"ĐT" thuộc khối có họ tên người nộp (khối người
 yêu cầu của tờ khai khi người nộp là người yêu cầu, mục người được ủy quyền khi người nộp là người được ủy quyền); hoặc
-dãy số viết ngay dưới họ tên / chữ ký người nộp. Cách nhận ghi ở dòng "Tín hiệu mã".
+dãy số viết ngay dưới họ tên / chữ ký người nộp; hoặc số không gắn với người nào khác (không cùng dòng / khối họ tên
+người khác) trên tờ khai mà người nộp là người yêu cầu của tờ khai đó — số đó là của người yêu cầu. Cách nhận ghi ở
+dòng "Tín hiệu mã".
 A trống mà B là số mã nhận cho người nộp → chọn B (giấy có ghi thì không được bỏ trống). A là số khác — không có trên
 dòng nào gắn với người nộp, hoặc là số ghi cho người khác trong hồ sơ — mà B là số của người nộp → chọn B.
 Dòng trích dẫn là số của người khác, của cơ quan / bệnh viện / cán bộ, hoặc là số định danh / CCCD / số hồ sơ →
@@ -35,6 +38,7 @@ KHONG_DU_CAN_CU.
 # CCCD 12 chữ số không thành số điện thoại.
 _DIGIT_RUN_RE = re.compile(r"(?<![\d])\+?\d(?:[ .\-]?\d)+(?![\d])")
 _VALID_RE = re.compile(r"0(?:[35789]\d{8}|2\d{9})")
+_MOBILE_RE = re.compile(r"0[35789]\d{8}")
 _NOT_PHONE_BEFORE_RE = re.compile(
     r"(cccd|cmnd|can cuoc|dinh danh|giay to tuy than|so ho so|ho so|ma so|mst|tai khoan|stk|so/no|so: *$|no\.? *$|"
     r"quyen so|so dang ky)[^0-9]{0,25}$")
@@ -139,6 +143,14 @@ def owner_of(lines: list[str], at: int, person: dict) -> tuple[str, str]:
     return "", ""
 
 
+def _own_requester_form(lines: list[str], person: dict) -> bool:
+    """Tờ khai mà dòng người yêu cầu ghi họ tên người nộp, và người nộp có vai người yêu cầu: số không gắn với ai khác
+    trên tờ khai này (viết tay đầu trang, cạnh chữ ký chỉ ghi tên gọi, OCR ghép vào dòng in sẵn) là số của người yêu cầu."""
+    if "yeu cau" not in person["role"]:
+        return False
+    return any(_REQUESTER_LINE_RE.search(fold(line)) and _has_name(line, person["name"]) for line in lines)
+
+
 def phone_findings(inspector: Inspector, case: Case) -> list[Finding]:
     person = submitter(case.context)
     if not person["present"] or not person["name"]:
@@ -147,9 +159,13 @@ def phone_findings(inspector: Inspector, case: Case) -> list[Finding]:
     others: set[str] = set()
     for index, document in enumerate(case.documents, start=1):
         lines = [line.strip() for line in str(document.get("text") or "").splitlines() if line.strip()]
+        own_form = _own_requester_form(lines, person)
         for at, line in enumerate(lines):
             for number in phones_in(line):
                 who, how = owner_of(lines, at, person)
+                # Chỉ số di động: số CCCD 12 chữ số rơi một chữ số khi OCR thành dãy 11 số "02…" giống số máy bàn.
+                if not who and own_form and _MOBILE_RE.fullmatch(number):
+                    who, how = "self", "số không gắn với ai khác trên tờ khai, người nộp là người yêu cầu của tờ khai đó"
                 if who == "self":
                     own.setdefault(number, {"quote": line, "doc": index, "how": how})
                 elif who == "other":

@@ -40,6 +40,9 @@ def capability(procedure: dict | None) -> str:
     # Form Liferay cổng Bắc Ninh: bản extension phải biết ghi lại ô trên form Bắc Ninh.
     if kind == "bacninh":
         return "secondPassBacNinh"
+    # Hộ kinh doanh (HkdOnline 8 trang): bản extension phải biết đính kèm trước rồi điền theo các trang đã soát.
+    if kind == "hkd":
+        return "secondPassHkd"
     # Form Form.io (data[...], cổng Bộ Y tế…): bản extension phải biết ghi lại ô trên form Form.io.
     return "secondPassFormio" if kind == "formio" else "secondPass"
 

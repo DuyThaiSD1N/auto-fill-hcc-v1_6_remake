@@ -346,11 +346,14 @@ def test_tro_ly_bam_dinh_kem_tu_sang_trang_thanh_phan_ho_so_roi_dinh():
             "auto_attach_after_fill": True, "upload_session_id": "s1", "location": {}, "client_capabilities": caps}
     with mock.patch.object(tracing, "set_report", mock.AsyncMock()):
         r = asyncio.run(flow._handle_filling(conv, Intent("action", "fill_report", {"filled": 17})))
-    # Câu đuôi: vẫn nhắc chọn Hình thức nhận kết quả, rồi nói rõ bấm Đính kèm giấy tờ là trợ lý tự sang trang.
+    # Câu đuôi: vẫn nhắc chọn Hình thức nhận kết quả, rồi nói rõ bấm Sang Thành phần hồ sơ là trợ lý tự sang trang.
     assert conv["state"] == "reviewing" and "Hình thức nhận kết quả" in r.display_md
-    assert "tôi bấm **Đồng ý và tiếp tục** sang **Thành phần hồ sơ** rồi tự đính kèm" in r.display_md
+    assert "bấm **Sang Thành phần hồ sơ**: tôi bấm **Đồng ý và tiếp tục**" in r.display_md
     assert "trong Trợ lý" not in r.display_md
-    # Bấm "Đính kèm giấy tờ" ở trang kê khai → bấm nút cổng, chờ trang đính kèm.
+    # User 24/11/2026: bước Kê khai không có nút "Đính kèm giấy tờ", chỉ nút "Sang Thành phần hồ sơ".
+    labels = [c["label"] for c in r.chips]
+    assert "📎 Sang Thành phần hồ sơ ▶" in labels and "📎 Đính kèm giấy tờ ▶" not in labels
+    # Bấm "Sang Thành phần hồ sơ" ở trang kê khai → bấm nút cổng, chờ trang đính kèm.
     r = asyncio.run(flow._handle_turn_inner(conv, Intent("action", "confirm_review", {})))
     assert r.actions == [{"type": "lc_next"}] and "Đồng ý và tiếp tục" in r.display_md
     assert conv["state"] == "attaching" and conv["pipeline_status"] == "waiting_attachment_page"
@@ -378,6 +381,43 @@ def test_tro_ly_bam_dinh_kem_tu_sang_trang_thanh_phan_ho_so_roi_dinh():
            "upload_session_id": "s1", "location": {}, "client_capabilities": dict(CAPS)}
     r = asyncio.run(flow._handle_turn_inner(old, Intent("action", "confirm_review", {})))
     assert not r.actions and "Mình đang ở trang" in r.display_md
+
+
+def test_tro_ly_ke_khai_chi_co_nut_sang_thanh_phan_ho_so():
+    """User 24/11/2026 (ảnh 2.001428): bước Kê khai ẩn "Đính kèm giấy tờ", thay bằng nút "Sang Thành phần hồ sơ" — cả ở
+    báo cáo điền có vòng bổ sung ô lẫn câu "đã đủ ô" khi công dân rà xong; câu kết luận gọi đúng tên nút."""
+    import asyncio
+    from unittest import mock
+
+    from app.channels.handfree.chat import tracing
+
+    caps = {**CAPS, "supportsLaiChauFeeStep": True, "supportsBcaCaseStep": True, "supportsFieldReview": True,
+            "supportsBcaNthReview": True}
+    page = {"pageContextCaptured": True, "formKind": "standard", "attachmentTarget": False,
+            "attachmentComponentCount": 0, "bcaKeKhaiForm": True}
+    conv = {"_id": "c1", "state": "filling", "procedure_key": KEY, "docs_target": "declaration",
+            "auto_attach_after_fill": True, "upload_session_id": "s1", "location": {}, "client_capabilities": caps,
+            "docs_page_context": page}
+    review = {"filled": 17, "optional": 4, "required": 0, "empty": 4}
+    with mock.patch.object(tracing, "set_report", mock.AsyncMock()):
+        r = asyncio.run(flow._handle_filling(conv, Intent("action", "fill_report",
+                                                          {"filled": 17, "review": review})))
+    labels = [c["label"] for c in r.chips]
+    assert "📎 Sang Thành phần hồ sơ ▶" in labels and "📎 Đính kèm giấy tờ ▶" not in labels
+    # Công dân rà xong trên trang (extension đếm lại ô): câu "đã đủ" bảo bấm đúng nút trợ lý, nút vẫn là Sang TPHS.
+    r = asyncio.run(flow._handle_turn_inner(conv, Intent("event", "field_review_status", {"stats": review})))
+    text = r.display_md + " ".join(str(a.get("md") or "") for a in r.actions)
+    assert "**Sang Thành phần hồ sơ**" in text and "Đồng ý và tiếp tục** cuối trang" not in text
+    labels = [c["label"] for c in r.chips]
+    assert "📎 Sang Thành phần hồ sơ ▶" in labels and "📎 Đính kèm giấy tờ ▶" not in labels
+    # Còn ô bắt buộc trống → chưa hiện nút đi tiếp (cổng chặn), chỉ mời bổ sung.
+    conv["field_review"]["ready_said"] = False
+    r = asyncio.run(flow._handle_turn_inner(conv, Intent("event", "field_review_status", {
+        "stats": {**review, "required": 1, "empty": 5}})))
+    assert "📎 Sang Thành phần hồ sơ ▶" not in [c["label"] for c in r.chips]
+    # Bấm nút → trợ lý bấm "Đồng ý và tiếp tục" của cổng.
+    r = asyncio.run(flow._handle_turn_inner(conv, Intent("action", "confirm_review", {})))
+    assert r.actions == [{"type": "lc_next"}]
 
 
 def test_tro_ly_trang_chon_truong_hop_noi_ro_phai_chon_co_quan_giai_quyet():

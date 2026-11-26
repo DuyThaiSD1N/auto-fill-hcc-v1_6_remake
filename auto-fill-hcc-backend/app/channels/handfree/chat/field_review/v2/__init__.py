@@ -453,11 +453,15 @@ async def on_focus(conv: dict, proc: dict | None, st: dict, payload: dict, field
     override = st.get("ask_override")
     own = bool(override and field is not None and override["key"] == field["key"])
     stats = st.get("stats") or {}
-    if (field is not None and not own and not field.get("required") and not stats.get("required")
-            and not st.get("optional_go")):
-        # Đã đủ ô bắt buộc: dừng hỏi, báo còn ô không bắt buộc kèm nút đi tiếp / nút bổ sung (công dân bấm bổ sung thì
-        # vòng mới hỏi tiếp ô không bắt buộc).
+    # Hỏi ô bắt buộc trước (requiredFirst): tới ô không bắt buộc = hết ô bắt buộc để hỏi (đã điền hoặc công dân bỏ qua).
+    # Hỏi theo thứ tự trên trang (client cũ): ô không bắt buộc có thể đứng trước ô bắt buộc → chỉ dừng khi đủ ô bắt buộc.
+    red_over = not field.get("required") and (st.get("required_first") or not stats.get("required")) \
+        if field is not None else False
+    if field is not None and not own and red_over and not st.get("optional_go"):
+        # Dừng hỏi, báo còn ô không bắt buộc kèm nút đi tiếp / nút bổ sung (công dân bấm bổ sung thì vòng mới hỏi tiếp
+        # ô không bắt buộc).
         st.pop("ask_override", None)
+        st["red_done"] = True
         done = [fr._say(vi.FR2_APPLIED_DONE)] if st.pop("v2_done", False) else []
         lead = _join([fr._outcome_lead(st, applied), *st.pop("v2_leads", []), *done])
         return fr._finish_reply(conv, proc, stopped=False, lead=lead)

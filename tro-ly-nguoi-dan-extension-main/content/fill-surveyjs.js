@@ -183,7 +183,7 @@
     const delay = followDelay(fields.length);
     for (const field of fields) {
       let r = byName.get(field.name) || { ok: false, reason: res.error || "not-found" };
-      const domRetry = !r.ok && r.reason !== "readonly" &&
+      const domRetry = !r.ok && r.reason !== "readonly" && !field.clear &&
         (field.comp === "sjs-dropdown" || (!res.ok && field.comp === "sjs-text"));
       if (domRetry) {
         const ok = field.comp === "sjs-dropdown"
@@ -192,7 +192,7 @@
         r = ok ? { ok: true } : r;
       }
       if (r.ok) result.filled++;
-      else if (r.reason === "readonly") result.skipped.push(field.name);
+      else if (r.reason === "readonly" || r.reason === "cleared-by-be") result.skipped.push(field.name);
       else {
         result.notFound.push(field.name);
         console.warn("[TLND-SurveyJS] chưa điền", field.name, r.reason);

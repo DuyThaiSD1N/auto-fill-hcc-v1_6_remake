@@ -8,6 +8,7 @@ import re
 import unicodedata
 
 from app.pipelines._shared.area_remap import accent_only_ward, is_current_area, remap_area
+from app.pipelines._shared.cccd import mrz_records
 from app.pipelines._shared.compact_agent.issuer import (
     default_issuer,
     id_doc_type,
@@ -62,10 +63,18 @@ _DEATH_ORIGINAL_NUMBER_WARDS = (
     ("quang ngai", "binh son"),
     ("quang tri", "dong thuan"),
 )
+# Phường Tây Nha Trang: hồ sơ "Hiện tại đang có vợ/chồng" chọn option "Từ ngày… đến ngày… chưa đăng ký kết hôn với ai;
+# hiện tại đang có vợ/chồng" và điền vợ/chồng + giấy chứng nhận kết hôn vào vùng của option đó. Mốc thời gian chỉ lấy từ
+# tờ khai; tờ khai không ghi thì để trống cho cán bộ nhập (ô tô đỏ + cảnh báo).
+MARRIED_AS_PERIOD_OPTION = "marriedAsPeriod"
+_MARRIED_AS_PERIOD_WARDS = (
+    ("khanh hoa", "tay nha trang"),
+)
 _WARD_PREFIXES = ("xa ", "phuong ", "thi tran ", "dac khu ")
 
 
-def _is_death_original_number_ward(user: dict | None) -> bool:
+def _account_in(user: dict | None, wards: tuple[tuple[str, str], ...]) -> bool:
+    """Tỉnh tài khoản chứa tên tỉnh và tên phường/xã (bỏ dấu, bỏ "Xã"/"Phường") khớp ĐÚNG một dòng bảng."""
     if not user:
         return False
     tinh, xa = _fold(user.get("tinh")), _fold(user.get("xa"))
@@ -73,20 +82,30 @@ def _is_death_original_number_ward(user: dict | None) -> bool:
         if xa.startswith(prefix):
             xa = xa[len(prefix):].strip()
             break
-    return any(province in tinh and xa == ward for province, ward in _DEATH_ORIGINAL_NUMBER_WARDS)
+    return any(province in tinh and xa == ward for province, ward in wards)
 
 
 def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
-    """Bản sao options với cờ theo tài khoản do server quyết (bản sao trích lục khai tử vẫn lấy số gốc)."""
+    """Bản sao options với cờ theo tài khoản do server quyết (bản sao trích lục khai tử vẫn lấy số gốc; Tây Nha Trang
+    khai đang có vợ/chồng theo option khoảng thời gian)."""
     result = dict(options or {})
     result.pop(DEATH_ORIGINAL_NUMBER_OPTION, None)
-    if procedure == PROCEDURE_KEY and _is_death_original_number_ward(user):
+    result.pop(MARRIED_AS_PERIOD_OPTION, None)
+    if procedure != PROCEDURE_KEY:
+        return result
+    if _account_in(user, _DEATH_ORIGINAL_NUMBER_WARDS):
         result[DEATH_ORIGINAL_NUMBER_OPTION] = True
+    if _account_in(user, _MARRIED_AS_PERIOD_WARDS):
+        result[MARRIED_AS_PERIOD_OPTION] = True
     return result
 
 
 def death_original_number(options: dict | None) -> bool:
     return bool((options or {}).get(DEATH_ORIGINAL_NUMBER_OPTION))
+
+
+def married_as_period(options: dict | None) -> bool:
+    return bool((options or {}).get(MARRIED_AS_PERIOD_OPTION))
 
 
 def _compact(value) -> str:
@@ -111,6 +130,33 @@ def _full_date(value) -> str:
         return ""
     day, month, year = match.groups()
     return f"{int(day):02d}/{int(month):02d}/{year}"
+
+
+# Mặt sau thẻ căn cước: ngày cấp in ở dòng "Ngày, tháng, năm / Date, month, year" (CCCD gắn chip) hoặc "Ngày, tháng,
+# năm cấp / Date of issue" (căn cước 2024), không có chữ "ngày cấp" nên LLM hay bỏ sót. Ngày có thể rơi xuống dòng
+# dưới nhãn. Bỏ dòng ngày sinh / hết hạn.
+_OCR_FILE_SPLIT = re.compile(r"^=====.*=====\s*$", re.MULTILINE)
+_CARD_ISSUE_LABEL = ("ngay, thang, nam", "ngay thang nam", "ngay cap", "date of issue", "date, month, year")
+_CARD_ISSUE_SKIP = ("sinh", "birth", "het han", "expiry", "co gia tri")
+
+
+def _card_back_issue_date(ocr_text, number: str) -> str:
+    """Ngày cấp trên mặt sau thẻ của ĐÚNG người: chỉ đọc tệp có dòng MRZ mang số định danh đó."""
+    if len(number) != 12 or not ocr_text:
+        return ""
+    for segment in _OCR_FILE_SPLIT.split(unicodedata.normalize("NFC", str(ocr_text))):
+        if not any(record.get("id") == number for record in mrz_records(segment)):
+            continue
+        lines = segment.splitlines()
+        for index, line in enumerate(lines):
+            folded = _fold(line)
+            if not any(label in folded for label in _CARD_ISSUE_LABEL) or any(s in folded for s in _CARD_ISSUE_SKIP):
+                continue
+            for candidate in (line, *lines[index + 1:index + 2]):
+                date = _full_date(candidate)
+                if date:
+                    return date
+    return ""
 
 
 def _iso(ddmmyyyy: str) -> str:
@@ -515,7 +561,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add("citizenField20", nationality, code="VN" if _fold(nationality) == "viet nam" else None,
             default=not values.get("NguoiDuocCap_QuocTich"))
     if number:
-        issue_date = _full_date(values.get("NguoiDuocCap_NgayCap"))
+        # LLM bỏ sót ngày cấp ở mặt sau thẻ → đọc lại từ đúng mặt sau có MRZ mang số đó; có ngày thì cơ quan cấp
+        # mặc định theo ngày ở dưới cũng có.
+        issue_date = _full_date(values.get("NguoiDuocCap_NgayCap")) or _card_back_issue_date(
+            options.get("_ocr_text"), number)
         # Mặc định cơ quan cấp theo ngày chỉ đúng với thẻ căn cước 12 số.
         issuer = normalize_issuer(values.get("NguoiDuocCap_NoiCap")) or (
             default_issuer(issue_date) if len(number) == 12 and issue_date else "")
@@ -551,6 +600,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     if not any(values.get(f"DeathCert_{k}") for k in ("Number", "Date", "Agency")):
         values.update(_death_cert_from_ocr(str(options.get("_ocr_text") or ""), values, death_original_number(options)))
     status = _marital_status(values)
+    # Cờ đơn vị (Tây Nha Trang): đang có vợ/chồng → option khoảng thời gian, các ô vùng đó thiếu thì xoá trống + tô đỏ.
+    married_period = status == _MARRIED and married_as_period(options)
+    if married_period:
+        status = _PERIOD_MARRIED
     if status:
         add_choice("citizenTinhtranghonnhan", TINH_TRANG, status)
     if status == _MARRIED:
@@ -577,6 +630,17 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add_date("citizenField55", values.get("Marriage_Date"))
         add_date("citizenField56", values.get("Period_TuNgay"))
         add_date("citizenField57", values.get("Period_DenNgay"))
+        if married_period:
+            blank = [name for name in ("citizenField531", "citizenField53", "citizenField54", "citizenField55",
+                                       "citizenField56", "citizenField57") if name not in seen]
+            for name in blank:
+                out.append({"name": name, "comp": UI_COMP_BY_NAME[name], "value": "", "clear": True, "markEmpty": True})
+                seen.add(name)
+            if {"citizenField56", "citizenField57"} & set(blank):
+                warnings.append("Tờ khai không ghi khoảng thời gian chưa đăng ký kết hôn — cán bộ nhập thời điểm bắt "
+                                "đầu và kết thúc.")
+            if set(blank) - {"citizenField56", "citizenField57"}:
+                warnings.append("Chưa đọc đủ thông tin vợ/chồng và giấy chứng nhận kết hôn — cán bộ nhập các ô còn trống.")
     elif status == _OTHER:
         add_text("citizenField59", values.get("TinhTrangHonNhan_NoiDung"))
 

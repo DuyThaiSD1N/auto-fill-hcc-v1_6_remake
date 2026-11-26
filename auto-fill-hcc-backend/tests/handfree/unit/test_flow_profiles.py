@@ -202,7 +202,8 @@ def test_registered_procedures_use_their_declared_flow_family():
                 "cung-cap-thong-tin-quy-hoach", "cap-phep-long-duong-via-he",
                 "cap-giay-phep-lien-van-viet-lao", "cap-giay-phep-chat-ha-cay-xanh",
                 "cap-giay-phep-lien-van-viet-lao-campuchia",
-                "chap-thuan-dau-noi-tam", "gia-han-luu-hanh-phuong-tien-lao",
+                "chap-thuan-dau-noi-tam", "cap-giay-phep-thi-cong-cong-trinh-tren-duong-bo-dang-khai-thac",
+                "gia-han-luu-hanh-phuong-tien-lao",
                 "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan", "xoa-dang-ky-phuong-tien-thuy",
                 "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san", "gia-han-giay-phep-xay-dung",
                 "tham-dinh-bcnckt", "cap-bo-sung-xe-tap-lai-cap-lai-giay-phep-xe-tap-lai",
@@ -221,7 +222,8 @@ def test_registered_procedures_use_their_declared_flow_family():
         assert moc_so["agencyProvinceOnly"] is True and moc_so["agencySoFirst"] is True, key
         assert moc_so["agencyDeptLabel"] == "Sở Xây dựng", key
     # Xóa đăng ký phương tiện thủy (2.001659): ke_khai không selectSo (cổng ghi cả Sở Xây dựng lẫn UBND xã) → Tỉnh + Xã.
-    for key in ("chap-thuan-dau-noi-tam", "xoa-dang-ky-phuong-tien-thuy"):
+    for key in ("chap-thuan-dau-noi-tam", "xoa-dang-ky-phuong-tien-thuy",
+                "cap-giay-phep-thi-cong-cong-trinh-tren-duong-bo-dang-khai-thac"):
         moc_ward = moc_by_key[key]
         assert "agencyProvinceOnly" not in moc_ward and "agencySoFirst" not in moc_ward, key
 
@@ -543,6 +545,15 @@ def test_registered_procedures_use_their_declared_flow_family():
     assert bn_doi_ten["provinceOnly"] == ["bacninh"]
     assert bn_doi_ten["bacNinhAuthorizedPerson"]["subjectOption"] == "Cá nhân khác là Công dân Việt Nam"
     assert "wizard" not in bn_doi_ten and "maePortal" not in bn_doi_ten
+    # 1.115462 xác nhận tiếp tục sử dụng đất nông nghiệp: chép thẻ 1.115460 (tích Sở, khối ủy quyền = chủ hồ sơ).
+    bn_dat_nn = procedures.pop("xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-bac-ninh")
+    assert bn_dat_nn.get("flowProfile") is None
+    assert bn_dat_nn["samePageAttach"] is True
+    assert bn_dat_nn["agencyProvince"] == "Bắc Ninh"
+    assert bn_dat_nn["agencyProvinceOnly"] is True and bn_dat_nn["agencySoFirst"] is True
+    assert bn_dat_nn["provinceOnly"] == ["bacninh"]
+    assert bn_dat_nn["bacNinhAuthorizedPerson"]["subjectOption"] == "Cá nhân khác là Công dân Việt Nam"
+    assert "wizard" not in bn_dat_nn and "maePortal" not in bn_dat_nn
 
     # Đăng ký tạm trú (Cổng DVC Bộ Công an): một trang, đính kèm cùng trang, hỏi trước khi đính.
     bca_tam_tru = procedures.pop("dang-ky-tam-tru")
@@ -570,12 +581,13 @@ def test_registered_procedures_use_their_declared_flow_family():
                   "submitCommitCheckbox", "wizard", "maePortal", "provinceOnly"):
         assert bca_dieu_chinh.get(field) == bca_thuong_tru.get(field), field
     assert bca_dieu_chinh["detect"]["urlIncludes"] == ["TT=THUONGTRU_08"]
-    # Xác nhận thông tin về cư trú: CÙNG trang thường trú (TT=THUONGTRU_09), cùng cờ extension nhưng KHÔNG đính kèm.
+    # Xác nhận thông tin về cư trú: CÙNG trang thường trú (TT=THUONGTRU_09), cùng khuôn luồng + cùng cờ extension; đính
+    # kèm cùng trang, điền xong hỏi rồi mới đính như tách hộ (ảnh user 24/11/2026).
     bca_xac_nhan = procedures.pop("xac-nhan-thong-tin-ve-cu-tru")
-    for field in ("flowProfile", "bcaPortal", "requiresCapability", "submitCommitCheckbox", "wizard", "maePortal",
-                  "provinceOnly"):
+    for field in ("flowProfile", "bcaPortal", "requiresCapability", "samePageAttach", "askBeforeAttach",
+                  "submitCommitCheckbox", "wizard", "maePortal", "provinceOnly"):
         assert bca_xac_nhan.get(field) == bca_thuong_tru.get(field), field
-    assert bca_xac_nhan["hasAttachmentStep"] is False and "samePageAttach" not in bca_xac_nhan
+    assert bca_xac_nhan["hasAttachmentStep"] is True
     assert bca_xac_nhan["detect"]["urlIncludes"] == ["TT=THUONGTRU_09"]
     # Tách hộ: CÙNG trang thường trú (TT=THUONGTRU_05), cùng khuôn luồng + cùng cờ extension như điều chỉnh (điền xong
     # hỏi rồi mới đính kèm cùng trang — user 20/11/2026).
@@ -584,6 +596,14 @@ def test_registered_procedures_use_their_declared_flow_family():
                   "submitCommitCheckbox", "wizard", "maePortal", "provinceOnly"):
         assert bca_tach_ho.get(field) == bca_thuong_tru.get(field), field
     assert bca_tach_ho["detect"]["urlIncludes"] == ["TT=THUONGTRU_05"]
+    # Xóa đăng ký thường trú: CÙNG trang thường trú (TT=THUONGTRU_02), cùng khuôn luồng + cùng cờ extension như tách
+    # hộ; hỏi Trường hợp bằng nút như xóa tạm trú (24/11/2026).
+    bca_xoa_thuong_tru = procedures.pop("xoa-dang-ky-thuong-tru")
+    for field in ("flowProfile", "bcaPortal", "requiresCapability", "samePageAttach", "askBeforeAttach",
+                  "submitCommitCheckbox", "docsAdjustRefill", "wizard", "maePortal", "provinceOnly"):
+        assert bca_xoa_thuong_tru.get(field) == bca_tach_ho.get(field), field
+    assert bca_xoa_thuong_tru["detect"]["urlIncludes"] == ["TT=THUONGTRU_02"]
+    assert bca_xoa_thuong_tru["bcaCase"]["selectId"] == bca_xoa_tam_tru["bcaCase"]["selectId"]
     # Thông báo lưu trú (Cổng DVC Bộ Công an): một trang, không có mục đính kèm, người lưu trú thêm qua modal.
     bca_luu_tru = procedures.pop("thong-bao-luu-tru")
     assert bca_luu_tru.get("flowProfile") is None
@@ -613,26 +633,34 @@ def test_registered_procedures_use_their_declared_flow_family():
         assert bca_cap_lai.get(field) == bca_can_cuoc.get(field), field
     assert bca_cap_lai["detect"]["urlScope"] == bca_can_cuoc["detect"]["urlScope"]
     assert bca_cap_lai["detect"]["urlIncludes"] == ["TT=CAP_LAI"]
-    # Đăng ký xe lần đầu (cổng dichvucong.bocongan.gov.vn, eForm Nth — KHÔNG phải cổng căn cước): luồng chung một trang,
-    # không đính kèm, cờ riêng của extension; toàn quốc.
+    # Đăng ký xe lần đầu (cổng dichvucong.bocongan.gov.vn, eForm Nth — KHÔNG phải cổng căn cước): luồng chung một trang;
+    # từ 24/11 bước đính kèm là ba ô ảnh đầu trang (bcaPagePhotos, cờ extension supportsBcaPagePhotos); toàn quốc.
     bca_xe = procedures.pop("dang-ky-xe-lan-dau-san-xuat-lap-rap-trong-nuoc")
-    assert bca_xe.get("flowProfile") is None and bca_xe["requiresCapability"] == "supportsBcaDangKyXe"
-    assert bca_xe["hasAttachmentStep"] is False and "bcaPortal" not in bca_xe and "provinceOnly" not in bca_xe
+    assert bca_xe.get("flowProfile") is None and bca_xe["requiresCapability"] == "supportsBcaPagePhotos"
+    assert bca_xe["hasAttachmentStep"] is True and bca_xe["bcaPagePhotos"] is True
+    assert "bcaPortal" not in bca_xe and "provinceOnly" not in bca_xe
     assert "wizard" not in bca_xe and "maePortal" not in bca_xe and "needsAgencySelect" not in bca_xe
     assert bca_xe["detect"]["urlScope"] == ["dichvucong.bocongan.gov.vn"]
     # Đăng ký xe lần đầu xe NHẬP KHẨU 1.013066 (20/11): cùng cổng, cùng khuôn trợ lý với xe lắp ráp trong nước (mở thẳng
     # trang chọn trường hợp, luồng trang 1 Lai Châu, cùng cờ extension); detect thêm mã in trên trang.
     bca_xe_nk = procedures.pop("dang-ky-xe-lan-dau-nhap-khau")
     for field in ("flowProfile", "bcaPortal", "wizard", "maePortal", "needsAgencySelect", "provinceOnly",
-                  "hasAttachmentStep", "requiresCapability", "laiChauFeeStep", "agencyDirectSubmit"):
+                  "laiChauFeeStep", "agencyDirectSubmit"):
         assert bca_xe_nk.get(field) == bca_xe.get(field), field
     assert bca_xe_nk["detect"]["urlScope"] == bca_xe["detect"]["urlScope"] and bca_xe_nk["detect"]["codeOnPage"] is True
+    # Khác (user 24/11): có bước "Đính kèm giấy tờ" = ba ô ảnh đầu trang kê khai, cùng trang (như thị thực, hỏi trước khi
+    # đính), không có bảng Thành phần hồ sơ; cờ extension riêng biết gắn ô ảnh ở bước đính kèm.
+    assert bca_xe_nk["hasAttachmentStep"] is True and bca_xe_nk["bcaPagePhotos"] is True
+    assert bca_xe_nk["askBeforeAttach"] is True and bca_xe_nk["docsAdjustRefill"] is True
+    assert bca_xe_nk["supportsSplitDocuments"] is True and bca_xe_nk["requiresCapability"] == "supportsBcaPagePhotos"
     # Đăng ký sang tên, di chuyển xe 2.000076 (20/11): cùng khuôn trợ lý với xe nhập khẩu (mở thẳng trang chọn trường
-    # hợp, luồng trang 1 Lai Châu, cùng cờ extension, không đính kèm).
+    # hợp, luồng trang 1 Lai Châu), nhưng không đính kèm, cờ extension như xe lắp ráp trong nước.
     bca_sang_ten = procedures.pop("dang-ky-sang-ten-di-chuyen-xe-cap-tinh")
     for field in ("flowProfile", "bcaPortal", "wizard", "maePortal", "needsAgencySelect", "provinceOnly",
-                  "hasAttachmentStep", "requiresCapability", "agencyDirectSubmit"):
+                  "agencyDirectSubmit"):
         assert bca_sang_ten.get(field) == bca_xe_nk.get(field), field
+    # Đăng ký xe lần đầu có bước gắn ô ảnh từ 24/11; sang tên vẫn không đính kèm, cờ extension cũ.
+    assert bca_sang_ten["hasAttachmentStep"] is False and bca_sang_ten["requiresCapability"] == "supportsBcaDangKyXe"
     assert bca_sang_ten["detect"]["urlScope"] == bca_xe["detect"]["urlScope"]
     # Thêm: ô "Cơ quan giải quyết hồ sơ" hiện sau khi chọn Loại xe → trợ lý tự chọn theo tỉnh (user 20/11).
     assert {k: v for k, v in bca_sang_ten["laiChauFeeStep"].items()
@@ -646,12 +674,14 @@ def test_registered_procedures_use_their_declared_flow_family():
         assert bca_thu_hoi.get(field) == bca_sang_ten.get(field), field
     assert bca_thu_hoi["detect"]["urlScope"] == bca_xe["detect"]["urlScope"]
     # Thu hồi cấp xã 1.010919 / tại Cục 2.000311 (20/11): cùng mẫu kê khai, pipeline riêng; khuôn trợ lý như xe nhập khẩu
-    # (không tự chọn cơ quan theo tỉnh — cơ quan là công an xã / Cục CSGT).
+    # (không tự chọn cơ quan theo tỉnh — cơ quan là công an xã / Cục CSGT); không đính kèm như xe lắp ráp trong nước.
     for key in ("thu-hoi-chung-nhan-dang-ky-bien-so-xe-cap-xa", "thu-hoi-chung-nhan-dang-ky-bien-so-xe-tai-cuc"):
         level = procedures.pop(key)
         for field in ("flowProfile", "bcaPortal", "wizard", "maePortal", "needsAgencySelect", "provinceOnly",
-                      "hasAttachmentStep", "requiresCapability", "agencyDirectSubmit", "laiChauFeeStep"):
+                      "agencyDirectSubmit", "laiChauFeeStep"):
             assert level.get(field) == bca_xe_nk.get(field), (key, field)
+        for field in ("hasAttachmentStep", "requiresCapability"):
+            assert level.get(field) == bca_sang_ten.get(field), (key, field)
         assert level["detect"] == bca_thu_hoi["detect"]
     # Đăng ký mẫu con dấu mới (cùng cổng, cùng khuôn đăng ký xe): mở thẳng trang chọn trường hợp, cờ riêng của extension.
     bca_con_dau = procedures.pop("dang-ky-mau-con-dau")
@@ -734,6 +764,7 @@ def test_registered_procedures_use_their_declared_flow_family():
         ("dang-ky-cap-giay-chung-nhan-doi-voi-toan-bo-dien-tich-dat-lai-chau", "laichau", "dichvucong.laichau.gov.vn"),
         ("chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau", "laichau", "dichvucong.laichau.gov.vn"),
         ("giao-dat-cho-thue-dat-lai-chau", "laichau", "dichvucong.laichau.gov.vn"),
+        ("to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an-lai-chau", "laichau", "dichvucong.laichau.gov.vn"),
     ):
         local = procedures.pop(key)
         assert local["provinceOnly"] == [slug], key
@@ -770,10 +801,14 @@ def test_registered_procedures_use_their_declared_flow_family():
         assert is_allowed_in_province(tuyen_quang, "tuyenquang"), key
         assert not is_allowed_in_province(tuyen_quang, "khanhhoa"), key
 
-    # Cổng iGate Khánh Hòa: cả 7 thủ tục đi luồng chung "xay-dung" như Tuyên Quang (trang "Chọn trường hợp giải quyết"
-    # đọc từ cổng + stepper 4 bước), cùng một form mọi quy trình. 1.013978 / 1.013949: DVCQG chọn đủ Tỉnh + Xã; 5 thủ
-    # tục còn lại: DVCQG chỉ chọn Tỉnh (ke_khai_links provinceOnlyAgency) + thẻ Chi nhánh VPĐK theo xã.
-    kh_ward_level = ("dang-ky-dat-dai-lan-dau-khanh-hoa", "giao-thue-chuyen-muc-dich-dat-khanh-hoa")
+    # Cổng iGate Khánh Hòa: cả 8 thủ tục đi luồng chung "xay-dung" như Tuyên Quang (trang "Chọn trường hợp giải quyết"
+    # đọc từ cổng + stepper 4 bước), cùng một form mọi quy trình. 1.013978 / 1.013949 / 1.115148 (24/11, UBND phường
+    # xã): DVCQG chọn đủ Tỉnh + Xã; 5 thủ tục còn lại: DVCQG chỉ chọn Tỉnh (ke_khai_links provinceOnlyAgency) + thẻ Chi
+    # nhánh VPĐK theo xã.
+    kh_ward_level = ("dang-ky-dat-dai-lan-dau-khanh-hoa", "giao-thue-chuyen-muc-dich-dat-khanh-hoa",
+                     "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa",
+                     # 25/11: 1.012796 quy trình "(Cấp Xã)", cơ quan UBND phường/xã.
+                     "dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa")
     for key in (*kh_ward_level,
                 "cap-doi-gcn-khanh-hoa",
                 "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa",
@@ -861,8 +896,9 @@ def test_registered_procedures_use_their_declared_flow_family():
     # Trang nộp một trang của Cổng DVC quốc gia: không wizard, không modal bản thân/ủy quyền,
     # không bước chủ hồ sơ; detect giống hệt core.
     core_detect = {procedure["key"]: procedure["detect"] for procedure in core_registry.PROCEDURES}
+    # 24/11: + cấp Phiếu lý lịch tư pháp 3.000333 (Công an tỉnh, cùng trang nộp một trang SurveyJS).
     for key in ("khai-sinh-dang-ky-thuong", "trich-luc-ks", "khai-tu", "thay-doi-cai-chinh-ho-tich",
-                "xac-nhan-tinh-trang-hon-nhan"):
+                "xac-nhan-tinh-trang-hon-nhan", "cap-phieu-ly-lich-tu-phap-cong-an-cap-tinh"):
         single_page = procedures.pop(key)
         assert single_page["flowProfile"] == "tu-phap-moi"
         assert single_page["singlePageDossier"] is True
@@ -1048,7 +1084,17 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 cổng Bộ Công an dichvucong.bocongan.gov.vn (20/11) "thu-hoi-chung-nhan-dang-ky-bien-so-xe-cap-tinh" (2.001485).
     # +2 cổng Bộ Công an (20/11) "thu-hoi-chung-nhan-dang-ky-bien-so-xe-cap-xa" (1.010919), "…-tai-cuc" (2.000311).
     # +1 cổng Bắc Ninh (21/11) "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-bac-ninh" (1.115460).
-    assert len(procedures) == 191
+    # +1 cổng Bộ Công an (24/11) "xoa-dang-ky-thuong-tru" (1.003197), cùng trang thường trú TT=THUONGTRU_02.
+    # +1 hộ tịch (24/11) "khai-tu-nuoc-ngoai" (1.001766), luồng "tu-phap" (cổng Bộ Tư pháp, eForm khai tử 2053).
+    # +1 hộ tịch (24/11) "khai-tu-luu-dong" (1.000419), luồng "tu-phap" (cổng Bộ Tư pháp, eForm khai tử cùng mẫu 2053).
+    # +1 cổng Bắc Ninh (24/11) "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-bac-ninh" (1.115462).
+    # +1 cổng Bộ Xây dựng (24/11) "cap-giay-phep-thi-cong-cong-trinh-tren-duong-bo-dang-khai-thac" (1.013061), luồng "xay-dung",
+    #    ke_khai không selectSo → chọn Tỉnh + Xã như đấu nối tạm.
+    # +1 cổng iGate Khánh Hòa (24/11) "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa" (1.115148), luồng "xay-dung".
+    # +1 Bộ Công an (24/11) "cap-phieu-ly-lich-tu-phap-cong-an-cap-tinh" (3.000333), luồng "tu-phap-moi" chỉ chọn Tỉnh.
+    # +1 cổng Lai Châu (25/11) "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an-lai-chau" (1.115591).
+    # +1 cổng iGate Khánh Hòa (25/11) "dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa" (1.012796), luồng "xay-dung".
+    assert len(procedures) == 200
 
     for procedure in procedures:
         key = procedure["key"]
@@ -1067,8 +1113,8 @@ def test_thu_tuc_bac_ninh_hien_dung_ten_hanh_chinh_cua_registry_loi():
     bac_ninh = [p for p in public_list() if p["key"].endswith("-bac-ninh")]
     # +1 "dinh-chinh-gcn-da-cap-1115476-bac-ninh" (cùng thủ tục, khác trường hợp); +1 "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh".
     # +1 "dang-ky-thay-doi-bien-phap-bao-dam-bac-ninh" (12/11); +1 "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-bac-ninh"
-    # (21/11).
-    assert len(bac_ninh) == 19
+    # (21/11); +1 "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-bac-ninh" (24/11).
+    assert len(bac_ninh) == 20
     for procedure in bac_ninh:
         assert core_label[procedure["key"]] == "[Tỉnh Bắc Ninh] " + procedure["label"], procedure["key"]
         short = procedure.get("shortLabel", "")

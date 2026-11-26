@@ -237,3 +237,33 @@ def test_detect_nhan_dien_theo_ten_khi_xa_khac_ma_apply_online():
     assert detect["textIncludes"] == ["cơ sở đủ điều kiện an toàn thực phẩm", "nông, lâm, thủy sản"]
     label = get_procedure("cap-gcn-attp-nong-lam-thuy-san")["label"].lower()
     assert all(phrase in label for phrase in detect["textIncludes"])
+
+
+def test_chu_ho_so_la_chu_co_so_khi_nguoi_ky_la_nguoi_khac():
+    """Cơ sở là cá nhân (chủ tàu) mà người ký 'Đại diện cơ sở' là người khác → chủ hồ sơ là chủ cơ sở; nhân thân
+    lấy theo CCCD đúng tên chủ cơ sở, không gán DaiDien_* (giấy của người ký)."""
+    fields = [
+        _field("Don_TenCoSo", "Nguyễn Thị A (ABC-00001-TS)"),
+        _field("ChuCoSo_HoTen", "Nguyễn Thị A"),
+        _field("Don_DaiDienCoSo", "Trần Văn B"),
+        _field("DaiDien_SoDinhDanh", "001099000002"),
+        _field("Person1_HoTen", "NGUYỄN THỊ A"),
+        _field("Person1_SoDinhDanh", "001099000001"),
+    ]
+    out, _ = mapper.enrich(fields, {"formContext": {"applicantFullname": "Lê Văn C", "applicantIdentityNumber": "001099000003"}})
+    assert _value(out, "data[ownerFullname]") == "NGUYỄN THỊ A"
+    assert _value(out, "data[ownerIdentityNumber]") == "001099000001"
+    assert _value(out, "data[daidiencoso]") == "Trần Văn B"
+
+
+def test_chu_co_so_trung_nguoi_ky_hoac_trong_thi_giu_nguoi_ky():
+    for chu in ("TRẦN VĂN B", None):
+        fields = [
+            _field("Don_TenCoSo", "Cơ sở thủy sản X"),
+            _field("Don_DaiDienCoSo", "Trần Văn B"),
+            _field("DaiDien_SoDinhDanh", "001099000002"),
+            *([_field("ChuCoSo_HoTen", chu)] if chu else []),
+        ]
+        out, _ = mapper.enrich(fields, {"formContext": {"applicantFullname": "Lê Văn C", "applicantIdentityNumber": "001099000003"}})
+        assert _value(out, "data[ownerFullname]") == "TRẦN VĂN B"
+        assert _value(out, "data[ownerIdentityNumber]") == "001099000002"

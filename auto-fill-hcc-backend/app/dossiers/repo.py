@@ -137,6 +137,10 @@ _CLIENT_TIME_FUTURE = timedelta(minutes=5)
 # phát sự kiện click). Cửa sổ giữ hẹp để chỉ gộp các bản sao đó: chứng thực tách nhiều tab nộp mỗi tab một cú bấm thật,
 # phải chuyển tab rồi mới bấm — không làm kịp trong khoảng này.
 _SAME_CLICK_WINDOW = timedelta(milliseconds=500)
+# Auto Fill tách N tab: mỗi tab nộp một lần nhưng tab nằm chờ lâu rồi mới nộp (hoặc cán bộ làm tay hồ sơ khác trên tab
+# đó) thì "thời gian làm" kéo theo cả quãng chờ. Lần nộp cách mốc nộp cuối quá khoảng này vẫn ghi (vẫn là một hồ sơ)
+# nhưng không dời mốc nộp cuối.
+AUTOFILL_SUBMIT_GAP = timedelta(minutes=20)
 
 
 def client_clicked_at(epoch_ms: object) -> datetime:
@@ -151,6 +155,20 @@ def client_clicked_at(epoch_ms: object) -> datetime:
     return min(at, now)
 
 
+async def autofill_submit_quota(dossier_id: str) -> int:
+    """Số lần nộp tối đa của hồ sơ Auto Fill = số hồ sơ trên cổng mà lượt đính kèm cuối tạo ra.
+
+    Khóa sống theo tab tới lượt điền/đính kèm sau, nên tab còn giữ khóa mà cán bộ làm tay hồ sơ khác
+    (không qua trợ lý) thì cú bấm nộp vẫn báo về khóa cũ. `dossier_ids` của trace đính kèm có đúng
+    một mã cho mỗi hồ sơ (tách N tab → N); không có lượt đính kèm (chỉ điền) → 1 hồ sơ.
+    """
+    trace = await get_db().traces.find_one(
+        {"dossier_id": dossier_id, "kind": "attach"},
+        {"dossier_ids": 1}, sort=[("created_at", -1)],
+    )
+    return max(len((trace or {}).get("dossier_ids") or []), 1)
+
+
 async def add_submit_event(
     *,
     dossier_id: str,
@@ -161,6 +179,8 @@ async def add_submit_event(
     click_id: str | None = None,
     source: str | None = None,
     text_dedupe_window: bool = True,
+    max_events: int | None = None,
+    max_gap: timedelta | None = None,
 ) -> None:
     """Ghi MỘT lần bấm "Gửi hồ sơ" vào nhật ký của hồ sơ.
 
@@ -178,6 +198,9 @@ async def add_submit_event(
     `text_dedupe_window=False`: bên gọi đã tự lọc THEO TAB. Chứng thực tách nhiều tab dùng chung
     một khóa hồ sơ — lọc theo cả hồ sơ thì chữ "thành công" của tab 2 (cú bấm tab 2 rớt) bị mốc
     bấm của tab 1 che mất, đếm thiếu một hồ sơ.
+    `max_events`: đủ số sự kiện này thì bỏ cú bấm mới (không ghi, không dời mốc nộp) — xem
+    `autofill_submit_quota`.
+    `max_gap`: cú bấm cách mốc nộp cuối hơn khoảng này vẫn ghi sự kiện nhưng không dời `submit_clicked_at`.
     """
     if not dossier_id:
         return
@@ -190,7 +213,9 @@ async def add_submit_event(
         event["host"] = portal_host
     if portal_dossier_ref:
         event["ref"] = portal_dossier_ref
-    update: dict = {"submit_clicked_at": clicked_at, "updated_at": _now()}
+    update: dict = {"updated_at": _now()}
+    if not max_gap:
+        update["submit_clicked_at"] = clicked_at
     if portal_host:
         update["portal_host"] = portal_host
     if portal_dossier_ref:
@@ -210,17 +235,26 @@ async def add_submit_event(
             "at": {"$gte": clicked_at - _SAME_CLICK_WINDOW, "$lte": clicked_at + _SAME_CLICK_WINDOW},
             "source": {"$ne": "text"},
         }}}
+    if max_events:
+        # Phần tử thứ max_events chưa có = mảng còn dưới hạn; nằm trong điều kiện update nên hai cú bấm
+        # đồng thời không cùng lọt.
+        query[f"submit_events.{max_events - 1}"] = {"$exists": False}
     if source == "text" and text_dedupe_window:
         query["$or"] = [
             {"submit_clicked_at": None},
             {"submit_clicked_at": {"$lt": clicked_at - _TEXT_DEDUPE_WINDOW}},
         ]
     try:
-        await get_db().dossiers.update_one(query, {
+        res = await get_db().dossiers.update_one(query, {
             "$set": update,
             "$inc": {"submit_count": 1},
             "$push": {"submit_events": {"$each": [event], "$slice": -_MAX_SUBMIT_EVENTS}},
         })
+        if max_gap and res.modified_count:
+            await get_db().dossiers.update_one({"_id": dossier_id, "$or": [
+                {"submit_clicked_at": None},
+                {"submit_clicked_at": {"$gte": clicked_at - max_gap}},
+            ]}, {"$set": {"submit_clicked_at": clicked_at}})
     except Exception:  # noqa: BLE001
         return
 

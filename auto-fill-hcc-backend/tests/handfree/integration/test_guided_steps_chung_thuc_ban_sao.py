@@ -231,7 +231,7 @@ async def test_gat_san_ban_giay_co_dong_dau_cong_dan_doi_duoc():
     # Tư pháp form cũ: trợ lý gạt sẵn "Nhận kết quả bản giấy có đóng dấu" rồi mời đổi.
     conv = _after_attach(RESULT_CLIENT)
     r = await _to_result_step(conv)
-    assert "Em đang chọn **Nhận kết quả bản giấy có đóng dấu**" in r.display_md
+    assert "Tôi đang chọn **Nhận kết quả bản giấy có đóng dấu**" in r.display_md
     card = r.cards[0]
     assert card["kind"] == "result_methods" and card["selected"] == "paper"
     assert [o["key"] for o in card["options"]] == ["paper", "online", "postal"]

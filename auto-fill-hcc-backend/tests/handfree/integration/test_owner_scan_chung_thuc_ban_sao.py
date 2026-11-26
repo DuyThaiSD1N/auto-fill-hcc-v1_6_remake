@@ -605,6 +605,28 @@ def test_bo_theo_DUNG_TEP_da_phan_loai_chu_khong_doan_lai():
     assert kept[0]["target"] == "existing", "tệp còn lại phải nhận dòng STT1 có sẵn"
 
 
+def test_biet_so_dinh_danh_chu_ho_so_thi_chi_bo_the_cua_dung_nguoi():
+    """Ô căn cước chủ hồ sơ lúc upload nhận nhầm cả tệp căn cước của người khác (tệp nhiều thẻ):
+    có số định danh chủ hồ sơ thì chỉ bỏ thẻ của chủ hồ sơ, thẻ người khác vẫn đính; tệp loại trừ
+    (giấy ủy quyền) vẫn bỏ theo tên."""
+    from app.pipelines.chung_thuc_ban_sao.attach import planner
+
+    def item(file_name, name, kind="Căn cước công dân"):
+        return {"fileName": file_name, "documentName": name, "detectedType": kind, "componentName": name,
+                "target": "new", "componentIndex": None, "needsAddComponent": True}
+
+    items = [item("cccd-chu.pdf", "CCCD A"), item("can-cuoc.pdf", "CCCD B"), item("can-cuoc.pdf", "CCCD C"),
+             item("uy-quyen.pdf", "Giấy ủy quyền", "Giấy ủy quyền")]
+    kept = planner._drop_identity_documents(
+        items, ["cccd-chu.pdf", "can-cuoc.pdf", "uy-quyen.pdf"],
+        owner_groups={"id:001000000001"},
+        group_by_name={"CCCD A": "id:001000000001", "CCCD B": "id:001000000002", "CCCD C": "id:001000000003"},
+        excluded_file_names=["uy-quyen.pdf"],
+    )
+    assert [i["documentName"] for i in kept] == ["CCCD B", "CCCD C"]
+    assert kept[0]["target"] == "existing"
+
+
 def test_khong_co_danh_sach_phan_loai_thi_van_suy_theo_loai_giay():
     """Phiên cũ chỉ có một ô nên không hề phân loại — giữ đường suy cũ làm dự phòng."""
     from app.pipelines.chung_thuc_ban_sao.attach import planner

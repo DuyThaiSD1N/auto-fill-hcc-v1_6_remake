@@ -2,6 +2,7 @@
 
 import re
 import unicodedata
+from datetime import date, datetime, timedelta, timezone
 
 from app.pipelines._shared.area_remap import city_province_area, is_current_area, near_match_ward, remap_area
 from app.pipelines._shared.formatting import upper_person_name as _upper_person_name
@@ -1113,6 +1114,17 @@ def enrich(fields: list[dict], options: dict | None = None) -> list[dict]:
     for key, value in list(values.items()):
         if key.endswith("_IdNumber") and re.fullmatch(r"[1-9]\d{10}", str(value).strip()):
             values[key] = "0" + str(value).strip()
+    # Ngày cấp sau hôm nay là không thể có — thường là ngày hết hạn in ở mặt trước thẻ bị đọc nhầm → bỏ, để trống.
+    today = datetime.now(timezone(timedelta(hours=7))).date()
+    for key, value in list(values.items()):
+        match = re.fullmatch(r"(\d{1,2})/(\d{1,2})/(\d{4})", str(value or "").strip()) if key.endswith("_IdIssueDate") else None
+        if match:
+            try:
+                issued = date(int(match.group(3)), int(match.group(2)), int(match.group(1)))
+            except ValueError:
+                continue
+            if issued > today:
+                values.pop(key)
     # Vai cha/mẹ mà reason.py dựng lại từ tờ khai được đánh dấu default — hồ sơ đang có hai tên
     # cho cùng một vai. Cờ phải chảy tiếp ra field UI để extension tô vàng cho cán bộ soát.
     default_names = {f.get("name") for f in fields if f.get("default")}

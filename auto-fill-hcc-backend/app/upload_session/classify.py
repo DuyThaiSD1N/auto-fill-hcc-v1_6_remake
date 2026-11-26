@@ -202,6 +202,31 @@ def _portrait_indexes(payload_files: list[dict], ocr_results: list[dict], requir
     return out
 
 
+# Ảnh chụp phương tiện (ô "anh_phuong_tien", đăng ký xe nhập khẩu 1.013066 — cổng bắt buộc ô "Ảnh phương tiện" đầu
+# trang, user 24/11/2026): ảnh xe gần như không có chữ → như ảnh chân dung, nhận theo đúng luật runner dùng để gắn ảnh
+# (``find_vehicle_photo``: tệp ảnh ít chữ, hoặc tên tệp "xe / phương tiện / ô tô").
+_VEHICLE_KEY = "anh_phuong_tien"
+
+
+def _vehicle_photo_indexes(payload_files: list[dict], ocr_results: list[dict], required_docs: list[dict],
+                           hint_doc_key: str | None) -> set[int]:
+    if (hint_doc_key and hint_doc_key != _VEHICLE_KEY) or not any(
+            d.get("key") == _VEHICLE_KEY for d in required_docs):
+        return set()
+    from app.pipelines.dang_ky_xe_lan_dau_nhap_khau.process.runner import find_vehicle_photo
+
+    out = set()
+    for index, file in enumerate(payload_files):
+        source = _as_data_url_file(file)
+        text = str((ocr_results[index] if index < len(ocr_results) else {}).get("text") or "")
+        try:
+            if source and find_vehicle_photo([source], {0: text}) == 0:
+                out.add(index)
+        except Exception:  # noqa: BLE001 — ảnh hỏng thì phân loại như cũ
+            continue
+    return out
+
+
 def _slot_free(key: str, required_docs: list[dict], files: list[dict]) -> bool:
     doc = next((d for d in required_docs if d.get("key") == key), None)
     if not doc:
@@ -310,10 +335,11 @@ async def classify_files(payload_files: list[dict], required_docs: list[dict],
     ocr_results = await ocr.ocr_per_file(payload_files, classify=True)
     infos = [classify_text(r.get("text") or "") for r in ocr_results]
     portraits = _portrait_indexes(payload_files, ocr_results, required_docs, hint_doc_key)
-    # Ảnh chân dung không cần hỏi LLM theo tên ô (chữ OCR vài ký tự lạc, LLM dễ xếp nhầm vào tờ khai).
+    vehicles = _vehicle_photo_indexes(payload_files, ocr_results, required_docs, hint_doc_key) - portraits
+    # Ảnh chân dung / ảnh xe không cần hỏi LLM theo tên ô (chữ OCR vài ký tự lạc, LLM dễ xếp nhầm vào tờ khai).
     by_slot_name = await _classify_by_slot_names(
-        payload_files, [{} if i in portraits else r for i, r in enumerate(ocr_results)], infos, required_docs,
-        hint_doc_key, procedure_key,
+        payload_files, [{} if i in portraits or i in vehicles else r for i, r in enumerate(ocr_results)], infos,
+        required_docs, hint_doc_key, procedure_key,
     )
     out = []
     # files tích lũy dần trong lô: ảnh sau biết ảnh trước đã chiếm ô nào.
@@ -323,6 +349,8 @@ async def classify_files(payload_files: list[dict], required_docs: list[dict],
         named = by_slot_name.get(index)
         if index in portraits and _slot_free(_PORTRAIT_KEY, required_docs, acc):
             doc_key, side, note = _PORTRAIT_KEY, None, "ảnh chân dung (ảnh ít chữ, khổ dọc, nền sáng)"
+        elif index in vehicles and _slot_free(_VEHICLE_KEY, required_docs, acc):
+            doc_key, side, note = _VEHICLE_KEY, None, "ảnh chụp phương tiện (ảnh ít chữ)"
         elif named and _slot_free(named, required_docs, acc):
             doc_key, side, note = named, None, "LLM theo tên ô checklist"
         else:

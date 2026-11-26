@@ -19,6 +19,7 @@ import json
 import logging
 import re
 import time
+import unicodedata
 from datetime import datetime, timedelta, timezone
 
 from app.channels.handfree.chat import script_vi as vi
@@ -53,7 +54,14 @@ _NGANH_PAGE = "nganh-nghe-kinh-doanh"
 _CONFIRM = "__xac_nhan__"
 _CONFIRM_LIST = "__xac_nhan_danh_sach__"
 _ACTIONS = {"hkd_no_docs", "hkd_answer", "hkd_value", "hkd_pick", "hkd_skip", "hkd_save", "hkd_resume",
-            "hkd_fill_block", "hkd_fill_missing", "hkd_prepare", "hkd_submit", "hkd_docx", "hkd_attach_docs"}
+            "hkd_fill_block", "hkd_fill_missing", "hkd_prepare", "hkd_submit", "hkd_docx", "hkd_attach_docs",
+            "hkd_refill", "hkd_retry"}
+# Chờ máy điền / cổng báo lại quá lâu (trang đứng, tải lại giữa chừng): câu nói / nút bấm kế tiếp nhận nút Thử lại.
+# Watcher chỉ báo khi trang đổi nên BE không tự hẹn giờ được — mốc này chỉ xét khi có lượt mới về.
+_WAIT_LIMIT_S = {"block": 45, "all": 150, "prepare": 60}
+REFILL_SEND = "__action:hkd_refill"
+# Có giấy tờ: sau lượt điền theo giấy vẫn cho điều chỉnh giấy tờ (đọc lại, hỏi lại theo giấy mới) / điền lại các khối.
+_REDO_PHASES = ("offer", "ready_prepare", "prepare_failed", "ready_submit", "done")
 # Khối thêm dòng vào bảng của cổng (không điền ngay từng ô được): xác nhận danh sách → điền lên trang → xác nhận lưu.
 _LIST_PAGES = (_NGANH_PAGE, MEMBERS_PAGE)
 _SKIP_WORDS = {"khong", "khong co", "khong co a", "khong a", "bo qua", "khong co gi", "khong can"}
@@ -71,7 +79,8 @@ _BLOCKS = [
     (_REG_TYPE_PAGE, []),
     ("dia-chi", ["dia_chi_kd", "dien_thoai", "email", "fax", "website", "khong_kd_tru_so"]),
     (_NGANH_PAGE, []),
-    ("ten-ho-kinh-doanh", ["ten_ho", "ten_ho_giu", "ten_nuoc_ngoai", "ten_nuoc_ngoai_giu", "ten_viet_tat"]),
+    ("ten-ho-kinh-doanh", ["ten_ho", "ten_ho_giu", "ten_nuoc_ngoai", "ten_nuoc_ngoai_giu", "ten_viet_tat",
+                           "ten_viet_tat_giu"]),
     (_OWNER_PAGE, ["chu_the", "chu_ho_la_ban", "chu_ho_ho_ten", "chu_ho_gioi_tinh", "chu_ho_ngay_sinh",
                    "chu_ho_so_dinh_danh", "noi_o"]),
     (MEMBERS_PAGE, []),
@@ -96,6 +105,7 @@ _SLOTS = {
     # Cổng báo có tên trùng / tương tự → hỏi giữ tên hay đổi (true = giữ).
     "ten_ho_giu": {"kind": "yesno"},
     "ten_nuoc_ngoai_giu": {"kind": "yesno"},
+    "ten_viet_tat_giu": {"kind": "yesno"},
     "chu_ho_la_ban": {"kind": "yesno"},
     "chu_ho_ho_ten": {"kind": "text"},
     "chu_ho_gioi_tinh": {"kind": "gender"},
@@ -134,7 +144,13 @@ _FROM_DOCS = {
     "ten_viet_tat": ("HoKinhDoanh_TenVietTat",),
 }
 # Tên kiểm trùng bằng API của nút "Kiểm tra trùng tên" (extension gọi): mục tên → (loại API, field tờ khai).
-_NAME_CHECK = {"ten_ho": ("vi", "HoKinhDoanh_Ten"), "ten_nuoc_ngoai": ("f", "HoKinhDoanh_TenNuocNgoai")}
+# Tên viết tắt: nút kiểm của cổng gọi nhầm hàm kiểm tên tiếng Việt (đọc ô tên chính) → kiểm bằng API tên tiếng Việt với
+# chính tên viết tắt.
+_NAME_CHECK = {"ten_ho": ("vi", "HoKinhDoanh_Ten"), "ten_nuoc_ngoai": ("f", "HoKinhDoanh_TenNuocNgoai"),
+               "ten_viet_tat": ("vi", "HoKinhDoanh_TenVietTat")}
+# Tiền tố loại hình người dân hay nói / ghi kèm tên ("hộ kinh doanh …"): cổng đã có ô chọn "HỘ KINH DOANH" riêng, ô tên
+# chỉ chứa phần sau (mapper cũng bỏ khi điền) — kiểm trùng phải theo đúng chữ trong ô.
+_NAME_PREFIX_RE = re.compile(r"^(?:hộ\s+kinh\s+doanh|hộ\s+kd|hkd)\b[\s:.\-–]*", re.IGNORECASE)
 # Có giấy tờ: hình thức đăng ký đã chọn lúc điền luôn → vòng bổ sung không mở lại. Người nộp vẫn đi đủ bước (sao chép
 # tài khoản, so chủ hộ trên giấy, chọn vai trò, hỏi nơi ở người nộp thay), kéo theo khối Ủy quyền khi cần.
 _NO_REVIEW_PAGES = (_REG_TYPE_PAGE,)
@@ -195,7 +211,55 @@ def active(conv: dict, proc: dict | None) -> bool:
 def asking(conv: dict) -> bool:
     st = conv.get("hkd") or {}
     # check_name: đang chờ extension báo kết quả kiểm trùng tên — câu nói lúc đó vẫn thuộc vòng hỏi (xem handle).
-    return st.get("phase") in ("ask", "confirm", "confirm_list", "check_name") and not st.get("paused")
+    return ((st.get("phase") in ("ask", "confirm", "confirm_list", "check_name") or _waited_too_long(st))
+            and not st.get("paused"))
+
+
+def _wait_kind(st: dict) -> str:
+    if st.get("phase") == "prepare":
+        return "prepare"
+    if st.get("phase") == "saving":
+        return "all" if st.get("fill_all") else "block"
+    return ""
+
+
+def _wait_start(st: dict) -> float:
+    return float((st.get("prepare_at") if _wait_kind(st) == "prepare" else st.get("saving_at")) or 0)
+
+
+def _waited_too_long(st: dict) -> bool:
+    kind = _wait_kind(st)
+    return bool(kind) and time.time() - _wait_start(st) >= _WAIT_LIMIT_S[kind]
+
+
+def _wait_what(st: dict) -> str:
+    kind = _wait_kind(st)
+    if kind == "prepare":
+        return vi.HKD_WAIT_PREPARE
+    return vi.HKD_WAIT_ALL if kind == "all" else vi.HKD_WAIT_BLOCK.format(label=_label(_page(st)))
+
+
+def _wait_reply(st: dict):
+    """Lượt mới về giữa lúc chờ lưu / chuẩn bị: chưa quá mốc → báo đang làm; quá mốc → mời Thử lại."""
+    if not _waited_too_long(st):
+        return _reply(_say(vi.HKD_STILL_WAITING, what=_wait_what(st)))
+    st["stuck_said"] = _wait_start(st)  # page_status chỉ nhắc một lần cho mỗi lượt chờ
+    return _reply(_say(vi.HKD_STUCK, what=_wait_what(st)),
+                  [{"label": vi.HKD_RETRY_LABEL, "send": "__action:hkd_retry", "solid": True}])
+
+
+def _retry(conv: dict):
+    """Thử lại đúng việc đang chờ: chuẩn bị hồ sơ, điền lại / điền cả hồ sơ, hoặc lưu (điền) lại khối đang mở."""
+    st = conv["hkd"]
+    if _wait_kind(st) == "prepare":
+        st["prepare_at"] = time.time()
+        return _reply(_say(vi.HKD_PREPARING), actions=[{"type": "hkd_prepare"}])
+    if st.get("refilling"):
+        return _refill(conv)
+    if st.get("fill_all"):
+        return _fill_all(conv)
+    st["phase"] = "confirm_list" if st.get("fill_only") else "confirm"
+    return _save(conv)
 
 
 def no_docs_on(conv: dict, proc: dict | None) -> bool:
@@ -220,6 +284,9 @@ def needs_review(conv: dict, proc: dict | None) -> bool:
 
 
 def _say(tpl: dict, **kw) -> tuple[str, str]:
+    if "error" in kw:
+        from app.channels.handfree.chat.flow import _short_error
+        kw["error"] = _short_error(kw["error"])
     return tpl["md"].format(**kw), tpl["tts"].format(**kw)
 
 
@@ -376,7 +443,7 @@ def _question(st: dict, key: str) -> tuple[str, str]:
         row = next(r for r in st["nganh"] if r.get("ma") and not r.get("chac"))
         if len(row["ma"]) == 1:
             return _say(vi.HKD_QUESTIONS["nganh_chon_mot"], hoat_dong=row.get("hoatDong") or "",
-                        nganh=f"{row['ma'][0]} · {nganh_nghe.ten(row['ma'][0])}")
+                        nganh=f"{row['ma'][0]} · {nganh_nghe.ten(row['ma'][0])}", ten=nganh_nghe.ten(row['ma'][0]))
         return _say(vi.HKD_QUESTIONS[key], hoat_dong=row.get("hoatDong") or "")
     if key == "nganh_ro":
         row = next(r for r in st["nganh"] if not r.get("ma"))
@@ -625,7 +692,7 @@ def page_fields(st: dict, page: str) -> list[dict]:
         return []
     facts = _schema_facts(st)
     fields = mapper.enrich([{"name": k, "value": v} for k, v in facts.items()], page=page,
-                           skip_start_date=bool(st.get("skip_start_date")))
+                           skip_start_date=bool(st.get("skip_start_date")), line_mode=str(st.get("line_detail") or ""))
     values = st["values"]
     if page == "dia-chi" and isinstance(values.get("khong_kd_tru_so"), bool):
         # Ô cổng mang nghĩa NGƯỢC câu hỏi ("Không kinh doanh tại trụ sở"); gửi cả khi "có" để bỏ tích nếu vừa sửa lại.
@@ -929,11 +996,22 @@ def _missing_items(st: dict, page: str) -> list[str]:
     return items
 
 
+def _clean_name(value) -> str:
+    text = " ".join(unicodedata.normalize("NFC", str(value or "")).split())
+    text = _NAME_PREFIX_RE.sub("", text).strip(" .,;:-–\"'“”")
+    return text.upper()
+
+
 def _name_value(st: dict, key: str) -> str:
     value = st["values"].get(key)
     if value == "__docs__":
         value = (st.get("base") or {}).get(_NAME_CHECK[key][1])
-    return str(value or "").strip().upper() if isinstance(value, str) else ""
+    # Dấu hiệu nội bộ (vd "__skip__" — công dân bỏ qua mục) không phải tên.
+    return _clean_name(value) if isinstance(value, str) and not value.startswith("__") else ""
+
+
+def _name_key(value) -> str:
+    return " ".join(re.findall(r"[0-9a-z]+", fold(_clean_name(value))))
 
 
 def _name_to_check(st: dict) -> str:
@@ -953,19 +1031,52 @@ def _on_name_checked(conv: dict, payload: dict):
     text = str(payload.get("text") or "")
     names = [str(n).strip() for n in payload.get("names") or [] if str(n).strip()][:50]
     m = re.search(r"\bCó\s+(\d+)\s+Hộ", text)
-    count = int(m.group(1)) if m else (0 if "Không có" in text else len(names))
+    # Danh sách có tên mà chữ đếm không đọc được (cổng đổi câu) vẫn là có trùng.
+    count = max(int(m.group(1)) if m else 0, len(names))
     name = str(payload.get("name") or "")
-    exact = sum(1 for n in names if fold(n) == fold(name))
+    key_name = _name_key(name)
+    exact = sum(1 for n in names if _name_key(n) == key_name)
+    # Tên cổng chứa nguyên tên này (hoặc ngược lại) là trùng gần — đọc lên trước các tên chỉ tương tự.
+    contains = [n for n in names if key_name and _name_key(n) and _name_key(n) != key_name
+                and (f" {key_name} " in f" {_name_key(n)} " or f" {_name_key(n)} " in f" {key_name} ")]
+    names = [n for n in names if _name_key(n) == key_name] + contains + [
+        n for n in names if _name_key(n) != key_name and n not in contains]
     st.setdefault("name_check", {})[key] = {"name": name, "count": count if payload.get("ok") else 0,
                                            "names": names, "exact": exact}
     st["phase"] = "ask"
     if not payload.get("ok"):
-        return _ask_next(conv, _say(vi.HKD_NAME_CHECK_FAILED))
-    if not count:
-        return _ask_next(conv, _say(vi.HKD_NAME_FREE, name=name))
-    shown = "; ".join(names[:5]) + ("…" if len(names) > 5 else "")
-    exact_md = vi.HKD_NAME_EXACT.format(n=exact) if exact else ""
-    return _ask_next(conv, _say(vi.HKD_NAME_TAKEN, n=count, name=name, names=shown, exact=exact_md))
+        lead = _say(vi.HKD_NAME_CHECK_FAILED)
+    elif not count:
+        lead = _say(vi.HKD_NAME_FREE, name=name)
+    else:
+        # Nhiều hộ cùng một tên (đã đếm ở "trùng hẳn") → mỗi tên chỉ đọc một lần.
+        unique = []
+        for n in names:
+            if all(" ".join(n.split()).casefold() != " ".join(u.split()).casefold() for u in unique):
+                unique.append(n)
+        shown = "; ".join(unique[:5]) + ("…" if len(unique) > 5 else "")
+        exact_md = vi.HKD_NAME_EXACT.format(n=exact) if exact else ""
+        lead = _say(vi.HKD_NAME_TAKEN, n=count, name=name, names=shown, exact=exact_md)
+    if st.get("fill_all_check"):
+        return _after_fill_name_checked(conv, key, lead)
+    return _with_notes(_ask_next(conv), [lead])
+
+
+def _with_notes(r, notes: list):
+    """Kết quả kiểm trùng tên là bong bóng riêng (lead_message) đứng trước câu chính; lời đọc vẫn đọc trước."""
+    notes = [(md.strip(), tts) for md, tts in notes if md.strip()]
+    if notes:
+        r.actions = [*({"type": "lead_message", "md": md} for md, _ in notes), *r.actions]
+        r.tts_text = "".join(tts for _, tts in notes) + r.tts_text
+    return r
+
+
+def _after_fill_name_checked(conv: dict, key: str, lead: tuple[str, str]):
+    """Kiểm trùng sau lượt điền luôn theo giấy: tên đã điền theo giấy nên chỉ cảnh báo, không hỏi giữ / đổi tên."""
+    st = conv["hkd"]
+    ((st.get("name_check") or {}).get(key) or {})["count"] = 0
+    st.setdefault("fill_all_notes", []).append(list(lead))
+    return _fill_all_name_check(conv)
 
 
 def _fill_all(conv: dict):
@@ -993,13 +1104,35 @@ def _after_fill_all(conv: dict, payload: dict):
     from app.channels.handfree.chat import flow
     st = conv["hkd"]
     st["filled_all"] = True
-    st["attached"] = max(0, int(payload.get("attached") or 0))
+    if not st.pop("refilling", False):  # điền lại không đính tệp → giữ số tệp đã đính của lượt đầu
+        st["attached"] = max(0, int(payload.get("attached") or 0))
     if payload.get("ok") is True or payload.get("attachmentCompleted") is True:
         flow._business_attach_commit(conv)
     lead = ("", "")
     if payload.get("ok") is not True:
         errors = [str(e) for e in payload.get("errors") or [] if e]
         lead = _say(vi.HKD_FILL_ALL_PARTIAL, error=errors[0] if errors else "cổng chưa nhận hết")
+    # Tên lấy từ giấy: kiểm trùng trên cổng ngay (chỉ cảnh báo), có kết quả mới đọc danh sách ô thiếu.
+    st["fill_all_lead"] = list(lead)
+    return _fill_all_name_check(conv)
+
+
+def _fill_all_name_check(conv: dict):
+    st = conv["hkd"]
+    slot = _name_to_check(st)
+    if slot:
+        st.update(phase="check_name", field="", fill_all_check=True)
+        name = _name_value(st, slot)
+        return _reply(_say(vi.HKD_NAME_CHECKING, name=name), actions=[{
+            "type": "hkd_check_name", "page": "ten-ho-kinh-doanh", "slot": slot, "kind": _NAME_CHECK[slot][0],
+            "name": name}])
+    st.pop("fill_all_check", None)
+    notes = st.pop("fill_all_notes", None) or []
+    return _with_notes(_missing_after_fill(conv, tuple(st.pop("fill_all_lead", None) or ("", ""))), notes)
+
+
+def _missing_after_fill(conv: dict, lead: tuple[str, str]):
+    st = conv["hkd"]
     rows, spoken = [], []
     for page in _blocks(st):
         items = list(dict.fromkeys(vi.HKD_INTRO_ITEMS[k] for k in _missing_items(st, page)))
@@ -1011,7 +1144,10 @@ def _after_fill_all(conv: dict, payload: dict):
     st.update(phase="offer", field="")
     text = _join(lead, _say(vi.HKD_MISSING_LIST, rows="\n".join(rows), items="; ".join(spoken)))
     return _reply(text, [{"label": vi.FR_CHIP, "send": "__action:hkd_fill_missing", "solid": True,
-                          "desc": "bổ sung / điền các thông tin còn thiếu"}])
+                          "desc": "bổ sung / điền các thông tin còn thiếu"},
+                         # Đi tắt: cổng tự kiểm cả hồ sơ, thiếu ô bắt buộc thì báo lỗi → tự mở đúng khối để hỏi lại.
+                         *([{**_prepare_chip(), "solid": False}] if st.get("prepare_on") else []),
+                         *_redo_chips(conv)])
 
 
 def _finish(conv: dict, lead: tuple[str, str]):
@@ -1062,15 +1198,54 @@ def _phase_chips(conv: dict) -> list[dict]:
              else [_submit_chip()] if phase == "ready_submit" else [])
     if _docx_on(conv):
         if _attach_docs_on(conv):
-            chips.append({"label": vi.HKD_ATTACH_DOCS_LABEL, "send": ATTACH_DOCS_SEND,
+            signed = (conv.get("hkd") or {}).get("docx_downloaded")
+            chips.append({"label": vi.HKD_ATTACH_DOCS_LABEL if signed else vi.HKD_ATTACH_DOCS_DONE_LABEL,
+                          "send": ATTACH_DOCS_SEND,
                           "desc": "đính kèm giấy tờ, tờ khai đã ký, gửi / chụp / scan giấy tờ"})
         chips.append({"label": vi.HKD_DOCX_LABEL, "send": DOCX_SEND, "desc": "tải / in tờ khai bản giấy, file Word"})
-    return chips
+    return [*chips, *_redo_chips(conv)]
+
+
+def _redo_on(conv: dict) -> bool:
+    st = conv.get("hkd") or {}
+    return st.get("mode") == "bo_sung" and st.get("phase") in _REDO_PHASES and not conv.get("submitted_completed")
+
+
+def _redo_chips(conv: dict) -> list[dict]:
+    """Như luồng tờ khai: 🗂️ Điều chỉnh giấy tờ (flow mở lại phiên giấy tờ, đọc lại rồi hỏi lại theo giấy mới) và
+    🔁 Điền lại (đẩy lại mọi khối từ giấy tờ + câu trả lời đã có, không đọc lại giấy, không đính lại)."""
+    if not _redo_on(conv):
+        return []
+    from app.channels.handfree.chat import flow
+    return [flow._supplement_documents_chip(),
+            {"label": "🔁 Điền lại", "send": REFILL_SEND, "desc": "điền lại các khối lên trang"}]
+
+
+def _refill(conv: dict):
+    from app.channels.handfree.chat import flow
+    st = conv["hkd"]
+    # Khối thành viên / ủy quyền ở luồng có giấy chỉ có trong dữ liệu đọc từ giấy (vòng hỏi không giữ) → giữ bản đó.
+    pages = dict(conv.get("business_pages") or {})
+    for page in _blocks(st):
+        if page == AUTH_PAGE or (page == MEMBERS_PAGE and not st.get("members")):
+            continue
+        pages[page] = page_fields(st, page)
+    st.update(block=0, phase="saving", field="", saving_at=time.time(), fill_all=True, refilling=True)
+    action = {
+        "type": "start_business_registration",
+        "pages": pages,
+        "attachments": [],
+        "session_id": "",
+        "businessDefaults": flow._business_defaults(conv),
+        "workflow": "create",
+        "businessFlow": conv.get("business_flow") or None,
+    }
+    return _reply(_say(vi.HKD_REFILLING), actions=[action])
 
 
 def _attach_docs_on(conv: dict) -> bool:
     st = conv.get("hkd") or {}
-    return (_docx_on(conv) and bool(st.get("docx_downloaded")) and st.get("phase") in _ATTACH_PHASES
+    return (_docx_on(conv) and st.get("phase") in _ATTACH_PHASES
             and not (st.get("phase") == "done" and st.get("prepare_on")))
 
 
@@ -1083,9 +1258,10 @@ def _start_attach_docs(conv: dict):
     """Nút "Đính kèm giấy tờ": về bước chọn cách gửi giấy tờ như luồng thường (điện thoại / scan tại quầy)."""
     from app.channels.handfree.chat import flow
     st = conv["hkd"]
+    intro = vi.HKD_ATTACH_DOCS_INTRO if st.get("docx_downloaded") else vi.HKD_ATTACH_DOCS_INTRO_PLAIN
     st.update(attach_back=st["phase"], attach_state=conv.get("state"), phase="attach_docs")
     conv["pipeline_status"] = ""
-    return flow._to_ask_doc_method(conv, intro=_say(vi.HKD_ATTACH_DOCS_INTRO))
+    return flow._to_ask_doc_method(conv, intro=_say(intro))
 
 
 async def attach_docs_complete(conv: dict):
@@ -1285,6 +1461,9 @@ async def _on_report(conv: dict, payload: dict):
         from app.channels.handfree.chat import flow
         flow._business_attach_commit(conv)
         st["attached"] = int(st.get("attached") or 0) + max(0, int(payload.get("attached") or 0))
+        # Khối danh sách (ngành, thành viên): lượt điền thật là lượt thêm dòng (cổng lưu từng dòng); xác nhận sau đó chỉ
+        # sang khối kế, không báo lại → ghi ở đây cho cả hai loại khối.
+        await _record_page_fill(conv, page)
         if st.pop("fill_only", False):
             st["list_filled"] = True
             return _ask_next(conv)  # đã điền danh sách lên trang → chờ công dân xác nhận lưu
@@ -1294,6 +1473,18 @@ async def _on_report(conv: dict, payload: dict):
     errors = [str(e) for e in payload.get("errors") or [] if e]
     text = _say(vi.HKD_BLOCK_SAVE_FAILED, label=_label(page), error=errors[0] if errors else "cổng chưa nhận")
     return _reply(text, [{"label": vi.HKD_BLOCK_RETRY_LABEL, "send": f"__action:{retry}", "solid": True}])
+
+
+async def _record_page_fill(conv: dict, page: str) -> None:
+    """Lưu khối đi ngoài pipeline đọc giấy nên không tự sinh lượt điền: luồng không giấy tờ trước đây không có lượt nào
+    (Traces/Monitor trống, hồ sơ không vào sổ, cú bấm nộp bị bỏ ở flow.dossier_has_real_work). Mỗi khối cổng nhận lưu
+    là một lượt điền 0 tệp mang tên trang + các ô của khối đó; hồ sơ được đánh dấu đã có việc."""
+    from app.channels.handfree.chat import tracing
+    from app.channels.handfree.procedure_registry import get_procedure
+    key = conv.get("procedure_key") or ""
+    await tracing.record_process(conv, key, get_procedure(key) or {}, [], {"fields": page_fields(conv["hkd"], page)}, 0,
+                                 fill_page=_label(page))
+    conv["dossier_has_activity"] = True
 
 
 def _after_saved(conv: dict, lead: tuple[str, str]):
@@ -1669,6 +1860,8 @@ async def _base_state(conv: dict, mode: str) -> dict:
             "name_check_on": bool((conv.get("client_capabilities") or {}).get(NAME_CHECK_CAPABILITY)),
             "prepare_on": bool((conv.get("client_capabilities") or {}).get(PREPARE_CAPABILITY)),
             "submit_on": bool((conv.get("client_capabilities") or {}).get(SUBMIT_CAPABILITY)), "phase": "", "field": "", "skip_start_date": mapper.is_bac_ninh_phuong_lieu(user),
+            # Cách ghi ô mô tả dòng ngành theo địa bàn (mapper.line_detail_mode), như lượt điền Auto Fill.
+            "line_detail": mapper.line_detail_mode(user),
             "loc": {"province": loc.get("province") or "", "ward": loc.get("ward") or ""}}
 
 
@@ -1729,6 +1922,12 @@ async def handle(conv: dict, proc: dict | None, intent: Intent):
         return _docx_reply(conv) if st and _docx_on(conv) else _reply(("", ""))
     if intent.kind == "action" and intent.value == "hkd_attach_docs":
         return _start_attach_docs(conv) if st and _attach_docs_on(conv) else _reply(("", ""))
+    if intent.kind == "action" and intent.value == "hkd_refill":
+        return _refill(conv) if st and _redo_on(conv) else _reply(("", ""))
+    if (intent.kind == "action" and intent.value == "add_documents" and st and _redo_on(conv)
+            and st.get("phase") != "done"):
+        from app.channels.handfree.chat import flow
+        return await flow._start_documents_adjustment(conv, "business")  # pha done: flow._handle_done lo như cũ
     if (intent.kind == "event" and intent.value == "business_ready" and st and st.get("phase") == "attach_wait"
             and conv.get("pipeline_status") == "hkd_attach_ready"):
         return _on_attach_ready(conv)
@@ -1750,6 +1949,8 @@ async def handle(conv: dict, proc: dict | None, intent: Intent):
         if (phase == "saving" and isinstance(result, dict) and result
                 and float(result.get("createdAt") or 0) / 1000 >= float(st.get("saving_at") or 0) - 1):
             return await _on_report(conv, result)
+        if _waited_too_long(st) and st.get("stuck_said") != _wait_start(st):
+            return _wait_reply(st)
         if phase == "open":
             if intent.value == "hkd_arrived":
                 if intent.payload.get("page") != _page(st):
@@ -1796,12 +1997,19 @@ async def handle(conv: dict, proc: dict | None, intent: Intent):
             st["phase"] = "ask"
             return _ask_next(conv)
         st.setdefault("name_check", {})[slot] = {"name": _name_value(st, slot), "count": 0, "names": [], "exact": 0}
+        if st.get("fill_all_check"):
+            return _after_fill_name_checked(conv, slot, _say(vi.HKD_NAME_CHECK_FAILED))
         st.update(phase="ask", field=slot)
         phase = "ask"
+    if intent.value == "hkd_retry":
+        return _retry(conv) if _wait_kind(st) and _waited_too_long(st) else _reply(("", ""))
+    if _wait_kind(st) and intent.value in ("hkd_answer", "hkd_value", "hkd_skip", "hkd_save", "hkd_fill_block",
+                                            "hkd_pick", "hkd_resume"):
+        return _wait_reply(st)
     if intent.value == "hkd_prepare":
-        if phase not in ("ready_prepare", "prepare_failed"):
+        if phase not in ("ready_prepare", "prepare_failed") and not (phase == "offer" and st.get("prepare_on")):
             return _reply(("", ""))
-        st["phase"] = "prepare"
+        st.update(phase="prepare", prepare_at=time.time())
         return _reply(_say(vi.HKD_PREPARING), actions=[{"type": "hkd_prepare"}])
     if intent.value == "hkd_submit":
         if phase != "ready_submit":

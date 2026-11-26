@@ -31,6 +31,14 @@ _NUMBER_WORDS = {"muoi", "tram", "nghin", "ngan"}
 PHONE_LENGTHS = (10, 11)
 # Cổng iGate các bộ (ô "SĐT (Không sử dụng SĐT bàn)") chỉ nhận số di động: đúng 10 số, bắt đầu bằng 0.
 MOBILE_LENGTHS = (10,)
+# Ô email: công dân hay chỉ đọc / gõ phần tên ("Ngọc Minh", "Ngocminh") → cổng Bộ Công an báo "Địa chỉ Email không hợp
+# lệ" (user 25/11/2026). Thiếu "@" thì mặc định "@gmail.com"; "a còng" → "@", "chấm com" → ".com"; nói tên nhà cung cấp
+# mà rơi "a còng" ("ngọc minh gmail chấm com") → chèn "@" trước tên nhà cung cấp.
+_EMAIL_LEAD = re.compile(r"^(?:dia chi )?(?:e ?-?mail|thu dien tu)(?: cua (?:toi|em|minh))?(?: la)?\s*[:：]?\s*")
+_EMAIL_AT = re.compile(r"\s*\ba ?(?:cong|moc)\b\s*")
+_EMAIL_DOT = re.compile(r"\s*\bcham\s+(?=(?:com|vn|net|org|edu|gov)\b)")
+_EMAIL_PROVIDER_TAIL = re.compile(r"\s*(gmail|yahoo|hotmail|outlook|icloud)\s*\.?\s*(com\.vn|com|vn)?$")
+DEFAULT_EMAIL_DOMAIN = "gmail.com"
 
 
 @dataclass
@@ -100,6 +108,29 @@ def id_lengths(field: dict) -> tuple[int, ...]:
     if "giay to" in label and re.search(r"\bso\b", label):
         return (9, 12)  # số CMND 9 chữ số / CCCD 12 chữ số
     return ()
+
+
+def is_email_field(field: dict) -> bool:
+    return bool(re.search(r"\be ?-?mail\b|thu dien tu", fold(field.get("label") or "")))
+
+
+def spoken_email(value: str) -> str:
+    """Giá trị ô email (LLM trả hoặc công dân gõ) → địa chỉ đúng khuôn; thiếu tên miền thì thêm "@gmail.com".
+    "" khi không ra được địa chỉ hợp lệ (phần tên rỗng / ký tự lạ)."""
+    from app.pipelines._shared.formatting import clean_email
+
+    text = _EMAIL_LEAD.sub("", fold(value))
+    text = _EMAIL_AT.sub("@", text)
+    text = _EMAIL_DOT.sub(".", text)
+    text = re.sub(r"\s*\bgach duoi\b\s*", "_", text)
+    text = re.sub(r"\s*\bgach ngang\b\s*", "-", text)
+    if "@" not in text:
+        tail = _EMAIL_PROVIDER_TAIL.search(text)
+        if tail and tail.start() > 0:
+            text = f"{text[:tail.start()]}@{tail.group(1)}.{tail.group(2) or 'com'}"
+        else:
+            text = f"{text}@{DEFAULT_EMAIL_DOMAIN}"
+    return clean_email(text) or ""
 
 
 def _digits_ok(digits: str, lengths: tuple[int, ...]) -> bool:
@@ -267,6 +298,8 @@ def _check(data: dict, field: dict, text: str = "", visited: list | None = None)
         else:
             # Ưu tiên dãy chép tất định khi LLM rơi chữ số; mang theo để câu hỏi lại nói rõ mới nghe được mấy số.
             return Answer("unclear", spoken_digits(text) or digits)
+    elif is_email_field(field):
+        value = spoken_email(value)
     return Answer("value", value) if value else Answer("unclear")
 
 

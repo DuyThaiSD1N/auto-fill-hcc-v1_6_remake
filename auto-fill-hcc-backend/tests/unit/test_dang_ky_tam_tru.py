@@ -35,6 +35,19 @@ def test_nguoi_dang_ky_va_noi_tam_tru_ra_dung_o_form():
     assert v["txtCHANGED_NOTE"][1].startswith("Đăng ký tạm trú")
 
 
+def test_khoi_nhan_ket_qua_theo_email_tren_giay():
+    out = mapper.enrich([{"name": "NguoiDangKy_HoTen", "value": "A"},
+                         {"name": "NguoiDangKy_Email", "value": "hoa.le@gmail.com"}])
+    by = {f["name"]: f for f in out}
+    names = [f["name"] for f in out]
+    assert names.index("cboRECEIVER_TYPE") < names.index("txtRECEIVER_EMAIL")
+    assert by["cboRECEIVER_TYPE"]["value"] == "Qua email" and by["cboRECEIVER_TYPE"]["default"] is True
+    assert by["txtRECEIVER_EMAIL"]["value"] == "hoa.le@gmail.com" and by["txtRECEIVER_EMAIL"]["keepPortalValue"]
+    # Không có email → "Nhận qua cổng thông tin", không để ô Email bắt buộc trống.
+    v = _enrich(NguoiDangKy_HoTen="A")
+    assert v["cboRECEIVER_TYPE"] == ("dom-select", "Nhận qua cổng thông tin") and "txtRECEIVER_EMAIL" not in v
+
+
 def test_dinh_dang_ngay_sinh_chon_truoc_o_ngay_sinh():
     names = [f["name"] for f in mapper.enrich([{"name": "NguoiDangKy_NgaySinh", "value": "01/02/1990"},
                                                {"name": "NguoiDangKy_HoTen", "value": "A"}])]

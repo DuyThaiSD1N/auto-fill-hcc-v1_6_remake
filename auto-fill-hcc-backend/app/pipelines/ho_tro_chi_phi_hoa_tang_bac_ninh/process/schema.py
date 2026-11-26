@@ -14,8 +14,12 @@ FIELDS: list[dict] = [
     {"name": "KhaiTu_So", "desc": "Số giấy báo tử hoặc số trích lục khai tử của người chết; giữ nguyên toàn bộ mã và hậu tố như /TLKT nếu có."},
     {"name": "KhaiTu_CoQuanCap", "desc": "Cơ quan cấp giấy báo tử/trích lục khai tử."},
     {"name": "KhaiTu_NgayCap", "desc": "Ngày cấp giấy báo tử/trích lục khai tử, dd/mm/yyyy; không lấy ngày đăng ký khai tử nếu khác."},
-    {"name": "HoaTang_ThoiGian", "desc": "Thời gian hỏa táng ghi trong Đơn/Hợp đồng, giữ đủ giờ phút và ngày nếu có."},
-    {"name": "HoaTang_DiaDiem", "desc": "Tên và/hoặc địa chỉ cơ sở thực hiện hỏa táng."},
+    {"name": "HoaTang_ThoiGian", "desc": "Thời gian hỏa táng. Ưu tiên ngày hỏa táng / ngày đưa tang IN trên hợp đồng dịch vụ "
+                                         "hỏa táng; không có hợp đồng thì theo Đơn. Viết dd/mm/yyyy, có giờ phút rõ thì "
+                                         "'HH:mm dd/mm/yyyy'; không chép cụm giờ đọc dở (số giờ đứng trơ trước chữ 'ngày')."},
+    {"name": "HoaTang_DiaDiem", "desc": "Tên và/hoặc địa chỉ cơ sở thực hiện hỏa táng. Hồ sơ có hợp đồng / hoá đơn dịch vụ hỏa "
+                                        "táng thì lấy đúng tên in trên đó (dòng địa điểm hỏa táng hoặc tên đơn vị cung cấp "
+                                        "dịch vụ): Đơn viết tay hay bị đọc sai tên riêng."},
     {"name": "NguoiDungRa_HoTen", "desc": "Họ tên CHỦ HỘ/NGƯỜI ĐẠI DIỆN đứng ra thực hiện hỏa táng ở mục II của Đơn (có CCCD cùng số thì theo chữ in trên CCCD); không lấy người chết."},
     {"name": "NguoiDungRa_NgaySinh", "desc": "Ngày sinh người đứng ra hỏa táng, dd/mm/yyyy."},
     {"name": "NguoiDungRa_SoDinhDanh", "desc": "Số CCCD/định danh của người đứng ra hỏa táng, chỉ giữ chữ số."},

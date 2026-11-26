@@ -57,8 +57,28 @@ def test_thu_tu_va_gia_tri_o_form():
     assert by["cboHH_PERSON_RELATIONSHIP_CODE"]["value"] == "Chủ hộ"
     assert by["txtHH_PERSON_IDENTIFIER_NUMBER"]["value"] == "012192000555"
     # Ô trống / chấm chấm không điền; khối ẩn với TAMTRU_06 không điền.
-    assert not {"txtPHONE_NUMBER", "txtEMAIL", "listNormal", "txtCHANGED_NOTE", "txtSUGGEST_ADDRESS",
+    assert not {"txtPHONE_NUMBER", "txtEMAIL", "txtRECEIVER_EMAIL", "listNormal", "txtCHANGED_NOTE", "txtSUGGEST_ADDRESS",
                 "txtTEMP_RESIDENT_TO", "txtFULLNAME0", "chkCHECK_LIABILITY"} & set(by)
+
+
+def test_khoi_nhan_ket_qua_co_email_thi_qua_email_dien_email():
+    out = _enrich({**PERSON, "NguoiDeNghi_Email": "mai,hoang@gmail,com"})
+    names = [f["name"] for f in out]
+    by = {f["name"]: f for f in out}
+    # Khối "Thông tin nhận thông báo tình trạng hồ sơ, kết quả giải quyết hồ sơ": chọn hình thức TRƯỚC ô email.
+    assert names[-2:] == ["cboRECEIVER_TYPE", "txtRECEIVER_EMAIL"]
+    assert by["cboRECEIVER_TYPE"]["value"] == "Qua email" and by["cboRECEIVER_TYPE"]["comp"] == "dom-select"
+    assert by["cboRECEIVER_TYPE"]["default"] is True  # giấy không ghi hình thức nhận → tô vàng cho công dân xem lại
+    assert by["txtRECEIVER_EMAIL"]["value"] == "mai.hoang@gmail.com" == by["txtEMAIL"]["value"]
+    assert by["txtRECEIVER_EMAIL"]["keepPortalValue"] is True and "default" not in by["txtRECEIVER_EMAIL"]
+    # Hình thức nhận thông báo để mặc định của cổng (select2 nhiều lựa chọn).
+    assert not {"cboNOTIFICATION_TYPE", "txtNOTIFICATION_EMAIL", "txtNOTIFICATION_PHONE"} & set(by)
+
+
+def test_khoi_nhan_ket_qua_khong_co_email_thi_nhan_qua_cong_khong_bo_trong_o_bat_buoc():
+    by = _by(PERSON)
+    assert by["cboRECEIVER_TYPE"]["value"] == "Nhận qua cổng thông tin" and by["cboRECEIVER_TYPE"]["default"] is True
+    assert "txtRECEIVER_EMAIL" not in by
 
 
 def test_truong_hop_theo_ly_do_khi_llm_khong_chon():
@@ -380,3 +400,98 @@ def test_llm_loi_khong_tach_van_dinh_du_tep_vao_dong_to_khai(monkeypatch):
     assert [i["rowKey"] for i in res["attachments"]] == [ROWS["to_khai"]["rowKey"]] * 2
     assert res["attachments"][0]["rowFields"]["count"] == "02"
     assert any("kiểm tra lại" in e for e in res["errors"])
+
+
+# ── Bảng theo Trường hợp (ảnh user 24/11/2026): hai trường hợp không còn chỗ ở hợp pháp có dòng 2; vắng mặt / đã đăng ký
+# thường trú tại chính nơi tạm trú CHỈ có dòng Tờ khai ──
+def _ct01_ocr(reason: str, *more_pages: str) -> str:
+    pages = [
+        "TỜ KHAI THAY ĐỔI THÔNG TIN CƯ TRÚ\n1. Họ, chữ đệm và tên: TRẦN THỊ BÌNH\n"
+        f"10. Nội dung đề nghị(2): {reason}\n11. Những thành viên trong hộ gia đình cùng thay đổi:\n"
+        "Ý KIẾN CỦA CHỦ HỘ  Ý KIẾN CỦA CHỦ SỞ HỮU CHỖ Ở HỢP PHÁP  Ý KIẾN CỦA CHA, MẸ HOẶC NGƯỜI GIÁM HỘ\n"
+        "(2) Ghi rõ ràng, cụ thể nội dung đề nghị. Ví dụ: đăng ký thường trú; đăng ký tạm trú; xóa đăng ký thường trú",
+        *more_pages,
+    ]
+    return "\n".join(f"───── Trang {i + 1}/{len(pages)} ─────\n{t}" for i, t in enumerate(pages))
+
+
+_PERMANENT = "Đề nghị xóa đăng ký tạm trú do đã đăng ký thường trú tại nơi tạm trú"
+
+
+def test_bang_theo_truong_hop_doc_ly_do_o_muc_10_to_khai():
+    def has_row(reason, options=None):
+        return khong_tach.table_has_no_home_row({0: khong_tach.ocr_pages(_ct01_ocr(reason))}, options)
+
+    assert has_row("Xóa đăng ký tạm trú do hết hạn hợp đồng thuê nhà") is True
+    assert has_row("Đề nghị xóa đăng ký tạm trú do không còn chỗ ở hợp pháp") is True
+    # Khối "Ý kiến của chủ sở hữu chỗ ở hợp pháp" sau mục 11 và chú thích "(2)… đăng ký thường trú" không được tính.
+    assert has_row(_PERMANENT) is False
+    assert has_row("Xóa đăng ký tạm trú do vắng mặt liên tục từ 6 tháng trở lên") is False
+    assert has_row("…………") is None
+    assert khong_tach.table_has_no_home_row({0: ["CĂN CƯỚC CÔNG DÂN"]}) is None
+    # Trợ lý: Trường hợp công dân chọn thắng lý do trên giấy.
+    assert has_row(_PERMANENT, {"bcaCase": "Cả hộ do không còn chỗ ở hợp pháp"}) is True
+    assert has_row("do hết hạn hợp đồng thuê", {"bcaCase": "Hộ do vắng mặt từ 6 tháng trở lên"}) is False
+
+
+def _patch_ocr(monkeypatch, text, documents):
+    async def fake_ocr(files):
+        return [{"text": text} for _ in files]
+
+    async def fake_chat(messages, max_tokens=None, **_):
+        return json.dumps({"documents": documents})
+
+    monkeypatch.setattr(ocr, "ocr_per_file", fake_ocr)
+    monkeypatch.setattr(llm_client, "chat", fake_chat)
+
+
+_PERMANENT_DOCS = [
+    {"fileIndex": 0, "pages": [1], "docType": "to_khai", "documentName": "Tờ khai thay đổi thông tin cư trú"},
+    {"fileIndex": 0, "pages": [2], "docType": "cho_o", "documentName": "Biên bản thanh lý hợp đồng thuê nhà"},
+]
+
+
+def test_truong_hop_da_dang_ky_thuong_tru_giay_cho_o_vao_dong_them_moi(monkeypatch):
+    # Bảng chỉ có dòng Tờ khai → giấy chứng minh chỗ ở không tìm dòng 2 (extension sẽ báo "Không thấy dòng").
+    _patch_ocr(monkeypatch, _ct01_ocr(_PERMANENT, "BIÊN BẢN THANH LÝ HỢP ĐỒNG THUÊ NHÀ"), _PERMANENT_DOCS)
+    for options in ({}, {"splitDocuments": True}):
+        items = asyncio.run(attach.plan(_files("hoso.pdf"), options))["attachments"]
+        assert [(i["rowKey"], i["newRow"]) for i in items] == [(ROWS["to_khai"]["rowKey"], False), ("", True)], options
+        assert items[1]["componentName"] == "Biên bản thanh lý hợp đồng thuê nhà"
+        assert all(i["rowKey"] != ROWS["cho_o"]["rowKey"] for i in items)
+
+
+def test_truong_hop_khong_con_cho_o_van_vao_dong_2(monkeypatch):
+    _patch_ocr(monkeypatch, _ct01_ocr("Xóa tạm trú do hết hạn hợp đồng thuê", "BIÊN BẢN THANH LÝ HỢP ĐỒNG THUÊ NHÀ"),
+               _PERMANENT_DOCS)
+    for options in ({}, {"splitDocuments": True}):
+        items = asyncio.run(attach.plan(_files("hoso.pdf"), options))["attachments"]
+        assert [(i["rowKey"], i["newRow"]) for i in items] == [
+            (ROWS["to_khai"]["rowKey"], False), (ROWS["cho_o"]["rowKey"], False)], options
+
+
+def test_ghi_chu_dong_to_khai_theo_anh_anh_xa(monkeypatch):
+    # Ảnh ánh xạ 24/11: hồ sơ một tệp CT01 1 trang → dòng Tờ khai, Ghi chú nêu người đề nghị + các ý kiến; dòng 2 để trống.
+    docs = [{"fileIndex": 0, "pages": [1], "docType": "to_khai", "documentName": "Tờ khai thay đổi thông tin cư trú",
+             "nguoiDeNghi": "TRẦN THỊ BÌNH", "yKienChuHo": "Trần Thị Bình", "yKienChuSoHuu": "LÊ VĂN CƯỜNG",
+             "yKienChaMe": "……………"}]
+    _patch_ocr(monkeypatch, _ct01_ocr(_PERMANENT), docs)
+    for options in ({}, {"splitDocuments": True}):
+        items = asyncio.run(attach.plan(_files("CT01.pdf"), options))["attachments"]
+        assert [i["rowKey"] for i in items] == [ROWS["to_khai"]["rowKey"]], options
+        assert items[0]["rowFields"] == {
+            "count": "01",
+            "note": "Tờ khai CT01 bản gốc (1 trang) của Trần Thị Bình, kèm ý kiến chủ hộ Trần Thị Bình, chủ sở hữu "
+                    "chỗ ở hợp pháp Lê Văn Cường",
+        }, options
+    # LLM không đọc được tên người đề nghị → không dựng câu.
+    assert khong_tach.to_khai_note({"nguoiDeNghi": "…"}, 1) == ""
+
+
+def test_tep_gop_ghi_chu_to_khai_kem_cau_dinh_kem_chung(monkeypatch):
+    docs = [{**_PERMANENT_DOCS[0], "nguoiDeNghi": "Trần Thị Bình"}, _PERMANENT_DOCS[1]]
+    _patch_ocr(monkeypatch, _ct01_ocr(_PERMANENT, "BIÊN BẢN THANH LÝ HỢP ĐỒNG THUÊ NHÀ"), docs)
+    items = asyncio.run(attach.plan(_files("hoso.pdf"), {}))["attachments"]
+    assert items[0]["rowFields"]["note"] == (
+        "Tờ khai CT01 bản gốc (1 trang) của Trần Thị Bình; Đính kèm chung tệp hoso.pdf (2 trang): Tờ khai thay đổi "
+        "thông tin cư trú tại trang 1/2")

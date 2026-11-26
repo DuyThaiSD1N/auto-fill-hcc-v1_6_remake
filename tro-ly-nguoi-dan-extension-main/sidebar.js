@@ -171,6 +171,9 @@
     // field-review.js tô ô + vòng "Bổ sung các thông tin còn thiếu" trên host này (bootstrap-select). Thiếu cờ → BE giữ
     // luồng cũ (nút "Đồng ý và tiếp tục" hiện ngay sau khi đính kèm).
     supportsBcaNthReview: true,
+    // eForm Nth Bộ Công an: bước "Đính kèm giấy tờ" gắn ô tải ảnh đầu trang kê khai (mục kế hoạch target "bca-photo", ảnh
+    // JPEG tải từ phiên theo photoFid → lệnh bcaPagePhotos của content/fill-core.js) — đăng ký xe nhập khẩu 1.013066.
+    supportsBcaPagePhotos: true,
     // Cổng DVC Bộ Công an dichvucong.bocongan.gov.vn (đăng ký xe): trang "Chọn trường hợp hồ sơ" (Loại xe…) dẫn như trang 1
     // của Lai Châu — content/laichau/portal.js chạy thêm host này, tự dò ô chọn. Thiếu cờ → công dân tự chọn như cũ.
     supportsBcaCaseStep: true,
@@ -352,7 +355,7 @@
   function botTone(md) {
     const s = String(md || "").replace(/^[\s*_#>]+/, "");
     if (/^(✅|🎉)/.test(s)) return " ok";
-    if (/^(⚠️|⚠|❗|🚫)/.test(s)) return " warn";
+    if (/^(⚠️|⚠|❗|🚫|⛔)/.test(s)) return " warn";
     if (/^(ℹ️|ℹ|💡|📌)/.test(s)) return " info";
     return "";
   }
@@ -1783,20 +1786,44 @@
     }
   }
 
-  // Xem tệp trong ví thẳng từ cổng (đường tải không cần token) — thẻ chưa tải tệp nào về máy chủ.
+  // Xem giấy trong ví ở khung xem trước TRÊN TRANG (cùng khung với tệp đã nhận), fid dạng "vi:<uri>": nội dung tải thẳng
+  // từ cổng (đường tải không cần token), không qua BE.
   const WALLET_ORIGIN_RE = /^https:\/\/[a-z0-9.-]+\.gov\.vn$/i;
-  async function previewWalletRemote(origin, path, uri) {
-    try {
-      if (!WALLET_ORIGIN_RE.test(origin) || !path.startsWith("/") || !path.includes("{uri}")) throw new Error("bad url");
-      const res = await fetch(origin + path.replace("{uri}", encodeURIComponent(uri)), { credentials: "omit" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const url = URL.createObjectURL(await res.blob());
-      window.open(url, "_blank", "noopener");
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    } catch (e) {
-      console.warn("[TLND] Không mở được tệp trong Ví cá nhân:", e);
-      setStatus("⚠️ Chưa mở được tệp để xem, công dân thử lại ạ.", true);
+  // giuViTri: chỉ đổi trạng thái chọn (bấm trên thẻ) — khung giữ tệp đang xem, không nhảy về tệp đã mở lúc đầu.
+  async function openWalletPreview({ giuViTri = false } = {}) {
+    const ctx = walletPreview;
+    if (!ctx?.entries.length) return;
+    previewDangMo = true;
+    previewGhim = true;
+    await sendToContent({
+      action: "tlndPreviewOpen",
+      ghim: true,
+      tieuDe: ctx.title,
+      bieuTuong: "📂",
+      tep: ctx.tep(),
+      chiSo: ctx.index,
+      giuViTri,
+    });
+  }
+
+  function taiDuLieuPreviewVi(fid) {
+    if (!previewDuLieu.has(fid)) {
+      const card = walletPreview?.card || {};
+      const origin = String(card.origin || "");
+      const path = String(card.downloadPath || "");
+      const p = (async () => {
+        if (!WALLET_ORIGIN_RE.test(origin) || !path.startsWith("/") || !path.includes("{uri}")) {
+          throw new Error("Không mở được tệp trong Ví cá nhân.");
+        }
+        const res = await fetch(origin + path.replace("{uri}", encodeURIComponent(fid.slice(3))), { credentials: "omit" });
+        if (!res.ok) throw new Error(`Không tải được tệp từ Cổng (HTTP ${res.status}).`);
+        const blob = await res.blob();
+        return { mime: blob.type || "", dataUrl: await blobToDataUrl(blob) };
+      })();
+      p.catch(() => previewDuLieu.delete(fid));
+      previewDuLieu.set(fid, p);
     }
+    return previewDuLieu.get(fid);
   }
 
   function walletSizeText(bytes) {
@@ -1807,6 +1834,15 @@
 
   // Thẻ wallet_docs: danh sách đánh số giấy tờ đọc được từ ví. Tick chọn ngay trên thẻ (không hỏi BE từng lần);
   // nói số thì BE vẽ lại thẻ mới với lựa chọn đã cập nhật → thẻ cũ khoá lại.
+  // Bản BE gửi `tab` cho từng giấy (supportsWalletPick): hai mục bấm để đổi như hộp thoại ví của cổng — "Tài liệu tải
+  // lên" / "Tài liệu được cấp"; số thứ tự liền qua hai mục để câu nói "chọn số 12" vẫn đúng.
+  const WALLET_TABS = [
+    { key: "uploaded", icon: "📤", label: "Tài liệu tải lên" },
+    { key: "issued", icon: "🏛️", label: "Tài liệu được cấp" },
+  ];
+  // Thẻ ví đang mở trong khung xem trước trên trang (nút chọn ở thanh dưới khung đổi lựa chọn của thẻ này).
+  let walletPreview = null;
+
   function renderWalletDocs(card) {
     document.querySelectorAll(".wallet-card").forEach((el) => {
       el.classList.add("used");
@@ -1815,20 +1851,24 @@
     const entries = Array.isArray(card.entries) ? card.entries : [];
     const picked = new Set(entries.filter((e) => e.picked).map((e) => Number(e.no)));
     const stats = card.stats || {};
+    const tabbed = entries.some((e) => e.tab);
+    const tabOf = (e) => (e.tab === "issued" ? "issued" : "uploaded");
+    let activeTab = !tabbed || entries.some((e) => tabOf(e) === "uploaded") ? "uploaded" : "issued";
+    const inTab = (tab) => entries.filter((e) => !tabbed || tabOf(e) === tab);
     const wrap = document.createElement("div");
     wrap.className = "wallet-card";
     const head = document.createElement("div");
     head.className = "wallet-head";
     const title = document.createElement("div");
     title.className = "wallet-title";
-    title.textContent = "📂 Giấy tờ trong Ví cá nhân";
+    title.textContent = tabbed ? "📂 Giấy tờ trên Cổng DVC" : "📂 Giấy tờ trong Ví cá nhân";
     const count = document.createElement("span");
     count.className = "wallet-count";
     count.textContent = `${entries.length} giấy tờ`;
     title.appendChild(count);
     const sub = document.createElement("div");
     sub.className = "wallet-sub";
-    sub.textContent = [
+    sub.textContent = tabbed ? "Ví cá nhân · bấm mục bên dưới để đổi · mới nhất ở trên" : [
       card.origin ? "Tên gốc trên Cổng" : `Đọc ${Number(stats.read) || 0} tệp`,
       stats.merged ? `gộp ${stats.merged} trang lẻ` : "",
       stats.duplicates ? `bỏ ${stats.duplicates} bản trùng` : "",
@@ -1836,6 +1876,43 @@
       stats.renamed ? `đặt lại ${stats.renamed} tên` : "",
     ].filter(Boolean).join(" · ") + " · mới nhất ở trên";
     head.append(title, sub);
+
+    const tabs = document.createElement("div");
+    tabs.className = "wallet-tabs";
+    tabs.setAttribute("role", "tablist");
+    tabs.hidden = !tabbed;
+    const tabButtons = WALLET_TABS.map((t) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "wallet-tab";
+      b.setAttribute("role", "tab");
+      b.dataset.tab = t.key;
+      const tabEntries = inTab(t.key);
+      const nos = tabEntries.map((e) => Number(e.no));
+      const top = document.createElement("span");
+      top.className = "wallet-tab-name";
+      top.textContent = `${t.icon} ${t.label}`;
+      const bottom = document.createElement("span");
+      bottom.className = "wallet-tab-sub";
+      const badge = document.createElement("b");
+      badge.textContent = String(tabEntries.length);
+      bottom.append(badge, nos.length ? ` số ${Math.min(...nos)}–${Math.max(...nos)}` : " Không có kết quả");
+      b.append(top, bottom);
+      b.addEventListener("click", () => {
+        if (activeTab === t.key) return;
+        markActivity();
+        activeTab = t.key;
+        refresh();
+      });
+      return b;
+    });
+    tabs.append(...tabButtons);
+    const note = document.createElement("div");
+    note.className = "wallet-note";
+    note.textContent = "Bản điện tử do cơ quan cấp cho công dân ở các hồ sơ trước.";
+    const empty = document.createElement("div");
+    empty.className = "wallet-empty";
+    empty.textContent = "Cổng báo “Không có kết quả” ở mục này.";
 
     const list = document.createElement("div");
     list.className = "wallet-list";
@@ -1845,15 +1922,57 @@
     const all = document.createElement("button");
     all.type = "button";
     all.className = "wallet-all";
+    const counter = document.createElement("span");
+    counter.className = "wallet-hint";
+    const metaText = (entry) => [
+      entry.date ? String(entry.date).slice(0, 10).split("-").reverse().join("/") : "",
+      walletSizeText(entry.size),
+    ].filter(Boolean).join(" · ");
+    const previewTep = (tabEntries) => tabEntries.map((e) => ({
+      fid: `vi:${e.uri}`,
+      name: String(e.name || ""),
+      meta: ["📂 Cổng DVC", tabbed ? WALLET_TABS.find((t) => t.key === tabOf(e)).label : "Ví cá nhân", metaText(e)]
+        .filter(Boolean).join(" · "),
+      ...(wrap.classList.contains("used") ? {} : { chon: picked.has(Number(e.no)) }),
+    }));
+    const openPreview = (entry) => {
+      const tabEntries = inTab(tabbed ? tabOf(entry) : "uploaded").filter((e) => e.uri);
+      const index = Math.max(0, tabEntries.findIndex((e) => Number(e.no) === Number(entry.no)));
+      walletPreview = {
+        card,
+        title: tabbed ? `Giấy tờ trên Cổng DVC · ${WALLET_TABS.find((t) => t.key === tabOf(entry)).label}`
+          : "Giấy tờ trong Ví cá nhân",
+        entries: tabEntries,
+        index,
+        toggle: (no) => {
+          if (wrap.classList.contains("used")) return;
+          if (picked.has(no)) picked.delete(no); else picked.add(no);
+          refresh();
+        },
+        tep: () => previewTep(tabEntries),
+      };
+      void openWalletPreview();
+    };
     const refresh = () => {
+      const tabEntries = inTab(activeTab);
+      const shown = new Set(tabEntries.map((e) => Number(e.no)));
       list.querySelectorAll(".wallet-item").forEach((row) => {
-        const on = picked.has(Number(row.dataset.no));
+        const no = Number(row.dataset.no);
+        const on = picked.has(no);
+        row.hidden = !shown.has(no);
         row.classList.toggle("on", on);
         row.querySelector(".wallet-row")?.setAttribute("aria-checked", on ? "true" : "false");
       });
+      tabButtons.forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === activeTab ? "true" : "false"));
+      note.hidden = !tabbed || activeTab !== "issued" || !tabEntries.length;
+      empty.hidden = !tabbed || tabEntries.length > 0;
+      const allOn = tabEntries.length > 0 && tabEntries.every((e) => picked.has(Number(e.no)));
+      all.disabled = !tabEntries.length || wrap.classList.contains("used");
+      all.textContent = tabbed ? (allOn ? "☑ Bỏ chọn mục này" : "☐ Chọn tất cả mục này")
+        : (allOn ? "Bỏ chọn tất cả" : "Chọn tất cả");
+      counter.textContent = tabbed ? `Đã chọn ${picked.size}/${entries.length}` : "Bấm để chọn · nói “chọn số 2 và 4”";
       go.textContent = picked.size ? `Dùng ${picked.size} giấy đã chọn` : "Chưa chọn giấy nào";
       go.disabled = !picked.size || wrap.classList.contains("used");
-      all.textContent = picked.size === entries.length ? "Bỏ chọn tất cả" : "Chọn tất cả";
     };
     for (const entry of entries) {
       const no = Number(entry.no);
@@ -1878,15 +1997,10 @@
       const meta = document.createElement("span");
       meta.className = "wallet-meta";
       const files = Array.isArray(entry.files) ? entry.files : [];
-      meta.textContent = [
-        entry.date ? String(entry.date).slice(0, 10).split("-").reverse().join("/") : "",
-        walletSizeText(entry.size),
-        files.length > 1 ? `gộp ${files.length} tệp` : "",
-      ].filter(Boolean).join(" · ");
+      meta.textContent = [metaText(entry), files.length > 1 ? `gộp ${files.length} tệp` : ""].filter(Boolean).join(" · ");
       const tags = document.createElement("span");
       tags.className = "wallet-tags";
-      if (entry.tab === "issued") tags.insertAdjacentHTML("beforeend", '<i class="wallet-tag issued">ĐƯỢC CẤP</i>');
-      if (entry.signed) tags.insertAdjacentHTML("beforeend", '<i class="wallet-tag signed">ĐÃ KÝ SỐ</i>');
+      if (entry.signed) tags.insertAdjacentHTML("beforeend", '<i class="wallet-tag signed">✍️ ĐÃ KÝ SỐ</i>');
       if (entry.inDossier) tags.insertAdjacentHTML("beforeend", '<i class="wallet-tag dup">ĐÃ CÓ TRONG HỒ SƠ</i>');
       if (entry.renamed) tags.insertAdjacentHTML("beforeend", '<i class="wallet-tag fix">ĐẶT LẠI TÊN</i>');
       txt.append(name, tags, meta);
@@ -1903,6 +2017,7 @@
         markActivity();
         if (picked.has(no)) picked.delete(no); else picked.add(no);
         refresh();
+        if (walletPreview?.card === card && previewDangMo) void openWalletPreview({ giuViTri: true });
       });
       item.appendChild(row);
       const fid = Array.isArray(entry.fids) ? entry.fids[0] : "";
@@ -1916,7 +2031,7 @@
         eye.textContent = "👁";
         eye.addEventListener("click", () => {
           markActivity();
-          if (remote) void previewWalletRemote(String(card.origin), String(card.downloadPath), String(entry.uri));
+          if (remote) openPreview(entry);
           else void previewWalletFile(card.session_id, fid);
         });
         item.appendChild(eye);
@@ -1925,29 +2040,29 @@
     }
     all.addEventListener("click", () => {
       if (wrap.classList.contains("used")) return;
-      if (picked.size === entries.length) picked.clear();
-      else entries.forEach((e) => picked.add(Number(e.no)));
+      const tabEntries = inTab(activeTab);
+      const allOn = tabEntries.every((e) => picked.has(Number(e.no)));
+      tabEntries.forEach((e) => (allOn ? picked.delete(Number(e.no)) : picked.add(Number(e.no))));
       refresh();
+      if (walletPreview?.card === card && previewDangMo) void openWalletPreview({ giuViTri: true });
     });
     go.addEventListener("click", () => {
       if (!picked.size || wrap.classList.contains("used")) return;
       const label = go.textContent;
       wrap.classList.add("used");
       wrap.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+      if (walletPreview?.card === card) dongPreviewTuSidebar();
       addUserText(label);
       ask(`${card.pickSend || "__action:wallet_pick"}:${JSON.stringify({ picked: [...picked].sort((x, y) => x - y) })}`,
         "chip", label);
     });
     const tools = document.createElement("div");
     tools.className = "wallet-tools";
-    const hint = document.createElement("span");
-    hint.className = "wallet-hint";
-    hint.textContent = "Bấm để chọn · nói “chọn số 2 và 4”";
-    tools.append(all, hint);
+    tools.append(all, counter);
     const foot = document.createElement("div");
     foot.className = "wallet-foot";
     foot.appendChild(go);
-    wrap.append(head, tools, list, foot);
+    wrap.append(head, tabs, tools, note, empty, list, foot);
     refresh();
     addNode(wrap);
   }
@@ -3945,20 +4060,29 @@
     if (Number(sender?.tab?.id) !== Number(TAB_ID)) return; // tab khác → kệ
     if (msg?.action === "tlndPreviewCan") {
       const fid = String(msg.fid || "");
-      if (!fid || !uploadSid) return;
-      taiDuLieuPreview(fid)
+      const wallet = fid.startsWith("vi:");
+      if (!fid || (!wallet && !uploadSid)) return;
+      (wallet ? taiDuLieuPreviewVi(fid) : taiDuLieuPreview(fid))
         .then((d) => sendToContent({ action: "tlndPreviewData", fid, ...d }))
         .catch((e) => sendToContent({ action: "tlndPreviewData", fid, loi: e?.message || "Không tải được tệp." }));
     } else if (msg?.action === "tlndPreviewDaDong") {
       previewDangMo = false;
       previewGhim = false;
+    } else if (msg?.action === "tlndPreviewChon" && walletPreview) {
+      // Nút "Chọn giấy tờ này" ở thanh dưới khung xem trước → đổi lựa chọn trên thẻ ví, vẽ lại thanh dưới.
+      const fid = String(msg.fid || "");
+      const index = walletPreview.entries.findIndex((e) => `vi:${e.uri}` === fid);
+      if (index < 0) return;
+      walletPreview.index = index;
+      walletPreview.toggle(Number(walletPreview.entries[index].no));
+      void openWalletPreview();
     }
   });
 
   // Bấm ra ngoài khung xem trước — kể cả chỗ khác TRONG Trợ lý — là đóng. Trừ bấm vào doc-row /
   // dòng tệp: đó là mở hoặc chuyển xem trước. Capture để nút nào tự chặn lan truyền cũng không nuốt.
   document.addEventListener("pointerdown", (e) => {
-    if (!previewDangMo || e.target.closest?.(".doc-row.co-xem, .file-list-name.co-xem")) return;
+    if (!previewDangMo || e.target.closest?.(".doc-row.co-xem, .file-list-name.co-xem, .wallet-eye, .wallet-row")) return;
     dongPreviewTuSidebar();
   }, true);
   document.addEventListener("keydown", (e) => {
@@ -5152,6 +5276,37 @@
     return out;
   }
 
+  /** Ô tải ảnh đầu trang kê khai (BE: mục kế hoạch target "bca-photo" — đăng ký xe nhập khẩu 1.013066, user 24/11): tải
+   *  ảnh JPEG BE đã lưu trong phiên theo `photoFid`, gửi lệnh bcaPagePhotos (content/fill-core.js) gắn vào ô theo
+   *  `match` (chữ trên ô). Không qua bảng Thành phần hồ sơ. → {filled, errors}. */
+  async function attachPagePhotos(sid, items) {
+    const fields = [];
+    const errors = [];
+    for (const item of items) {
+      const label = item.componentName || item.fieldName || "ảnh";
+      try {
+        const { dataUrl } = await readEntryToDataUrl(sid, { fid: item.photoFid, name: item.photoName }, null);
+        if (!dataUrl) throw new Error("empty");
+        fields.push({
+          name: item.fieldName || label, comp: "bca-photo", match: item.match || "", label,
+          value: { name: item.photoName || "anh.jpg", type: item.photoType || "image/jpeg", dataUrl },
+        });
+      } catch (_) {
+        errors.push(`Chưa tải được ảnh cho ô ${label} — công dân bấm Đính kèm lại giúp tôi ạ.`);
+      }
+    }
+    if (!fields.length) return { filled: 0, errors };
+    const res = await sendToContent({ action: "bcaPagePhotos", fields });
+    if (!res) {
+      return { filled: 0, errors: [...errors, "Trang chưa nhận lệnh gắn ảnh — tải lại trang (F5) rồi bấm Đính kèm lại ạ."] };
+    }
+    const missed = new Set(res.notFound || []);
+    for (const f of fields) {
+      if (missed.has(f.name)) errors.push(`Không thấy ô ${f.label} trên trang — công dân bấm Tải ảnh trên cổng để chọn ảnh ạ.`);
+    }
+    return { filled: Number(res.filled) || 0, errors };
+  }
+
   /** Đổi MỌI lỗi (kể cả DOMException tiếng Anh của trình duyệt) thành câu TIẾNG VIỆT người dân
    *  hiểu được, đúng tình huống. Câu ta tự ném (đã có dấu tiếng Việt) thì giữ nguyên. */
   function viAttachError(e) {
@@ -5823,8 +5978,27 @@
       }
       setStatus("📎 Đang đính kèm giấy tờ vào hồ sơ…");
       const attachSid = a.session_id || uploadSid;
+      // Ô tải ảnh đầu trang kê khai (target "bca-photo"): gắn trước, không qua engine bảng Thành phần hồ sơ. Kế hoạch chỉ
+      // có ô ảnh (1.013066 — trang không có bảng) thì báo kết quả luôn, không gửi attachFilesByPlan rỗng.
+      const photoItems = (a.attachments || []).filter((x) => x?.target === "bca-photo");
+      const tableItems = (a.attachments || []).filter((x) => x?.target !== "bca-photo");
+      const photoReport = photoItems.length ? await attachPagePhotos(attachSid, photoItems) : null;
+      if (photoReport && !tableItems.length) {
+        setStatus("");
+        const report = { attached: photoReport.filled, skipped: 0, errors: photoReport.errors };
+        if (a.fieldReview) {
+          // Đếm lại ô của form sau lượt gắn ảnh để BE chỉ hiện "Đồng ý và tiếp tục" khi đủ ô bắt buộc.
+          const marked = await sendToContent({ ...a.fieldReview, action: "fieldReviewMark" });
+          if (marked?.stats) report.review = marked.stats;
+        }
+        await heartbeatPromise;
+        ask(`__action:attach_report:${JSON.stringify({
+          ...report, mode: a.mode || "merge", ...(dispatchId ? { dispatch_id: dispatchId } : {}),
+        })}`, "system");
+        return;
+      }
       const raw = await applyShrunkFiles(attachSid, await fetchSessionFilesAsPayload(attachSid), a.replaceFiles);
-      const { files, attachments } = await preparePdfPayload(raw, a.attachments);
+      const { files, attachments } = await preparePdfPayload(raw, photoItems.length ? tableItems : a.attachments);
       if (a.mode === "split" && supportsSplitAttach(a.procedure)) {
         const split = await runSplitAttachPlan(a, files, attachments);
         if (split?.queued) return;
@@ -5871,6 +6045,10 @@
           ? ["Trang không nhận lệnh đính kèm — chưa thấy bảng Thành phần hồ sơ hoặc trang vừa tải lại"]
           : res.error ? [res.error] : (res.errors || []),
       };
+      if (photoReport) {
+        report.attached += photoReport.filled;
+        report.errors = [...report.errors, ...photoReport.errors];
+      }
       if (a.fieldReview && res) {
         // eForm Nth Bộ Công an (form + bảng Thành phần hồ sơ cùng trang): đếm lại ô của form sau lượt đính để BE chỉ hiện
         // "Đồng ý và tiếp tục" khi đủ ô bắt buộc (content/bca/field-review.js).

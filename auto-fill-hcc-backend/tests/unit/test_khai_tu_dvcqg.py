@@ -130,6 +130,22 @@ def test_full_case_order_codes_and_relation():
     assert not warnings
 
 
+def test_giay_khong_doc_duoc_ngay_cap_thi_tra_o_ngay_cap_ve_trong():
+    # OCR làm rơi cụm "cấp ngày" viết tay → cổng tra CSDL tự đổ ngày cấp khác giấy; BE xoá ô cho cán bộ nhập.
+    values = {k: v for k, v in BASE.items() if k != "NguoiMat_NgayCap"}
+    values["NguoiMat_NoiCap"] = "Cục Cảnh sát QLHC về TTXH"
+    out, warnings = _enrich(values, _context("Con"))
+    by = _by(out)
+    assert by["citizenField19"] == {"name": "citizenField19", "comp": "sjs-date", "value": "", "clear": True}
+    assert by["citizenSogiaytotuythan_NgdcKT"]["value"] == "001050000001"
+    names = [f["name"] for f in out]
+    assert names.index("citizenSogiaytotuythan_NgdcKT") < names.index("citizenField19")
+    assert any("ngày cấp giấy tờ tùy thân của người mất" in w for w in warnings)
+    # Không có số giấy tờ thì cả cụm không phát, không xoá ô.
+    bare = {k: v for k, v in values.items() if k not in ("NguoiMat_SoGiayTo", "NguoiMat_NoiCap")}
+    assert "citizenField19" not in _by(_enrich(bare, _context("Con"))[0])
+
+
 def test_late_and_long_dead_registration():
     late = {**BASE, "NguoiMat_NgayMat": "01/01/2020"}
     assert _by(_enrich(late, _context("Con"))[0])["citizenNDKLoaidangky"]["code"] == "4"

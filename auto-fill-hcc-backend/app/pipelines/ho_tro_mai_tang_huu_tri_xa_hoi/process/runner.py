@@ -238,6 +238,7 @@ async def run(files_by_role: dict[str, list[dict]], options: dict) -> dict:
         options=options,
         context_builder=build_context,
     )
+    res["fields"] = mapper.apply_village_spelling(res["fields"], res.get("ocr_text") or "")
     raw_fields = copy.deepcopy(res["fields"]) if second_pass else []
     mapped_fields, warnings = mapper.enrich(res["fields"], options)
     if owner_mode:

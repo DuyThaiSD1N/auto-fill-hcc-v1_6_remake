@@ -6,7 +6,8 @@ Mã thuần, không qua LLM; mỗi người soát trên chính field lượt tr�
    trên trang mang số định danh của người đó — đếm số TRANG ghi; nhiều trang hơn thắng, bằng nhau theo hạng nguồn (giấy in
    cơ quan cấp > tờ khai > giấy tự lập). Lượt trích hay chép lệch dấu tên hiếm gặp sang tên thông dụng dù OCR đọc đúng; chặn
    bản rơi dấu / "Đ" thành "D"; chặn đổi chữ cái khi chữ cái của lượt trích đã có trên giấy ngoài tờ khai. Tên trẻ chỉ xét
-   cách viết khác dấu.
+   cách viết khác dấu, trừ khi cách viết của lượt trích chỉ có trên tờ khai và một cách viết lệch đúng một chữ cái được
+   ít nhất hai trang ghi, trong đó có giấy ngoài tờ khai (dòng tên trẻ viết tay hay bị đọc sai một chữ cái).
 2. Số định danh, ngày sinh: vùng MRZ mặt sau thẻ mang họ tên (không dấu) của người đó, năm sinh mã hoá trong số khớp năm
    sinh in ở MRZ. Ô số định danh chỉ nhận số căn cước 12 chữ số.
 """
@@ -64,8 +65,10 @@ từng cách viết (dòng "TỔNG số trang" trong tín hiệu mã). B đượ
 hạng: giấy in cơ quan cấp (giấy chứng sinh, CCCD, hộ chiếu, giấy khai sinh) > tờ khai (đăng ký khai sinh, đăng ký nhận cha,
 mẹ, con — viết tay) > giấy người dân tự lập. Hai cách viết chỉ khác DẤU là chuyện thường (lượt trích chép lệch dấu, OCR đọc
 lệch dấu chữ viết tay), KHÔNG phải lý do giữ A; A không có trên trang nào thì càng không giữ. Mã đã tự loại cách viết là
-bản rơi dấu của A, chữ Đ đọc thành D, và cách viết đổi chữ cái khi chữ cái của A đã có trên giấy ngoài tờ khai. Dòng trích
-dẫn là họ tên của người khác (không phải người nêu ở tên mục) → KHONG_DU_CAN_CU.
+bản rơi dấu của A, chữ Đ đọc thành D, và cách viết đổi chữ cái khi chữ cái của A đã có trên giấy ngoài tờ khai. Tên trẻ
+mà A chỉ có ở dòng tên viết tay trên tờ khai, B lệch A đúng một chữ cái và được nhiều trang ghi hơn (câu ý kiến cha/mẹ, kết
+quả ADN, giấy chứng sinh) → chọn B. Dòng trích dẫn là họ tên của người khác (không phải người nêu ở tên mục) →
+KHONG_DU_CAN_CU.
 </ho_ten>
 
 <so_ngay>
@@ -88,6 +91,22 @@ def _line_with(documents: list[dict], test) -> tuple[str, int]:
             if line.strip() and test(line):
                 return line.strip(), index
     return "", 0
+
+
+def _one_letter(letters: list[str], target: list[str]) -> bool:
+    """Cùng số tiếng, cùng họ, đúng một tiếng lệch đúng một chữ cái (thiếu / thừa / khác), khi đã bỏ dấu."""
+    if len(letters) != len(target) or letters[0] != target[0]:
+        return False
+    diff = [(a, b) for a, b in zip(letters, target) if a != b]
+    if len(diff) != 1:
+        return False
+    a, b = diff[0]
+    if abs(len(a) - len(b)) > 1:
+        return False
+    if len(a) == len(b):
+        return sum(x != y for x, y in zip(a, b)) == 1
+    short, long_ = sorted((a, b), key=len)
+    return any(long_[:i] + long_[i + 1:] == short for i in range(len(long_)))
 
 
 def name_finding(person: Person, values: dict, page_list: list[dict]) -> Finding | None:
@@ -122,6 +141,9 @@ def name_finding(person: Person, values: dict, page_list: list[dict]) -> Finding
                 elif anchored and letters[0] == target[0] and close_name(window, current):
                     candidates[key] = {"name": window.upper(), "quote": line, "doc": page["doc"], "letters": True,
                                        "anchored": True}
+                elif person.key == "con" and _one_letter(letters, target):
+                    candidates[key] = {"name": window.upper(), "quote": line, "doc": page["doc"], "letters": True,
+                                       "anchored": False}
     if not candidates:
         return None
     mine = trang.support(current, page_list)
@@ -136,6 +158,9 @@ def name_finding(person: Person, values: dict, page_list: list[dict]) -> Finding
             continue
         stat = trang.support(cand["name"], page_list)
         if stat["ban_in"] + stat["the"] + stat["tu_lap"] < 1 or trang.rank(stat) <= trang.rank(mine):
+            continue
+        # Tên trẻ đổi chữ cái không có số định danh neo: chỉ khi A không có trên giấy nào ngoài tờ khai và B có ≥2 trang.
+        if cand["letters"] and not cand["anchored"] and (stat["trang"] < 2 or mine["ban_in"] + mine["the"] + mine["tu_lap"]):
             continue
         # Chỉ khác dấu mà căn cứ in duy nhất là dòng họ tên in hoa trên thẻ: OCR hay đọc lệch dấu chữ in hoa.
         if not cand["letters"] and stat["ban_in"] + stat["tu_lap"] < 1:

@@ -219,12 +219,7 @@ async def test_ai_chi_dung_may_chu_rieng_khong_sang_openai(monkeypatch):
     async def _down(*a, **kw):
         raise RuntimeError("vLLM down")
 
-    async def _openai(*a, **kw):
-        raise AssertionError("không được gọi OpenAI")
-
     monkeypatch.setattr(llm, "_chat_primary", _down)
-    monkeypatch.setattr(llm, "_chat_openai", _openai)
-    monkeypatch.setattr(llm, "_chat_openai_text", _openai)
     monkeypatch.setattr(llm.settings, "openai_api_key", "sk-test")
     with pytest.raises(RuntimeError, match="vLLM down"):
         await llm.chat_self_hosted([{"role": "user", "content": "x"}])

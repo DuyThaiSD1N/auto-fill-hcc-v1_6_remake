@@ -239,6 +239,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # eForm Nth cổng dichvucong.bocongan.gov.vn: content/bca/field-review.js tô ô + vòng "Bổ sung các thông tin còn
         # thiếu" trên host này; nút "Đồng ý và tiếp tục" chỉ hiện khi đủ ô bắt buộc. Thiếu cờ → luồng cũ.
         "supportsBcaNthReview": raw.get("supportsBcaNthReview") is True,
+        # eForm Nth Bộ Công an: bước đính kèm gắn ô tải ảnh đầu trang kê khai (mục kế hoạch target "bca-photo", ảnh tải
+        # từ phiên theo fid — đăng ký xe nhập khẩu 1.013066). Thiếu cờ → thủ tục khai requiresCapability này không dẫn vào.
+        "supportsBcaPagePhotos": raw.get("supportsBcaPagePhotos") is True,
         # Cổng DVC Bộ Công an dichvucong.bocongan.gov.vn: trang "Chọn trường hợp hồ sơ" (Loại xe…) dẫn bằng luồng trang 1
         # của Lai Châu (content/laichau/portal.js chạy thêm host bocongan, tự dò ô). Thiếu cờ → công dân tự chọn như cũ.
         "supportsBcaCaseStep": raw.get("supportsBcaCaseStep") is True,
@@ -368,6 +371,8 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         flow.wallet_reuse.CAPABILITY: raw.get(flow.wallet_reuse.CAPABILITY) is True,
         # Ví cá nhân: đọc thêm tab "Tài liệu được cấp" + đính giấy lấy từ ví bằng nút "Chọn" của ví.
         flow.wallet_reuse.PICK_CAPABILITY: raw.get(flow.wallet_reuse.PICK_CAPABILITY) is True,
+        # Thẻ ví vẽ được danh sách giấy chưa ký số bị ẩn ở cuối mỗi mục.
+        flow.wallet_reuse.HIDDEN_CAPABILITY: raw.get(flow.wallet_reuse.HIDDEN_CAPABILITY) is True,
         # Wizard tư pháp: bấm nút Quay lại của cổng (guided_click_back), kiểm tờ khai khi lùi về Kê khai
         # (step_back_scan) — chat/step_back.py.
         step_back.CAPABILITY: raw.get(step_back.CAPABILITY) is True,
@@ -632,6 +637,11 @@ async def assistant_chat(req: ChatRequest, request: Request, user: dict = Depend
             conv["history"].pop()
         store.drop_last_bot_history(conv, conv.get("state", ""))
     if reply.display_md or reply.cards or reply.chips:
+        # Bong bóng phụ đứng trước câu chính (lead_message) cũng vào history — khôi phục phiên (mỗi lần trang tải
+        # lại) mới dựng lại đủ, không mất cảnh báo đã hiện.
+        for action in reply.actions or []:
+            if isinstance(action, dict) and action.get("type") == "lead_message" and action.get("md"):
+                store.push_history(conv, "bot", str(action["md"]), "bot")
         store.push_history(conv, "bot", reply.display_md, "bot")
         conv["last_reply"] = {
             k: payload[k] for k in ("display_md", "tts_text", "tts_lang", "chips", "cards", "state")

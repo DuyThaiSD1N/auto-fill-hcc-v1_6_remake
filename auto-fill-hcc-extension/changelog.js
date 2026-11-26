@@ -3,6 +3,81 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.29.2",
+    date: "26/11/2026",
+    items: [
+      "Khai tử (Cổng DVC quốc gia): giấy tờ tùy thân của người mất không ghi ngày cấp thì ô Ngày cấp để trống cho cán bộ nhập, không giữ ngày cổng tự đổ.",
+      "Xác nhận tình trạng hôn nhân (Phường Tây Nha Trang): người đang có vợ/chồng điền theo lựa chọn khoảng thời gian chưa đăng ký kết hôn, kèm thông tin vợ/chồng và giấy chứng nhận kết hôn; ô còn thiếu tô đỏ.",
+      "Chặt hạ, dịch chuyển cây xanh (1.002693): tài khoản cấp xã chọn đúng cơ quan UBND.",
+    ],
+  },
+  {
+    version: "1.29.1",
+    date: "25/11/2026",
+    items: [
+      "Thêm thủ tục Lào Cai trên cổng mới: giao đất ở không qua đấu giá (1.115684), gia hạn phương án sử dụng đất kết hợp đa mục đích (1.115683), cấp Giấy chứng nhận cho phần diện tích còn lại (1.115692).",
+      "Thêm thủ tục tổ chức kinh tế nhận chuyển nhượng quyền sử dụng đất để thực hiện dự án (Lai Châu, 1.115591).",
+      "Đổi tên người sử dụng đất (Bắc Ninh, 1.115460): điền đơn cho cả hai người, đính kèm văn bản cam kết đúng dòng.",
+      "Xác nhận tình trạng hôn nhân và trích lục khai sinh trên eForm cũ của Bộ Tư pháp điền được như trước.",
+      "Đăng ký hộ kinh doanh: giấy tờ không ghi mã ngành thì ô \"Ngành, nghề chưa khớp mã\" vẫn ghi đúng câu ghi chú cố định của đơn vị (Xuân Hương, Lâm Đồng…), không ghi tên ngành đọc từ giấy.",
+    ],
+  },
+  {
+    version: "1.29",
+    date: "24/11/2026",
+    items: [
+      "Thêm thủ tục Cấp Phiếu lý lịch tư pháp (3.000333, Công an cấp tỉnh): tự nhận biết tài khoản là người yêu cầu cấp phiếu (Cá nhân) hay người khai hộ; điền được ô Tỉnh/Xã nơi đăng ký khai sinh trong khối khai hộ.",
+      "Thêm thủ tục khai tử có yếu tố nước ngoài (1.001766) và khai tử lưu động (1.000419); đọc thông tin tài khoản để nộp thay thì điền theo người yêu cầu trên hồ sơ.",
+      "Thêm thủ tục tính tiền sử dụng đất (Khánh Hòa, 1.115148) và cấp giấy phép thi công công trình trên đường bộ đang khai thác (1.013061).",
+      "Xác nhận tiếp tục sử dụng đất nông nghiệp (Bắc Ninh, 1.115462): điền khối người ủy quyền (chủ hồ sơ).",
+      "Xác nhận thông tin về cư trú (Cổng DVC Bộ Công an): đính kèm đúng nhóm giấy tờ khi trang đánh số nhóm khác trang thường trú.",
+      "Thống kê: hồ sơ tách nhiều tab nộp cách nhau lâu vẫn đếm đủ số hồ sơ, nhưng thời gian làm không còn cộng cả quãng tab nằm chờ.",
+    ],
+  },
+  {
+    version: "1.28.37",
+    date: "24/11/2026",
+    items: [
+      "Đăng ký thành lập hộ kinh doanh: cảnh báo trùng tên hộ kinh doanh hiện màu đỏ đậm, dễ thấy hơn.",
+    ],
+  },
+  {
+    version: "1.28.36",
+    date: "24/11/2026",
+    items: [
+      "Đăng ký hộ kinh doanh (thành lập, thay đổi nội dung): ô mô tả chi tiết ngành nghề chỉ ghi khi giấy tờ có mô tả khác tên ngành chuẩn, không ghi lặp tên ngành; cách ghi riêng của từng đơn vị giữ như cũ.",
+    ],
+  },
+  {
+    version: "1.28.35",
+    date: "24/11/2026",
+    items: [
+      "Đăng ký xe lần đầu đối với xe nhập khẩu (1.013066): bấm Điền hoặc Đính kèm, hệ thống tự gắn Ảnh phương tiện và ảnh hai mặt chứng từ nguồn gốc (tờ khai hàng hóa nhập khẩu) vào ba ô tải ảnh đầu trang kê khai.",
+      "Trang tạm trú Cổng DVC Bộ Công an: điền được ô Ghi chú của dòng giấy tờ đính kèm.",
+    ],
+  },
+  {
+    version: "1.28.34",
+    date: "24/11/2026",
+    items: [
+      "Đăng ký thành lập hộ kinh doanh: sau khi điền trang Tên hộ kinh doanh, tự kiểm tra trùng tên trên cổng (tên tiếng Việt, tên nước ngoài, tên viết tắt) và cảnh báo nếu có hộ trùng hoặc tương tự.",
+    ],
+  },
+  {
+    version: "1.28.33",
+    date: "24/11/2026",
+    items: [
+      "Đăng ký thành lập hộ kinh doanh: tự đính kèm hồ sơ trước, trong lúc đó hệ thống soát lại thông tin (xã/phường, tên thôn, số định danh, ngày sinh, mã ngành, dấu tên hộ) rồi mới điền 8 trang bằng thông tin đã soát.",
+    ],
+  },
+  {
+    version: "1.28.32",
+    date: "24/11/2026",
+    items: [
+      "Thống kê thời gian làm hồ sơ: sau khi nộp, các lần bấm nộp tiếp theo trên cùng tab (bấm lại, hồ sơ làm tay không dùng trợ lý) không còn tính vào hồ sơ trước — thời gian làm và số lần nộp đúng với hồ sơ trợ lý đã làm.",
+    ],
+  },
+  {
     version: "1.28.31",
     date: "23/11/2026",
     items: [

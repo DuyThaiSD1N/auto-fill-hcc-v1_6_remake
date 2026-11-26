@@ -190,33 +190,85 @@ def test_muc_iii_bo_trong_thi_khong_tich_gi():
     assert _enrich_iii([], []) == {}
 
 
-def test_luot_muc_do_lay_muc_tu_4_o_cuoi_cua_dong_ocr_that(monkeypatch):
-    """Model chỉ chỉ ra dòng; mã tách 4 ô cuối của chính dòng OCR (hàng tiêu đề chéo bị tách thêm 1 ô ở đầu). Model chép
-    lệch ô / "muc" lệch thì vẫn theo dòng OCR; dòng 2 dấu hoặc vỡ dòng → bỏ; dòng "1.1" của bảng dạng khuyết tật không phải
-    hoạt động 1."""
+_MUC_DO_OCR = (
+    "| 1.1 | Mềm nhão hoặc co cứng toàn thân | X | |\n"
+    "2. Thông tin về mức độ khuyết tật\n"
+    "| Các hoạt động | Mức độ thực hiện | Thực hiện được | Thực hiện được nhưng cần trợ giúp "
+    "| Không thực hiện được | Không xác định được |\n"
+    "|---|---|---|---|---|---|\n"
+    "| 1. Đi lại | | X | | | | |\n"
+    "| 2. Ăn, uống | | | X | |\n"
+    "| 3. Tiểu tiện | | X | | X | |\n"
+    "| 7. Diễn đạt ý muốn | | | X | | | |\n"
+    "Người viết đơn\n"
+)
+
+
+def test_muc_do_trinh_bay_bang_danh_so_o_tu_hang_tieu_de():
+    """Python chỉ tách ô từ hàng tiêu đề tới hết bảng (bỏ bảng dạng khuyết tật phía trên, dòng kẻ, chân đơn)."""
+    from app.pipelines.khuyet_tat.process import muc_do
+
+    rows = muc_do.table_lines(_MUC_DO_OCR)
+    assert [r[0] for r in rows] == ["Các hoạt động", "1. Đi lại", "2. Ăn, uống", "3. Tiểu tiện", "7. Diễn đạt ý muốn"]
+    assert rows[1] == ["1. Đi lại", "", "X", "", "", "", ""]
+    text = muc_do.render_table(rows)
+    assert "L2: [1] 1. Đi lại | [2] (trống) | [3] X | [4] (trống)" in text
+    # Hàng tiêu đề mở đầu bằng ô trống vẫn nhận ra.
+    assert muc_do.table_lines("| | Mức độ thực hiện Các hoạt động | A | B | C | D |\n| 1. Đi lại | | X | | | |")[0][1] \
+        == "Mức độ thực hiện Các hoạt động"
+    # OCR mất cột (không còn dấu |) → không có bảng → không gọi model.
+    assert muc_do.table_lines("Các hoạt động Mức độ thực hiện\n1. Đi lại X") == []
+
+
+def _item(so, dong, o_dau, muc, o_ten=1, tieu_de="L1"):
+    return {"so": so, "dong": dong, "tieu_de": tieu_de, "o_ten": o_ten, "o_dau": o_dau, "muc": muc}
+
+
+def test_muc_do_lay_dung_muc_model_khi_khop_bang():
+    """Dòng dư ô cuối (N ≥ H) gióng thẳng; dòng thiếu ô đầu (N < H) gióng phải — mức là của model."""
+    from app.pipelines.khuyet_tat.process import muc_do
+
+    rows = muc_do.table_lines(_MUC_DO_OCR)
+    data = {"dong": [_item("1", "L2", 3, "THD"), _item("2", "L3", 4, "kthd"), _item("7", "L5", 4, "CTG")]}
+    assert muc_do.levels_from(data, rows) == {"1": "THD", "2": "KTHD", "7": "CTG"}
+
+
+def test_muc_do_bo_dong_lech_bang_khong_tu_thay_muc():
+    """Model trả mức lệch cột / số dòng đánh lại / ô không có dấu / 2 dấu → bỏ dòng, không thay bằng mức khác."""
+    from app.pipelines.khuyet_tat.process import muc_do
+
+    rows = muc_do.table_lines(_MUC_DO_OCR)
+    data = {"dong": [
+        _item("1", "L2", 3, "CTG"),   # dấu ở cột THD mà model trả CTG
+        _item("3", "L3", 4, "KTHD"),  # dòng L3 là hoạt động 2, model đánh số lại thành 3
+        _item("2", "L3", 3, "CTG"),   # ô model chỉ ra không có dấu
+        _item("3", "L4", 3, "THD"),   # dòng có 2 dấu
+        _item("7", "L5", 4, "XYZ"),   # mã lạ
+    ]}
+    assert muc_do.levels_from(data, rows) is None
+
+
+def test_luot_muc_do_goi_model_voi_bang_da_danh_so(monkeypatch):
     import json
 
     from app.pipelines.khuyet_tat.process import muc_do
 
-    ocr = ("| 1.1 | Mềm nhão hoặc co cứng toàn thân | X | |\n"
-           "| 1. Đi lại | | | | X | |\n"
-           "| 3. Tiểu tiện, đại tiện | | | | | X |\n"
-           "| 4. Vệ sinh cá nhân | X | | X | |\n"
-           "| 5. Mặc, cởi quần áo | | X |\n")
-    rows = [
-        {"so": "1", "dong_ocr": "| 1. Đi lại | | | X |", "o_danh_dau": ["", "", "", "X"], "muc": "KXD"},
-        {"so": "3", "o_danh_dau": ["", "", "", "X"], "muc": "KXD"},
-        {"so": "4", "o_danh_dau": ["X", "", "X", ""], "muc": "THD"},
-        {"so": "5", "o_danh_dau": ["", "X", ""], "muc": "CTG"},
-    ]
+    seen = {}
 
     async def fake_chat(messages, **kwargs):
+        seen["user"] = messages[1]["content"]
         assert not kwargs.get("enable_thinking")
-        return json.dumps({"dong": rows})
+        return json.dumps({"dong": [_item("7", "L5", 4, "CTG")]})
 
     monkeypatch.setattr(muc_do.client, "chat", fake_chat)
-    out = asyncio.run(muc_do.read_activity_levels([{"text": ocr}]))
-    assert out == {"1": "KTHD", "3": "KXD"}
+    assert asyncio.run(muc_do.read_activity_levels([{"text": _MUC_DO_OCR}])) == {"7": "CTG"}
+    assert seen["user"].startswith("BẢNG:\nL1: [1] Các hoạt động")
+
+    async def must_not_call(*args, **kwargs):
+        raise AssertionError("không có bảng thì không gọi model")
+
+    monkeypatch.setattr(muc_do.client, "chat", must_not_call)
+    assert asyncio.run(muc_do.read_activity_levels([{"text": "1. Đi lại X"}])) is None
 
 
 def test_luot_muc_do_thay_ket_qua_luot_chinh():

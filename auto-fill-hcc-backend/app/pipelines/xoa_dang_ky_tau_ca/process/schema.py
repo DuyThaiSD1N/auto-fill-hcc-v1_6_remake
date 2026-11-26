@@ -73,7 +73,10 @@ FIELDS: list[dict] = [
         "thì bỏ. Lệch với họ tên trên CCCD vẫn trả đúng chữ trên Tờ khai."},
     {"name": "ToKhai_NguoiDeNghi_DiaChi", "desc": "Địa chỉ chép NGUYÊN VĂN ở dòng 'Người đề nghị xóa đăng ký "
         "(tên, địa chỉ)' trên Tờ khai, phần sau tên; bỏ số điện thoại. Tờ khai không ghi thì bỏ."},
-    {"name": "Tau_NoiDangKy", "desc": "Nơi đăng ký tàu ghi trên Tờ khai/GCN, ví dụ 'Chi cục Thủy sản TP Đà Nẵng'."},
+    {"name": "Tau_NoiDangKy", "desc": "Nơi đăng ký tàu ghi trên Tờ khai/GCN, ví dụ 'Chi cục Thủy sản TP Đà Nẵng'. Tờ khai viết "
+                                      "tay hay bị OCR đọc lệch địa danh: nơi đăng ký phải cùng tỉnh/thành phố với cơ quan "
+                                      "đăng ký tàu (dòng 'Cơ quan đăng ký' trên Tờ khai hoặc cơ quan cấp GCN). Địa danh đọc "
+                                      "được thuộc tỉnh khác với cơ quan đó → ghi tên tỉnh/thành phố của cơ quan đăng ký."},
     {"name": "Tau_SoDangKy", "desc": "Số đăng ký tàu. Ưu tiên chuỗi ĐẦY ĐỦ trên GCN/hợp đồng hơn bản viết "
         "tay rút gọn trên Tờ khai; giữ chữ, dấu gạch và hậu tố, ví dụ 'ĐNa-90933-TS'."},
     {"name": "Tau_NgayDangKy", "desc": "Ngày cấp GIẤY CHỨNG NHẬN ĐĂNG KÝ TÀU CÁ, dd/mm/yyyy — chỉ lấy ngày ghi "

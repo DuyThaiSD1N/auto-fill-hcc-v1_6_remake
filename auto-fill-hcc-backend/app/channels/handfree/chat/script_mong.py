@@ -35,6 +35,13 @@ PROCEDURE_HMONG = {
     "ket-hon-nuoc-ngoai": "Cuv npe yuav txiv/poj niam nrog neeg txawv teb chaws",
     "dang-ky-lai-ket-hon": "Cuv npe yuav txiv yuav poj niam dua tshiab",
     "khai-tu-dang-ky-lai": "Cuv npe tuag dua tshiab",
+    # BẢN NHÁP chờ anh Dư soát — ghép "Cuv npe tuag" (khai tử) + "nrog neeg txawv teb chaws" (với người nước ngoài, như
+    # "ket-hon-nuoc-ngoai").
+    "khai-tu-nuoc-ngoai": "Cuv npe tuag nrog neeg txawv teb chaws",
+    # BẢN NHÁP chờ anh Dư soát — ghép "Cuv npe tuag" (khai tử) + "txawv chaw" (lưu động, đi tới nơi).
+    "khai-tu-luu-dong": "Cuv npe tuag txawv chaw",
+    # BẢN NHÁP chờ anh Dư soát — "daim ntawv keeb kwm" (giấy lý lịch) + "kev cai lij choj" (tư pháp) là TỪ MỚI.
+    "cap-phieu-ly-lich-tu-phap-cong-an-cap-tinh": "Thov daim ntawv keeb kwm kev cai lij choj",
     "dang-ky-nhan-cha-me-con": "Cuv npe lees txiv, niam, me nyuam",
     # BẢN NHÁP chờ anh Dư soát — ghép "Cuv npe yug me nyuam" (khai sinh) + "lees txiv, niam, me nyuam"
     # (nhận cha, mẹ, con); "thiab" = và.
@@ -77,6 +84,8 @@ PROCEDURE_HMONG = {
     "giao-thue-dat-giao-rung-gia-han-su-dung-dat": "Hloov daim av (Lâm Đồng)",
     # BẢN NHÁP chờ anh Dư soát — chép thẻ tính lại tiền sử dụng đất Quảng Ninh, đổi tên tỉnh.
     "tinh-tien-su-dung-dat-nd-50-2026-lam-dong": "Suav nyiaj siv av dua tshiab (Lâm Đồng)",
+    # BẢN NHÁP chờ anh Dư soát — chép thẻ tính lại tiền sử dụng đất Lâm Đồng, đổi tên tỉnh.
+    "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa": "Suav nyiaj siv av dua tshiab (Khánh Hòa)",
     # BẢN NHÁP chờ anh Dư soát — chép thẻ cấp đổi GCN Bắc Ninh ("pauv daim ntawv av tshiab"), đổi tên tỉnh.
     "cap-doi-gcn-khanh-hoa": "Pauv daim ntawv av tshiab (Khánh Hòa)",
     # BẢN NHÁP chờ anh Dư soát — chép thẻ đăng ký biến động Bắc Ninh ("cuv npe hloov daim av, muag daim av"), đổi tỉnh.
@@ -89,6 +98,7 @@ PROCEDURE_HMONG = {
     "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-khanh-hoa": "Lees paub siv ntxiv daim av teb (Khánh Hòa)",
     # BẢN NHÁP chờ anh Dư soát — chép thẻ đính chính GCN đã cấp Bắc Ninh ("kho daim ntawv av"), đổi tên tỉnh.
     "dinh-chinh-gcn-da-cap-khanh-hoa": "Kho daim ntawv av (Khánh Hòa)",
+    "dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa": "Kho daim ntawv av sau yuam kev (Khánh Hòa)",
     # BẢN NHÁP ghép từ chữ đã có của hai thẻ Khánh Hòa ngay trên + "kho" (sửa) — chờ anh Dư soát.
     "dang-ky-dat-dai-lan-dau-tuyen-quang": "Cuv npe av, muab daim ntawv av thawj zaug (Tuyên Quang)",
     "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang": "Kho daim ntawv av sau yuam kev (Tuyên Quang)",
@@ -109,6 +119,9 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát — "Cuv npe nyob ib ntus" (đăng ký tạm trú) đã có trong file; chưa có từ Mông cho "xóa"
     # → giữ chữ tiếng Việt "Xóa" như các nhãn ghép tiếng Việt khác.
     "xoa-dang-ky-tam-tru": "Xóa cuv npe nyob ib ntus",
+    # BẢN NHÁP chờ anh Dư soát — "cuv npe" (đăng ký) + "qhov chaw nyob ruaj" (chỗ ở thường trú, như xác nhận cư trú) đã
+    # có; giữ chữ "Xóa" tiếng Việt như nhãn xóa tạm trú.
+    "xoa-dang-ky-thuong-tru": "Xóa cuv npe qhov chaw nyob ruaj",
     # BẢN NHÁP chờ anh Dư soát — ghép "hloov" (thay đổi) + "daim npav" (thẻ) đã có; "Căn cước" giữ tiếng Việt như câu
     # "daim Căn cước công dân" sẵn trong file.
     "cap-doi-the-can-cuoc": "Hloov daim npav Căn cước",
@@ -347,6 +360,9 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát (Bộ Xây dựng) — ghép từ chữ đã có ("txuas" = nối, "ib ntus" = tạm, "Nplog" =
     # Lào, "Nyab Laj" = Việt Nam, "sij hawm" = thời gian, "nkoj" = tàu, "muag" = bán, "tswv" = chủ).
     "chap-thuan-dau-noi-tam": "Ntawv tso cai txuas kev ib ntus",
+    # BẢN NHÁP chờ anh Dư soát (Bộ Xây dựng, 1.013061) — ghép từ chữ đã có ("ntawv tso cai", "kev"); TỪ MỚI
+    # "ua hauj lwm" (làm việc / thi công), "loj" (lớn).
+    "cap-giay-phep-thi-cong-cong-trinh-tren-duong-bo-dang-khai-thac": "Ntawv tso cai ua hauj lwm saum txoj kev loj",
     "gia-han-luu-hanh-phuong-tien-lao": "Ntxiv sij hawm rau tsheb Nplog nyob Nyab Laj",
     "dang-ky-lai-phuong-tien-chuyen-quyen-so-huu-khong-doi-co-quan":
         "Cuv npe nkoj dua tshiab thaum muag rau tus tswv tshiab",
@@ -419,12 +435,18 @@ PROCEDURE_HMONG = {
     "chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau": "Hloov daim av (Lai Châu)",
     # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có: "muab" (cấp/giao), "xauj" (thuê), "daim av" (thửa đất).
     "giao-dat-cho-thue-dat-lai-chau": "Muab daim av, xauj daim av (Lai Châu)",
+    # BẢN NHÁP chờ anh Dư soát — ghép từ chữ đã có: "xauj daim av" (thuê thửa đất), "ua" (làm); TỪ MỚI: "lub tuam txhab"
+    # (công ty), "yuav" (mua/nhận), "qhov project" (dự án).
+    "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an-lai-chau":
+        "Lub tuam txhab yuav, xauj daim av los ua qhov project (Lai Châu)",
     # BẢN NHÁP chờ anh Dư soát — chép y câu thẻ cấp lại GCN bị mất Quảng Ninh ("dua tshiab vim ploj"), không thêm từ mới.
     "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau": "Muab daim ntawv av dua tshiab vim ploj (Lai Châu)",
     # BẢN NHÁP chờ anh Dư soát — chép y câu thẻ cấp lại GCN bị mất Lai Châu, chỉ đổi tên tỉnh, không thêm từ mới.
     "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh": "Muab daim ntawv av dua tshiab vim ploj (Bắc Ninh)",
     # BẢN NHÁP chờ anh Dư soát — chép y câu thẻ đổi tên Quảng Ninh, chỉ đổi tên tỉnh, không thêm từ mới.
     "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-bac-ninh": "Cuv npe hloov npe tus tswv daim av (Bắc Ninh)",
+    # BẢN NHÁP chờ anh Dư soát — chép y câu thẻ Khánh Hòa cùng thủ tục, chỉ đổi tên tỉnh, không thêm từ mới.
+    "xac-nhan-tiep-tuc-su-dung-dat-nong-nghiep-bac-ninh": "Lees paub siv ntxiv daim av teb (Bắc Ninh)",
 }
 
 # Nhãn card "Nơi làm thủ tục" (mockup: Qhov chaw ua ntaub ntawv / Xeev / Zos / Tus neeg ua).
@@ -1350,6 +1372,13 @@ ATTACH_ALL_FILES_EXIST = {
     "md": "Kuv xyuas tag lawm. Cov file tseem tshuav twb nyob hauv phau lawm, kuv tsis muab rov ntxiv.",
     "tts": "Cov file twb nyob hauv phau lawm, kuv tsis muab rov ntxiv.",
 }
+# BẢN NHÁP chờ anh Dư soát — như trên + nhắc tích ô cam kết rồi nộp (kos lub thawv = tích ô, như BCA_AGENCY_*);
+# {commit} là chữ Việt nên không nhúng.
+ATTACH_ALL_FILES_EXIST_COMMIT = {
+    "md": ("Kuv xyuas tag lawm. Cov file tseem tshuav twb nyob hauv phau lawm, kuv tsis muab rov ntxiv. Pej xeem "
+           "kos lub thawv cog lus ntawm nplooj ntawv, ces nias Nộp hồ sơ."),
+    "tts": "Cov file twb nyob hauv phau lawm. Pej xeem kos lub thawv cog lus, ces nias lub pob Xa ntaub ntawv.",
+}
 
 ATTACH_SPLIT_DONE = {
     "md": "Kuv muab tiav {succeeded}/{total} phau, ib daim ib phau. Pej xeem xyuas ib lub tab zuj zus ces nias Nộp hồ sơ.",
@@ -2135,6 +2164,7 @@ FR_MISSING_NOTE = " Tseem tshuav {count} lub thawv yuav tsum sau."
 FLOW2_DONE_ATTACHED = "sau txaus cov thawv yuav tsum sau thiab muab ntaub ntawv tso txaus"
 FLOW2_DONE_FILLED = "sau txaus cov thawv yuav tsum sau"
 FLOW2_REVIEW_DONE_LEAD = ("Kuv nug tag cov thawv tsis tau sau lawm. ", "Kuv nug tag cov thawv tsis tau sau lawm. ")
+FLOW2_REVIEW_RED_DONE_LEAD = ("Kuv nug tag cov thawv yuav tsum sau lawm. ", "Kuv nug tag cov thawv yuav tsum sau lawm. ")
 FLOW2_REVIEW_STOP_LEAD = ("Kuv tsum nug lawm. ", "Kuv tsum nug lawm. ")
 # Nhãn lựa chọn hay gặp trên tờ khai (khoá = nhãn Việt nguyên văn) — nút chọn + câu hỏi đọc tên Mông.
 FR_OPTION_HMONG = {
@@ -2172,8 +2202,8 @@ FR_OFFER_AFTER_ATTACH = {
             "kuv nug ib lub zuj zus."),
 }
 FR_START = {
-    "md": "Kuv yuav nug ib lub thawv zuj zus, txij saum mus rau hauv qab. Lub twg tsis paub, pej xeem hais hla.",
-    "tts": "Kuv yuav nug ib lub thawv zuj zus. Lub twg tsis paub, pej xeem hais hla. ",
+    "md": "Kuv yuav nug ib lub thawv zuj zus.",
+    "tts": "Kuv yuav nug ib lub thawv zuj zus. ",
 }
 FR_HEAD = {"md": "{lead} ", "tts": "{lead} ntu {where_tts}, lub thawv {label_tts}. "}
 FR_HEAD_NO_PART = {"md": "{lead} ", "tts": "{lead} lub thawv {label_tts}. "}
@@ -2238,9 +2268,9 @@ FR_PHONE_FORMAT = {
 }
 FR_PROCEED_BLOCKED = {
     "md": ("Daim foos tseem tshuav {required} lub thawv yuav tsum sau, {step_md}. Kuv nug ntxiv lub thawv {label_tts}; "
-           "tsis paub ces hais hla, los yog hais tsum kom pej xeem sau ntawm daim foos."),
+           "hais tsum kom pej xeem sau ntawm daim foos."),
     "tts": ("Daim foos tseem tshuav {required} lub thawv yuav tsum sau, {step_md}. Kuv nug ntxiv lub thawv {label_tts}, "
-            "tsis paub ces hais hla, los yog hais tsum kom pej xeem sau ntawm daim foos."),
+            "hais tsum kom pej xeem sau ntawm daim foos."),
 }
 FR_OPTIONAL_PHASE_SINGLE = {
     "md": ("Cov thawv yuav tsum sau puv lawm. Kuv nug ntxiv {optional} lub thawv tsis yuav tsum sau; xav mus ntxiv ces "

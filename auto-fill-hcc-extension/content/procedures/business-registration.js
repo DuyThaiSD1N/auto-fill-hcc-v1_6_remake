@@ -984,56 +984,14 @@
     return extractedName;
   }
 
-  /** Các cụm trong ngoặc tròn CẤP NGOÀI CÙNG của chuỗi (ngoặc lồng giữ nguyên bên trong cụm). */
-  function topLevelParenGroups(value) {
-    const text = String(value || "");
-    const groups = [];
-    let depth = 0;
-    let start = -1;
-    for (let i = 0; i < text.length; i += 1) {
-      const ch = text[i];
-      if (ch === "(") {
-        if (depth === 0) start = i + 1;
-        depth += 1;
-      } else if (ch === ")" && depth > 0) {
-        depth -= 1;
-        if (depth === 0 && start >= 0) {
-          groups.push(text.slice(start, i));
-          start = -1;
-        }
-      }
-    }
-    // Ngoặc mở không đóng (OCR rơi dấu ")" cuối dòng): lấy phần còn lại sau dấu "(".
-    if (depth > 0 && start >= 0) groups.push(text.slice(start));
-    return groups.map((g) => g.trim().replace(/\s+/g, " ")).filter(Boolean);
-  }
-
-  /**
-   * Cờ businessLineDescriptionParenOnly: ô mô tả CHỈ ghi phần chữ trong ngoặc của tên ngành hồ sơ.
-   * Ngoặc vốn thuộc tên chính thức cổng (vd "(trừ gỗ, tre, nứa)") không tính — đó không phải phần
-   * hồ sơ ghi thêm. Không còn cụm ngoặc nào thì trả "" (không điền).
-   */
-  function businessDescriptionParenText(officialName, extractedName) {
-    const officialFold = foldBusinessLineName(officialName);
-    const extra = topLevelParenGroups(extractedName).filter((g) => {
-      const fold = foldBusinessLineName(g);
-      return fold && !(officialFold && officialFold.includes(fold));
-    });
-    return extra.length ? capitalizeBusinessLineName(extra.join("; ")) : "";
-  }
-
-  // Ô mô tả từng dòng ngành nghề điền cho mọi địa bàn, TRỪ địa bàn popup.js bật cờ
-  // skipBusinessLineDescription (tài khoản phường Yên Bái — Lào Cai, phường Đắk Bla, phường Bắc Nha Trang — Khánh Hòa): để trống ô, chỉ giữ tên ngành
-  // chính thức cổng tự hiện theo mã VSIC. Cờ businessLineDescriptionParenOnly (xã Đơn Dương — Lâm Đồng,
-  // phường Nam Nha Trang — Khánh Hòa): ô chỉ ghi phần chữ trong ngoặc của tên ngành hồ sơ, không có
-  // ngoặc thì không điền. popup.js quyết định tài khoản nào bật cờ; ở đây chỉ tuân theo.
-  function fillBusinessLineDescriptions(nn, defaults) {
-    if (defaults && defaults.skipBusinessLineDescription) {
-      console.log("[FillAll] ngành nghề: địa bàn không dùng ô mô tả từng dòng — bỏ trống.");
-      return 0;
-    }
-    if (defaults && defaults.businessLineDescriptionParenOnly) {
-      return fillBusinessLineParenDescriptions(nn);
+  // Ô mô tả từng dòng ngành nghề. Hộ kinh doanh: BE quyết chữ ghi cho từng dòng (khoá "detail" — gồm cả quy tắc theo địa
+  // bàn tài khoản: không ghi / chỉ phần trong ngoặc), extension chỉ ghi: có chữ thì ghi (detailReplace → ghi đè cả ô,
+  // không thì thêm dòng dưới tên chính thức cổng tự điền), rỗng thì bỏ qua. Dòng không có "detail" (thành lập doanh
+  // nghiệp) điền theo tên trên giấy như trước.
+  function fillBusinessLineDescriptions(nn) {
+    const rows = Array.isArray(nn && nn.items) ? nn.items : [];
+    if (rows.some((row) => row && Object.prototype.hasOwnProperty.call(row, "detail"))) {
+      return fillBusinessLineDetails(rows);
     }
     const nameByCode = getBusinessLineNameByCode(nn);
     let changed = 0;
@@ -1059,25 +1017,24 @@
     return changed;
   }
 
-  function fillBusinessLineParenDescriptions(nn) {
-    const nameByCode = getBusinessLineNameByCode(nn);
+  function fillBusinessLineDetails(rows) {
     let changed = 0;
-    for (const code of Object.keys(nameByCode)) {
+    for (const item of rows) {
+      const code = String((item && (item.code || item.ma)) || "").trim();
+      const detail = String((item && item.detail) || "").trim();
+      if (!code || !detail) continue;
       const row = findBusinessRowByCode(code);
       const desc = getBusinessRowDescription(row);
       if (!row || !desc) continue;
-      const officialName = getBusinessRowOfficialName(row, code);
-      const parenText = businessDescriptionParenText(officialName, nameByCode[code]);
-      if (!parenText) {
-        console.log("[FillAll] mô tả ngành nghề: tên hồ sơ không có ngoặc — không điền.", { code });
-        continue;
-      }
-      // Ô chỉ chứa phần trong ngoặc: ghi đè nội dung khác (tên ngành đầy đủ cổng/lần chạy trước để lại).
+      // Chỉ chặn ghi lặp (chạy lại / postback giữa chừng): ô đã chứa đúng chữ này thì thôi.
       const current = String(desc.value || "").trim();
-      if (foldBusinessLineName(current) === foldBusinessLineName(parenText)) continue;
-      setNativeValue(desc, parenText, { typing: false, commit: true });
+      const currentFold = foldBusinessLineName(current);
+      const detailFold = foldBusinessLineName(detail);
+      if (item.detailReplace ? currentFold === detailFold : currentFold.includes(detailFold)) continue;
+      const next = item.detailReplace || !current ? detail : `${current}\n${detail}`;
+      setNativeValue(desc, next, { typing: false, commit: true });
       changed += 1;
-      console.log("[FillAll] mô tả ngành nghề (trong ngoặc):", { code, officialName, parenText });
+      console.log("[FillAll] mô tả ngành nghề:", { code, detail, replace: !!item.detailReplace });
     }
     return changed;
   }
@@ -1137,6 +1094,14 @@
     setNativeValue(textarea, text, { typing: true, commit: true });
     console.log("[FillAll] ngành nghề: điền ghi chú mặc định theo tài khoản/phường.");
     return 1;
+  }
+
+  /** Tài khoản có câu ghi chú cố định (Xuân Hương, Lâm Đồng…) → bỏ ô BUSINESS_ACT_TEXTFld BE gửi khi giấy không
+   *  ghi mã ngành (tên ngành OCR). Ô đó phải là đúng câu cố định như khi có mã; để tên OCR vào trước thì
+   *  fillBusinessActDefault thấy ô đã có chữ và bỏ qua. */
+  function withoutOcrBusinessAct(fields, defaults) {
+    if (!Array.isArray(fields) || !norm(defaults && defaults.businessActText)) return fields;
+    return fields.filter((f) => !String((f && f.name) || "").endsWith("BUSINESS_ACT_TEXTFld"));
   }
 
   async function saveBusinessActDefaultIfChanged(changed) {
@@ -1211,7 +1176,10 @@
 
     // Không có mã VSIC → điền ô ngành nghề dạng text tự do (nếu có) rồi sang trang kế.
     if (!nn || !Array.isArray(nn.codes) || !nn.codes.length) {
-      const fields = ((st.pages && st.pages["nganh-nghe-kinh-doanh"]) || []).filter((f) => f.name !== "__businessLines");
+      const fields = withoutOcrBusinessAct(
+        ((st.pages && st.pages["nganh-nghe-kinh-doanh"]) || []).filter((f) => f.name !== "__businessLines"),
+        st.businessDefaults
+      );
       if (fields.length) { try { await fillFormStandard(fields); } catch (e) { /* ignore */ } }
       let changed = 0;
       if (!st.nnBusinessActDefaultDone) {
@@ -3005,10 +2973,70 @@
     return new Set(Array.isArray(st?.order) ? st.order : []).size;
   }
 
+  // ---- Kiểm trùng tên hộ kinh doanh ----
+  // Cùng API nút "Kiểm tra trùng tên" của cổng (HOUSEHOLDName.aspx/GetExistName[F], AJAX trả HTML hộp thoại). Nút kiểm
+  // tên viết tắt của cổng gọi nhầm hàm kiểm tên tiếng Việt (đọc ô tên chính) → kiểm tên tắt bằng API tên tiếng Việt.
+  const BUSINESS_NAME_CHECKS = [
+    { field: "ctl00$C$NAMEFld", label: "Tên hộ kinh doanh", api: "GetExistName", key: "name" },
+    { field: "ctl00$C$NAME_FFld", label: "Tên tiếng nước ngoài", api: "GetExistNameF", key: "name_f" },
+    { field: "ctl00$C$SHORT_NAMEFld", label: "Tên viết tắt", api: "GetExistName", key: "name" },
+  ];
+
+  function businessNameKey(value) {
+    return foldBusinessPageText(String(value || "")).replace(/[^0-9a-z]+/g, " ").trim();
+  }
+
+  // { count, exact } của một tên; null khi không gọi / không đọc được kết quả. HTML trả về chỉ phân tích bằng DOMParser
+  // (không chạy script, không tải ảnh).
+  async function checkBusinessName(check, name) {
+    const type = String(document.getElementById("hdHOUSEHOLDType")?.value || "HH").trim();
+    try {
+      const res = await fetch(`/HkdOnline/Forms/APP/HOUSEHOLDName.aspx/${check.api}`, {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json; charset=utf-8" },
+        body: JSON.stringify({ [check.key]: `${name}::${type}` }),
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      const doc = new DOMParser().parseFromString(String(data?.d || ""), "text/html");
+      const names = [...doc.querySelectorAll("tr")].map((tr) => [...tr.cells].map((c) => c.textContent.trim()))
+        .filter((cells) => cells.length >= 2 && /^\d+$/.test(cells[0])).map((cells) => cells[1]);
+      const counted = /Có\s+(\d+)\s+Hộ/.exec(String(doc.body?.textContent || ""));
+      const key = businessNameKey(name);
+      return {
+        count: Math.max(counted ? Number(counted[1]) : 0, names.length),
+        exact: names.filter((n) => businessNameKey(n) === key).length,
+      };
+    } catch (e) {
+      console.warn("[FillAll] kiểm trùng tên lỗi:", e?.message || e);
+      return null;
+    }
+  }
+
+  async function businessNameWarnings() {
+    const out = [];
+    for (const check of BUSINESS_NAME_CHECKS) {
+      const input = document.querySelector(`[name="${check.field}"]`);
+      const name = String(input?.value || "").replace(/\s+/g, " ").trim().toUpperCase();
+      if (!name) continue;
+      const found = await checkBusinessName(check, name);
+      console.log("[FillAll] kiểm trùng tên:", check.label, name, found);
+      if (found && found.count > 0) {
+        out.push(`${check.label} "${name}": cổng có ${found.count} hộ trùng hoặc tương tự`
+          + (found.exact ? ` (${found.exact} hộ trùng hẳn)` : ""));
+      }
+    }
+    return out;
+  }
+
+  function nameWarningText(st) {
+    const list = Array.isArray(st && st.nameWarnings) ? st.nameWarnings : [];
+    return list.length ? `\n⚠ Kiểm trùng tên — ${list.join("; ")}. Xem lại trước khi nộp.` : "";
+  }
+
   async function finishFillAllThenAttach(st) {
     const payload = st && st.attachPayload;
     await clearFillAllState();
-    const warn = unverifiedPagesText(st && st.unverifiedPages);
+    const warn = unverifiedPagesText(st && st.unverifiedPages) + nameWarningText(st);
     if (payload && Array.isArray(payload.files) && payload.files.length
       && Array.isArray(payload.attachments) && payload.attachments.length
       && typeof H.startAttachAllBusiness === "function") {
@@ -3020,7 +3048,97 @@
       setTimeout(H.stepAttachAll, 400);
       return;
     }
-    H.endFillAllUI(`✓ Đã điền xong ${businessPageCount(st)} trang. Vui lòng rà soát rồi bấm Nộp.${warn}`);
+    H.endFillAllUI(st && st.attachFirstDone && st.attachFirstResult === "ok"
+      ? `✓ Đã đính kèm hồ sơ và điền xong ${businessPageCount(st)} trang. Vui lòng rà soát rồi bấm Nộp.${warn}`
+      : `✓ Đã điền xong ${businessPageCount(st)} trang. Vui lòng rà soát rồi bấm Nộp.${warn}`);
+  }
+
+  // ---- Đính kèm trước + điền đợt 2 ----
+  // Hạn chờ kết quả soát tính từ lúc BE trả lượt điền (popup ghi vào secondPass.at). Lượt soát ở BE có hạn riêng
+  // (second_pass_timeout_seconds); quá hạn thì điền theo kết quả lượt đầu.
+  const SECOND_PASS_WAIT_MS = 30000;
+  const SECOND_PASS_POLL_MS = 1500;
+
+  async function startAttachFirst(st) {
+    const payload = st.attachPayload;
+    if (!(payload && Array.isArray(payload.files) && payload.files.length && Array.isArray(payload.attachments)
+      && payload.attachments.length && typeof H.startAttachAllBusiness === "function")) {
+      st.attachFirstDone = true;
+      await setFillAllState(st);
+      return void stepFillAll();
+    }
+    st.phase = "attaching-first";
+    await setFillAllState(st);
+    H.setRunProgressText("Đang đính kèm hồ sơ trước khi điền…\n(đừng thao tác tới khi xong)");
+    // Ngoại lệ địa bàn ở bước đính kèm chỉ áp cho "Đăng ký hộ kinh doanh" (workflow create) — attachFirst chỉ có ở đây.
+    await H.startAttachAllBusiness(payload.files, payload.attachments, st.businessDefaults, { thenFill: true });
+    setTimeout(H.stepAttachAll, 400);
+  }
+
+  // Đính kèm (trước) xong / lỗi → về lại máy điền 8 trang. Đính lỗi thì giữ kế hoạch để đính lại theo thứ tự cũ sau khi
+  // điền xong (cổng có thể cần thông tin hồ sơ trước khi nhận tệp).
+  async function resumeFillAfterAttach(ok, message) {
+    const st = await getFillAllState();
+    if (!st) return void H.endFillAllUI(ok ? "✓ Đã đính kèm xong hồ sơ. Vui lòng rà soát rồi bấm Nộp." : "⚠ " + message);
+    if (!ok) console.warn("[FillAll] đính kèm trước lỗi, sẽ đính lại sau khi điền:", message);
+    st.attachFirstDone = true;
+    st.attachFirstResult = ok ? "ok" : String(message || "lỗi");
+    if (ok) st.attachPayload = null;
+    st.phase = "fill";
+    await setFillAllState(st);
+    return void stepFillAll();
+  }
+
+  function askSecondPass(requestId) {
+    return new Promise((resolve) => {
+      try {
+        chrome.runtime.sendMessage({ action: "hkdSecondPass", requestId }, (res) => {
+          if (chrome.runtime.lastError) return resolve(null);
+          resolve(res || null);
+        });
+      } catch (e) { resolve(null); }
+    });
+  }
+
+  // Ô của các trang lớp soát sửa (BE trả NGUYÊN danh sách ô của trang, mỗi ô kèm "page") → thay trang đó trong state.
+  function mergeSecondPassPages(st, fields) {
+    const byPage = {};
+    for (const field of fields) {
+      if (!field || !field.page || !field.name) continue;
+      const { page, from, by, ...rest } = field;
+      (byPage[page] = byPage[page] || []).push(rest);
+    }
+    const keys = Object.keys(byPage).filter((key) => st.pages && Object.prototype.hasOwnProperty.call(st.pages, key));
+    for (const key of keys) st.pages[key] = byPage[key];
+    // Trang thuế đổi có thể thêm / bớt lượt chốt địa chỉ thuế ở cuối; chưa điền trang nào nên tính lại thứ tự.
+    if (keys.length && typeof H.withFinalTaxPass === "function") {
+      st.order = H.withFinalTaxPass(Array.from(new Set(st.order)), st.pages);
+    }
+    return keys;
+  }
+
+  async function awaitSecondPass(st) {
+    const sp = st.secondPass || {};
+    const deadline = Number(sp.at || Date.now()) + SECOND_PASS_WAIT_MS;
+    H.setRunProgressText("Đang soát lại thông tin trước khi điền…\n(đừng thao tác tới khi xong)");
+    let fields = null;
+    for (;;) {
+      const res = await askSecondPass(sp.requestId);
+      if (res?.status === "done") {
+        fields = Array.isArray(res.fields) ? res.fields : [];
+        break;
+      }
+      if (res?.status !== "pending" || Date.now() + SECOND_PASS_POLL_MS > deadline) break;
+      await sleep(SECOND_PASS_POLL_MS);
+    }
+    // Cán bộ có thể đã dừng tiến trình trong lúc chờ.
+    const fresh = await getFillAllState();
+    if (!fresh) return;
+    const patched = fields ? mergeSecondPassPages(fresh, fields) : [];
+    console.log("[FillAll] kết quả soát trước khi điền:", fields ? `${patched.length} trang sửa` : "không có", patched);
+    fresh.secondPassDone = true;
+    await setFillAllState(fresh);
+    return void stepFillAll();
   }
 
   /**
@@ -3072,6 +3190,11 @@
     if (st.createBootstrap && !st.bootstrapDone) {
       return void stepCreateBootstrap(st);
     }
+    // Điền đợt 2: BE soát lại lượt trích ở nền → đính kèm TRƯỚC (giấu thời gian soát), đính xong lấy các trang đã soát rồi
+    // mới điền 8 trang. Đang đính thì state machine đính kèm điều khiển (resume gọi cả hai).
+    if (st.phase === "attaching-first") return;
+    if (st.attachFirst && !st.attachFirstDone) return void startAttachFirst(st);
+    if (st.secondPass && !st.secondPassDone) return void awaitSecondPass(st);
     // Đang trong nhịp "mở trang chủ hộ đọc họ tên rồi quay lại": xử lý trước mọi thứ khác, vì trang
     // đang đứng cố tình KHÁC trang mục tiêu nên nhánh điều hướng chung ở dưới sẽ kéo đi ngay.
     if (st.phase === "probing-owner") return void handleOwnerProbe(st);
@@ -3170,6 +3293,13 @@
     // Không dựa mốc chờ cứng: chờ form yên rồi đọc lại từng ô, điền bù ô trống. Chạy cả ở lượt resume
     // (filledStep đã chốt) vì postback giữa chừng có thể đã xoá ô vừa điền.
     if (pageFields.length) await ensureBusinessFieldsFilled(pageFields, BUSINESS_PAGE_LABELS[targetKey] || targetKey);
+    // Trang tên hộ: kiểm trùng cả 3 tên trên cổng (chỉ cảnh báo, không chặn Lưu) — một lần mỗi phiên điền.
+    if (targetKey === "ten-ho-kinh-doanh" && !st.nameChecked) {
+      st.nameChecked = true;
+      st.nameWarnings = await businessNameWarnings();
+      await setFillAllState(st);
+      if (st.nameWarnings.length) H.showPageToast?.(nameWarningText(st).trim(), "warn");
+    }
 
     const saveBtn = findBusinessSaveButton();
     if (!saveBtn) return void advanceFillAll(st); // trang không có nút Lưu → sang trang kế
@@ -3295,7 +3425,7 @@
   // Khởi tạo phiên (gọi từ content handler). plan[i] khớp files[i] theo attachment.fileIndex.
   // defaults = businessDefaults của popup; asciiAttachmentFileNames (tài khoản Phường Hải Châu, Đà Nẵng)
   // → tên tệp tải lên cổng không dấu.
-  async function startAttachAllBusiness(files, attachments, defaults) {
+  async function startAttachAllBusiness(files, attachments, defaults, opts) {
     const plan = files.map((f, i) => {
       const a = (attachments || []).find((x) => x && x.fileIndex === i) || {};
       const category = ATTACH_TYPE[a.category] ? a.category : "OTHERS"; // BUSREGFRM | CPID | OTHERS
@@ -3311,6 +3441,8 @@
     const st = {
       files, plan, declareTypes, declareCounts, declared: [], phase: "declare", uploadTries: 0,
       asciiFileNames: !!(defaults && defaults.asciiAttachmentFileNames),
+      // Đính kèm trước khi điền (điền đợt 2): xong / lỗi thì quay về máy điền 8 trang thay vì kết thúc.
+      thenFill: !!(opts && opts.thenFill),
     };
     await setAttachAllState(st);
     return { ok: true, started: true };
@@ -3507,7 +3639,11 @@
 
     const input = attachElById("FileUploadCtl");
     const btn = attachElById("BtnSaveNoTyple");
-    if (!input || !btn) return; // trang chưa sẵn
+    if (!input || !btn) {
+      // Đính kèm trước khi điền: không đứng chờ mãi (máy điền đang nhường) → báo lỗi để điền 8 trang rồi đính lại sau.
+      if (st.thenFill) return void failAttachAll("Chưa thấy ô tải tệp trên trang đính kèm.");
+      return; // trang chưa sẵn
+    }
     st.uploadTries = (st.uploadTries || 0) + 1;
     if (st.uploadTries > 3) return void failAttachAll("Tải file lên thất bại (thử lại quá số lần).");
     // Tên tệp theo cài đặt tài khoản (đổi tên theo loại giấy / giữ tên gốc). Ghi lại tên đã tải lên để
@@ -3573,11 +3709,15 @@
   }
 
   async function finishAttachAll() {
+    const st = await getAttachAllState();
     await clearAttachAllState();
+    if (st && st.thenFill) return void resumeFillAfterAttach(true, "");
     H.endFillAllUI("✓ Đã đính kèm xong hồ sơ. Vui lòng rà soát rồi bấm Nộp.");
   }
   async function failAttachAll(msg) {
+    const st = await getAttachAllState();
     await clearAttachAllState();
+    if (st && st.thenFill) return void resumeFillAfterAttach(false, msg);
     H.endFillAllUI("⚠ " + msg);
   }
 
@@ -3621,10 +3761,12 @@
         st.attListReloads = (st.attListReloads || 0) + 1;
         await setAttachAllState(st);
         if (st.attListReloads <= 2) { location.reload(); return; }
+        if (st.thenFill) return void failAttachAll("Không mở được trang tải file sau khi khai loại.");
         H.setRunProgressText("✓ Đã khai loại. Hãy bấm 1 mục trong danh sách 'Văn bản đính kèm' để mở trang tải file.");
         return;
       }
       await setAttachAllState(st);
+      if (st.thenFill) return void failAttachAll("Không thấy biểu tượng khai báo loại tài liệu trên trang.");
       H.setRunProgressText("Đang khai loại tài liệu…");
       return;
     }
@@ -3647,6 +3789,7 @@
   H.parseBusinessDeletePostback = parseBusinessDeletePostback;
   H.isBusinessRowMarkedDeleted = isBusinessRowMarkedDeleted;
   H.fillBusinessActDefault = fillBusinessActDefault;
+  H.withoutOcrBusinessAct = withoutOcrBusinessAct;
   // Cổng ĐKKD qua mạng dùng CHUNG component ngành nghề với HkdOnline: cùng ô
   // ctl00$C$newBusinessLineCode, cùng nút thêm mã, cùng bảng danh sách, cùng radio ismain —
   // chỉ khác tiền tố ClientID (đã xử lý ở BUSINESS_LINE_ROWS/findBusinessAddLineButton).
