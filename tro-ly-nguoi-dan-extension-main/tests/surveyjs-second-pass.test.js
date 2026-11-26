@@ -175,3 +175,20 @@ test("lượt ghi đợt 2 không xoá dấu màu, không cuộn, và hoãn ản
   assert.match(sidebar, /sendToContent\(\{ action: "patchFields", fields, baseFields, formSnapshot \}\)/);
   assert.match(read("api/client.js"), /\/api\/v1\/process\/\$\{encodeURIComponent\(requestId\)\}\/second-pass/);
 });
+
+test("ô BE trả về trống (clear) xoá cả giá trị cổng tự đổ sau tra cứu dân cư; ô khác cổng đổ vẫn giữ", async () => {
+  const id = question("soDinhDanh__1");
+  const issued = question("ngayCap__1");
+  const gender = question("gioiTinh__1");
+  // Cổng: điền số định danh → tra CSDL rồi tự đổ ngày cấp + giới tính.
+  id.onSet = () => { issued._value = "2021-01-01"; gender._value = "cổng đổ"; };
+  const { call } = setup([id, issued, gender]);
+  const res = await call("setValues", [
+    { name: "soDinhDanh", comp: "sjs-text", value: "001050000001", lookup: true },
+    { name: "ngayCap", comp: "sjs-date", value: "", clear: true },
+    { name: "gioiTinh", comp: "sjs-text", value: "Nam" },
+  ]);
+  assert.deepEqual(reasons(res), { soDinhDanh: "ok", ngayCap: "cleared-by-be", gioiTinh: "ok" });
+  assert.ok(issued.isEmpty());
+  assert.equal(gender.value, "cổng đổ");
+});

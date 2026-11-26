@@ -163,6 +163,12 @@
     // cổng chép giấy tờ tùy thân / nơi cư trú của tài khoản rồi KHOÁ các ô đó, kiểm sau thì ô đúng giá trị bị tô đỏ.
     if (field.onlyIfEmpty && !q.isEmpty?.()) return { ok: true, kept: true };
     if (q.isReadOnly) return { ok: false, reason: "readonly" };
+    // BE trả ô về TRỐNG (giấy không có giá trị): xoá cả giá trị cổng tự đổ, isolated tô đỏ để hỏi người dân.
+    if (field.clear) {
+      q.clearValue?.();
+      if (!q.isEmpty?.()) q.value = undefined;
+      return { ok: false, reason: "cleared-by-be" };
+    }
     const type = q.getType?.() || "";
     if (field.comp === "sjs-dropdown" || field.comp === "sjs-radio" ||
         ["dropdown", "radiogroup", "tagbox"].includes(type)) {
@@ -270,7 +276,7 @@
         lookupDone = true;
         await sleep(LOOKUP_WAIT_MS);
       }
-      if (lookupDone && field.comp !== "sjs-area") {
+      if (lookupDone && field.comp !== "sjs-area" && !field.clear) {
         const q = findQuestion(survey, field.name);
         if (q && before.get(q.name) && !q.isEmpty?.()) {
           results.push({ name: field.name, ok: true, kept: true, reason: "portal-filled" });

@@ -3,6 +3,15 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.29.2",
+    date: "26/11/2026",
+    items: [
+      "Khai tử (Cổng DVC quốc gia): giấy tờ tùy thân của người mất không ghi ngày cấp thì ô Ngày cấp để trống cho cán bộ nhập, không giữ ngày cổng tự đổ.",
+      "Xác nhận tình trạng hôn nhân (Phường Tây Nha Trang): người đang có vợ/chồng điền theo lựa chọn khoảng thời gian chưa đăng ký kết hôn, kèm thông tin vợ/chồng và giấy chứng nhận kết hôn; ô còn thiếu tô đỏ.",
+      "Chặt hạ, dịch chuyển cây xanh (1.002693): tài khoản cấp xã chọn đúng cơ quan UBND.",
+    ],
+  },
+  {
     version: "1.29.1",
     date: "25/11/2026",
     items: [

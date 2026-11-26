@@ -63,10 +63,18 @@ _DEATH_ORIGINAL_NUMBER_WARDS = (
     ("quang ngai", "binh son"),
     ("quang tri", "dong thuan"),
 )
+# Phường Tây Nha Trang: hồ sơ "Hiện tại đang có vợ/chồng" chọn option "Từ ngày… đến ngày… chưa đăng ký kết hôn với ai;
+# hiện tại đang có vợ/chồng" và điền vợ/chồng + giấy chứng nhận kết hôn vào vùng của option đó. Mốc thời gian chỉ lấy từ
+# tờ khai; tờ khai không ghi thì để trống cho cán bộ nhập (ô tô đỏ + cảnh báo).
+MARRIED_AS_PERIOD_OPTION = "marriedAsPeriod"
+_MARRIED_AS_PERIOD_WARDS = (
+    ("khanh hoa", "tay nha trang"),
+)
 _WARD_PREFIXES = ("xa ", "phuong ", "thi tran ", "dac khu ")
 
 
-def _is_death_original_number_ward(user: dict | None) -> bool:
+def _account_in(user: dict | None, wards: tuple[tuple[str, str], ...]) -> bool:
+    """Tỉnh tài khoản chứa tên tỉnh và tên phường/xã (bỏ dấu, bỏ "Xã"/"Phường") khớp ĐÚNG một dòng bảng."""
     if not user:
         return False
     tinh, xa = _fold(user.get("tinh")), _fold(user.get("xa"))
@@ -74,20 +82,30 @@ def _is_death_original_number_ward(user: dict | None) -> bool:
         if xa.startswith(prefix):
             xa = xa[len(prefix):].strip()
             break
-    return any(province in tinh and xa == ward for province, ward in _DEATH_ORIGINAL_NUMBER_WARDS)
+    return any(province in tinh and xa == ward for province, ward in wards)
 
 
 def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
-    """Bản sao options với cờ theo tài khoản do server quyết (bản sao trích lục khai tử vẫn lấy số gốc)."""
+    """Bản sao options với cờ theo tài khoản do server quyết (bản sao trích lục khai tử vẫn lấy số gốc; Tây Nha Trang
+    khai đang có vợ/chồng theo option khoảng thời gian)."""
     result = dict(options or {})
     result.pop(DEATH_ORIGINAL_NUMBER_OPTION, None)
-    if procedure == PROCEDURE_KEY and _is_death_original_number_ward(user):
+    result.pop(MARRIED_AS_PERIOD_OPTION, None)
+    if procedure != PROCEDURE_KEY:
+        return result
+    if _account_in(user, _DEATH_ORIGINAL_NUMBER_WARDS):
         result[DEATH_ORIGINAL_NUMBER_OPTION] = True
+    if _account_in(user, _MARRIED_AS_PERIOD_WARDS):
+        result[MARRIED_AS_PERIOD_OPTION] = True
     return result
 
 
 def death_original_number(options: dict | None) -> bool:
     return bool((options or {}).get(DEATH_ORIGINAL_NUMBER_OPTION))
+
+
+def married_as_period(options: dict | None) -> bool:
+    return bool((options or {}).get(MARRIED_AS_PERIOD_OPTION))
 
 
 def _compact(value) -> str:
@@ -582,6 +600,10 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     if not any(values.get(f"DeathCert_{k}") for k in ("Number", "Date", "Agency")):
         values.update(_death_cert_from_ocr(str(options.get("_ocr_text") or ""), values, death_original_number(options)))
     status = _marital_status(values)
+    # Cờ đơn vị (Tây Nha Trang): đang có vợ/chồng → option khoảng thời gian, các ô vùng đó thiếu thì xoá trống + tô đỏ.
+    married_period = status == _MARRIED and married_as_period(options)
+    if married_period:
+        status = _PERIOD_MARRIED
     if status:
         add_choice("citizenTinhtranghonnhan", TINH_TRANG, status)
     if status == _MARRIED:
@@ -608,6 +630,17 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         add_date("citizenField55", values.get("Marriage_Date"))
         add_date("citizenField56", values.get("Period_TuNgay"))
         add_date("citizenField57", values.get("Period_DenNgay"))
+        if married_period:
+            blank = [name for name in ("citizenField531", "citizenField53", "citizenField54", "citizenField55",
+                                       "citizenField56", "citizenField57") if name not in seen]
+            for name in blank:
+                out.append({"name": name, "comp": UI_COMP_BY_NAME[name], "value": "", "clear": True, "markEmpty": True})
+                seen.add(name)
+            if {"citizenField56", "citizenField57"} & set(blank):
+                warnings.append("Tờ khai không ghi khoảng thời gian chưa đăng ký kết hôn — cán bộ nhập thời điểm bắt "
+                                "đầu và kết thúc.")
+            if set(blank) - {"citizenField56", "citizenField57"}:
+                warnings.append("Chưa đọc đủ thông tin vợ/chồng và giấy chứng nhận kết hôn — cán bộ nhập các ô còn trống.")
     elif status == _OTHER:
         add_text("citizenField59", values.get("TinhTrangHonNhan_NoiDung"))
 

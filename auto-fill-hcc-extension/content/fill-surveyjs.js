@@ -170,7 +170,7 @@
     for (const field of fields) {
       let r = byName.get(field.name) || { ok: false, reason: res.error || "not-found" };
       // Cổng chủ động xoá lại sau khi điền ("cleared-after-set") → không gõ đè qua DOM, tô đỏ cho cán bộ xem.
-      const domRetry = !r.ok && r.reason !== "readonly" && r.reason !== "cleared-after-set" &&
+      const domRetry = !r.ok && r.reason !== "readonly" && r.reason !== "cleared-after-set" && !field.clear &&
         (field.comp === "sjs-dropdown" || (!res.ok && field.comp === "sjs-text"));
       if (domRetry) {
         const ok = field.comp === "sjs-dropdown"
@@ -179,7 +179,8 @@
         r = ok ? { ok: true } : r;
       }
       if (r.ok) result.filled++;
-      else if (r.reason === "readonly") result.skipped.push(field.name);
+      // BE trả ô về trống (giấy không có giá trị): cố ý để trống, tô đỏ cho cán bộ nhập, không tính là trượt.
+      else if (r.reason === "readonly" || r.reason === "cleared-by-be") result.skipped.push(field.name);
       else {
         result.notFound.push(field.name);
         console.warn("[AutoFill-SurveyJS] chưa điền", field.name, r.reason);
