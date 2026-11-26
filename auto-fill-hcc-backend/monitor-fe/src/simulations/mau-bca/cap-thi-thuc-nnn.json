@@ -1,0 +1,315 @@
+{
+ "source": "dichvucong.bocongan.gov.vn — trang kê khai (nhap-thong-tin-nguoi-nop-ho-so?sid=…) sau bước chọn trường hợp hồ sơ",
+ "title": "Cấp thị thực cho người nước ngoài tại Việt Nam",
+ "capturedAt": "2026-11-26T00:00:00+07:00",
+ "inferred": true,
+ "note": "Mẫu SUY từ bảng ô của BE (schema.py theo file Mapping_Cap_thi_thuc_NNN_tai_VN_cap_tinh): name ô theo mapping, nhãn chữ theo chú thích mapping. Quốc tịch / cửa khẩu / mục đích nhập cảnh chưa có danh mục cổng → \"chưa kiểm option\"; option Loại hộ chiếu + Cấp thị thực SUY. Vị trí ô Cơ quan tiếp nhận SUY (cuối form, trên bảng Thành phần hồ sơ). CHƯA chụp trang thật.",
+ "code": "1.001194",
+ "sections": [
+  {
+   "title": "Ảnh đầu trang",
+   "fields": [
+    {
+     "id": "filename46",
+     "kind": "file",
+     "label": "Ảnh chân dung 4x6 (.jpg)",
+     "required": true,
+     "note": "BE tự gắn tệp ảnh ít chữ trong bộ giấy"
+    },
+    {
+     "id": "filenamehc",
+     "kind": "file",
+     "label": "Ảnh trang nhân thân hộ chiếu (.jpg)",
+     "required": true,
+     "note": "BE tự gắn trang có MRZ; cổng chặn nộp nếu thiếu ảnh"
+    }
+   ]
+  },
+  {
+   "title": "Phần II. Người đề nghị",
+   "note": "Khối CongDan_* ở đây là của người nước ngoài (không phải chủ tài khoản).",
+   "fields": [
+    {
+     "id": "CongDan_tenCongDan",
+     "kind": "text",
+     "label": "Họ và tên",
+     "required": true,
+     "wide": true
+    },
+    {
+     "id": "CongDan_ngaySinhCongDan",
+     "kind": "date",
+     "label": "Ngày tháng năm sinh",
+     "required": true
+    },
+    {
+     "id": "CongDan__fs_BCAGioiTinhCd",
+     "kind": "select",
+     "label": "Giới tính",
+     "required": true,
+     "options": [
+      "Nam",
+      "Nữ"
+     ]
+    },
+    {
+     "id": "CongDan__fs_BCAQuocTichGoc",
+     "kind": "select",
+     "label": "Quốc tịch gốc",
+     "required": true,
+     "note": "Danh mục tên nước tiếng Anh (~203 mục)"
+    },
+    {
+     "id": "CongDan__fs_BCAQuocTichHienNay",
+     "kind": "select",
+     "label": "Quốc tịch hiện nay",
+     "required": true
+    },
+    {
+     "id": "CongDan__fs_BCANgheNghiep",
+     "kind": "text",
+     "label": "Nghề nghiệp/ chức vụ",
+     "required": true
+    },
+    {
+     "id": "CongDan__fs_BCASoHoChieu",
+     "kind": "text",
+     "label": "Số hộ chiếu",
+     "required": true
+    },
+    {
+     "id": "CongDan__fs_BCALoaiHoChieu",
+     "kind": "select",
+     "label": "Loại hộ chiếu",
+     "required": true,
+     "options": [
+      "Hộ chiếu phổ thông",
+      "Hộ chiếu ngoại giao",
+      "Hộ chiếu công vụ",
+      "Khác"
+     ],
+     "portalDefault": "Khác",
+     "note": "Cổng để sẵn \"Khác\"; danh sách option SUY theo mapping"
+    },
+    {
+     "id": "CongDan__fs_BCACoQuanCap",
+     "kind": "text",
+     "label": "Cơ quan cấp"
+    },
+    {
+     "id": "CongDan__fs_BCAHoChieuDenNgay",
+     "kind": "date",
+     "label": "Có giá trị đến ngày",
+     "required": true
+    },
+    {
+     "id": "CongDan__fs_BCANgayNhapCanh",
+     "kind": "date",
+     "label": "Nhập cảnh Việt Nam ngày"
+    },
+    {
+     "id": "CongDan__fs_BCAQuaCuaKhau",
+     "kind": "select",
+     "label": "Qua cửa khẩu",
+     "note": "Danh mục cửa khẩu (~243 mục, vd \"SBQT Nội Bài\")"
+    },
+    {
+     "id": "CongDan__fs_BCAMucDichNhapCanh",
+     "kind": "select",
+     "label": "Mục đích nhập cảnh",
+     "required": true,
+     "note": "~36–37 mục (vd \"thăm thân\")"
+    },
+    {
+     "id": "CongDan__fs_BCATamTruDen",
+     "kind": "date",
+     "label": "Được phép tạm trú đến ngày",
+     "required": true
+    },
+    {
+     "id": "CongDan__fs_BCATinhTamTru",
+     "kind": "select",
+     "label": "Địa chỉ tạm trú tại Việt Nam — Tỉnh/Thành phố",
+     "required": true,
+     "options": "@provinces"
+    },
+    {
+     "id": "CongDan__fs_BCAXaTamTru",
+     "kind": "select",
+     "label": "Phường/Xã",
+     "required": true,
+     "options": "@wards:CongDan__fs_BCATinhTamTru"
+    },
+    {
+     "id": "CongDan__fs_BCADiaChiTamTru",
+     "kind": "text",
+     "label": "Địa chỉ chi tiết",
+     "required": true,
+     "wide": true
+    },
+    {
+     "id": "CongDan_diDong",
+     "kind": "text",
+     "label": "Điện thoại",
+     "required": true
+    },
+    {
+     "id": "CongDan_email",
+     "kind": "text",
+     "label": "Email liên hệ",
+     "required": true
+    }
+   ]
+  },
+  {
+   "title": "Phần III. Thân nhân bảo lãnh",
+   "note": "Cổng khoá \"Thân nhân\" + Họ tên, Ngày sinh người bảo lãnh theo tài khoản đăng nhập (id chưa biết, BE không phát); khối cơ quan/tổ chức bảo lãnh đang ẩn.",
+   "fields": [
+    {
+     "id": "CongDan_soCmnd",
+     "kind": "text",
+     "label": "Giấy CCCD (số)",
+     "readonly": true
+    },
+    {
+     "id": "CongDan__fs_BCANgayCapCMNDBaoLanh",
+     "kind": "date",
+     "label": "Cấp ngày",
+     "required": true
+    },
+    {
+     "id": "CongDan__fs_BCACoQuanCapCMNDBaoLanh",
+     "kind": "text",
+     "label": "Cơ quan cấp"
+    },
+    {
+     "id": "CongDan__fs_BCATheTamTruSo",
+     "kind": "text",
+     "label": "Thẻ thường trú/ thẻ tạm trú số"
+    },
+    {
+     "id": "CongDan__fs_BCANgayCapTheTamTruSo",
+     "kind": "date",
+     "label": "Cấp ngày (thẻ)"
+    },
+    {
+     "id": "CongDan__fs_BCACoQuanCapTheTamTruSo",
+     "kind": "text",
+     "label": "Cơ quan cấp (thẻ)"
+    },
+    {
+     "id": "CongDan__fs_BCAQuanHeNguoiDeNghi",
+     "kind": "text",
+     "label": "Quan hệ với người đề nghị",
+     "required": true
+    },
+    {
+     "id": "CongDan__fs_BCATinhThuongTru",
+     "kind": "select",
+     "label": "Địa chỉ thường trú tại Việt Nam — Tỉnh/Thành phố",
+     "required": true,
+     "options": "@provinces"
+    },
+    {
+     "id": "CongDan__fs_BCAXaThuongTru",
+     "kind": "select",
+     "label": "Phường/Xã",
+     "required": true,
+     "options": "@wards:CongDan__fs_BCATinhThuongTru"
+    },
+    {
+     "id": "CongDan__fs_BCADiaChiThuongTruVNBaoLanh",
+     "kind": "text",
+     "label": "Địa chỉ chi tiết",
+     "required": true,
+     "wide": true
+    },
+    {
+     "id": "CongDan__fs_BCATinhTamTruBaoLanh",
+     "kind": "select",
+     "label": "Địa chỉ tạm trú tại Việt Nam — Tỉnh/Thành phố",
+     "required": true,
+     "options": "@provinces"
+    },
+    {
+     "id": "CongDan__fs_BCAXaTamTruBaoLanh",
+     "kind": "select",
+     "label": "Phường/Xã",
+     "required": true,
+     "options": "@wards:CongDan__fs_BCATinhTamTruBaoLanh"
+    },
+    {
+     "id": "CongDan__fs_BCADiaChiTamTruBaoLanh",
+     "kind": "text",
+     "label": "Địa chỉ chi tiết",
+     "required": true,
+     "wide": true
+    },
+    {
+     "id": "CongDan__fs_BCADiDongBaoLanh",
+     "kind": "text",
+     "label": "Điện thoại",
+     "required": true,
+     "portalMayFill": true
+    },
+    {
+     "id": "CongDan__fs_BCAEmailBaoLanh",
+     "kind": "text",
+     "label": "Email liên hệ",
+     "required": true,
+     "portalMayFill": true
+    }
+   ]
+  },
+  {
+   "title": "Phần IV. Nội dung đề nghị",
+   "fields": [
+    {
+     "id": "CongDan__fs_BCACapThiThucLan",
+     "kind": "select",
+     "label": "Cấp thị thực",
+     "required": true,
+     "options": [
+      "Nhiều lần",
+      "Một lần"
+     ],
+     "portalDefault": "Nhiều lần",
+     "note": "Cổng để sẵn \"Nhiều lần\""
+    },
+    {
+     "id": "CongDan__fs_BCAThiThucDenNgay",
+     "kind": "date",
+     "label": "Có giá trị đến ngày",
+     "required": true
+    },
+    {
+     "id": "CongDan__fs_BCALyDoDeNghiCapThiThuc",
+     "kind": "text",
+     "label": "Lý do",
+     "required": true,
+     "wide": true
+    },
+    {
+     "id": "CongDan__fs_BCADieuCanTrinhBayThem",
+     "kind": "text",
+     "label": "Những điều cần trình bày thêm",
+     "wide": true
+    }
+   ]
+  },
+  {
+   "title": "Cơ quan tiếp nhận, nơi nhận thị thực",
+   "note": "Nơi nhận thị thực (trực tiếp / bưu chính): giấy tờ không ghi, người nộp tự chọn.",
+   "fields": [
+    {
+     "id": "CongDan__fs_BCANoiNopHS",
+     "kind": "select",
+     "label": "Cơ quan tiếp nhận",
+     "required": true,
+     "wide": true,
+     "note": "Danh sách chỉ có cơ quan đã chọn ở bước chọn trường hợp — extension chọn mục thật đầu tiên"
+    }
+   ]
+  }
+ ]
+}

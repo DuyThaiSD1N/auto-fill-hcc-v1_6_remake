@@ -14,13 +14,18 @@
 // - dom-select: bootstrap-select — khớp đủ chữ (bỏ dấu) trước, bỏ tiền tố Phường/Xã/Tỉnh chỉ khi ra đúng một mục
 //   (pickBootstrapSelectItem);
 // - dom-radio: radio ĐẦU TIÊN có nhãn trùng / chứa / nằm trong giá trị (radioValueMatches), không khớp thì không tick;
-// - dom-date: dd/mm/yyyy (bcaSetPickerDates gán qua datepicker).
+// - dom-date: dd/mm/yyyy (bcaSetPickerDates gán qua datepicker);
+// - dom-checkbox: true / "true" / "1" → tích, còn lại → bỏ tích (fillStandardCheckbox);
+// - bca-photo: gắn tệp ảnh vào input file đầu trang, không bấm nút "Tải ảnh" (fillBcaPhotoField);
+// - bca-guest-list: mỗi người một lượt modal "Thêm mới người lưu trú", điền ô guest_* theo id rồi Lưu (fillBcaGuestList)
+//   → mô phỏng như bảng dòng, cột khớp ĐÚNG id (bảng bca-rows thì id = <prefix><n>).
 // Tài khoản đăng nhập không có trong output → người xem chọn ở thanh "Tài khoản đăng nhập" (mặc định suy từ giấy).
 import { isEmpty, type UiField } from "./fill";
 import { foldChoice, type Cell, type Opt, type SimStats, type Unmatched } from "./eform";
 import type { AreaCatalog } from "./angular";
 
-export type BcaKind = "text" | "date" | "select" | "radio";
+/** checkbox: ô tích một mình (nhãn = label); file: ô tải tệp (ảnh chân dung). */
+export type BcaKind = "text" | "date" | "select" | "radio" | "checkbox" | "file";
 
 export interface BcaField {
   /** id = name của ô trên trang. */
@@ -60,8 +65,9 @@ export interface BcaSection {
   portalDecides?: string;
   note?: string;
   fields: BcaField[];
-  /** Bảng dòng lặp (comp "bca-rows"): ô dòng n có id <prefix><n>, dòng thêm bằng nút "thêm" của cổng. */
-  table?: { id: string; columns: { prefix: string; label: string; kind: BcaKind; options?: string[] }[] };
+  /** Bảng dòng lặp (comp "bca-rows"): ô dòng n có id <prefix><n>, dòng thêm bằng nút "thêm" của cổng.
+   *  Comp "bca-guest-list" (mỗi dòng một lượt modal): ô dòng nào cũng có id = <prefix>. */
+  table?: { id: string; columns: { prefix: string; label: string; kind: BcaKind; options?: string[]; partialDate?: boolean }[] };
 }
 
 export interface BcaForm {
@@ -168,7 +174,8 @@ export function simulateBca(form: BcaForm, fields: UiField[], area: AreaCatalog 
   const unmatched: Unmatched[] = [];
   const held: BcaResult["held"] = [];
   const pickedCity = new Map<string, Opt | null>();
-  const typeOf = (k: BcaKind) => (k === "select" ? "x-select" : k === "radio" ? "x-radio" : k === "date" ? "x-date" : "x-input");
+  const typeOf = (k: BcaKind) =>
+    k === "select" ? "x-select" : k === "radio" ? "x-radio" : k === "date" ? "x-date" : k === "checkbox" ? "checkbox" : "x-input";
 
   for (const { f } of all) {
     cells.set(f.id, {
@@ -254,7 +261,8 @@ export function simulateBca(form: BcaForm, fields: UiField[], area: AreaCatalog 
     }
 
     if (f.comp === "bca-agency") {
-      const cityId = String(v?.cityId ?? "cboORGTinh"), wardId = String(v?.wardId ?? "cboORGXa");
+      // Mặc định như fillBcaAgencyField (trang thông báo lưu trú); trang căn cước / cư trú luôn gửi cityId + wardId.
+      const cityId = String(v?.cityId ?? "accomStay_cboPROVINCE_ID"), wardId = String(v?.wardId ?? "accomStay_cboADDRESS_ID");
       const city = cells.get(cityId), ward = cells.get(wardId);
       const province = String(v?.province ?? ""), wardName = String(v?.ward ?? "");
       if (!city || (!ward && wardName)) { unmatched.push({ field: f, reason: `mẫu không có ô ${!city ? cityId : wardId}` }); continue; }
@@ -287,22 +295,35 @@ export function simulateBca(form: BcaForm, fields: UiField[], area: AreaCatalog 
       continue;
     }
 
-    if (f.comp === "bca-rows") {
+    if (f.comp === "bca-rows" || f.comp === "bca-guest-list") {
+      const guests = f.comp === "bca-guest-list";
       const table = form.sections.map((s) => s.table).find((t) => t?.id === f.name);
       if (!table) { unmatched.push({ field: f, reason: `mẫu không có bảng ${f.name}` }); continue; }
       const out: Cell[][] = [];
-      ((v?.rows ?? []) as { id: string; comp?: string; value: unknown }[][]).forEach((row, ri) => {
+      type Sub = { id: string; comp?: string; value: unknown };
+      const list: Sub[][] = guests
+        ? (Array.isArray(f.value) ? (f.value as { fields?: Sub[] }[]) : []).map((g) => (Array.isArray(g?.fields) ? g.fields : []))
+        : ((v?.rows ?? []) as Sub[][]);
+      list.forEach((row, ri) => {
         const line: Cell[] = table.columns.map((col) => ({
           key: `${col.prefix}${ri}`, name: `${col.prefix}${ri}`, type: typeOf(col.kind), label: col.label, required: false,
           status: "blank", reasons: [], options: col.options?.map((l) => [l, l] as Opt),
         }));
         for (const sub of Array.isArray(row) ? row : []) {
-          const ci = table.columns.findIndex((col) => sub.id.startsWith(col.prefix) && /^\d+$/.test(sub.id.slice(col.prefix.length)));
+          const ci = table.columns.findIndex((col) => guests
+            ? sub.id === col.prefix
+            : sub.id.startsWith(col.prefix) && /^\d+$/.test(sub.id.slice(col.prefix.length)));
           const sf: UiField = { name: sub.id, comp: sub.comp, value: sub.value, default: f.default };
-          if (ci < 0) { unmatched.push({ field: sf, reason: `bảng ${f.name} không có cột cho ô này` }); continue; }
+          if (ci < 0) {
+            unmatched.push({ field: sf, reason: guests ? `modal người lưu trú (dòng ${ri + 1}) không có ô id này` : `bảng ${f.name} không có cột cho ô này` });
+            continue;
+          }
           const cell = line[ci];
           if (isEmpty(sub.value)) continue;
-          if (sub.comp === "dom-select" && cell.options?.length) {
+          const partial = !!table.columns[ci].partialDate;
+          if (sub.comp === "dom-date" && !(partial ? PARTIAL_DATE_RE : DATE_RE).test(String(sub.value).trim())) {
+            miss(cell, sf, sub.value, partial ? "không đúng dd/mm/yyyy, mm/yyyy hay yyyy" : "không đúng dd/mm/yyyy — datepicker không nhận");
+          } else if (sub.comp === "dom-select" && cell.options?.length) {
             const p = pickSelect(cell.options, sub.value);
             if (p.opt) { mark(cell, sf, p.opt[1], p.opt); cell.how = p.how; } else miss(cell, sf, sub.value, `không có trong ${cell.options.length} option`);
           } else if (sub.comp === "dom-select") {
@@ -332,10 +353,23 @@ export function simulateBca(form: BcaForm, fields: UiField[], area: AreaCatalog 
       info(c, hit ? `tài khoản trùng ${hit.relation} trên giấy` : "tài khoản không trùng ai trên giấy → option dự phòng");
       continue;
     }
+    const tf = byId.get(f.name)!.f;
+    if (f.comp === "dom-checkbox" || tf.kind === "checkbox") {
+      if (c.readonly) { miss(c, f, f.value, "ô cổng khoá — extension không đổi được"); continue; }
+      const on = f.value === true || String(f.value).toLowerCase() === "true" || String(f.value) === "1";
+      mark(c, f, on ? "đã tích" : "bỏ tích", on ? ["1", tf.label] : null);
+      continue;
+    }
     if (isEmpty(f.value)) continue;
     if (c.readonly) { miss(c, f, f.value, "ô cổng khoá theo tài khoản — extension không ghi được"); continue; }
 
-    const tf = byId.get(f.name)!.f;
+    if (f.comp === "bca-photo" || tf.kind === "file") {
+      const file = f.value as { name?: string; type?: string; dataUrl?: string } | null;
+      if (!file?.dataUrl) { miss(c, f, file?.name ?? f.value, "BE không gửi dữ liệu ảnh (dataUrl) → không gắn được tệp"); continue; }
+      mark(c, f, file.name || "(ảnh)");
+      info(c, "gắn tệp vào ô tải ảnh, không bấm nút \"Tải ảnh\"; cổng tự kiểm đuôi .jpg + dung lượng");
+      continue;
+    }
     if (f.comp === "dom-radio" || tf.kind === "radio") {
       const want = fold(f.value);
       const opt = (c.options ?? []).find(([, l]) => { const lf = fold(l); return !!lf && (lf === want || lf.includes(want) || want.includes(lf)); }) ?? null;

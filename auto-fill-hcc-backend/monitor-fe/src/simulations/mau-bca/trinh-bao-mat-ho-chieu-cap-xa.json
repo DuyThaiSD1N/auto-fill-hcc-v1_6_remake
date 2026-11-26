@@ -1,0 +1,150 @@
+{
+ "source": "dichvucong.bocongan.gov.vn — trang kê khai (nhap-thong-tin-nguoi-nop-ho-so?sid=…) sau bước chọn trường hợp hồ sơ",
+ "title": "Trình báo mất hộ chiếu phổ thông (cấp xã)",
+ "capturedAt": "2026-11-26T00:00:00+07:00",
+ "inferred": true,
+ "note": "Mẫu SUY từ bảng ô của BE (schema.py theo file Mapping_Trinh_bao_mat_ho_chieu_cap_xa_BCA): ô (6)–(17), khối Nơi tiếp nhận đầu trang khoá theo bước Lựa chọn DVC; số mục (1)–(5) chưa rõ nên ô khoá để không số. Nhãn chữ theo chú thích mapping; khối tra cứu doanh nghiệp (ẩn) không đưa vào. CHƯA chụp trang thật.",
+ "code": "1.010386",
+ "sections": [
+  {
+   "title": "Nơi tiếp nhận hồ sơ",
+   "fields": [
+    {
+     "id": "CongDan_maTinhThanh",
+     "kind": "select",
+     "label": "Tỉnh/Thành phố",
+     "readonly": true,
+     "note": "Đã chọn ở bước Lựa chọn DVC"
+    },
+    {
+     "id": "CongDan_maPhuongXa",
+     "kind": "select",
+     "label": "Phường/Xã",
+     "readonly": true,
+     "note": "Đã chọn ở bước Lựa chọn DVC"
+    },
+    {
+     "id": "CongDan__fs_BCANoiNopHS",
+     "kind": "select",
+     "label": "Cơ quan thực hiện",
+     "readonly": true,
+     "note": "Danh sách chỉ có Công an xã đã chọn, cổng chọn sẵn — BE không phát"
+    }
+   ]
+  },
+  {
+   "title": "Thông tin người đề nghị",
+   "note": "Ô khoá cổng đổ theo tài khoản VNeID (BE không phát).",
+   "fields": [
+    {
+     "id": "CongDan_tenCongDan",
+     "kind": "text",
+     "label": "Họ và tên",
+     "readonly": true
+    },
+    {
+     "id": "CongDan__fs_BCAGioiTinhCd",
+     "kind": "select",
+     "label": "Giới tính",
+     "readonly": true
+    },
+    {
+     "id": "CongDan_ngaySinhCongDan",
+     "kind": "date",
+     "label": "Ngày sinh",
+     "readonly": true
+    },
+    {
+     "id": "CongDan_soCmnd",
+     "kind": "text",
+     "label": "Số ĐDCN/CMND",
+     "readonly": true
+    },
+    {
+     "id": "CongDan__fsNgayCapCMND",
+     "kind": "date",
+     "label": "(6) Ngày cấp ĐDCN/CMND",
+     "required": true
+    },
+    {
+     "id": "CongDan__fsNoiCapCMND",
+     "kind": "text",
+     "label": "(7) Nơi cấp CMND/CCCD",
+     "required": true
+    },
+    {
+     "id": "CongDan_diDong",
+     "kind": "text",
+     "label": "(8) Số điện thoại",
+     "required": true,
+     "portalMayFill": true
+    },
+    {
+     "id": "CongDan_email",
+     "kind": "text",
+     "label": "(9) Email",
+     "required": true,
+     "portalMayFill": true
+    }
+   ]
+  },
+  {
+   "title": "Địa chỉ nơi cư trú hiện nay",
+   "fields": [
+    {
+     "id": "CongDan__fs_BCATinhTamTru",
+     "kind": "select",
+     "label": "(10) Tỉnh/Thành phố",
+     "required": true,
+     "options": "@provinces"
+    },
+    {
+     "id": "CongDan__fs_BCAXaTamTru",
+     "kind": "select",
+     "label": "(11) Phường/Xã",
+     "required": true,
+     "options": "@wards:CongDan__fs_BCATinhTamTru"
+    },
+    {
+     "id": "CongDan__fs_BCADiaChiTamTru",
+     "kind": "text",
+     "label": "(12) Địa chỉ chi tiết",
+     "required": true,
+     "wide": true
+    }
+   ]
+  },
+  {
+   "title": "Thông tin trình báo",
+   "fields": [
+    {
+     "id": "CongDan__fs_BCASoHoChieu",
+     "kind": "text",
+     "label": "(13) Số hộ chiếu bị mất"
+    },
+    {
+     "id": "CongDan__fs_BCANgayCapHoChieu",
+     "kind": "date",
+     "label": "(14) Ngày cấp hộ chiếu"
+    },
+    {
+     "id": "CongDan__fs_BCACoQuanCap",
+     "kind": "text",
+     "label": "(15) Cơ quan cấp hộ chiếu"
+    },
+    {
+     "id": "CongDan__fs_BCAThoiGianMatHC",
+     "kind": "date",
+     "label": "(16) Thời gian mất hộ chiếu"
+    },
+    {
+     "id": "CongDan__fs_BCALyDoMatHC",
+     "kind": "text",
+     "label": "(17) Hoàn cảnh và lý do cụ thể mất hộ chiếu",
+     "required": true,
+     "wide": true
+    }
+   ]
+  }
+ ]
+}

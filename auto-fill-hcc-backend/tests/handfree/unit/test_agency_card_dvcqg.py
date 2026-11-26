@@ -120,6 +120,11 @@ def test_xay_dung_tai_khoan_xa_chon_xa_khong_gat_so(key, loc):
     action = r.actions[0]
     assert action["type"] == "select_agency" and action["ward"], "phải chọn cả xã"
     assert "soMode" not in action
+    if key == CHAT_HA:
+        # 26/11/2026: cổng ra thẻ "Sở Xây dựng" đứng đầu cả khi chọn xã → chốt thẻ UBND, không bấm thẻ đầu.
+        assert action["cardIncludes"] == XA_CARD
+    else:
+        assert "cardIncludes" not in action
 
 
 @pytest.mark.parametrize("key", [CHAT_HA, QUY_HOACH])

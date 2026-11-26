@@ -710,7 +710,7 @@
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfe-230c-75d8-8979-11b8bdc68e6c",
       "needsAgencySelect": true,
       "agencyLevelByAccount": {
-        "xa": {},
+        "xa": {"submitCardIncludes": "Cơ quan thực hiện: UBND"},
         "so": {"selectSo": true}
       },
       "autoConfirm": false

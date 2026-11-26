@@ -5163,8 +5163,10 @@ PROCEDURES: list[dict] = [
         # 17/11/2026 người dùng chốt: tài khoản HCC tỉnh (hoặc chưa có xã) → chỉ chọn Tỉnh, gạt "Sở" rồi chọn Sở;
         # tài khoản cấp phường/xã → chọn Tỉnh + Phường/Xã như bình thường. Cùng luật agencyLevelByAccount của
         # ke_khai_links (Auto Fill). Thay bảng agencyByProvince theo tỉnh (Quảng Ngãi) của 16/11.
+        # 26/11/2026: có xã chọn Phường/Xã mà cổng vẫn ra thẻ "Sở Xây dựng" đứng đầu, thẻ UBND xã thứ hai → nhánh xã
+        # chốt thẻ theo chữ UBND (cùng submitCardIncludes của Auto Fill), không bấm thẻ đầu.
         "agencyLevelByAccount": {
-            "xa": {},
+            "xa": {"agencyCardIncludes": "Cơ quan thực hiện: UBND"},
             "so": {"agencyProvinceOnly": True, "agencySoFirst": True},
         },
         "requiredDocs": [
