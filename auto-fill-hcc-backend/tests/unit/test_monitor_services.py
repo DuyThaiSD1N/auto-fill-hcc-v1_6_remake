@@ -53,7 +53,7 @@ async def test_chat_ghi_token_endpoint_output_tho_va_tra_ve_y_nguyen():
     call = rec.llm_calls[0]
     assert call["n"] == 1 and call["purpose"] == "extract"  # suy theo loại lượt
     assert call["tokens_in"] == 120 and call["tokens_out"] == 30
-    assert call["target"] == "primary" and call["model"] == "qwen-test"
+    assert call["target"] == "chinh" and call["model"] == "qwen-test"
     assert call["tries"][0]["ok"] is True
     assert call["raw"] is out
     assert call["max_tokens"] == 500 and call["prompt_chars"] == 3
@@ -83,9 +83,9 @@ async def test_primary_loi_roi_sang_fallback_ghi_tung_lan_thu(monkeypatch):
     await client.chat([{"role": "user", "content": "x"}])
 
     call = rec.llm_calls[0]
-    assert [t["target"] for t in call["tries"]] == ["primary", "fallback-vllm"]
+    assert [t["target"] for t in call["tries"]] == ["chinh", "phu"]
     assert call["tries"][0]["ok"] is False and "500" in call["tries"][0]["error"]
-    assert call["target"] == "fallback-vllm" and call["purpose"] == "plan"
+    assert call["target"] == "phu" and call["purpose"] == "plan"
     assert rec.flags.get("llm_fallback") is True
 
 
@@ -181,7 +181,7 @@ async def test_ocr_tach_tien_xu_ly_cache_server_va_ghi_tung_file(monkeypatch):
     t = rec.summary()
     assert t["n"]["ocr_hit"] == 1 and t["n"]["ocr_miss"] == 1
     server = next(s for s in rec.spans if s.name == "ocr.server")
-    assert server.attrs["target"] == "primary"
+    assert server.attrs["target"] == "chinh"
 
 
 async def test_ocr_cache_mong_bi_bo_qua_co_ly_do(monkeypatch):

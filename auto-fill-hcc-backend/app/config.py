@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     ocr_tiengnoi_timeout_ms: int = 120000
     fallback_ocr_tiengnoi_base_url: str = ""
     fallback_ocr_tiengnoi_api_key: str = ""
+    # LB ngoài chia sẵn giữa các máy OCR (cùng khoá OCR_TIENGNOI_API_KEY): gọi trước, lỗi mới tới máy chính / phụ.
+    ocr_tiengnoi_lb_base_url: str = ""
     ocr_tiengnoi_max_tokens: int = 1500  # classify không cần dày → giảm cho nhanh
     ocr_tiengnoi_fill_max_tokens: int = 4096  # FILL cần text ĐẦY ĐỦ (nhiều trang) → cao hơn classify
     # Bước phân loại đính kèm vẫn dùng Tiếng Nói nhưng cắt ít trang/token để phản hồi nhanh.
@@ -77,6 +79,11 @@ class Settings(BaseSettings):
     llm_timeout_ms: int = 60000
     llm_temperature: float = 0.1
     llm_max_tokens: int = 1800
+    # Token Bearer cho cổng vLLM (LB, LLM chính, LLM dự phòng, OCR Qwen); trống → gọi không kèm token như cũ.
+    llm_api_key: str = ""
+    # LB ngoài chia sẵn giữa các máy LLM: có thì gọi LB trước, LB lỗi mới tới máy chính / phụ (BE tự chia hai máy
+    # này, app/services/endpoint_pool.py). Trống → chỉ máy chính / phụ như cũ.
+    llm_lb_base_url: str = ""
     # Máy riêng cho OCR Qwen (app/services/ocr_qwen.py) để không tranh lượt với LLM trích xuất; trống → dùng LLM_*.
     ocr_qwen_base_url: str = ""
     ocr_qwen_model: str = ""

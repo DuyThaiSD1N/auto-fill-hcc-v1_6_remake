@@ -255,7 +255,7 @@ async def test_cac_phan_song_song_cung_tran_cho_theo_tong_trang_ca_luot(monkeypa
     monkeypatch.setattr(settings, "ocr_tiengnoi_timeout_ms", 120000)
     seen: list[float] = []
 
-    async def fake_post(decoded, max_tokens=None, *, include_tokens=False, timeout_s=None):
+    async def fake_post(decoded, max_tokens=None, *, include_tokens=False, timeout_s=None, **_kw):
         seen.append(timeout_s)
         return {"results": [{"ok": True, "text": "x"} for _ in decoded]}
 

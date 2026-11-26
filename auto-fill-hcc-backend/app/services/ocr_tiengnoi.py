@@ -13,7 +13,6 @@ from contextlib import ExitStack
 import logging
 from pathlib import Path
 import re
-import time
 from typing import BinaryIO
 
 import fitz
@@ -21,6 +20,7 @@ import httpx
 
 from app.config import settings
 from app.monitor import recorder as mon
+from app.services.endpoint_pool import Pool, Target
 
 logger = logging.getLogger(__name__)
 
@@ -60,27 +60,22 @@ def _open_input(f: dict, stack: ExitStack) -> tuple[str, bytes | BinaryIO, str]:
 
 # Máy OCR vừa lỗi (không với tới, quá trần, HTTP 5xx) bị xếp SAU trong khoảng này: một máy chết thì
 # các request kế tiếp đi thẳng máy còn lại thay vì mất 10 s (không với tới) hay cả trần chờ (treo) cho
-# mỗi phần. Không loại hẳn — cả hai cùng lỗi vẫn thử đủ theo thứ tự gốc.
-_DOWN_FOR_S = 300
-_down_until: dict[str, float] = {}
+# mỗi phần. Không loại hẳn — mọi máy cùng lỗi vẫn thử đủ. LB (nếu có) gọi trước; máy chính / phụ do BE tự
+# chia theo tốc độ đo được (app/services/endpoint_pool.py).
+POOL = Pool(down_s=300)
 
 
-def _ocr_targets(*, prefer_fallback: bool = False) -> list[tuple[str, str, str]]:
-    """Endpoint OCR theo thứ tự thử: (base_url, api_key, tag). Fallback chỉ khi có cấu hình.
-
-    Key backup trống → kế thừa key chính (server dự phòng thường dùng chung khóa xác thực).
-    """
-    targets = [(settings.ocr_tiengnoi_base_url, settings.ocr_tiengnoi_api_key, "primary")]
+def _ocr_targets() -> list[Target]:
+    """Các máy OCR theo vai: LB (nếu có), máy chính, máy phụ (nếu có). Key phụ / LB trống → dùng key chính."""
+    key = settings.ocr_tiengnoi_api_key
+    targets = []
+    if settings.ocr_tiengnoi_lb_base_url:
+        targets.append(Target(settings.ocr_tiengnoi_lb_base_url, "lb", api_key=key))
+    targets.append(Target(settings.ocr_tiengnoi_base_url, "chinh", api_key=key))
     if settings.fallback_ocr_tiengnoi_base_url:
-        targets.append((
-            settings.fallback_ocr_tiengnoi_base_url,
-            settings.fallback_ocr_tiengnoi_api_key or settings.ocr_tiengnoi_api_key,
-            "fallback",
-        ))
-    if prefer_fallback:
-        targets.reverse()
-    now = time.monotonic()
-    return sorted(targets, key=lambda target: _down_until.get(target[0], 0) > now)
+        targets.append(Target(settings.fallback_ocr_tiengnoi_base_url, "phu",
+                              api_key=settings.fallback_ocr_tiengnoi_api_key or key))
+    return targets
 
 
 # Máy OCR không với tới (tailnet rớt) phải bỏ qua nhanh để kịp sang máy còn lại.
@@ -135,28 +130,33 @@ async def _post(
     *,
     include_tokens: bool = False,
     timeout_s: float | None = None,
-    prefer_fallback: bool = False,
+    avoid: frozenset[str] = frozenset(),
+    units: int | None = None,
 ) -> dict:
-    """POST OCR với fallback: thử server chính, lỗi thì seek(0) rồi thử server dự phòng."""
+    """POST OCR theo POOL.order: máy lỗi thì seek(0) rồi thử máy kế. ``avoid`` = máy vừa trả trang lỗi (xếp cuối);
+    ``units`` = số trang của lượt để đo tốc độ máy (mặc định số tệp). Kết quả mang ``_served`` = máy đã trả lời."""
     last_exc: Exception | None = None
-    for idx, (base_url, api_key, tag) in enumerate(_ocr_targets(prefer_fallback=prefer_fallback)):
+    for idx, target in enumerate(POOL.order(_ocr_targets(), avoid=avoid)):
         if idx > 0:
             _rewind(decoded)
         try:
-            async with mon.span("ocr.server", target=tag, attempt=idx + 1):
-                data = await _post_once(
-                    decoded, max_tokens, include_tokens=include_tokens,
-                    base_url=base_url, api_key=api_key, timeout_s=timeout_s,
-                )
-            _down_until.pop(base_url, None)
-            if tag != "primary":
+            async with mon.span("ocr.server", target=target.kind, attempt=idx + 1):
+                with POOL.track(target.url) as m:
+                    m["units"] = units or len(decoded)
+                    data = await _post_once(
+                        decoded, max_tokens, include_tokens=include_tokens,
+                        base_url=target.url, api_key=target.api_key, timeout_s=timeout_s,
+                    )
+            # Máy phục vụ (lb / chinh / phu) đếm vào timing.n; phải chuyển máy sau một máy lỗi → cờ ocr_fallback.
+            mon.count(f"ocr_{target.kind}")
+            if idx > 0:
                 mon.flag("ocr_fallback")
-                logger.warning("OCR %s [%s] OK sau khi server chính lỗi", tag, base_url)
+                logger.warning("OCR %s [%s] OK sau khi máy trước lỗi", target.kind, target.url)
+            data["_served"] = target.url
             return data
         except Exception as e:  # noqa: BLE001
             last_exc = e
-            _down_until[base_url] = time.monotonic() + _DOWN_FOR_S
-            logger.warning("OCR %s lỗi [%s]: %r", tag, type(e).__name__, e)
+            logger.warning("OCR %s lỗi [%s]: %r", target.kind, type(e).__name__, e)
     raise last_exc if last_exc else RuntimeError("Không có endpoint OCR nào khả dụng")
 
 
@@ -321,12 +321,14 @@ async def _post_groups(
     """
     timeout_s = _timeout_for(sum(pages))
     datas = await asyncio.gather(*(
-        _post([decoded[i] for i in group], max_tokens, include_tokens=include_tokens, timeout_s=timeout_s)
+        _post([decoded[i] for i in group], max_tokens, include_tokens=include_tokens, timeout_s=timeout_s,
+              units=sum(pages[i] for i in group))
         for group in groups
     ), return_exceptions=True)
     if all(isinstance(data, BaseException) for data in datas):
         raise datas[0]
     results: list[dict | None] = [None] * len(decoded)
+    served = frozenset(data.pop("_served", "") for data in datas if not isinstance(data, BaseException))
     for group, data in zip(groups, datas):
         if isinstance(data, BaseException):
             logger.warning("OCR nhóm %d tệp hỏng ở mọi máy: %r", len(group), data)
@@ -340,7 +342,7 @@ async def _post_groups(
         try:
             data = await _post([decoded[i] for i in failed], max_tokens, include_tokens=include_tokens,
                                timeout_s=timeout_s,  # gateway có thể còn bận phần bị bỏ dở ở lượt đầu
-                               prefer_fallback=True)
+                               avoid=served)  # máy vừa trả trang lỗi thử sau cùng
         except Exception as e:  # noqa: BLE001 - giữ kết quả lần đầu
             logger.warning("OCR gửi lại %d tệp lỗi: %r", len(failed), e)
             return results

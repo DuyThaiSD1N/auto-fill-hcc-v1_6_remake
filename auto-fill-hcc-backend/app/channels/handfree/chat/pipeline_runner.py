@@ -953,6 +953,11 @@ async def run_attach(conv_id: str, sid: str, procedure_key: str,
                 str(f.get("name") or "") for f in sess.get("files", [])
                 if f.get("doc_key") in owner_keys
             ]
+            # Ô căn cước chủ hồ sơ lúc upload có thể nhận cả tệp căn cước của người khác (giấy cần
+            # chứng thực) → kèm số định danh chủ hồ sơ trên trang để planner chỉ bỏ thẻ của đúng người.
+            owner_number = (((await conv_store.get(conv_id)) or {}).get("owner_context") or {}).get("identityNumber")
+            if owner_number:
+                attach_options["ownerIdentityNumbers"] = [str(owner_number)]
         # Tài khoản chủ phiên quyết các cấu hình theo xã (STT1 ảo Hải Châu, bỏ Tờ khai Nghĩa Hưng,
         # bỏ Tờ khai khai sinh Nghĩa Lộ, chỉ đính Giấy chứng sinh + tờ khai cư trú Song Liễu).
         with mon.span("pre.prepare"):

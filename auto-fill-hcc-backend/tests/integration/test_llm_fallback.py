@@ -1,4 +1,4 @@
-"""Khi LLM primary lỗi và có OPENAI_API_KEY → tự fallback sang OpenAI."""
+"""LLM chỉ chạy trên máy riêng (vLLM): hết máy thì ném lỗi, không gửi sang OpenAI dù có OPENAI_API_KEY."""
 import httpx
 import respx
 
@@ -7,24 +7,17 @@ from app.services.llm import client
 
 
 @respx.mock
-async def test_fallback_to_openai_when_primary_fails(monkeypatch):
-    # primary trả 500
+async def test_may_rieng_loi_thi_nem_loi_khong_sang_openai(monkeypatch):
     respx.post(settings.llm_base_url.rstrip("/") + "/v1/chat/completions").mock(
         return_value=httpx.Response(500, text="upstream down")
     )
     monkeypatch.setattr(settings, "openai_api_key", "sk-test")
-
-    called = {}
-
-    async def fake_openai(messages, temperature):
-        called["used"] = True
-        return '{"name": "FALLBACK"}'
-
-    monkeypatch.setattr(client, "_chat_openai", fake_openai)
-
-    out = await client.chat([{"role": "user", "content": "x"}])
-    assert called.get("used") is True
-    assert client.extract_json_block(out) == {"name": "FALLBACK"}
+    for fn in (client.chat, client.chat_text):
+        try:
+            await fn([{"role": "user", "content": "x"}])
+            assert False, "phải ném lỗi khi hết máy riêng"
+        except RuntimeError as e:
+            assert "500" in str(e)
 
 
 @respx.mock
@@ -46,34 +39,8 @@ async def test_primary_ok_no_fallback(monkeypatch):
         return_value=httpx.Response(200, json={"choices": [{"message": {"content": "```json\n{\"ok\":1}\n```"}}]})
     )
 
-    async def boom(*a, **k):
-        raise AssertionError("không được gọi fallback khi primary ok")
-
-    monkeypatch.setattr(client, "_chat_openai", boom)
     out = await client.chat([{"role": "user", "content": "x"}])
     assert client.extract_json_block(out) == {"ok": 1}
-
-
-@respx.mock
-async def test_text_chat_fallback_does_not_require_json(monkeypatch):
-    respx.post(settings.llm_base_url.rstrip("/") + "/v1/chat/completions").mock(
-        return_value=httpx.Response(500, text="upstream down")
-    )
-    monkeypatch.setattr(settings, "openai_api_key", "sk-test")
-
-    async def fake_openai_text(messages, temperature):
-        assert messages[0]["content"] == "phân vai"
-        assert temperature == 0
-        return "<nguoi_yeu_cau>...</nguoi_yeu_cau>"
-
-    monkeypatch.setattr(client, "_chat_openai_text", fake_openai_text)
-
-    out = await client.chat_text(
-        [{"role": "system", "content": "phân vai"}],
-        temperature=0,
-    )
-
-    assert out == "<nguoi_yeu_cau>...</nguoi_yeu_cau>"
 
 
 def test_extract_json_dong_not_ngoac_llm_bo_sot():

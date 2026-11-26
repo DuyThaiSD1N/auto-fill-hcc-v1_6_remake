@@ -55,9 +55,15 @@ def _khong_co_to_dan_pho(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def _ocr_khong_nho_may_loi_giua_cac_test():
-    """ocr_tiengnoi nhớ máy OCR vừa lỗi vài phút; không xoá thì test sau thấy thứ tự máy lệch."""
+    """Bộ chọn máy OCR / LLM nhớ máy vừa lỗi và tốc độ đo được; không xoá thì test sau thấy thứ tự máy lệch. Tắt tự
+    chia máy chính / phụ để test cũ giữ thứ tự cố định (chính trước) — test tự chia bật lại trong chính test đó."""
     from app.services import ocr_tiengnoi
+    from app.services.llm import client
 
-    ocr_tiengnoi._down_until.clear()
+    for pool in (ocr_tiengnoi.POOL, client.POOL):
+        pool.reset()
+        pool.balance = False
     yield
-    ocr_tiengnoi._down_until.clear()
+    for pool in (ocr_tiengnoi.POOL, client.POOL):
+        pool.reset()
+        pool.balance = True
