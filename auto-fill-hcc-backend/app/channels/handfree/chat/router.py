@@ -371,6 +371,8 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         flow.wallet_reuse.CAPABILITY: raw.get(flow.wallet_reuse.CAPABILITY) is True,
         # Ví cá nhân: đọc thêm tab "Tài liệu được cấp" + đính giấy lấy từ ví bằng nút "Chọn" của ví.
         flow.wallet_reuse.PICK_CAPABILITY: raw.get(flow.wallet_reuse.PICK_CAPABILITY) is True,
+        # Thẻ ví vẽ được danh sách giấy chưa ký số bị ẩn ở cuối mỗi mục.
+        flow.wallet_reuse.HIDDEN_CAPABILITY: raw.get(flow.wallet_reuse.HIDDEN_CAPABILITY) is True,
         # Wizard tư pháp: bấm nút Quay lại của cổng (guided_click_back), kiểm tờ khai khi lùi về Kê khai
         # (step_back_scan) — chat/step_back.py.
         step_back.CAPABILITY: raw.get(step_back.CAPABILITY) is True,

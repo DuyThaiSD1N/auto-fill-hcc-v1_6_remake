@@ -10,7 +10,7 @@ from datetime import date
 
 from app.config import settings
 from app.pipelines._shared.thanh_tra import engine
-from app.pipelines._shared.thanh_tra.ho_so import Case, Field, Finding, Inspector, Unit, alnum, fold, parse_date
+from app.pipelines._shared.thanh_tra.ho_so import Case, Field, Finding, Inspector, Unit, alnum, fold, locate, parse_date
 from app.services.llm import client
 
 from ..process.mapper import _COPY_NO_RE
@@ -44,9 +44,11 @@ Trang CHỨNG THỰC ("Số chứng thực: ... quyển số ... SCT", ngày ch�
   không phải quyển số.
 - Ngày đăng ký: dd/mm/yyyy. Trên tờ khai là ngày theo mẫu "ngày D tháng M năm Y" ngay trước "số ... Quyển số"
   trong mục "Đã đăng ký tại"; trên giấy hộ tịch là "Ngày, tháng, năm đăng ký" / "Ngày đăng ký" / ngày ở nơi ký.
-  Trên TRÍCH LỤC (BẢN SAO), dòng "<nơi>, ngày ... tháng ... năm ..." ở ĐẦU giấy cạnh "Số: .../TL..-BS" là ngày
-  cấp bản trích lục, KHÔNG phải ngày đăng ký; ngày đăng ký là ngày ở dòng "Số: ... ngày ... tháng ... năm ..."
-  trong thân giấy (mục đã đăng ký tại). KHÔNG lấy ngày sinh, ngày chết, ngày cấp thẻ, ngày chứng thực, ngày làm
+  TRÍCH LỤC: ngày đăng ký là ngày in CÙNG DÒNG với SỐ ĐĂNG KÝ của giấy ("Số: <N> ... ngày ... tháng ... năm ...").
+  Bản sao (số đầu giấy có "-BS") thì số đăng ký gốc ở dòng thân → ngày ở dòng thân; ngày đầu giấy cạnh số "-BS"
+  là ngày cấp bản sao. Số đầu giấy KHÔNG có "-BS" (vd "<N>/<năm>/TLKT"; "TLKT" / "TLKS" / "TLKH" chỉ là viết tắt
+  tên loại trích lục, không phải dấu bản sao) chính là số đăng ký → ngày cùng dòng đầu giấy là ngày đăng ký.
+  KHÔNG lấy ngày sinh, ngày chết ("Đã chết vào lúc ..."), ngày cấp giấy báo tử / thẻ, ngày chứng thực, ngày làm
   tờ khai. Thiếu ngày, tháng hoặc năm → null.
 </tung_muc>
 """
@@ -110,6 +112,8 @@ _CANDIDATE_LINE_RE = re.compile(
     r"\bso\b|quyen|ngay\s*\d|thang\s*\d|dang ky|uy ban nhan dan|ubnd|\btm\b|trich luc|khai sinh|ket hon|"
     r"khai tu|chung thuc|ban sao|to khai")
 _MAX_LINES = 60
+_DATE_ON_LINE_RE = re.compile(
+    r"\d{1,2}\s*[/.-]\s*\d{1,2}\s*[/.-]\s*\d{4}|ngay\s*\d{1,2}\D{0,12}thang\s*\d{1,2}\D{0,12}nam\s*\d{4}")
 _FIND_MAX_TOKENS = 500
 
 _FIND_SYSTEM = """<vai_tro>
@@ -201,8 +205,28 @@ def _code_basis(unit: Unit, ours, theirs, line: str) -> dict:
     return {}
 
 
+def _on_register_line(value, number: str, line: str) -> bool:
+    return number in alnum(line) and bool(locate(UNITS[3].fields[0], value, [{"text": line}]))
+
+
+def signals(unit: Unit, values: dict, case: Case) -> list[tuple[bool, str]]:
+    """Ngày đăng ký in cùng dòng với số đăng ký ("Số: <N> ... ngày ..."). Chỉ báo khi giấy CÓ dòng như vậy — giấy
+    ghi số và ngày ở hai dòng riêng thì không có tín hiệu."""
+    value = values.get("GiayTo_NgayDangKy")
+    number = alnum(case.values.get("GiayTo_So"))
+    if unit.key != "ngay_dang_ky" or not parse_date(value) or len(number) < 3:
+        return []
+    lines = [line for document in case.documents for line in str(document.get("text") or "").splitlines()
+             if number in alnum(line) and _DATE_ON_LINE_RE.search(fold(line))]
+    if not lines:
+        return []
+    if any(_on_register_line(value, number, line) for line in lines):
+        return [(True, "ngày in cùng dòng với số đăng ký của giấy")]
+    return [(False, "giấy có dòng in số đăng ký kèm ngày nhưng ngày này không nằm trên dòng đó")]
+
+
 _OWNERS = ("giấy hộ tịch cần cấp của người được cấp", "mục Đã đăng ký tại của tờ khai",
            "giấy hộ tịch khác loại hoặc của người khác", "trang chứng thực", "thẻ căn cước", "giấy khác")
 
-INSPECTOR = Inspector("ho_tich", "GIẤY HỘ TỊCH cần cấp bản sao", UNITS, RULES, check, owners=_OWNERS,
-                      accepted=_OWNERS[:2], find=find)
+INSPECTOR = Inspector("ho_tich", "GIẤY HỘ TỊCH cần cấp bản sao", UNITS, RULES, check, signals=signals,
+                      owners=_OWNERS, accepted=_OWNERS[:2], find=find)

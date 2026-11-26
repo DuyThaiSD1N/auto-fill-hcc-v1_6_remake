@@ -56,7 +56,9 @@ FIELDS: list[dict] = [
     {"name": "GiayTo_So", "desc": "Số đăng ký của sự kiện hộ tịch (dòng 'Số:' / 'Số đăng ký')."},
     {"name": "GiayTo_QuyenSo",
      "desc": "Quyển số đăng ký, CHỈ khi nhãn 'Quyển số' có giá trị thật ngay sau nhãn."},
-    {"name": "GiayTo_NgayDangKy", "desc": "Ngày đăng ký sự kiện hộ tịch, dd/mm/yyyy."},
+    {"name": "GiayTo_NgayDangKy",
+     "desc": "Ngày cơ quan ĐĂNG KÝ (ghi vào sổ) sự kiện hộ tịch, dd/mm/yyyy — KHÔNG phải ngày xảy ra sự kiện: "
+             "ngày sinh, ngày chết ('Đã chết vào lúc ...') không phải ngày đăng ký."},
     {"name": "SoLuongBanSao",
      "desc": "Số lượng bản sao yêu cầu, chỉ khi tờ khai/giấy ủy quyền ghi rõ; số nguyên dương."},
     {"name": "NguoiNop_SoDienThoai",

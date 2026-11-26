@@ -78,7 +78,10 @@ người nộp hoặc người đi khai.
     số" trong mục "Đã đăng ký tại" (ngày ghi kèm chữ khác như "Số chứng nhận ngày ..." không phải ngày đăng ký
     khi mẫu đã có ngày); trên giấy hộ tịch lấy "Ngày, tháng, năm đăng ký" / "Ngày đăng ký" / ngày ở nơi ký.
     TRÍCH LỤC (bản sao): ngày ở dòng thân cùng số đăng ký gốc; dòng "<nơi>, ngày ... tháng ... năm ..." ở đầu
-    giấy cạnh số "-BS" là ngày cấp bản trích lục, không phải ngày đăng ký.
+    giấy cạnh số "-BS" là ngày cấp bản trích lục, không phải ngày đăng ký. Trích lục KHÔNG mang số "-BS" và
+    không có dòng đăng ký gốc trong thân (trích lục cấp ngay khi đăng ký) → ngày ở dòng nơi ký cạnh số đăng
+    ký là ngày đăng ký. KHÔNG lấy ngày sinh, ngày chết, ngày cấp giấy báo tử / thẻ, ngày chứng thực, ngày làm
+    tờ khai.
     Đủ ngày-tháng-năm thì bắt buộc trả.
 14. Trang CHỨNG THỰC ("Số chứng thực: ... quyển số ... SCT", ngày chứng thực) là sổ chứng thực → KHÔNG
     lấy làm GiayTo_So / GiayTo_QuyenSo / GiayTo_NgayDangKy / GiayTo_CoQuanDangKy.
