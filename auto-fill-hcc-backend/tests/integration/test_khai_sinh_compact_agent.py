@@ -280,6 +280,9 @@ def test_mapper_only_emits_copy_quantity_when_present():
     }
     assert with_copy["CapBanSao"] == "1"
     assert with_copy["BanSaoSoLuong"] == "3"
+    comps = {field["name"]: field["comp"] for field in mapper.enrich(_fields({**base, "CopyRequest_Quantity": "3"}))}
+    # Ô AutoNumeric: "raw" để extension gõ đè từng phím; "text" gán thẳng .value → bấm vào ô là trống / về 0.
+    assert comps["BanSaoSoLuong"] == "raw"
 
 
 def test_mapper_routes_cil_cill_to_other_ethnicity_fields():

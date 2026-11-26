@@ -312,3 +312,33 @@ def test_registry_has_scoped_procedure_and_both_pipelines():
     assert procedure["detect"]["urlScope"] == ["dichvucong.ninhbinh.gov.vn"]
     assert callable(get_pipeline(key))
     assert callable(get_attach_pipeline(key))
+
+
+def test_tro_ly_chi_tai_khoan_ninh_binh_dung_pipeline_loi():
+    """26/11/2026: thủ tục đưa lên trợ lý người dân, cùng key với lõi, chỉ tài khoản Ninh Bình thấy."""
+    from app.channels.handfree import procedure_registry as handfree
+    from app.channels.handfree.chat.field_review import registry as field_review_registry
+    from app.channels.handfree.chat.procedure_picker.prompt import PROCEDURE_HINTS
+    from app.channels.handfree.chat.script_mong import PROCEDURE_HMONG
+    from app.procedures.ke_khai_links import KE_KHAI_LINKS
+
+    key = "dang-ky-bien-dong-dat-dai-ninh-binh"
+    procedure = handfree.get_procedure(key)
+    core = get_procedure(key)
+    link = next(link for link in KE_KHAI_LINKS if link["key"] == key)
+    assert "[Tỉnh Ninh Bình] " + procedure["label"] == core["label"] == link["label"]
+    assert "Ninh Bình" not in procedure["shortLabel"]
+    assert procedure["detect"] == core["detect"]
+    assert procedure["keKhaiUrl"] == link["url"] and link["code"] == "1.013831"
+    assert handfree.procedure_code(procedure) == "1.013831"
+    assert procedure["flowProfile"] == "xay-dung" and procedure["maePortal"] is True
+    assert procedure["bxdFlow"]["capability"] == "supportsBxdFlowNinhBinh"
+    assert procedure["agencyProvince"] == "Ninh Bình"
+    assert procedure["agencyProvinceOnly"] is True and link["provinceOnlyAgency"] is True
+    assert field_review_registry.get(key)["required"] == ()
+    assert "district" not in field_review_registry.get(key)["noAsk"]
+    assert handfree.is_allowed_in_province(procedure, "ninhbinh")
+    assert not handfree.is_allowed_in_province(procedure, "khanhhoa")
+    assert handfree.get_pipeline(key) is get_pipeline(key)
+    assert handfree.get_attach_pipeline(key) is get_attach_pipeline(key)
+    assert PROCEDURE_HMONG[key] and PROCEDURE_HINTS[key]

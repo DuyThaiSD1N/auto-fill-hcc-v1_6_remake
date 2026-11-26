@@ -353,6 +353,8 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         "supportsBxdFlowKhanhHoa": raw.get("supportsBxdFlowKhanhHoa") is True,
         # Cổng tỉnh iGate Lâm Đồng (dichvucong.lamdong.gov.vn) — cùng luồng 4 bước như Khánh Hòa.
         "supportsBxdFlowLamDong": raw.get("supportsBxdFlowLamDong") is True,
+        # Cổng tỉnh iGate Ninh Bình (dichvucong.ninhbinh.gov.vn) — cùng luồng 4 bước như Lâm Đồng.
+        "supportsBxdFlowNinhBinh": raw.get("supportsBxdFlowNinhBinh") is True,
         # Cổng Bắc Ninh (chat/bac_ninh.py): báo tab đang mở (bnTab), chuyển tab bằng hàm của cổng, bổ sung ô trên
         # tab Chọn cơ quan tiếp nhận / Nhập đơn đăng ký, chọn nơi nhận kết quả, bấm Nộp hồ sơ.
         "supportsBacNinhTabFlow": raw.get("supportsBacNinhTabFlow") is True,

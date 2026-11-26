@@ -52,6 +52,12 @@ _LD_BXD_FLOW = {
     "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
     "capability": "supportsBxdFlowLamDong",
 }
+# Cổng iGate Ninh Bình (dichvucong.ninhbinh.gov.vn, Form.io apply-online): cùng nền stepper 4 bước như Lâm Đồng / Khánh
+# Hòa; cờ riêng vì bản extension cũ chưa đọc hộp thoại chọn trường hợp / chưa chạy content/bxd/*.js trên host này.
+_NB_BXD_FLOW = {
+    "resultGroups": [{"name": "receivingKind", "label": "Hình thức nhận kết quả"}],
+    "capability": "supportsBxdFlowNinhBinh",
+}
 
 # Cổng Lai Châu (dichvucong.laichau.gov.vn, eForm Nth, mỗi bước một trang "Bước N - …"; chat/lai_chau.py, extension
 # content/laichau/portal.js, cờ supportsLaiChauFeeStep): trang "Trường hợp nộp hồ sơ" đọc / chọn caseGroups, nút cam
@@ -9718,6 +9724,307 @@ PROCEDURES: list[dict] = [
             "vào dòng này."
         ),
     },
+    # ── Thủ tục đất đai cổng iGate Ninh Bình (26/11/2026) ──
+    # Key TRÙNG lõi → process/attach tự nối; detect y hệt lõi (urlScope dichvucong.ninhbinh.gov.vn — URL SPA không mang
+    # mã, tên thủ tục trùng bản tỉnh khác); label = label lõi bỏ "[Tỉnh Ninh Bình] ". "Nộp trực tuyến" sang cổng iGate
+    # tỉnh (nền Form.io như Lâm Đồng) → luồng chung "xay-dung" + bxdFlow như Khánh Hòa / Lâm Đồng. Cách chọn cơ quan ở
+    # DVCQG chép theo bản Khánh Hòa cùng mã: 1.013978 / 1.013949 / 1.012796 (UBND phường/xã) chọn đủ Tỉnh + Xã; 1.012783
+    # / 1.013831 / 1.012790 (Chi nhánh VPĐK) chỉ chọn Tỉnh (ke_khai_links provinceOnlyAgency), chưa có bảng thẻ chi nhánh
+    # theo xã → bấm thẻ đầu, Đơn vị thực hiện trên cổng tỉnh thì hỏi công dân. Hộp thoại / stepper / thẻ cơ quan SUY theo
+    # nền iGate, CHƯA chạy thử trên cổng Ninh Bình thật. Planner lõi đính nguyên tệp (không cắt trang) → không khai
+    # supportsSplitDocuments.
+    {
+        "key": "dang-ky-dat-dai-lan-dau-ninh-binh",
+        "provinceOnly": ["ninhbinh"],  # bản riêng Ninh Bình (key/label mang tên tỉnh): chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.013978. Bảng đính kèm 20 dòng, không có dòng CCCD / "Giấy tờ khác" → CCCD đi chung dòng Đơn (20).
+        "detect": {
+            "urlScope": ["dichvucong.ninhbinh.gov.vn"],
+            "textIncludes": [
+                "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, "
+                "quyền sở hữu tài sản gắn liền với đất lần đầu"
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản "
+            "gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước "
+            "ngoài"
+        ),
+        "shortLabel": "Đăng ký đất đai, cấp Giấy chứng nhận quyền sử dụng đất lần đầu",
+        "subtitle": "Kê khai đăng ký đất đai và xin cấp Giấy chứng nhận quyền sử dụng đất lần đầu tại Ninh Bình",
+        "icon": "📜",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8678-770b-8917-1872078767cd",
+        "flowProfile": "xay-dung",
+        "agencyProvince": "Ninh Bình",
+        "bxdFlow": _NB_BXD_FLOW,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký đất đai, tài sản gắn liền với đất (Mẫu số 15) — đã kê khai, ký",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "nguon_goc", "name": "Giấy tờ về quyền sử dụng đất theo Điều 137 hoặc giấy tờ nhận thừa kế quyền sử "
+             "dụng đất", "icon": "📑", "sides": 1, "repeatable": True},
+            {"key": "trich_do", "name": "Mảnh trích đo bản đồ địa chính thửa đất (nếu có)", "icon": "📐", "sides": 1,
+             "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người sử dụng đất", "icon": "🪪", "sides": 2,
+             "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Văn bản thỏa thuận cấp chung / danh sách người cùng sử dụng, chứng từ nghĩa vụ tài "
+             "chính, văn bản ủy quyền (nếu có)", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký đất đai, tài sản gắn liền với đất (Mẫu số 15) đã kê khai, ký — nguồn chính điền người nộp, "
+            "chủ hồ sơ, địa chỉ.\n"
+            "2. Giấy tờ về quyền sử dụng đất theo Điều 137 hoặc giấy tờ nhận thừa kế quyền sử dụng đất.\n"
+            "3. Mảnh trích đo bản đồ địa chính thửa đất (nếu có).\n"
+            "4. Nhiều người chung quyền: văn bản thỏa thuận cấp chung một Giấy chứng nhận hoặc danh sách người cùng sử "
+            "dụng; chứng từ thực hiện nghĩa vụ tài chính (nếu có); nếu nộp thay: văn bản ủy quyền.\n"
+            "5. Căn cước công dân của người sử dụng đất.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: mỗi tệp đính nguyên khối vào dòng của giấy chính trong tệp; Đơn và căn cước → dòng 20 (cổng "
+            "không có dòng căn cước riêng)."
+        ),
+    },
+    {
+        "key": "giao-thue-chuyen-muc-dich-dat-ninh-binh",
+        "provinceOnly": ["ninhbinh"],  # bản riêng Ninh Bình (key/label mang tên tỉnh): chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.013949. Bảng đính kèm 16 dòng, không có dòng CCCD / "Giấy tờ khác" → CCCD và giấy lẻ đi chung dòng Đơn
+        # (Mẫu 04 khi hồ sơ chỉ có Mẫu 04, còn lại Mẫu 01).
+        "detect": {
+            "urlScope": ["dichvucong.ninhbinh.gov.vn"],
+            "textIncludes": [
+                "Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất",
+                "gia hạn sử dụng đất khi hết thời hạn sử dụng đất",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất không đấu "
+            "giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; trường hợp giao "
+            "đất, cho thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; giao đất và giao "
+            "rừng; cho thuê đất và cho thuê rừng, gia hạn sử dụng đất khi hết thời hạn sử dụng đất"
+        ),
+        "shortLabel": "Giao đất, cho thuê đất, chuyển mục đích sử dụng đất",
+        "subtitle": "Xin giao đất, thuê đất, chuyển mục đích hoặc gia hạn sử dụng đất tại Ninh Bình",
+        "icon": "🏞️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-867b-703e-a311-18fc1df76fc8",
+        "flowProfile": "xay-dung",
+        "agencyProvince": "Ninh Bình",
+        "bxdFlow": _NB_BXD_FLOW,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị giao đất, cho thuê đất, chuyển mục đích sử dụng đất (Mẫu số 01) hoặc Đơn "
+             "gia hạn (Mẫu số 04) — đã kê khai, ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận quyền sử dụng đất / quyết định giao, cho thuê, chuyển mục đích đất",
+             "icon": "📜", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đề nghị (nếu có)", "icon": "🪪", "sides": 2,
+             "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Văn bản ủy quyền (nếu nộp thay), phương án sử dụng tầng đất mặt (Mẫu số 26), giấy "
+             "tờ dự án (nếu có)", "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn theo Mẫu số 01 (giao đất, thuê đất, chuyển mục đích) hoặc Mẫu số 04 (gia hạn) đã kê khai, ký — nguồn "
+            "chính điền người đề nghị, địa chỉ, nội dung yêu cầu.\n"
+            "2. Giấy chứng nhận quyền sử dụng đất / quyết định giao, cho thuê hoặc chuyển mục đích đất.\n"
+            "3. Căn cước công dân của người đề nghị (nếu có); nếu nộp thay: văn bản ủy quyền.\n"
+            "4. Nếu có: phương án sử dụng tầng đất mặt (Mẫu số 26), giấy tờ dự án đầu tư, kết quả đấu giá thuê rừng.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: mỗi tệp vào dòng của giấy chính trong tệp; căn cước và giấy không có dòng riêng đính chung "
+            "dòng Đơn (Mẫu 04 khi hồ sơ chỉ có Mẫu 04, còn lại Mẫu 01)."
+        ),
+    },
+    {
+        "key": "cap-doi-gcn-ninh-binh",
+        "provinceOnly": ["ninhbinh"],  # bản riêng Ninh Bình (key/label mang tên tỉnh): chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.012783. Bảng đính kèm 2 dòng: mảnh trích đo → dòng 1, Đơn Mẫu 11/ĐK + GCN + ủy quyền + CCCD → dòng 2.
+        "detect": {
+            "urlScope": ["dichvucong.ninhbinh.gov.vn"],
+            "textIncludes": [
+                "Cấp đổi Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất"
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Cấp đổi Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất",
+        "shortLabel": "Cấp đổi Giấy chứng nhận quyền sử dụng đất",
+        "subtitle": "Đổi Giấy chứng nhận quyền sử dụng đất cũ, rách, hư hỏng sang Giấy chứng nhận mới tại Ninh Bình",
+        "icon": "🔄",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-6f3b-7238-9e41-307101b01795",
+        "flowProfile": "xay-dung",
+        "agencyProvinceOnly": True,
+        "agencyProvince": "Ninh Bình",
+        "bxdFlow": _NB_BXD_FLOW,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 11/ĐK) — đã kê khai, "
+             "ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận đã cấp cần cấp đổi (đủ các trang)", "icon": "📜", "sides": 1,
+             "repeatable": True},
+            {"key": "trich_do", "name": "Mảnh trích đo bản đồ địa chính / phiếu đo đạc chỉnh lý thửa đất (nếu có)",
+             "icon": "📐", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người sử dụng đất (nếu có)", "icon": "🪪", "sides": 2,
+             "optional": True, "repeatable": True},
+            {"key": "uy_quyen", "name": "Văn bản ủy quyền (nếu nộp thay)", "icon": "✍️", "sides": 1, "optional": True,
+             "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 11/ĐK) đã kê khai, ký — người sử dụng "
+            "đất, số căn cước, địa chỉ, điện thoại.\n"
+            "2. Giấy chứng nhận đã cấp cần cấp đổi.\n"
+            "3. Mảnh trích đo bản đồ địa chính thửa đất / phiếu đo đạc chỉnh lý (nếu có).\n"
+            "4. Căn cước công dân (nếu có); nếu nộp thay: văn bản ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm (cổng chỉ có 2 dòng): mảnh trích đo → dòng 1; Đơn, Giấy chứng nhận, văn bản ủy quyền, căn "
+            "cước → dòng 2."
+        ),
+    },
+    {
+        "key": "dang-ky-bien-dong-dat-dai-ninh-binh",
+        "provinceOnly": ["ninhbinh"],  # bản riêng Ninh Bình (key/label mang tên tỉnh): chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.013831. Bảng đính kèm 13 dòng; CCCD, tờ khai thuế, giấy tờ hộ tịch đính chung dòng Đơn Mẫu 18.
+        "detect": {
+            "urlScope": ["dichvucong.ninhbinh.gov.vn"],
+            "textIncludes": [
+                "Đăng ký biến động quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất trong các "
+                "trường hợp chuyển đổi"
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Đăng ký biến động quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất trong các trường hợp chuyển đổi "
+            "quyền sử dụng đất nông nghiệp mà không theo phương án dồn điền, đổi thửa; chuyển nhượng, thừa kế, tặng cho "
+            "quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất; góp vốn bằng quyền sử dụng đất, quyền sở hữu tài "
+            "sản gắn liền với đất; cho thuê, cho thuê lại quyền sử dụng đất trong dự án xây dựng kinh doanh kết cấu hạ "
+            "tầng; bán hoặc tặng cho hoặc để thừa kế hoặc góp vốn bằng tài sản gắn liền với đất thuê của Nhà nước theo "
+            "hình thức thuê đất trả tiền hàng năm"
+        ),
+        "shortLabel": "Đăng ký biến động chuyển nhượng, thừa kế, tặng cho quyền sử dụng đất",
+        "subtitle": "Đăng ký sang tên khi nhận chuyển nhượng, tặng cho, thừa kế quyền sử dụng đất tại Ninh Bình",
+        "icon": "🤝",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-7ece-728d-9b60-6563e0a7a94e",
+        "flowProfile": "xay-dung",
+        "agencyProvinceOnly": True,
+        "agencyProvince": "Ninh Bình",
+        "bxdFlow": _NB_BXD_FLOW,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18) — đã kê khai, "
+             "ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Bản gốc Giấy chứng nhận đã cấp (đủ các trang)", "icon": "📜", "sides": 1,
+             "repeatable": True},
+            {"key": "hop_dong", "name": "Hợp đồng / văn bản chuyển quyền (chuyển đổi, chuyển nhượng, thừa kế, tặng cho, "
+             "góp vốn)", "icon": "📑", "sides": 1, "repeatable": True},
+            {"key": "to_khai", "name": "Tờ khai thuế thu nhập cá nhân, lệ phí trước bạ; giấy tờ hộ tịch nếu thuộc diện "
+             "miễn, giảm", "icon": "🧾", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của các bên (nếu có)", "icon": "🪪", "sides": 2,
+             "optional": True, "repeatable": True},
+            {"key": "uy_quyen", "name": "Văn bản ủy quyền (nếu nộp thay)", "icon": "✍️", "sides": 1, "optional": True,
+             "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18) đã kê khai, ký.\n"
+            "2. Bản gốc Giấy chứng nhận đã cấp.\n"
+            "3. Hợp đồng / văn bản chuyển quyền sử dụng đất (chuyển đổi, chuyển nhượng, thừa kế, tặng cho, góp vốn).\n"
+            "4. Tờ khai thuế, lệ phí (thuế thu nhập cá nhân, lệ phí trước bạ) và giấy tờ hộ tịch chứng minh quan hệ "
+            "(khai sinh, kết hôn) nếu thuộc diện miễn, giảm.\n"
+            "5. Căn cước công dân của các bên; nếu nộp thay: văn bản ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: văn bản ủy quyền → dòng 1, Giấy chứng nhận → dòng 2, hợp đồng chuyển quyền → dòng 5, Đơn "
+            "Mẫu 18 → dòng 11; căn cước, tờ khai thuế, giấy tờ hộ tịch đính chung dòng Đơn."
+        ),
+    },
+    {
+        "key": "dinh-chinh-da-cap-ninh-binh",
+        "provinceOnly": ["ninhbinh"],  # bản riêng Ninh Bình (key/label mang tên tỉnh): chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.012790. Tiêu đề NGẮN hơn bản "…lần đầu có sai sót" ngay dưới: trên trang sai sót entry dưới (chuỗi
+        # dài) khớp và thắng, như lõi. Bảng đính kèm 4 dòng: GCN → 1, giấy chứng minh → 2, ủy quyền → 3, Đơn + CCCD → 4.
+        "detect": {
+            "urlScope": ["dichvucong.ninhbinh.gov.vn"],
+            "textIncludes": ["Đính chính Giấy chứng nhận đã cấp"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Đính chính Giấy chứng nhận đã cấp",
+        "shortLabel": "Đính chính Giấy chứng nhận đã cấp",
+        "subtitle": "Sửa thông tin ghi sai hoặc đã thay đổi (tên, số giấy tờ, địa chỉ, thửa đất) trên Giấy chứng nhận đã "
+        "cấp tại Ninh Bình",
+        "icon": "✏️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76cb-741b-996e-2fec707cd623",
+        "flowProfile": "xay-dung",
+        "agencyProvinceOnly": True,
+        "agencyProvince": "Ninh Bình",
+        "bxdFlow": _NB_BXD_FLOW,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 11/ĐK) — ghi nội dung "
+             "đính chính, đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Bản gốc Giấy chứng nhận đã cấp cần đính chính (đủ các trang)", "icon": "📜",
+             "sides": 1, "repeatable": True},
+            {"key": "chung_minh", "name": "Giấy tờ chứng minh thông tin đúng (giấy khai sinh, trích lục, quyết định, giấy "
+             "xác nhận…)", "icon": "📑", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người sử dụng đất", "icon": "🪪", "sides": 2,
+             "optional": True, "repeatable": True},
+            {"key": "uy_quyen", "name": "Văn bản ủy quyền (nếu nộp thay)", "icon": "✍️", "sides": 1, "optional": True,
+             "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 11/ĐK) đã ký — người sử dụng đất, số căn "
+            "cước, địa chỉ, nội dung đính chính.\n"
+            "2. Bản gốc Giấy chứng nhận đã cấp cần đính chính.\n"
+            "3. Giấy tờ chứng minh thông tin đúng: giấy khai sinh, trích lục, quyết định, giấy xác nhận hoặc hồ sơ địa "
+            "chính liên quan.\n"
+            "4. Căn cước công dân của người sử dụng đất; nếu nộp thay: văn bản ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: Giấy chứng nhận → dòng 1, giấy chứng minh → dòng 2, văn bản ủy quyền → dòng 3, Đơn và căn "
+            "cước → dòng 4."
+        ),
+    },
+    {
+        "key": "dinh-chinh-gcn-da-cap-ninh-binh",
+        "provinceOnly": ["ninhbinh"],  # bản riêng Ninh Bình (key/label mang tên tỉnh): chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.012796 (UBND phường/xã). Bảng đính kèm 4 dòng: Đơn Mẫu 18 + CCCD → 1, ủy quyền → 2, giấy chứng minh sai
+        # sót → 3, bản gốc GCN → 4.
+        "detect": {
+            "urlScope": ["dichvucong.ninhbinh.gov.vn"],
+            "textIncludes": ["Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
+        "shortLabel": "Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
+        "subtitle": "Sửa thông tin ghi sai ngay từ khi cấp (năm sinh, tên, số giấy tờ, thửa đất) trên Giấy chứng nhận "
+        "tại Ninh Bình",
+        "icon": "✏️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76cb-741b-996e-33d1ef50be50",
+        "flowProfile": "xay-dung",
+        "agencyProvince": "Ninh Bình",
+        "bxdFlow": _NB_BXD_FLOW,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18) — ghi nội dung "
+             "đính chính, đã ký", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Bản gốc Giấy chứng nhận đã cấp cần đính chính (đủ các trang)", "icon": "📜",
+             "sides": 1, "repeatable": True},
+            {"key": "chung_minh", "name": "Giấy tờ chứng minh sai sót (giấy khai sinh, trích lục, quyết định, giấy xác "
+             "nhận…)", "icon": "📑", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người sử dụng đất", "icon": "🪪", "sides": 2,
+             "optional": True, "repeatable": True},
+            {"key": "uy_quyen", "name": "Văn bản ủy quyền (nếu nộp thay)", "icon": "✍️", "sides": 1, "optional": True,
+             "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai, tài sản gắn liền với đất (Mẫu số 18) đã ký — người sử dụng đất, số căn "
+            "cước, địa chỉ, nội dung đính chính.\n"
+            "2. Bản gốc Giấy chứng nhận đã cấp cần đính chính.\n"
+            "3. Giấy tờ chứng minh sai sót: giấy khai sinh, trích lục, quyết định, giấy xác nhận hoặc hồ sơ địa chính "
+            "liên quan.\n"
+            "4. Căn cước công dân của người sử dụng đất; nếu nộp thay: văn bản ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: Đơn và căn cước → dòng 1, văn bản ủy quyền → dòng 2, giấy chứng minh sai sót → dòng 3, Giấy "
+            "chứng nhận → dòng 4."
+        ),
+    },
     {
         "key": "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa",
         "provinceOnly": ["khanhhoa"],  # bản riêng Khánh Hòa (key/label mang tên tỉnh): chỉ account tỉnh này thấy + gọi được
@@ -12350,6 +12657,14 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "giao-thue-dat-giao-rung-gia-han-su-dung-dat": frozenset({"lamdong"}),
     # 19/11/2026: 1.115148 bản Lâm Đồng, provinceOnly ["lamdong"] → chỉ mở cho Lâm Đồng như các thủ tục trên.
     "tinh-tien-su-dung-dat-nd-50-2026-lam-dong": frozenset({"lamdong"}),
+    # 26/11/2026: 6 thủ tục đất đai bản riêng Ninh Bình ("[Tỉnh Ninh Bình] …"), provinceOnly ["ninhbinh"] → chỉ mở cho Ninh
+    # Bình (người dùng yêu cầu "các thủ tục đất đai ở Ninh Bình").
+    "dang-ky-dat-dai-lan-dau-ninh-binh": frozenset({"ninhbinh"}),
+    "giao-thue-chuyen-muc-dich-dat-ninh-binh": frozenset({"ninhbinh"}),
+    "cap-doi-gcn-ninh-binh": frozenset({"ninhbinh"}),
+    "dang-ky-bien-dong-dat-dai-ninh-binh": frozenset({"ninhbinh"}),
+    "dinh-chinh-da-cap-ninh-binh": frozenset({"ninhbinh"}),
+    "dinh-chinh-gcn-da-cap-ninh-binh": frozenset({"ninhbinh"}),
     # 24/11/2026: 1.115148 bản Khánh Hòa ("Khánh Hòa - …"), người dùng giới hạn chỉ tài khoản Khánh Hòa.
     "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa": frozenset({"khanhhoa"}),
     "thong-bao-san-pham-quang-cao-bang-ron": _TAT_CA,

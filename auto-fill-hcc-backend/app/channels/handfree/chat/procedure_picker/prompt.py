@@ -654,6 +654,31 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "sổ đỏ ghi sai năm sinh so với giấy khai sinh", "sổ đỏ cấp lần đầu bị ghi sai thông tin",
         "đính chính giấy chứng nhận đã cấp lần đầu có sai sót", "sửa năm sinh trên sổ đỏ cho đúng căn cước",
         "sổ đỏ in sai tên người sử dụng đất", "đính chính sổ đỏ ghi sai ở khánh hòa"],
+    # 6 bản Ninh Bình (provinceOnly) cùng nghiệp vụ với 6 thẻ Khánh Hòa ngay trên — một tài khoản không thấy cả hai bản.
+    # Phân biệt như bản Khánh Hòa: lần đầu = CHƯA có sổ; cấp đổi = giữ chủ, đổi sổ mới; biến động = SANG TÊN người khác;
+    # đính chính đã cấp (1.012790) = thông tin đã THAY ĐỔI sau khi cấp; đính chính lần đầu sai sót (1.012796) = sổ ghi
+    # SAI ngay từ lúc cấp lần đầu; giao/thuê đất = xin giao, thuê, chuyển mục đích hoặc gia hạn đất.
+    "dang-ky-dat-dai-lan-dau-ninh-binh": ["làm sổ đỏ lần đầu", "đất chưa có sổ đỏ muốn xin cấp sổ",
+                                          "cấp giấy chứng nhận quyền sử dụng đất lần đầu",
+                                          "đăng ký đất đai lần đầu", "cấp sổ đỏ lần đầu ở ninh bình"],
+    "giao-thue-chuyen-muc-dich-dat-ninh-binh": ["xin chuyển đất vườn sang đất ở", "chuyển mục đích sử dụng đất",
+                                                "xin giao đất, thuê đất", "gia hạn sử dụng đất hết thời hạn",
+                                                "chuyển mục đích sử dụng đất ở ninh bình"],
+    "cap-doi-gcn-ninh-binh": ["cấp đổi sổ đỏ", "đổi sổ đỏ cũ sang sổ mới", "sổ đỏ bị rách, nhòe, hư hỏng",
+                              "đổi lại sổ mới", "cấp đổi giấy chứng nhận quyền sử dụng đất",
+                              "cấp đổi sổ đỏ ở ninh bình"],
+    "dang-ky-bien-dong-dat-dai-ninh-binh": [
+        "sang tên sổ đỏ khi mua bán đất", "chuyển nhượng quyền sử dụng đất", "nhận thừa kế đất đai",
+        "bố mẹ tặng cho đất cho con", "góp vốn bằng quyền sử dụng đất",
+        "đăng ký biến động chuyển nhượng, thừa kế, tặng cho ở ninh bình"],
+    "dinh-chinh-da-cap-ninh-binh": [
+        "đính chính giấy chứng nhận đã cấp", "sửa thông tin sai trên sổ đỏ",
+        "cập nhật số căn cước thay chứng minh thư trên sổ đỏ", "sổ đỏ ghi địa chỉ cũ trước sắp xếp",
+        "đính chính sổ đỏ ở ninh bình"],
+    "dinh-chinh-gcn-da-cap-ninh-binh": [
+        "sổ đỏ ghi sai năm sinh so với giấy khai sinh", "sổ đỏ cấp lần đầu bị ghi sai thông tin",
+        "đính chính giấy chứng nhận đã cấp lần đầu có sai sót", "sổ đỏ in sai tên người sử dụng đất",
+        "đính chính sổ đỏ ghi sai ở ninh bình"],
     # Bản Lâm Đồng (provinceOnly): đất CHƯA có sổ, xin cấp lần đầu — KHÁC thẻ diện tích tăng thêm ngay dưới (đã có sổ,
     # chỉ xin cấp cho phần đất tăng thêm do ranh giới thay đổi).
     "dang-ky-dat-dai-lan-dau-lam-dong": ["làm sổ đỏ lần đầu", "đất chưa có sổ đỏ muốn xin cấp sổ",

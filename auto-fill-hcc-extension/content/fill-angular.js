@@ -393,6 +393,40 @@ async function fillNgSelectByKnownLabel(f) {
   return ok;
 }
 
+// Gõ đè chuỗi vào ô như người gõ: chọn hết nội dung cũ rồi phát keydown/keypress/keyup từng ký tự.
+// Thư viện định dạng số (AutoNumeric) tự chèn ký tự ở keypress và preventDefault; ô thường không chặn thì
+// tự chèn vào vùng chọn + phát input như trình duyệt. Cuối cùng change + blur để Angular chốt giá trị.
+function typeKeysReplacing(input, text) {
+  const key = (type, ch) => {
+    const code = ch.length === 1 ? ch.charCodeAt(0) : 0;
+    const ev = new KeyboardEvent(type, { bubbles: true, cancelable: true, key: ch });
+    if (code) {
+      for (const prop of ["keyCode", "which", "charCode"]) Object.defineProperty(ev, prop, { get: () => (prop === "charCode" && type !== "keypress" ? 0 : code) });
+    }
+    input.dispatchEvent(ev);
+    return ev;
+  };
+  const valueSetter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), "value")?.set;
+  const writeValue = (v) => (valueSetter ? valueSetter.call(input, v) : (input.value = v));
+  if (typeof input.focus === "function") input.focus();
+  try { input.setSelectionRange(0, String(input.value || "").length); } catch {}
+  for (const ch of String(text)) {
+    const down = key("keydown", ch);
+    const press = key("keypress", ch);
+    if (!down.defaultPrevented && !press.defaultPrevented) {
+      let start = String(input.value || "").length, end = start;
+      try { start = input.selectionStart ?? start; end = input.selectionEnd ?? end; } catch {}
+      const cur = String(input.value || "");
+      writeValue(cur.slice(0, start) + ch + cur.slice(end));
+      try { input.setSelectionRange(start + 1, start + 1); } catch {}
+      input.dispatchEvent(new InputEvent("input", { bubbles: true, data: ch, inputType: "insertText" }));
+    }
+    key("keyup", ch);
+  }
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+  input.dispatchEvent(new Event("blur", { bubbles: true }));
+}
+
 // raw (Angular): điền input trần theo formcontrolname; nếu không có thì fallback theo placeholder
 // (vd "Số lượng" có hậu tố "Bản"). Tô viền vàng khi là giá trị mặc định (f.default).
 async function fillRawNumberAngular(f) {
@@ -416,15 +450,18 @@ async function fillRawNumberAngular(f) {
 
   let input = findInput();
   if (!input) return false;
-  const want = String(f.value);
-  // input-type-number là component custom + app có "resset" async → set kiểu gõ phím và
-  // VERIFY-RETRY: nếu Angular vẫn coi rỗng (hoặc bị reset lại) thì gõ lại vài lần.
-  for (let attempt = 0; attempt < 4; attempt++) {
+  const want = String(f.value).trim();
+  const digits = (i) => String(i.value || "").replace(/\D/g, "");
+  // input-type-number của cổng gắn AutoNumeric: thư viện giữ giá trị riêng và chỉ đẩy vào formControl
+  // qua getNumber(). Gán thẳng .value thì bấm vào/rời ô là AutoNumeric định dạng lại từ giá trị cũ → ô
+  // trống hoặc về 0; gõ đè cả chuỗi nhiều lượt thì số bị đúp ("33"). Gõ đè (chọn hết rồi gõ từng phím)
+  // để AutoNumeric tự chèn chữ số; ô thường (không chặn keypress) thì tự chèn ký tự. Sai thì gõ đè lại.
+  for (let attempt = 0; attempt < 3; attempt++) {
     input = findInput() || input;
-    if (typeof input.focus === "function") input.focus();
-    setNativeValue(input, want, { typing: true, commit: true });
+    typeKeysReplacing(input, want);
     await sleep(130);
-    if (!isEmpty(input) && String(input.value || "").trim() === want) break;
+    input = findInput() || input;
+    if (!isEmpty(input) && digits(input) === want.replace(/\D/g, "")) break;
   }
   const box = input.closest("mat-form-field") || input;
   markFilled(box);

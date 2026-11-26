@@ -99,6 +99,13 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát — chép thẻ đính chính GCN đã cấp Bắc Ninh ("kho daim ntawv av"), đổi tên tỉnh.
     "dinh-chinh-gcn-da-cap-khanh-hoa": "Kho daim ntawv av (Khánh Hòa)",
     "dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa": "Kho daim ntawv av sau yuam kev (Khánh Hòa)",
+    # BẢN NHÁP chờ anh Dư soát — chép 6 thẻ đất đai Khánh Hòa cùng nghiệp vụ ngay trên, đổi tên tỉnh (26/11/2026).
+    "dang-ky-dat-dai-lan-dau-ninh-binh": "Cuv npe av, muab daim ntawv av thawj zaug (Ninh Bình)",
+    "giao-thue-chuyen-muc-dich-dat-ninh-binh": "Hloov daim av (Ninh Bình)",
+    "cap-doi-gcn-ninh-binh": "Pauv daim ntawv av tshiab (Ninh Bình)",
+    "dang-ky-bien-dong-dat-dai-ninh-binh": "Cuv npe hloov daim av, muag daim av (Ninh Bình)",
+    "dinh-chinh-da-cap-ninh-binh": "Kho daim ntawv av (Ninh Bình)",
+    "dinh-chinh-gcn-da-cap-ninh-binh": "Kho daim ntawv av sau yuam kev (Ninh Bình)",
     # BẢN NHÁP ghép từ chữ đã có của hai thẻ Khánh Hòa ngay trên + "kho" (sửa) — chờ anh Dư soát.
     "dang-ky-dat-dai-lan-dau-tuyen-quang": "Cuv npe av, muab daim ntawv av thawj zaug (Tuyên Quang)",
     "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang": "Kho daim ntawv av sau yuam kev (Tuyên Quang)",

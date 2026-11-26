@@ -22,6 +22,18 @@ def test_dia_chi_hai_cap_co_xa_hien_hanh_thi_giu_ten_tren_giay():
     assert mapper._area(old)["xa"] == mapper.remap_area({"quocGia": "Việt Nam", "tinh": "TQ", "xa": "Tân Tiến", "diaChi": ""})["xa"]
 
 
+def test_dia_chi_ba_cap_dung_huyen_tren_dong_tach_go_ten_xa_trung():
+    # "Vạn Thắng" vừa là phường cũ của TP Nha Trang (đã vào Phường Nha Trang) vừa là xã hiện hành ở Vạn Ninh.
+    area = {"_tach": "chi tiết: Số 1 Đường A | xã: Vạn Thắng | huyện (bỏ): Nha Trang | tỉnh: Khánh Hòa",
+            "quocGia": "Việt Nam", "tinh": "Khánh Hòa", "xa": "Vạn Thắng", "diaChi": "Số 1 Đường A"}
+    out = mapper._area(area)
+    assert out["xa"] == "Phường Nha Trang"
+    assert "huyen" not in out
+    assert mapper._area({**area, "_tach": area["_tach"].replace("Nha Trang", "Vạn Ninh")})["xa"] == "Xã Vạn Thắng"
+    # Hai cấp (không ghi huyện): xã hiện hành giữ nguyên.
+    assert mapper._area({**area, "_tach": "chi tiết: — | xã: Vạn Thắng | huyện (bỏ): — | tỉnh: Khánh Hòa"})["xa"] == "Xã Vạn Thắng"
+
+
 def test_noi_cap_viet_tat_tren_to_khai_ra_ten_co_quan_day_du():
     fields = [{"name": "ToKhaiNu_HoTen", "value": "LÊ THỊ HANH"}, {"name": "ToKhaiNu_SoDinhDanh", "value": "001185000007"},
               {"name": "ToKhaiNu_NoiCap", "value": "Cục CS QLHC về TTXH"}]

@@ -3,6 +3,23 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.30.1",
+    date: "26/11/2026",
+    items: [
+      "Khai sinh liên thông: ô Số lượng bản sao gõ từng chữ số như người dùng nên cổng giữ đúng số, không còn trống, về 0 hay bị đúp số khi bấm vào ô.",
+      "Kết hôn: địa chỉ ghi đủ xã, huyện cũ, tỉnh chọn đúng xã sau sáp nhập khi tên xã trùng ở nhiều huyện.",
+      "Trợ lý người dân (tài khoản Ninh Bình): thêm 6 thủ tục đất đai trên Cổng DVC Ninh Bình — đăng ký đất đai lần đầu, giao/thuê/chuyển mục đích sử dụng đất, cấp đổi Giấy chứng nhận, đăng ký biến động chuyển nhượng/thừa kế/tặng cho, đính chính Giấy chứng nhận đã cấp và đã cấp lần đầu có sai sót.",
+    ],
+  },
+  {
+    version: "1.30",
+    date: "26/11/2026",
+    items: [
+      "Chứng thực bản sao, cấp bản sao từ sổ gốc: thêm nút “Lấy từ Cổng DVC” ở bước Thành phần hồ sơ để chọn giấy tờ đã ký số có sẵn trong Ví cá nhân của công dân; khi đính kèm trợ lý bấm Chọn trên cổng để cổng ghi nhận dùng lại giấy tờ.",
+      "Bật trong Cài đặt: “Dùng lại giấy tờ đã ký số trong Ví cá nhân” (theo tài khoản, mặc định tắt, dùng chung với trợ lý handfree).",
+    ],
+  },
+  {
     version: "1.29.2",
     date: "26/11/2026",
     items: [

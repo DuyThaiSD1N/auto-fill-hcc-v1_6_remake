@@ -297,6 +297,33 @@ def test_cong_lam_dong_can_co_rieng_ban_cu_giu_luong_cu(key):
     assert flow._resolve_page_docs_target(proc, {"wizardStep": 2}) == "attachment"
 
 
+_LD_CAPS = {**_KH_CAPS, "supportsBxdFlowLamDong": True}
+
+
+@pytest.mark.parametrize("key", ["dang-ky-dat-dai-lan-dau-ninh-binh", "giao-thue-chuyen-muc-dich-dat-ninh-binh",
+                                 "cap-doi-gcn-ninh-binh", "dang-ky-bien-dong-dat-dai-ninh-binh",
+                                 "dinh-chinh-da-cap-ninh-binh", "dinh-chinh-gcn-da-cap-ninh-binh"])
+def test_cong_ninh_binh_can_co_rieng_ban_cu_giu_luong_cu(key):
+    """Cổng tỉnh Ninh Bình (dichvucong.ninhbinh.gov.vn, nền iGate): bản extension cũ chưa chạy content/bxd/*.js trên host
+    này → thiếu supportsBxdFlowNinhBinh thì không bật luồng 4 bước, không bổ sung ô (cờ Khánh Hòa / Lâm Đồng không mở)."""
+    from app.channels.handfree.chat import tu_phap_v2
+    from app.channels.handfree.chat.field_review import registry
+
+    proc = flow.get_procedure(key)
+    assert proc["bxdFlow"]["resultGroups"] == _proc()["bxdFlow"]["resultGroups"]
+    old = _conv("filling", caps=_LD_CAPS, procedure_key=key)
+    assert not bxd.enabled(old, proc) and not field_review.active(old, proc) and not tu_phap_v2.enabled(old, proc)
+    new = _conv("filling", caps={**_LD_CAPS, "supportsBxdFlowNinhBinh": True}, procedure_key=key)
+    assert bxd.enabled(new, proc) and field_review.active(new, proc) and tu_phap_v2.enabled(new, proc)
+    config = registry.get(key)
+    assert config["required"] == () and {"noidungyeucaugiaiquyet", "note", "organization"} <= set(config["noAsk"])
+    # data[district] trên form Ninh Bình là ô Phường/Xã người nộp → vẫn hỏi khi trống.
+    assert "district" not in config["noAsk"]
+    assert not {"fullname", "identityNumber", "birthday", "phoneNumber", "ownerFullname"} & set(config["noAsk"])
+    assert flow._resolve_page_docs_target(proc, {"wizardStep": 1}) == "declaration"
+    assert flow._resolve_page_docs_target(proc, {"wizardStep": 2}) == "attachment"
+
+
 @pytest.mark.parametrize("key", [
     "dang-ky-dat-dai-lan-dau-khanh-hoa",
     "giao-thue-chuyen-muc-dich-dat-khanh-hoa",
@@ -339,6 +366,7 @@ def test_co_cong_tinh_igate_qua_duoc_whitelist_cua_router():
     assert caps["supportsBxdFlowTuyenQuang"] is True and caps["supportsBxdFlowKhanhHoa"] is True
     assert router._clean_client_capabilities({})["supportsBxdFlowKhanhHoa"] is False
     assert router._clean_client_capabilities({"supportsBxdFlowLamDong": True})["supportsBxdFlowLamDong"] is True
+    assert router._clean_client_capabilities({"supportsBxdFlowNinhBinh": True})["supportsBxdFlowNinhBinh"] is True
     capabilities = {(p.get("bxdFlow") or {}).get("capability") for p in PROCEDURES} - {None}
     assert capabilities <= set(router._clean_client_capabilities({}))
 
