@@ -791,6 +791,9 @@ PROCEDURES: list[dict] = [
         "key": "chung-thuc-ban-sao",
         # detect: nhận diện theo mã TTHC trên URL (maThuTuc — ổn định); heading khớp label là dự phòng.
         "detect": {"urlIncludes": ["maThuTuc=2.000815"]},
+        # Panel có nguồn "Cổng DVC": lấy giấy tờ đã ký số trong Ví cá nhân, đính bằng nút "Chọn" của ví (khi tài khoản
+        # bật cài đặt reuseWalletDocuments). Bản extension cũ bỏ qua khoá này.
+        "walletReuse": True,
         "label": (
             "Chứng thực bản sao từ bản chính giấy tờ, văn bản do cơ quan, tổ chức có thẩm quyền "
             "của Việt Nam; cơ quan, tổ chức có thẩm quyền của nước ngoài; cơ quan, tổ chức có thẩm "
@@ -895,11 +898,15 @@ PROCEDURES: list[dict] = [
         # Văn bản consent của Auto Fill nói về việc "đọc, xử lý và tự động điền dữ liệu vào biểu
         # mẫu" — thủ tục mode=attach không điền ô nào nên câu đó không đúng việc đang làm.
         "skipConsent": True,
+        # Ô tick "tách hồ sơ" (options.splitMode, đa tab): mỗi tệp là một hồ sơ, đính vào dòng
+        # "Dự thảo giao dịch" (bắt buộc). Bản extension cũ bỏ qua khoá này → không có ô tick.
+        "supportsSplitTabs": True,
         "uploadHint": (
             "Giấy tờ cần tải lên:\n"
             "1. Giấy chứng nhận quyền sở hữu/quyền sử dụng hoặc giấy tờ thay thế của tài sản.\n"
             "2. Dự thảo giao dịch/hợp đồng.\n"
-            "3. Nếu có: CCCD, văn bản ủy quyền hoặc tài liệu khác; hệ thống sẽ thêm thành phần hồ sơ mới."
+            "3. Nếu có: CCCD, văn bản ủy quyền hoặc tài liệu khác; hệ thống sẽ thêm thành phần hồ sơ mới.\n"
+            "Tick \"tách hồ sơ\": mỗi file là một hồ sơ riêng trên một tab, đính vào dòng Dự thảo giao dịch."
         ),
     },
     {
@@ -1864,6 +1871,9 @@ PROCEDURES: list[dict] = [
             "headingDisabled": True,
         },
         "label": "Thủ tục cấp bản sao từ sổ gốc",
+        # Panel có nguồn "Cổng DVC": lấy giấy tờ đã ký số trong Ví cá nhân, đính bằng nút "Chọn" của ví (khi tài khoản
+        # bật cài đặt reuseWalletDocuments). Bản extension cũ bỏ qua khoá này.
+        "walletReuse": True,
         # Chỉ đính kèm: BE OCR phân loại rồi xếp file vào 2 ô có sẵn (không điền bước Kê khai).
         "mode": "attach",
         "roles": [],

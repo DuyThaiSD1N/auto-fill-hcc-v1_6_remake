@@ -36,6 +36,6 @@ def test_khac_chu_cai_hoac_ct01_roi_dau_thi_khong_de_xuat():
 def test_ten_lay_theo_giay_chung_sinh_hoac_ct01_khong_co_tren_trang_thi_khong_de_xuat():
     values = {"Gcs_HoTenCon": "TRẦN MÃN A", "Ct01_HoTen": "TRẦN MẪN A"}
     pages = trang.pages([{"name": "0.pdf", "text": _CT01.format(ten="TRẦN MẪN A")}])
-    assert dinh_danh.ct01_child_finding(dinh_danh.CHILD[1], values, pages) is None
+    assert dinh_danh.ct01_child_finding(dinh_danh.CHILD[-1], values, pages) is None
     values = {"Tk_HoTenCon": "TRẦN MÃN A", "Ct01_HoTen": "TRẦN MẪN A"}
     assert _finding(values, _TK.format(ten="TRẦN MÃN A")) is None

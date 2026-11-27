@@ -1419,6 +1419,9 @@ PROCEDURES: list[dict] = [
         # giấy khác thêm thành phần hồ sơ mới. Slot so_huu/du_thao khớp qua chụp-theo-dòng; chụp
         # chung không nhận ra loại thì rơi vào "khac" — planner vẫn tách đúng lúc đính.
         "hideRepeatableHint": True,
+        # Cài đặt "tách hồ sơ" (đa tab): mỗi tệp một hồ sơ, đính vào dòng "Dự thảo giao dịch". Chỉ
+        # áp khi extension khai supportsRegistrySplitTabs — bản cũ không biết đa tab cho thủ tục này.
+        "supportsSplitTabs": True,
         "requiredDocs": [
             {"key": "so_huu", "name": "Giấy chứng nhận quyền sở hữu/sử dụng tài sản (sổ đỏ, đăng ký xe…)",
              "icon": "📜", "sides": 1, "repeatable": True},

@@ -458,7 +458,7 @@ async def test_llm_khong_ro_thi_hoi_lai(monkeypatch):
     assert reply.display_md.startswith("Tôi chưa nghe ra số nào") and conv["wallet_picked"] == []
 
 
-# ── Bản chọn từ ví: chỉ đưa ra giấy đã ký số ──
+# ── Bản chọn từ ví: giấy đã ký số lên đầu mỗi mục, giấy chưa ký số vẫn hiện ở dưới ──
 def _w(i, tab="uploaded", signed=False, name=None, size=None):
     return {"id": f"{tab}{i}", "uri": f"{tab}-{i:04d}", "name": name or f"Giay_{tab}_{i}.pdf",
             "size": 2000 + i if size is None else size, "tab": tab, "signed": signed}
@@ -475,40 +475,24 @@ async def _pick_listed(listed=MIXED, caps=PICK_CAPS):
     return conv, reply
 
 
-async def test_ban_chon_tu_vi_chi_dua_ra_giay_da_ky_so():
+async def test_ban_chon_tu_vi_xep_giay_ky_so_len_dau_moi_muc():
     conv, reply = await _pick_listed()
-    assert [i["id"] for i in conv["wallet_items"]] == ["uploaded1", "issued0"]
-    assert "**2 giấy tờ đã ký số**" in reply.display_md and "**1** tài liệu được cấp" in reply.display_md
-    assert "bỏ qua **3 giấy tờ chưa ký số**" in reply.display_md
+    assert [i["id"] for i in conv["wallet_items"]] == ["uploaded1", "uploaded0", "uploaded2", "issued0", "issued1"]
+    assert "**5 giấy tờ**" in reply.display_md and "**2** tài liệu được cấp" in reply.display_md
+    assert "**2 giấy tờ đã ký số** tôi xếp lên đầu" in reply.display_md
     assert reply.chips[0]["label"] == wallet_reuse.vi.WALLET_YES_SIGNED_LABEL
     reply = await flow.handle_turn(conv, Intent("action", "wallet_use", {}))
     card = reply.cards[0]
-    assert [e["no"] for e in card["entries"]] == [1, 2] and all(e["signed"] for e in card["entries"])
-    assert [h["tab"] for h in card["hidden"]] == ["uploaded", "uploaded", "issued"]
-    assert card["stats"]["hidden"] == 3
-    assert "bỏ qua **3 giấy tờ chưa ký số**" in reply.display_md and "bấm vào để xem tên" not in reply.display_md
+    assert [e["no"] for e in card["entries"]] == [1, 2, 3, 4, 5]
+    assert [e["signed"] for e in card["entries"]] == [True, False, False, True, False]
+    assert "hidden" not in card and "**2 giấy tờ đã ký số** tôi xếp lên đầu" in reply.display_md
 
 
-async def test_extension_ve_duoc_danh_sach_an_thi_moi_bam_xem_ten():
-    conv, _ = await _pick_listed(caps={**PICK_CAPS, wallet_reuse.HIDDEN_CAPABILITY: True})
-    reply = await flow.handle_turn(conv, Intent("action", "wallet_use", {}))
-    assert "bấm vào để xem tên" in reply.display_md
-
-
-async def test_vi_khong_co_giay_ky_so_thi_bao_roi_dinh_kem_luon():
+async def test_vi_khong_co_giay_ky_so_van_hien_giay_chua_ky_so():
     listed = {"ok": True, "origin": ORIGIN, "total": 2, "items": [_w(0), _w(1)]}
     conv, reply = await _pick_listed(listed)
-    assert conv["state"] == "attaching" and "wallet_hidden" not in conv
-    assert "**2 giấy tờ** mới nhất" in reply.display_md and "chưa có giấy tờ nào đã ký số" in reply.display_md
-
-
-async def test_chi_vi_khong_co_giay_ky_so_thi_ve_buoc_chon_cach_gui(monkeypatch):
-    monkeypatch.setattr(upload_service, "progress_of", AsyncMock(return_value={"files_count": 0}))
-    conv = _conv(caps=PICK_CAPS, state="collecting_docs", doc_method="scan", owner_phase=False)
-    await flow.handle_turn(conv, Intent("action", "wallet_only", {}))
-    reply = await flow.handle_turn(conv, Intent("event", "wallet_list",
-                                                {"ok": True, "origin": ORIGIN, "items": [_w(0)]}))
-    assert conv["state"] == "ask_doc_method" and "chưa có giấy tờ nào đã ký số" in reply.display_md
+    assert conv["state"] == wallet_reuse.STATE and len(conv["wallet_items"]) == 2
+    assert "**2 giấy tờ**" in reply.display_md and "đã ký số" not in reply.display_md
 
 
 async def test_ban_cu_van_hien_ca_giay_chua_ky_so():
@@ -519,20 +503,21 @@ async def test_ban_cu_van_hien_ca_giay_chua_ky_so():
 def test_bo_ban_trung_cung_ten_goc_cung_dung_luong():
     raw = [_w(0, signed=True, name="Bằng cử nhân.pdf", size=500),
            _w(1, signed=True, name="Bằng cử nhân (1).pdf", size=500),
-           _w(2, signed=True, name="Bằng cử nhân - Copy.pdf", size=500),
+           _w(2, name="Bằng cử nhân - Copy.pdf", size=500),
            _w(3, signed=True, name="Bằng cử nhân.pdf", size=900),
            _w(0, "issued", True, name="GKS.pdf", size=0), _w(1, "issued", True, name="GKS.pdf", size=0)]
-    info = {"hidden": [], "duplicates": 0}
-    items = wallet_reuse._clean_items(raw, signed_only=True, info=info)
+    info = {"duplicates": 0}
+    items = wallet_reuse._clean_items(raw, signed_first=True, info=info)
     assert [i["id"] for i in items] == ["uploaded0", "uploaded3", "issued0", "issued1"]
     assert info["duplicates"] == 2
 
 
-def test_loc_ky_so_moi_muc_van_toi_da_20_giay():
-    raw = [_w(i, signed=i % 2 == 0) for i in range(50)]
-    info = {"hidden": [], "duplicates": 0}
-    items = wallet_reuse._clean_items(raw, signed_only=True, info=info)
-    assert len(items) == 20 and all(i["signed"] for i in items) and len(info["hidden"]) == 25
+def test_moi_muc_toi_da_20_giay_ky_so_giu_cho_truoc():
+    raw = [_w(i, signed=i >= 40) for i in range(50)]
+    items = wallet_reuse._clean_items(raw, signed_first=True, info={"duplicates": 0})
+    assert len(items) == 20
+    assert [i["id"] for i in items[:10]] == [f"uploaded{i}" for i in range(40, 50)]
+    assert [i["id"] for i in items[10:]] == [f"uploaded{i}" for i in range(10)]
 
 
 # ── Cấp bản sao từ sổ gốc: cùng công tắc, chỉ bản có nút "Chọn" của ví ──

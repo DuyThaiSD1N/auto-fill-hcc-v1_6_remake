@@ -73,6 +73,16 @@ logger = logging.getLogger(__name__)
 _ATTACH_MODE_PROCEDURES = {
     "chung-thuc-ban-sao", "chung-thuc-chu-ky", "chung-thuc-chu-ky-nguoi-dich-ctv",
 }
+
+
+def _has_attach_mode(conv: dict) -> bool:
+    """Thủ tục cho chọn gộp/tách hồ sơ. Thủ tục registry khai supportsSplitTabs chỉ tính khi extension
+    biết đa tab cho nó (supportsRegistrySplitTabs) — bản cũ nhận mode split sẽ đính như gộp."""
+    key = conv.get("procedure_key") or ""
+    if key in _ATTACH_MODE_PROCEDURES:
+        return True
+    return ((get_procedure(key) or {}).get("supportsSplitTabs") is True
+            and (conv.get("client_capabilities") or {}).get("supportsRegistrySplitTabs") is True)
 _ATTACH_ACTION_LEASE_SECONDS = 30
 # Khoảng không gửi lại lệnh chọn cơ quan (xem _guide_login_on_page) — đủ cho chọn tỉnh, xã, Đồng ý, Nộp trực tuyến.
 _AGENCY_DISPATCH_GAP_SECONDS = 20
@@ -828,7 +838,7 @@ def _preset_attach_mode(conv: dict) -> str:
     Chỉ có nghĩa với hai thủ tục chứng thực có lựa chọn gộp/tách. Đổi cài đặt giữa chừng thì áp
     ở lượt đính kèm KẾ TIẾP (giống auto-fill đọc ô tick mỗi lần bấm), nhưng không bao giờ đổi
     lượt đang chạy — queue split đa-tab phải ổn định (xem _attach_plan_settings_changed)."""
-    if conv.get("procedure_key") not in _ATTACH_MODE_PROCEDURES:
+    if not _has_attach_mode(conv):
         return ""
     mode = (conv.get("attachment_preferences") or {}).get("attachMode")
     return mode if mode in ("merge", "split") else ""
@@ -894,7 +904,7 @@ def _attach_mode_gate(conv: dict, proc: dict, files_count: int = 0):
     "mỗi tài liệu một hồ sơ riêng" và âm thầm gộp tất cả vào một hồ sơ.
     """
     if (proc.get("mode") != "attach"
-            or conv.get("procedure_key") not in _ATTACH_MODE_PROCEDURES):
+            or not _has_attach_mode(conv)):
         return None, False
     preset = _preset_attach_mode(conv)
     # Cài đặt máy quầy luôn thắng lựa chọn cũ của hội thoại: lượt "Điều chỉnh giấy tờ" sau khi
@@ -989,6 +999,9 @@ def _attach_plan_action(conv: dict, plan: list) -> dict:
         # gate "đúng trang mới chạy engine"; extension cũ không đọc key này vẫn mặc định 3.
         "attach_step": _wizard_step(proc, "attachmentStep", 3),
     }
+    # Extension mới chỉ chạy đa tab cho thủ tục ngoài danh sách chép cứng khi lệnh mang cờ này.
+    if action["mode"] == "split" and proc.get("supportsSplitTabs") is True:
+        action["splitTabs"] = True
     # account khác = None → sidebar bỏ qua). Giữ nguyên hành vi cũ cho mọi trường hợp khác.
     stt1_virtual = conv.get("attach_plan_stt1_virtual")
     if stt1_virtual:

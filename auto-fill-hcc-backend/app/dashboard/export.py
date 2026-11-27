@@ -368,7 +368,17 @@ def build_dashboard_workbook(data: dict, logs: list[dict] | None = None, view: s
 _SUPPORT_LABELS = {"attach": "Chỉ đính kèm", "fill_attach": "Điền + đính kèm", "fill": "Chỉ điền"}
 
 
-def build_catalog_workbook(items: list[dict], note: str, now: datetime) -> bytes:
+def catalog_channel(item: dict, province_slug: str = "") -> str:
+    """Kênh chạy thủ tục ở tỉnh đang xem (không chọn tỉnh = mọi kênh có thủ tục)."""
+    af_only = item.get("autofillProvinces") or []
+    af = item.get("autofill", True) and (not province_slug or not af_only or province_slug in af_only)
+    hf = item.get("handfree") and province_slug not in (item.get("handfreeOff") or [])
+    if af and hf:
+        return "Auto Fill + Trợ lý người dân"
+    return "Chỉ Auto Fill" if af else "Chỉ Trợ lý người dân"
+
+
+def build_catalog_workbook(items: list[dict], note: str, now: datetime, province_slug: str = "") -> bytes:
     """Danh mục thủ tục đúng các dòng đang lọc trên trang: STT, tên, mã TTHC, Trợ lý hỗ trợ, áp dụng."""
     wb = Workbook()
     ws = wb.active
@@ -378,15 +388,16 @@ def build_catalog_workbook(items: list[dict], note: str, now: datetime) -> bytes
     meta = f"{note} · {len(items)} thủ tục · Xuất lúc {_fmt_now(now)}" if note else f"{len(items)} thủ tục · Xuất lúc {_fmt_now(now)}"
     ws.cell(row=2, column=1, value=meta).font = _META_VALUE
     _write_header(ws, 4, [("STT", "c", 7), ("Tên thủ tục", "l", 100), ("Mã TTHC", "c", 16), ("Trợ lý hỗ trợ", "l", 18),
-                       ("Áp dụng", "l", 30)])
+                       ("Kênh", "l", 28), ("Áp dụng", "l", 30)])
     for i, item in enumerate(items, start=1):
         row = 4 + i
         _body_cell(ws, row, 1, i, "c")
         _body_cell(ws, row, 2, item.get("label") or item.get("key"), "l")
         _body_cell(ws, row, 3, ", ".join(item.get("codes") or []), "c")
         _body_cell(ws, row, 4, _SUPPORT_LABELS.get(item.get("support") or "", ""), "l")
+        _body_cell(ws, row, 5, catalog_channel(item, province_slug), "l")
         provinces = [p["name"] for p in item.get("provinces") or []]
-        _body_cell(ws, row, 5, f"Riêng · {', '.join(provinces)}" if provinces else "Dùng chung", "l")
+        _body_cell(ws, row, 6, f"Riêng · {', '.join(provinces)}" if provinces else "Dùng chung", "l")
     buffer = io.BytesIO()
     wb.save(buffer)
     return buffer.getvalue()

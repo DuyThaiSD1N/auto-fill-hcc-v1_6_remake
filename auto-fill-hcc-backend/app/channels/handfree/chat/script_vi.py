@@ -4271,44 +4271,29 @@ WALLET_ONLY_NONE_PICKED = {
     "md": "Công dân chưa chọn giấy nào trong Ví cá nhân. Công dân gửi giấy tờ bằng một trong các cách dưới đây ạ.",
     "tts": "Dạ, công dân chưa chọn giấy nào trong ví. Công dân gửi giấy tờ bằng một trong các cách dưới đây ạ.",
 }
-# Bản có supportsWalletPick: chỉ đưa ra giấy tờ đã ký số (cột "Đã ký số" của ví trên cổng).
+# Bản có supportsWalletPick: giấy tờ đã ký số (cột "Đã ký số" của ví trên cổng) xếp lên đầu mỗi mục.
 WALLET_CHECKING_SIGNED = {
-    "md": "🔎 Tôi kiểm tra nhanh **Ví cá nhân** trên Cổng DVC xem công dân có **giấy tờ đã ký số** dùng lại được không "
-          "ạ — chỉ xem danh sách, chưa mở tệp nào…",
+    "md": "🔎 Tôi kiểm tra nhanh **Ví cá nhân** trên Cổng DVC xem công dân có giấy tờ dùng lại được không ạ — chỉ xem "
+          "danh sách, chưa mở tệp nào…",
     "tts": "Dạ, tôi kiểm tra nhanh ví cá nhân trên cổng dịch vụ công, công dân chờ chút ạ.",
 }
 WALLET_ASK_SIGNED = {
-    "md": "📂 Ngoài giấy tờ vừa nhận, công dân còn **{docs} giấy tờ đã ký số** trên Cổng Dịch vụ công: {parts}.{hidden}"
+    "md": "📂 Ngoài giấy tờ vừa nhận, công dân còn **{docs} giấy tờ** trên Cổng Dịch vụ công: {parts}.{note}"
           "\n\n**Công dân có muốn dùng thêm giấy tờ nào trong đó không ạ?**",
-    "tts": "Dạ, ngoài giấy tờ vừa nhận, công dân còn {docs} giấy tờ đã ký số trên cổng dịch vụ công. Công dân có muốn "
-           "dùng thêm không ạ?",
+    "tts": "Dạ, ngoài giấy tờ vừa nhận, công dân còn {docs} giấy tờ trên cổng dịch vụ công. Công dân có muốn dùng thêm "
+           "không ạ?",
 }
 WALLET_SIGNED_UPLOADED_PART = "**{count}** tài liệu tải lên ở các hồ sơ trước"
 WALLET_SIGNED_ISSUED_PART = "**{count}** tài liệu được cấp"
 WALLET_SIGNED_PARTS_JOIN = " và "
-WALLET_HIDDEN_NOTE = ("\n\n🔒 Tôi đã kiểm tra cột **Đã ký số**: chỉ đưa ra giấy tờ có dấu ✓, bỏ qua **{hidden} giấy tờ "
-                      "chưa ký số** vì không dùng lại được.")
+WALLET_SIGNED_FIRST_NOTE = " ✍️ **{signed} giấy tờ đã ký số** tôi xếp lên đầu mỗi mục."
 WALLET_YES_SIGNED_LABEL = "📂 Có, chọn thêm từ Cổng DVC"
 WALLET_LIST_READY_SIGNED = {
-    "md": "✓ Tôi tìm thấy **{docs} giấy tờ đã ký số** trên Cổng DVC, chia 2 mục giống trên cổng: tài liệu tải lên và "
-          "tài liệu được cấp.{hidden}\n\nCông dân **bấm vào giấy cần dùng** hoặc nói số, ví dụ “chọn số 2 và 4”, rồi "
-          "bấm **Dùng các giấy đã chọn** ạ.",
-    "tts": "Dạ, tôi tìm thấy {docs} giấy tờ đã ký số, chia hai mục: tài liệu tải lên và tài liệu được cấp. Công dân bấm "
-           "vào ô, hoặc nói số thứ tự, ví dụ chọn số hai ạ.",
-}
-WALLET_LIST_HIDDEN_NOTE = " 🔒 Tôi **chỉ hiện giấy tờ đã ký số**, bỏ qua **{hidden} giấy tờ chưa ký số**."
-# Bản extension vẽ được danh sách giấy chưa ký số ở cuối mỗi mục (supportsWalletHiddenList).
-WALLET_LIST_HIDDEN_NOTE_LISTED = (" 🔒 Tôi **chỉ hiện giấy tờ đã ký số**; **{hidden} giấy tờ chưa ký số** tôi để ẩn ở "
-                                  "cuối mỗi mục, bấm vào để xem tên ạ.")
-WALLET_NONE_SIGNED = {
-    "md": "ℹ️ Tôi đã xem **{read} giấy tờ** mới nhất trong Ví cá nhân nhưng **chưa có giấy tờ nào đã ký số**, nên tôi "
-          "không đưa vào để dùng lại ạ.",
-    "tts": "Dạ, ví cá nhân chưa có giấy tờ nào đã ký số nên tôi không đưa vào để dùng lại ạ.",
-}
-WALLET_ONLY_NONE_SIGNED = {
-    "md": "ℹ️ Tôi đã xem **{read} giấy tờ** mới nhất trong Ví cá nhân nhưng **chưa có giấy tờ nào đã ký số** để dùng "
-          "lại. Công dân gửi giấy tờ bằng một trong các cách dưới đây ạ.",
-    "tts": "Dạ, ví cá nhân chưa có giấy tờ nào đã ký số. Công dân gửi giấy tờ bằng một trong các cách dưới đây ạ.",
+    "md": "✓ Tôi tìm thấy **{docs} giấy tờ** trên Cổng DVC, chia 2 mục giống trên cổng: tài liệu tải lên và tài liệu "
+          "được cấp.{note}\n\nCông dân **bấm vào giấy cần dùng** hoặc nói số, ví dụ “chọn số 2 và 4”, rồi bấm **Dùng "
+          "các giấy đã chọn** ạ.",
+    "tts": "Dạ, tôi tìm thấy {docs} giấy tờ, chia hai mục: tài liệu tải lên và tài liệu được cấp. Công dân bấm vào ô, "
+           "hoặc nói số thứ tự, ví dụ chọn số hai ạ.",
 }
 
 

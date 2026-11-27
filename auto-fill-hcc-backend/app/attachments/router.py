@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
 
+from app.attachments import wallet_pick
 from app.attachments.schemas import (
     AttachmentPlanReq,
     AttachmentPlanResp,
@@ -188,6 +189,13 @@ async def plan_attachments(body: AttachmentPlanReq, user: dict = Depends(require
         # Gate ở đây vì router mới có `user` (tinh/xa); no-op với mọi thủ tục/tài khoản khác.
         with mon.span("post.stt1"):
             result = apply_stt1_virtual_copy(result, user, body.procedure)
+        # Tệp cán bộ lấy từ Ví cá nhân (bản extension có nguồn "Cổng DVC"): đính bằng nút "Chọn" của ví. Bản cũ không
+        # gửi walletFiles → kế hoạch giữ nguyên.
+        wallet_of = wallet_pick.from_options(options, len(body.files))
+        if wallet_of:
+            for index, entry in wallet_of.items():
+                entry["fileName"] = body.files[index].name
+            result["attachments"] = wallet_pick.apply_wallet_picks(result.get("attachments") or [], wallet_of)
         result["requestId"] = request_id
         if rec is not None:
             for err in result.get("errors") or []:

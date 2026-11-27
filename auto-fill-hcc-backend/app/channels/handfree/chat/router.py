@@ -191,6 +191,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Cú bấm nộp mang mã tab (tab gốc + tab tách) và báo tab tách bị đóng → đính tách nhiều
         # hồ sơ chỉ mời đánh giá khi mọi tab đã nộp. Client cũ không khai → mời ngay như cũ.
         "supportsSplitSubmitTabs": raw.get("supportsSplitSubmitTabs") is True,
+        # Biết đa tab cho thủ tục registry khai supportsSplitTabs (lệnh attach_plan mang splitTabs).
+        # Client cũ chỉ đa tab với danh sách thủ tục chép cứng → BE không cho chọn tách ở thủ tục khác.
+        "supportsRegistrySplitTabs": raw.get("supportsRegistrySplitTabs") is True,
         # Bản extension mới hiểu nút chuyển bước/gửi hồ sơ do BE điều phối (guided_steps).
         # Extension cũ không khai → BE giữ nguyên câu thoại và luồng "công dân tự bấm nút
         # của trang" như cũ.

@@ -17,6 +17,7 @@ from app.pipelines._shared.thanh_tra.ho_so import Case, Field, Finding, Inspecto
 from app.pipelines.khai_sinh_dang_ky_lai.thanh_tra.dinh_danh import _edit, close_name
 from app.pipelines.xac_nhan_tthn_dvc_moi.thanh_tra import dinh_danh as base
 
+from ..process import mapper
 from . import trang
 
 
@@ -34,8 +35,9 @@ PERSONS = (
     Person("me", "mẹ của trẻ", "ThongTinMe_HoTen", "ThongTinMe_SoDinhDanh", "ThongTinMe_NgaySinh"),
     Person("chu_ho", "chủ hộ trên tờ khai thay đổi thông tin cư trú", "Ct01_ChuHoHoTen", "Ct01_ChuHoSoDinhDanh"),
 )
-# Tên trẻ: mapper lấy tờ khai trước, rồi giấy chứng sinh — soát đúng field đang lên form.
-CHILD = (Person("con", "trẻ được khai sinh", "Tk_HoTenCon"), Person("con", "trẻ được khai sinh", "Gcs_HoTenCon"))
+# Tên trẻ: mapper lấy tờ khai trước, rồi mục 1 CT01 (trẻ dưới 6 tuổi), rồi giấy chứng sinh — soát đúng field đang lên form.
+CHILD = (Person("con", "trẻ được khai sinh", "Tk_HoTenCon"), Person("con", "trẻ được khai sinh", "Ct01_HoTen"),
+         Person("con", "trẻ được khai sinh", "Gcs_HoTenCon"))
 
 
 def _units(person: Person) -> dict[str, Unit]:
@@ -64,6 +66,8 @@ lý do giữ A. Mã đã tự loại cách viết là bản rơi dấu của A, 
 có trên giấy ngoài tờ khai. Dòng trích dẫn là họ tên của người khác (không phải người nêu ở tên mục) → KHONG_DU_CAN_CU.
 Riêng TÊN TRẺ: A theo tờ khai đăng ký khai sinh, B là tên mục 1 tờ CT01, cùng chữ cái chỉ khác dấu, không giấy in cơ quan
 cấp nào ghi A → chọn B (OCR hay đọc lệch dấu ở tờ khai đăng ký khai sinh viết tay, mục 1 CT01 viết in hoa trong ô kẻ).
+Riêng TÊN TRẺ theo mục 1 CT01 (A, viết tay) khác CHỮ CÁI tên in trên giấy chứng sinh (B): B được NHIỀU trang ghi hơn A (vd
+mục 10 CT01 "cho cháu <B>" chép lại đúng B) → chọn B, OCR đọc sai chữ viết tay ở mục 1.
 </ho_ten>
 
 <so_ngay>
@@ -289,6 +293,33 @@ def ct01_child_finding(child: Person, values: dict, page_list: list[dict]) -> Fi
                     f"cơ quan cấp nào ghi A (A: {mine['to_khai']} tờ khai, {mine['tu_lap']} giấy tự lập)")
 
 
+def gcs_child_finding(child: Person, values: dict, page_list: list[dict]) -> Finding | None:
+    """Tên trẻ lấy theo mục 1 CT01 (viết tay) khác CHỮ CÁI tên in trên giấy chứng sinh → theo giấy chứng sinh, chỉ khi
+    tên giấy chứng sinh được ghi trên NHIỀU trang hơn (vd mục 10 CT01 "cho cháu ..." chép lại đúng tên đó).
+
+    Tên trên giấy chứng sinh chỉ là tên dự định; cha mẹ đặt tên khác thì tên mới có ở CT01 và giấy chứng sinh chỉ một trang
+    → hoà / thua, giữ CT01. Tên mục 1 bị OCR đọc sai chữ viết tay thì chỉ trang đó mang cách đọc sai."""
+    if child.name != "Ct01_HoTen":
+        return None
+    current = " ".join(str(values.get(child.name) or "").split())
+    printed = " ".join(str(values.get("Gcs_HoTenCon") or "").split())
+    ours, theirs = fold(current).split(), fold(printed).split()
+    if len(ours) < 2 or ours == theirs or len(ours) != len(theirs) or ours[0] != theirs[0]:
+        return None
+    mine, best = trang.support(current, page_list), trang.support(printed, page_list)
+    if best["ban_in"] < 1 or best["trang"] <= mine["trang"]:
+        return None
+    needle = trang.words(printed)
+    quote = next(((line, page["doc"]) for page in page_list if page["kind"] == "ban_in"
+                  for line in page["lines"] if needle in trang.words(line)), None)
+    if quote is None:
+        return None
+    return _finding(child, "ho_ten", printed.upper(), quote[0], quote[1], "giấy chứng sinh",
+                    f"Mục 1 tờ CT01 (viết tay) ghi A, giấy chứng sinh in ghi B — khác chữ cái. TỔNG số trang ghi nguyên "
+                    f"văn: B {best['trang']} ({best['ban_in']} giấy in cơ quan cấp, {best['to_khai']} tờ khai), "
+                    f"A {mine['trang']} ({mine['to_khai']} tờ khai)")
+
+
 def findings_from(case: Case) -> list[Finding]:
     page_list = trang.pages(case.documents)
     out = []
@@ -303,9 +334,11 @@ def findings_from(case: Case) -> list[Finding]:
             cards = gcs + cards
         name = name_finding(person, case.values, page_list)
         out += [*([name] if name else []), *cards]
-    child = next((person for person in CHILD if str(case.values.get(person.name) or "").strip()), None)
+    # Mục 1 CT01 chỉ là tên trẻ khi mapper nhận người đó là trẻ (dưới 6 tuổi, không trùng cha / chủ hộ).
+    child = next((person for person in CHILD if str(case.values.get(person.name) or "").strip()
+                  and (person.name != "Ct01_HoTen" or mapper._ct01_child(case.values).get("HoTen"))), None)
     name = (name_finding(child, case.values, page_list) or ct01_child_finding(child, case.values, page_list)
-            if child else None)
+            or gcs_child_finding(child, case.values, page_list) if child else None)
     return out + ([name] if name else [])
 
 

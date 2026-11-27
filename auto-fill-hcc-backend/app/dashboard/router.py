@@ -117,6 +117,8 @@ async def procedures(user: dict = Depends(require_dashboard)):
 class _CatalogExportBody(BaseModel):
     keys: list[str] = Field(default_factory=list, max_length=2000)
     note: str = Field("", max_length=300)
+    # Tỉnh đang lọc (slug) → cột Kênh ghi đúng cho tỉnh đó; web bản cũ không gửi.
+    province: str = Field("", max_length=40)
 
 
 @router.post("/procedures/export")
@@ -129,7 +131,7 @@ async def procedures_export(body: _CatalogExportBody, user: dict = Depends(requi
     by_key = {item["key"]: item for item in dashboard_procedures.catalog(await resolve_dashboard_scope(user))["items"]}
     items = [by_key[key] for key in dict.fromkeys(body.keys) if key in by_key]
     now = datetime.now(timezone.utc)
-    content = build_catalog_workbook(items, body.note.strip(), now)
+    content = build_catalog_workbook(items, body.note.strip(), now, body.province.strip())
     day = now.astimezone(timezone(timedelta(hours=7))).strftime("%Y-%m-%d")
     quoted = urllib.parse.quote(f"Danh muc thu tuc - {day}.xlsx")
     return StreamingResponse(
