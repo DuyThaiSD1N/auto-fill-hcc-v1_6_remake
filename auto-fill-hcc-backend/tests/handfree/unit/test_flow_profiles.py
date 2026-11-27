@@ -767,6 +767,10 @@ def test_registered_procedures_use_their_declared_flow_family():
         ("chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau", "laichau", "dichvucong.laichau.gov.vn"),
         ("giao-dat-cho-thue-dat-lai-chau", "laichau", "dichvucong.laichau.gov.vn"),
         ("to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an-lai-chau", "laichau", "dichvucong.laichau.gov.vn"),
+        # 27/11: key lõi không mang đuôi tỉnh ("dinh-chinh-sai-sot") hoặc urlScope "laichau.gov.vn" như lõi.
+        ("dinh-chinh-sai-sot", "laichau", "dichvucong.laichau.gov.vn"),
+        ("dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai", "laichau", "laichau.gov.vn"),
+        ("ho-tro-mai-tang-dan-toc-thieu-so-lai-chau", "laichau", "laichau.gov.vn"),
     ):
         local = procedures.pop(key)
         assert local["provinceOnly"] == [slug], key
@@ -810,7 +814,9 @@ def test_registered_procedures_use_their_declared_flow_family():
     kh_ward_level = ("dang-ky-dat-dai-lan-dau-khanh-hoa", "giao-thue-chuyen-muc-dich-dat-khanh-hoa",
                      "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa",
                      # 25/11: 1.012796 quy trình "(Cấp Xã)", cơ quan UBND phường/xã.
-                     "dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa")
+                     "dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa",
+                     # 27/11: 1.013314 quy trình 1.013314.H32.01, cơ quan UBND phường/xã.
+                     "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru-khanh-hoa")
     for key in (*kh_ward_level,
                 "cap-doi-gcn-khanh-hoa",
                 "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa",
@@ -852,9 +858,10 @@ def test_registered_procedures_use_their_declared_flow_family():
 
     # Cổng iGate Ninh Bình (26/11): 6 thủ tục đất đai, luồng chung "xay-dung" như Lâm Đồng, cờ extension riêng
     # supportsBxdFlowNinhBinh. 1.013978 / 1.013949 / 1.012796 (UBND phường/xã) chọn đủ Tỉnh + Xã; 1.012783 / 1.013831 /
-    # 1.012790 (Chi nhánh VPĐK) chỉ chọn Tỉnh như bản Khánh Hòa cùng mã.
+    # 1.012790 (Chi nhánh VPĐK) chỉ chọn Tỉnh như bản Khánh Hòa cùng mã. 1.012784 tách/hợp thửa (27/11) cơ quan UBND
+    # phường/xã (quy trình "Phi địa giới") → chọn đủ Tỉnh + Xã.
     nb_ward_level = ("dang-ky-dat-dai-lan-dau-ninh-binh", "giao-thue-chuyen-muc-dich-dat-ninh-binh",
-                     "dinh-chinh-gcn-da-cap-ninh-binh")
+                     "dinh-chinh-gcn-da-cap-ninh-binh", "tach-thua-hop-thua-dat-ninh-binh")
     for key in (*nb_ward_level, "cap-doi-gcn-ninh-binh", "dang-ky-bien-dong-dat-dai-ninh-binh",
                 "dinh-chinh-da-cap-ninh-binh"):
         nb = procedures.pop(key)
@@ -1129,7 +1136,12 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     #    "dinh-chinh-gcn-da-cap-ninh-binh" (1.012796), luồng "xay-dung".
     # +1 Cổng DVC quốc gia (27/11) "dang-ky-thanh-lap-ho-kinh-doanh" (1.001612), luồng "tu-phap-moi" chọn Tỉnh + Xã;
     #    bản HkdOnline "dang-ky-kinh-doanh" giữ nguyên.
-    assert len(procedures) == 208
+    # +1 cổng iGate Ninh Bình (27/11) "tach-thua-hop-thua-dat-ninh-binh" (1.012784), luồng "xay-dung", chọn Tỉnh + Xã.
+    # +3 cổng Lai Châu (27/11) "dinh-chinh-sai-sot" (1.115585), "dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai"
+    #    (1.115583), "ho-tro-mai-tang-dan-toc-thieu-so-lai-chau" (2.002862), chọn Tỉnh + Xã.
+    # +1 cổng iGate Khánh Hòa (27/11) "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru-khanh-hoa" (1.013314),
+    #    luồng "xay-dung", chọn Tỉnh + Xã.
+    assert len(procedures) == 213
 
     for procedure in procedures:
         key = procedure["key"]

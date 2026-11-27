@@ -116,7 +116,8 @@ def test_registry_that_khop_auto_fill_va_tro_ly(monkeypatch):
     every = {i["key"]: i for i in dashboard_procedures.catalog(_scope("all"))["items"]}
     for key in auto_fill - keys:
         assert every[key]["provinces"] and "ninhbinh" not in [p["slug"] for p in every[key]["provinces"]]
-    assert sum(1 for i in body["items"] if [p["slug"] for p in i["provinces"]] == ["ninhbinh"]) == 6
+    # 6 thủ tục đất đai (26/11) + tách thửa hoặc hợp thửa đất 1.012784 (27/11).
+    assert sum(1 for i in body["items"] if [p["slug"] for p in i["provinces"]] == ["ninhbinh"]) == 7
     on_handfree = {i["key"] for i in body["items"] if i["handfree"] and "ninhbinh" not in i["handfreeOff"]}
     assert on_handfree == handfree & keys
 

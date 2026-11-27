@@ -297,7 +297,8 @@ def test_tach_moi_giay_mot_tep_vao_dung_o():
     assert [(i["slotIndex"], i["documentName"], i["sourceSegments"][0]["pageIndexes"]) for i in items] == [
         (0, "Văn bản ủy quyền thờ cúng liệt sĩ", [2, 3]),
         (1, "Đơn đề nghị giải quyết chế độ trợ cấp thờ cúng liệt sĩ (Mẫu số 18)", [0]),
-        (2, 'Bằng "Tổ quốc ghi công"', [7]),
+        # Không ngoặc kép: documentName thành tên tệp, cổng hiện '"' là "%22" và không nhận tệp.
+        (2, "Bằng Tổ quốc ghi công", [7]),
         (1, "Đơn đề nghị thay đổi người thờ cúng liệt sĩ", [4, 5]),
         (1, "Căn cước công dân người nộp", [6]),
         (1, "Trích lục khai tử thân nhân liệt sĩ", [9]),

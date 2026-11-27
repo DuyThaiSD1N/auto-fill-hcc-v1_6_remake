@@ -1962,6 +1962,14 @@
       "autoConfirm": true
     },
     {
+      "key": "tach-thua-hop-thua-dat-ninh-binh",
+      "code": "1.012784",
+      "label": "Ninh Bình - Tách thửa hoặc hợp thửa đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-6f5d-72e6-9a68-ab8e3ba11c8b",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "dang-ky-dat-dai-lan-dau-khanh-hoa",
       "code": "1.013978",
       "label": "Khánh Hòa - Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
@@ -3581,6 +3589,14 @@
       "key": "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru",
       "code": "1.013314",
       "label": "Xác nhận về điều kiện diện tích bình quân nhà ở để đăng ký thường trú vào chỗ ở do thuê, mượn, ở nhờ; nhà ở, đất ở không có tranh chấp quyền sở hữu nhà ở, quyền sử dụng đất ở, không thuộc địa điểm không được đăng ký thường trú mới",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf7-9660-707e-97b1-ef8876f54d3b",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru-khanh-hoa",
+      "code": "1.013314",
+      "label": "Khánh Hòa - Xác nhận về điều kiện diện tích bình quân nhà ở để đăng ký thường trú vào chỗ ở do thuê, mượn, ở nhờ; nhà ở, đất ở không có tranh chấp quyền sở hữu nhà ở, quyền sử dụng đất ở, không thuộc địa điểm không được đăng ký thường trú mới",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf7-9660-707e-97b1-ef8876f54d3b",
       "needsAgencySelect": true,
       "autoConfirm": true

@@ -57,7 +57,7 @@ _SLOT_BY_KEY = {s["slotKey"]: s for s in SLOTS}
 
 _NEW_DOCS: dict[str, dict[str, str]] = {
     _CCCD: {"documentName": "Căn cước công dân người nộp", "detectedType": "Căn cước công dân"},
-    _BANG: {"documentName": 'Bằng "Tổ quốc ghi công"', "detectedType": 'Bằng "Tổ quốc ghi công"'},
+    _BANG: {"documentName": "Bằng Tổ quốc ghi công", "detectedType": 'Bằng "Tổ quốc ghi công"'},
 }
 _ALLOWED_DOC_TYPES = set(_SLOT_BY_KEY) | set(_NEW_DOCS) | {_OTHER}
 

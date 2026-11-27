@@ -192,6 +192,18 @@ Chỉ chạy hai cây `tests/unit` và `tests/integration`. Cây `tests/handfree
 Baseline hiện tại có sẵn một số test đỏ không liên quan đến code mới; so số fail trước và sau khi
 sửa thay vì cố đưa về 0.
 
+Baseline ngày 2026-11-27, sau khi thêm pipeline 1.013314 xác nhận điều kiện diện tích nhà ở đăng ký thường trú Khánh Hòa
+(`xac_nhan_dieu_kien_dien_tich_nha_o_dang_ky_thuong_tru_khanh_hoa`, máy local, plugin win_socketpair, có PYTHONUTF8=1):
+`23 failed, 6599 passed, 42 skipped, 13 errors`. Vẫn đúng 23 đỏ như dòng dưới.
+
+Baseline ngày 2026-11-27, sau khi đưa 3 thủ tục Lai Châu còn lại lên trợ lý (1.115585 `dinh-chinh-sai-sot`, 1.115583
+`dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai`, 2.002862 `ho-tro-mai-tang-dan-toc-thieu-so-lai-chau`; máy local, plugin
+win_socketpair, có PYTHONUTF8=1): `23 failed, 6576 passed, 42 skipped, 13 errors`. Vẫn đúng 23 đỏ như dòng dưới.
+
+Baseline ngày 2026-11-27, sau khi thêm pipeline 1.012784 tách thửa hoặc hợp thửa đất Ninh Bình
+(`tach_thua_hop_thua_dat_ninh_binh`, máy local, plugin win_socketpair, có PYTHONUTF8=1):
+`23 failed, 6548 passed, 42 skipped, 13 errors`. Vẫn đúng 23 đỏ như dòng dưới.
+
 Baseline ngày 2026-11-27, sau khi thêm pipeline 1.001612 đăng ký thành lập hộ kinh doanh bản Cổng DVC quốc gia
 (`dang_ky_thanh_lap_ho_kinh_doanh`, máy local, plugin win_socketpair, có PYTHONUTF8=1):
 `23 failed, 6501 passed, 42 skipped, 13 errors`. Vẫn đúng 23 đỏ như dòng dưới.

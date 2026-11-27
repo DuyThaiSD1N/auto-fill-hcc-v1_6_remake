@@ -327,7 +327,10 @@ def test_tro_ly_cung_key_va_dung_pipeline_loi():
 # của Người nộp". Áp cho cả hai thủ tục Lai Châu cùng cổng (1.115578 và 1.115590).
 
 LC_KEYS = [KEY, "dang-ky-cap-giay-chung-nhan-doi-voi-toan-bo-dien-tich-dat-lai-chau", "giao-dat-cho-thue-dat-lai-chau",
-           "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau", "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an-lai-chau"]
+           "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau", "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an-lai-chau",
+           # 27/11: ba thủ tục Lai Châu đưa lên trợ lý sau cùng, cùng cổng và cùng bước Lệ phí.
+           "dinh-chinh-sai-sot", "dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai",
+           "ho-tro-mai-tang-dan-toc-thieu-so-lai-chau"]
 LC_CAPS = {"supportsFlowV2": True, "supportsLaiChauFeeStep": True}
 LC_GROUPS = [
     {"name": "maHinhThucNhanKetQua", "present": True, "value": "Nhận kết quả điện tử và Gửi bản giấy về địa chỉ của tôi",

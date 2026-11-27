@@ -684,6 +684,11 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
         "sổ đỏ ghi sai năm sinh so với giấy khai sinh", "sổ đỏ cấp lần đầu bị ghi sai thông tin",
         "đính chính giấy chứng nhận đã cấp lần đầu có sai sót", "sổ đỏ in sai tên người sử dụng đất",
         "đính chính sổ đỏ ghi sai ở ninh bình"],
+    # Bản Ninh Bình (provinceOnly) 1.012784: CHIA một thửa thành nhiều thửa / GỘP thửa liền kề của CHÍNH chủ đất — KHÁC
+    # đăng ký biến động (mua bán, tặng cho sang tên người khác) và cấp đổi sổ (đổi sổ cũ, thửa giữ nguyên).
+    "tach-thua-hop-thua-dat-ninh-binh": ["tách thửa đất", "hợp thửa đất", "chia sổ đỏ cho các con",
+                                         "tách sổ đỏ thành nhiều sổ", "gộp hai thửa đất thành một sổ",
+                                         "tách thửa đất ở ninh bình"],
     # Bản Lâm Đồng (provinceOnly): đất CHƯA có sổ, xin cấp lần đầu — KHÁC thẻ diện tích tăng thêm ngay dưới (đã có sổ,
     # chỉ xin cấp cho phần đất tăng thêm do ranh giới thay đổi).
     "dang-ky-dat-dai-lan-dau-lam-dong": ["làm sổ đỏ lần đầu", "đất chưa có sổ đỏ muốn xin cấp sổ",
@@ -713,6 +718,12 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
                                                    "tiền sử dụng đất tính sai muốn tính lại",
                                                    "đề nghị tính lại tiền sử dụng đất theo nghị định 50",
                                                    "tính tiền sử dụng đất ở khánh hòa"],
+    # Bản Khánh Hòa (provinceOnly) 1.013314: xin UBND xã XÁC NHẬN chỗ ở thuê / mượn / ở nhờ hợp pháp, đủ diện tích để
+    # sau đó đăng ký thường trú (Tờ khai Mẫu 02) — KHÁC chính thủ tục đăng ký thường trú / tạm trú của Bộ Công an.
+    "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru-khanh-hoa": [
+        "xác nhận chỗ ở hợp pháp", "xin xác nhận nhà thuê đủ diện tích để nhập hộ khẩu",
+        "ở nhờ nhà người quen muốn xác nhận để đăng ký thường trú", "xác nhận diện tích nhà ở tối thiểu",
+        "tờ khai mẫu 02 xác nhận chỗ ở", "xác nhận chỗ ở hợp pháp ở khánh hòa"],
     "dang-ky-dat-dai-lan-dau-bac-ninh": ["làm sổ đỏ lần đầu", "đất chưa có sổ đỏ muốn xin cấp sổ",
                                          "cấp giấy chứng nhận quyền sử dụng đất lần đầu",
                                          "đăng ký đất đai lần đầu", "xin cấp sổ đỏ cho đất ông bà để lại",
@@ -913,6 +924,28 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
     "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau": [
         "mất sổ đỏ", "làm lại sổ đỏ bị mất", "cấp lại giấy chứng nhận quyền sử dụng đất bị mất",
         "đánh mất bìa đỏ muốn xin cấp lại", "sổ đỏ bị thất lạc", "cấp lại sổ đỏ ở lai châu",
+    ],
+    # Lai Châu (provinceOnly, key lõi không mang đuôi tỉnh) 1.115585: sổ đỏ CÒN nhưng GHI SAI ngay từ lúc cấp (sai tên,
+    # ngày sinh, số giấy tờ, diện tích, số thửa) → đính chính. KHÁC cấp lại do mất (sổ không còn) và cấp giấy cho phần
+    # diện tích tăng thêm (sổ ghi đúng, đo lại thấy rộng hơn).
+    "dinh-chinh-sai-sot": [
+        "đính chính giấy chứng nhận cấp lần đầu có sai sót", "sổ đỏ bị ghi sai tên", "sổ đỏ ghi sai ngày sinh",
+        "sửa sai sót trên sổ đỏ", "sổ đỏ ghi sai diện tích, sai số thửa", "đính chính sổ đỏ ở lai châu",
+    ],
+    # Lai Châu 1.115583: đất CHƯA có sổ đỏ nào, hộ gia đình / cá nhân xin cấp lần đầu (Đơn Mẫu 13). KHÁC cấp giấy cho phần
+    # diện tích tăng thêm (đã có sổ, đo lại rộng hơn), cấp lại do mất và đính chính (đã có sổ).
+    "dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai": [
+        "làm sổ đỏ lần đầu", "đất chưa có sổ đỏ muốn xin cấp sổ", "đăng ký đất đai lần đầu",
+        "cấp giấy chứng nhận quyền sử dụng đất lần đầu", "đất ông bà để lại chưa có sổ muốn làm sổ",
+        "làm sổ đỏ lần đầu ở lai châu",
+    ],
+    # Lai Châu 2.002862 (NQ 53/2025): người mất là người DÂN TỘC THIỂU SỐ thuộc hộ nghèo / cận nghèo, người lo mai táng xin
+    # tiền hỗ trợ. KHÁC mai táng bảo trợ xã hội / hưu trí xã hội của Bộ Y tế ("ho-tro-mai-tang-1116910", "ho-tro-mai-tang-
+    # huu-tri-xa-hoi"), dân công hỏa tuyến và cựu chiến binh: chỉ khi câu nói rõ dân tộc thiểu số / hộ nghèo, cận nghèo.
+    "ho-tro-mai-tang-dan-toc-thieu-so-lai-chau": [
+        "hỗ trợ mai táng cho người dân tộc thiểu số", "người dân tộc hộ nghèo mất xin tiền mai táng",
+        "hỗ trợ chi phí mai táng hộ cận nghèo người dân tộc", "bố tôi người dân tộc thuộc hộ nghèo vừa mất",
+        "tiền mai táng theo nghị quyết 53 lai châu", "hỗ trợ mai táng người dân tộc thiểu số ở lai châu",
     ],
     # Bắc Ninh (provinceOnly) của cùng nghiệp vụ 1.115465: sổ đỏ đã cấp BỊ MẤT → xin cấp lại. KHÁC cấp đổi (sổ còn, rách
     # nát/mẫu cũ), đính chính (sổ còn nhưng ghi sai) và thu hồi GCN cấp sai.

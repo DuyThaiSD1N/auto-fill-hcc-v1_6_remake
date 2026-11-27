@@ -113,10 +113,14 @@ def test_so_thu_tuc_moi_tinh_dung_bang_hoan_thien():
         # 26/11: +1 mọi tỉnh Bộ Nội vụ giai-quyet-che-do-mai-tang-cuu-chien-binh-2002307 (2.002307) (_TAT_CA, mặc định).
         # 26/11: +6 Ninh Bình đất đai *-ninh-binh (1.013978, 1.013949, 1.012783, 1.013831, 1.012790, 1.012796, {"ninhbinh"}).
         # 27/11: +1 mọi tỉnh dang-ky-thanh-lap-ho-kinh-doanh (1.001612, bản Cổng DVC quốc gia) (_TAT_CA, mặc định toàn quốc).
-        "laichau": 157, "bacninh": 164, "lamdong": 150, "danang": 153, "quangninh": 157, "ninhbinh": 152,
+        # 27/11: +1 Ninh Bình tach-thua-hop-thua-dat-ninh-binh (1.012784, {"ninhbinh"}).
+        # 27/11: +3 Lai Châu dinh-chinh-sai-sot (1.115585), dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai (1.115583),
+        # ho-tro-mai-tang-dan-toc-thieu-so-lai-chau (2.002862) (provinceOnly laichau).
+        "laichau": 160, "bacninh": 164, "lamdong": 150, "danang": 153, "quangninh": 157, "ninhbinh": 153,
         # 24/11: +1 Khánh Hòa tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa (1.115148, {"khanhhoa"}).
         # 25/11: +1 Khánh Hòa dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa (1.012796, {"khanhhoa"}).
-        "quangngai": 147, "laocai": 145, "quangtri": 147, "khanhhoa": 154, "tuyenquang": 147,
+        # 27/11: +1 Khánh Hòa xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru-khanh-hoa (1.013314, {"khanhhoa"}).
+        "quangngai": 147, "laocai": 145, "quangtri": 147, "khanhhoa": 155, "tuyenquang": 147,
     }
 
 
@@ -146,6 +150,10 @@ def test_tinh_chi_thay_thu_tuc_da_hoan_thien():
     # 24/11: 1.115148 bản Khánh Hòa chỉ mở cho Khánh Hòa.
     assert "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa" in kh
     assert "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa" not in _card_keys("lamdong")
+    # 27/11: 1.013314 bản Khánh Hòa chỉ mở cho Khánh Hòa; bản chung (form Quảng Ngãi) vẫn chỉ Quảng Ngãi.
+    assert "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru-khanh-hoa" in kh
+    assert "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru-khanh-hoa" not in _card_keys("quangngai")
+    assert "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru" not in kh
     # 1.013997: STT 230, cả 11 tỉnh
     assert all("ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat" in _card_keys(s) for s in registry._TINH_THEO_DOI)
     # Bảng không mở khóa provinceOnly: bản Bắc Ninh ghi _TAT_CA vẫn không lọt sang tỉnh khác.

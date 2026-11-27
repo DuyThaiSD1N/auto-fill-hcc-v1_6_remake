@@ -242,6 +242,7 @@ def test_cong_tuyen_quang_can_co_rieng_ban_cu_giu_luong_cu(key):
     "dinh-chinh-gcn-da-cap-khanh-hoa",
     "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa",
     "dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa",
+    "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru-khanh-hoa",
 ])
 def test_cong_khanh_hoa_can_co_rieng_ban_cu_giu_luong_cu(key):
     """Cổng tỉnh Khánh Hòa (dichvucong.khanhhoa.gov.vn, nền iGate): bản extension cũ chưa đọc trang chọn trường hợp /
@@ -302,7 +303,8 @@ _LD_CAPS = {**_KH_CAPS, "supportsBxdFlowLamDong": True}
 
 @pytest.mark.parametrize("key", ["dang-ky-dat-dai-lan-dau-ninh-binh", "giao-thue-chuyen-muc-dich-dat-ninh-binh",
                                  "cap-doi-gcn-ninh-binh", "dang-ky-bien-dong-dat-dai-ninh-binh",
-                                 "dinh-chinh-da-cap-ninh-binh", "dinh-chinh-gcn-da-cap-ninh-binh"])
+                                 "dinh-chinh-da-cap-ninh-binh", "dinh-chinh-gcn-da-cap-ninh-binh",
+                                 "tach-thua-hop-thua-dat-ninh-binh"])
 def test_cong_ninh_binh_can_co_rieng_ban_cu_giu_luong_cu(key):
     """Cổng tỉnh Ninh Bình (dichvucong.ninhbinh.gov.vn, nền iGate): bản extension cũ chưa chạy content/bxd/*.js trên host
     này → thiếu supportsBxdFlowNinhBinh thì không bật luồng 4 bước, không bổ sung ô (cờ Khánh Hòa / Lâm Đồng không mở)."""
@@ -316,7 +318,14 @@ def test_cong_ninh_binh_can_co_rieng_ban_cu_giu_luong_cu(key):
     new = _conv("filling", caps={**_LD_CAPS, "supportsBxdFlowNinhBinh": True}, procedure_key=key)
     assert bxd.enabled(new, proc) and field_review.active(new, proc) and tu_phap_v2.enabled(new, proc)
     config = registry.get(key)
-    assert config["required"] == () and {"noidungyeucaugiaiquyet", "note", "organization"} <= set(config["noAsk"])
+    assert config["required"] == () and "organization" in config["noAsk"]
+    if key == "tach-thua-hop-thua-dat-ninh-binh":
+        # Form tách/hợp thửa (quy trình "Phi địa giới") không có ô Nội dung yêu cầu / Ghi chú; khối tổ chức, tư cách người
+        # nộp, Tỉnh/TP thửa đất (cổng khoá) không hỏi; Phường/Xã người nộp (village) và thửa đất (village2) vẫn hỏi.
+        assert {"taxCode", "address1", "TuCachNguoiNopHoSo", "province2"} <= set(config["noAsk"])
+        assert not {"village", "village2", "SoThuaDat", "SoToBanDo"} & set(config["noAsk"])
+    else:
+        assert {"noidungyeucaugiaiquyet", "note"} <= set(config["noAsk"])
     # data[district] trên form Ninh Bình là ô Phường/Xã người nộp → vẫn hỏi khi trống.
     assert "district" not in config["noAsk"]
     assert not {"fullname", "identityNumber", "birthday", "phoneNumber", "ownerFullname"} & set(config["noAsk"])

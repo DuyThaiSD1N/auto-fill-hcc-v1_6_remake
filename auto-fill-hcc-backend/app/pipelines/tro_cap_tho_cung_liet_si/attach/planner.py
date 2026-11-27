@@ -64,7 +64,7 @@ SLOTS: list[dict[str, Any]] = [
         "slotName": 'Bản sao chứng thực từ Bằng "Tổ quốc ghi công"',
         "slotKeywords": ["to quoc ghi cong"],
         "detectedType": 'Bằng "Tổ quốc ghi công"',
-        "documentName": 'Bằng "Tổ quốc ghi công"',
+        "documentName": "Bằng Tổ quốc ghi công",
     },
 ]
 _SLOT_BY_KEY = {s["slotKey"]: s for s in SLOTS}

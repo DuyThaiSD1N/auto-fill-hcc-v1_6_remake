@@ -420,6 +420,30 @@ def test_to_khai_ocr_sai_ten_benh_vien_lay_noi_sinh_theo_giay_chung_sinh():
     assert out["NsDiaChi"]["diaChi"] == "Bệnh viện Sản Nhi tỉnh Lâm Đồng số 57 Thánh Mẫu"
 
 
+def test_to_khai_ocr_chen_chu_nhi_giu_so_nha_cua_to_khai():
+    # 27/11: OCR tờ khai chèn "Nhi" vào tên BV Đa khoa tỉnh → lấy tên theo giấy chứng sinh nhưng vẫn giữ
+    # "số 01 Phạm Ngọc Thạch" của tờ khai (giấy chứng sinh chỉ ghi tên), không nhận nhầm sang BV Sản Nhi.
+    tk = {"tinh": "Lâm Đồng", "xa": "Cam Ly",
+          "diaChi": "Bệnh Viện Nhi Tỉnh Đa Khoa Lâm Đồng, số 01 Phạm Ngọc Thạch"}
+    out = _by_name({"Tk_HoTenCon": "VŨ AN", "Tk_NoiSinh": tk,
+                    "Gcs_NoiSinh": {"tinh": "Lâm Đồng", "diaChi": "Bệnh viện đa khoa tỉnh Lâm Đồng"}})
+    assert out["NsDiaChi"]["diaChi"] == "Bệnh viện đa khoa tỉnh Lâm Đồng, số 01 Phạm Ngọc Thạch"
+    assert out["NsDiaChi"]["xa"] == "Phường Cam Ly - Đà Lạt"
+    # Giấy chứng sinh in hoa → tên viết lại, số nhà giữ nguyên.
+    out = _by_name({"Tk_HoTenCon": "VŨ AN", "Tk_NoiSinh": tk,
+                    "Gcs_NoiSinh": {"tinh": "Lâm Đồng", "diaChi": "BỆNH VIỆN ĐA KHOA TỈNH LÂM ĐỒNG"}})
+    assert out["NsDiaChi"]["diaChi"] == "Bệnh viện đa khoa tỉnh Lâm Đồng, số 01 Phạm Ngọc Thạch"
+    # Không có giấy chứng sinh → giữ tờ khai, không đổi thành "Bệnh viện Sản Nhi … số 57 Thánh Mẫu".
+    out = _by_name({"Tk_HoTenCon": "VŨ AN", "Tk_NoiSinh": tk})
+    assert "Sản Nhi" not in out["NsDiaChi"]["diaChi"]
+    assert "Phạm Ngọc Thạch" in out["NsDiaChi"]["diaChi"]
+    # Tờ khai chỉ có tên (không số nhà) → giữ nguyên tên theo giấy chứng sinh.
+    out = _by_name({"Tk_HoTenCon": "VŨ AN",
+                    "Tk_NoiSinh": {"tinh": "Lâm Đồng", "xa": "", "diaChi": "Bệnh Viện Tỉnh Đa Khoa Lâm Đồng"},
+                    "Gcs_NoiSinh": {"tinh": "Lâm Đồng", "diaChi": "Bệnh viện đa khoa tỉnh Lâm Đồng"}})
+    assert out["NsDiaChi"]["diaChi"] == "Bệnh viện đa khoa tỉnh Lâm Đồng"
+
+
 def test_san_nhi_lam_dong_co_dia_chi_ghi_co_dinh_57_thanh_mau():
     # Phường Xuân Hương 16/11: OCR đọc đuôi thành "Số 57 phòng Long Biang Đà Lạt".
     for dia in (

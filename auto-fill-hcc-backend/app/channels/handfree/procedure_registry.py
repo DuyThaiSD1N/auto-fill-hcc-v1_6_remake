@@ -8943,6 +8943,173 @@ PROCEDURES: list[dict] = [
             "lẻ khác vào \"Giấy tờ khác\". Tệp trên 6 MB được nén lại trước khi đính."
         ),
     },
+    {
+        "key": "dinh-chinh-sai-sot",
+        "provinceOnly": ["laichau"],  # đặc thù Lai Châu: chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.115585 (ke_khai_links "Lai Châu - …", không selectSo → DVCQG chọn đủ Tỉnh + Phường/Xã), cùng cổng
+        # dichvucong.laichau.gov.vn và cùng luồng 4 bước với các thẻ Lai Châu trên. Key lõi KHÔNG mang đuôi tỉnh nhưng
+        # pipeline chỉ chạy cổng Lai Châu (urlScope) → khoá provinceOnly. Detect y hệt lõi; label = label lõi bỏ "[Lai
+        # Châu] ". Đính kèm fixed-slot 8 dòng = hai nhóm Mẫu 11/ĐK (dòng 1-4) và Mẫu 18 (dòng 5-8), planner chọn nhóm theo
+        # mẫu Đơn. Key TRÙNG lõi. Chưa chạy thử trên cổng thật.
+        "detect": {
+            "urlScope": ["dichvucong.laichau.gov.vn"],
+            "textIncludes": ["đính chính giấy chứng nhận đã cấp lần đầu có sai sót"],
+            "headingDisabled": True,
+        },
+        "label": "Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
+        "shortLabel": "Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
+        "subtitle": "Sửa thông tin ghi sai trên giấy chứng nhận quyền sử dụng đất đã cấp",
+        "icon": "📝",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f3a4c-17a2-7781-ac41-7b27763dc866",
+        "needsAgencySelect": True,
+        "agencyProvince": "Lai Châu",
+        "hasAttachmentStep": True,
+        "laiChauFeeStep": _LC_FEE_STEP,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký biến động đất đai (Mẫu số 11/ĐK hoặc Mẫu số 18) — đã kê khai, ký",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận đã cấp (bản gốc)", "icon": "📜", "sides": 1, "repeatable": True},
+            {"key": "chung_minh", "name": "Giấy tờ chứng minh nội dung sai sót (căn cước, giấy khai sinh, quyết định, "
+             "văn bản xác nhận…)", "icon": "📎", "sides": 1, "repeatable": True},
+            {"key": "uy_quyen", "name": "Văn bản ủy quyền (nếu nộp qua người đại diện)", "icon": "✍️", "sides": 1,
+             "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đề nghị", "icon": "🪪", "sides": 2,
+             "optional": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký biến động đất đai theo Mẫu số 11/ĐK hoặc Mẫu số 18 — nguồn chính điền người nộp.\n"
+            "2. Giấy chứng nhận quyền sử dụng đất / quyền sở hữu tài sản gắn liền với đất đã cấp (bản gốc).\n"
+            "3. Giấy tờ chứng minh nội dung sai sót cần đính chính (căn cước, giấy khai sinh, quyết định, văn bản xác "
+            "nhận...).\n"
+            "4. Nếu nộp qua người đại diện: văn bản ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung. Mỗi tệp không quá 6 MB.\n"
+            "Bước đính kèm: hệ thống tự chọn nhóm dòng Mẫu 11/ĐK hoặc Mẫu 18 theo mẫu Đơn, rồi đính Đơn, Giấy chứng "
+            "nhận, giấy tờ chứng minh sai sót, văn bản ủy quyền vào đúng dòng của nhóm đó."
+        ),
+    },
+    {
+        "key": "dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai",
+        "provinceOnly": ["laichau"],  # đặc thù Lai Châu: chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.115583 (ke_khai_links "Lai Châu - …", không selectSo → DVCQG chọn đủ Tỉnh + Phường/Xã), cùng cổng
+        # dichvucong.laichau.gov.vn và cùng luồng 4 bước với các thẻ Lai Châu trên. Bản "dang-ky-dat-dai-lan-dau" của
+        # lõi (tổ chức đang sử dụng đất) KHÔNG đưa lên trợ lý: thủ tục của tổ chức, chưa có link ke_khai. Detect y hệt
+        # lõi; label = label lõi bỏ "[Lai Châu] ". Đính kèm fixed-slot bảng 20 dòng (Đơn + CCCD dòng 1, trích đo dòng 5,
+        # giấy chuyển quyền / cam kết nguồn gốc dòng 8). Key TRÙNG lõi. Chưa chạy thử trên cổng thật.
+        "detect": {
+            "urlScope": ["laichau.gov.vn"],
+            "textIncludes": [
+                "1.115583",
+                "lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn "
+            "liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước "
+            "ngoài"
+        ),
+        "shortLabel": "Đăng ký đất đai, cấp Giấy chứng nhận lần đầu cho hộ gia đình, cá nhân",
+        "subtitle": "Xin cấp giấy chứng nhận quyền sử dụng đất lần đầu cho thửa đất chưa có giấy",
+        "icon": "📜",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019f36d6-3b80-76db-b702-3c16cbf30bb6",
+        "needsAgencySelect": True,
+        "agencyProvince": "Lai Châu",
+        "hasAttachmentStep": True,
+        "laiChauFeeStep": _LC_FEE_STEP,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đăng ký đất đai, tài sản gắn liền với đất (Mẫu số 13) — đã kê khai, ký",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "trich_do", "name": "Sơ đồ / trích lục bản đồ địa chính / mảnh trích đo thửa đất, bản mô tả ranh "
+             "giới, mốc giới", "icon": "📐", "sides": 1, "repeatable": True},
+            {"key": "nguon_goc", "name": "Giấy tờ chuyển quyền sử dụng đất hoặc bản cam kết nguồn gốc đất (nếu có)",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+            {"key": "uy_quyen", "name": "Văn bản về việc đại diện / ủy quyền (nếu nộp thay)", "icon": "✍️",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người nộp hồ sơ", "icon": "🪪", "sides": 2,
+             "optional": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Đơn đăng ký đất đai, tài sản gắn liền với đất (Mẫu số 13; hồ sơ lập theo Mẫu số 15 vẫn nhận, kèm danh "
+            "sách người sử dụng chung Mẫu số 13a nếu có) — nguồn chính điền người nộp, địa chỉ.\n"
+            "2. Sơ đồ / bản trích lục bản đồ địa chính hoặc mảnh trích đo thửa đất, kèm bản mô tả ranh giới, mốc giới.\n"
+            "3. Giấy tờ về việc chuyển quyền sử dụng đất hoặc bản cam kết nguồn gốc đất (nếu đất nhận chuyển quyền / tự "
+            "khai hoang).\n"
+            "4. Căn cước công dân của người nộp hồ sơ.\n"
+            "5. Nếu nộp thay: văn bản về việc đại diện / ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung. Mỗi tệp KHÔNG QUÁ 6 MB — file "
+            "scan gộp nhiều giấy nên tách nhỏ theo từng giấy tờ.\n"
+            "Bước đính kèm: Đơn và căn cước → dòng 1, trích đo / mô tả ranh giới → dòng 5, giấy chuyển quyền / cam kết "
+            "nguồn gốc → dòng 8, văn bản đại diện → dòng đại diện."
+        ),
+    },
+    {
+        "key": "ho-tro-mai-tang-dan-toc-thieu-so-lai-chau",
+        "provinceOnly": ["laichau"],  # đặc thù Lai Châu: chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 2.002862 (NQ 53/2025/NQ-HĐND Lai Châu; ke_khai_links "Lai Châu - …", không selectSo → DVCQG chọn đủ Tỉnh
+        # + Phường/Xã), cùng cổng dichvucong.laichau.gov.vn và cùng luồng 4 bước với các thẻ Lai Châu trên. Detect y hệt lõi
+        # (textPriority thắng rule chung các thủ tục mai táng khác); label = label lõi bỏ "[Lai Châu] ". Người nộp = người
+        # đứng ra mai táng. Đính kèm fixed-slot 5 dòng có tick, file gộp Mẫu 01 + Mẫu 02 lên cả dòng 1 và dòng 4, CCCD vào
+        # "Giấy tờ khác". Key TRÙNG lõi. Chưa chạy thử trên cổng thật.
+        "detect": {
+            "urlScope": ["laichau.gov.vn"],
+            "textIncludes": ["mai táng đối với người dân tộc thiểu số trên địa bàn tỉnh Lai Châu"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Hỗ trợ chi phí mai táng đối với người dân tộc thiểu số trên địa bàn tỉnh Lai Châu giai đoạn 2025-2030",
+        "shortLabel": "Hỗ trợ chi phí mai táng cho người dân tộc thiểu số",
+        "subtitle": "Gia đình người dân tộc thiểu số hộ nghèo, cận nghèo đã mất xin tiền hỗ trợ mai táng",
+        "icon": "🕯️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d9016-e181-753d-880e-69a6d964af86",
+        "needsAgencySelect": True,
+        "agencyProvince": "Lai Châu",
+        "hasAttachmentStep": True,
+        "laiChauFeeStep": _LC_FEE_STEP,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "to_khai", "name": "Tờ khai đề nghị hỗ trợ chi phí mai táng (Mẫu số 01) — có thể chung file với "
+             "Biên bản Mẫu số 02", "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "bien_ban", "name": "Biên bản xác nhận việc mai táng (Mẫu số 02)", "icon": "📝", "sides": 1,
+             "repeatable": True},
+            {"key": "trich_luc_khai_tu", "name": "Trích lục khai tử của người mất", "icon": "📜", "sides": 1,
+             "repeatable": True},
+            {"key": "ho_ngheo", "name": "Giấy chứng nhận hộ nghèo / hộ cận nghèo", "icon": "🏠", "sides": 1,
+             "repeatable": True},
+            {"key": "hoa_tang", "name": "Giấy xác nhận của cơ sở hỏa táng (nếu hỏa táng)", "icon": "📎", "sides": 1,
+             "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đứng ra mai táng", "icon": "🪪", "sides": 2,
+             "optional": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (người nộp = người đứng ra tổ chức mai táng):\n"
+            "1. Tờ khai đề nghị hỗ trợ chi phí mai táng (Mẫu số 01).\n"
+            "2. Biên bản xác nhận việc mai táng (Mẫu số 02) — Mẫu 01 và Mẫu 02 có thể chung một file.\n"
+            "3. Trích lục khai tử của người mất.\n"
+            "4. Giấy chứng nhận hộ nghèo / hộ cận nghèo (dân tộc lấy từ đây khi thẻ căn cước mới không in dân tộc).\n"
+            "5. Nếu hỏa táng: Giấy xác nhận của cơ sở hỏa táng.\n"
+            "6. Căn cước công dân của người nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung. Mỗi tệp không quá 6 MB.\n"
+            "Bước đính kèm: hệ thống tích và đính đúng 5 dòng thành phần hồ sơ; file gộp Mẫu 01 + Mẫu 02 đính nguyên vào "
+            "cả dòng Biên bản và dòng Tờ khai; căn cước vào \"Giấy tờ khác\"."
+        ),
+    },
     # ── Thủ tục đất đai cổng iGate Khánh Hòa (04/11/2026) ──
     # Key TRÙNG lõi → process/attach tự nối; detect y hệt lõi (urlScope khanhhoa.gov.vn — tên thủ tục trùng bản tỉnh
     # khác); label = label lõi bỏ "Khánh Hòa - " (như Bắc Ninh). ke_khai_links không khai provinceOnlyAgency / selectSo
@@ -10074,6 +10241,55 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "tach-thua-hop-thua-dat-ninh-binh",
+        # Cài đặt "Có tách hồ sơ khi đính kèm" (options.splitDocuments) chọn attach/dinh_kem_tach hay dinh_kem_khong_tach.
+        "supportsSplitDocuments": True,
+        "provinceOnly": ["ninhbinh"],  # bản riêng Ninh Bình (key/label mang tên tỉnh): chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.012784 (27/11/2026), cùng luồng iGate Ninh Bình như 6 thủ tục đất đai trên. Cơ quan UBND phường/xã
+        # (quy trình "Phi địa giới") → ke_khai_links chọn đủ Tỉnh + Phường/Xã, không khai provinceOnlyAgency. Hai quy
+        # trình "Phi địa giới" / "Phi địa giới - Miền núi" cùng form nên không cần caseOptions. Bảng đính kèm 4 dòng: Bản
+        # vẽ + Giấy phép đo đạc → 1, Giấy chứng nhận → 2, văn bản cơ quan có thẩm quyền → 3, Đơn Mẫu 01/ĐK → 4; ủy quyền
+        # và căn cước qua nút "Thêm giấy tờ".
+        "detect": {
+            "urlScope": ["dichvucong.ninhbinh.gov.vn"],
+            "textIncludes": ["Tách thửa hoặc hợp thửa đất"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Tách thửa hoặc hợp thửa đất",
+        "shortLabel": "Tách thửa hoặc hợp thửa đất",
+        "subtitle": "Chia một thửa đất thành nhiều thửa hoặc gộp các thửa đất liền kề tại Ninh Bình",
+        "icon": "✂️",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-6f5d-72e6-9a68-ab8e3ba11c8b",
+        "flowProfile": "xay-dung",
+        "agencyProvince": "Ninh Bình",
+        "bxdFlow": _NB_BXD_FLOW,
+        "requiredDocs": [
+            {"key": "don", "name": "Đơn đề nghị tách thửa đất, hợp thửa đất (Mẫu số 01/ĐK) — đã kê khai, ký", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "gcn", "name": "Giấy chứng nhận quyền sử dụng đất đã cấp (đủ các trang)", "icon": "📜", "sides": 1,
+             "repeatable": True},
+            {"key": "ban_ve", "name": "Bản vẽ tách thửa đất, hợp thửa đất kèm Giấy phép hoạt động đo đạc của đơn vị lập "
+             "bản vẽ", "icon": "📐", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người sử dụng đất", "icon": "🪪", "sides": 2,
+             "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Văn bản của cơ quan có thẩm quyền về tách/hợp thửa, văn bản ủy quyền (nếu có)",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên (cả bộ có thể là một PDF scan gộp):\n"
+            "1. Đơn đề nghị tách thửa đất, hợp thửa đất (Mẫu số 01/ĐK) đã ký — người sử dụng đất, số căn cước, địa chỉ, "
+            "điện thoại, thửa đất gốc và các thửa sau tách/hợp.\n"
+            "2. Giấy chứng nhận quyền sử dụng đất đã cấp.\n"
+            "3. Bản vẽ tách thửa đất, hợp thửa đất kèm Giấy phép hoạt động đo đạc và bản đồ của đơn vị lập bản vẽ.\n"
+            "4. Căn cước công dân của người sử dụng đất; nếu có: văn bản của cơ quan có thẩm quyền về tách/hợp thửa, văn "
+            "bản ủy quyền khi nộp thay.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: Bản vẽ và Giấy phép đo đạc → dòng 1, Giấy chứng nhận → dòng 2, văn bản của cơ quan có thẩm "
+            "quyền → dòng 3, Đơn → dòng 4; văn bản ủy quyền và căn cước thêm dòng qua 'Thêm giấy tờ'."
+        ),
+    },
+    {
         "key": "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa",
         "provinceOnly": ["khanhhoa"],  # bản riêng Khánh Hòa (key/label mang tên tỉnh): chỉ account tỉnh này thấy + gọi được
         # Mã TTHC 1.115148 (24/11/2026), chép theo bản Lâm Đồng ngay trên (cùng bảng đính kèm một dòng, cùng facts). Cổng
@@ -10116,6 +10332,50 @@ PROCEDURES: list[dict] = [
             "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
             "Bước đính kèm: cổng chỉ có một dòng 'Văn bản đề nghị tính hoặc tính lại tiền sử dụng đất' — mọi tệp đính "
             "vào dòng này."
+        ),
+    },
+    {
+        "key": "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru-khanh-hoa",
+        "provinceOnly": ["khanhhoa"],  # bản riêng Khánh Hòa (key/label mang tên tỉnh): chỉ account tỉnh này thấy + gọi được
+        # Mã TTHC 1.013314 (27/11/2026), chép theo bản 1.115148 Khánh Hòa ngay trên (cùng form owner* + người nộp, cùng
+        # bảng đính kèm một dòng). Cổng iGate Khánh Hòa cấp UBND phường/xã (quy trình 1.013314.H32.01) → ke_khai_links không
+        # khai provinceOnlyAgency: DVCQG chọn đủ Tỉnh + Phường/Xã. Stepper 4 bước → luồng "xay-dung" + _KH_BXD_FLOW.
+        "detect": {
+            "urlScope": ["khanhhoa.gov.vn"],
+            "textIncludes": ["1.013314", "Xác nhận về điều kiện diện tích bình quân nhà ở để đăng ký thường trú"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Xác nhận về điều kiện diện tích bình quân nhà ở để đăng ký thường trú vào chỗ ở do thuê, mượn, ở nhờ; nhà "
+            "ở, đất ở không có tranh chấp quyền sở hữu nhà ở, quyền sử dụng đất ở, không thuộc địa điểm không được đăng "
+            "ký thường trú mới"
+        ),
+        "shortLabel": "Xác nhận chỗ ở hợp pháp để đăng ký thường trú",
+        "subtitle": "Mã 1.013314 · Xác nhận chỗ thuê, mượn, ở nhờ đủ diện tích tại Khánh Hòa",
+        "icon": "🏠",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf7-9660-707e-97b1-ef8876f54d3b",
+        "flowProfile": "xay-dung",
+        "agencyProvince": "Khánh Hòa",
+        "bxdFlow": _KH_BXD_FLOW,
+        "supportsSplitDocuments": True,
+        "requiredDocs": [
+            {"key": "to_khai", "name": "Tờ khai xác nhận tình trạng chỗ ở hợp pháp, diện tích nhà ở (Mẫu số 02) — đã ký",
+             "icon": "📄", "sides": 1, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước công dân của người đề nghị", "icon": "🪪", "sides": 2, "repeatable": True},
+            {"key": "khac", "name": "Giấy chứng nhận / hợp đồng thuê, mượn, ở nhờ; Giấy ủy quyền (nếu nộp thay)",
+             "icon": "📎", "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể gộp chung một PDF):\n"
+            "1. Tờ khai xác nhận tình trạng chỗ ở hợp pháp, diện tích nhà ở tối thiểu (Mẫu số 02) đã ký — nguồn chính "
+            "điền người đề nghị, địa chỉ chỗ ở, nội dung đề nghị.\n"
+            "2. Căn cước công dân của người đề nghị.\n"
+            "3. Nếu có: Giấy chứng nhận / hợp đồng thuê, mượn, ở nhờ của chỗ ở; nộp thay: giấy ủy quyền hoặc CCCD người "
+            "đi nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung.\n"
+            "Bước đính kèm: cổng chỉ có một dòng 'Tờ khai xác nhận tình trạng chỗ ở hợp pháp … (Mẫu số 02)' — mọi tệp "
+            "đính vào dòng này."
         ),
     },
     # ── Thủ tục toàn quốc đã có pipeline Auto Fill, đưa lên trợ lý (01/11/2026) ──
@@ -12682,6 +12942,11 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     # 1.115591 (25/11/2026): thủ tục riêng Lai Châu (provinceOnly ["laichau"]), ngoài bảng → _TAT_CA như các thẻ Lai Châu.
     "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an-lai-chau": _TAT_CA,
     "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau": _TAT_CA,  # STT 50
+    # 27/11/2026: đưa nốt 3 thủ tục riêng Lai Châu lên trợ lý (provinceOnly ["laichau"]) → _TAT_CA như các thẻ Lai Châu:
+    # 1.115585 đính chính GCN, 1.115583 đăng ký đất đai lần đầu hộ gia đình / cá nhân, 2.002862 mai táng người DTTS.
+    "dinh-chinh-sai-sot": _TAT_CA,
+    "dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai": _TAT_CA,
+    "ho-tro-mai-tang-dan-toc-thieu-so-lai-chau": _TAT_CA,
     "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh": frozenset({"bacninh"}),  # STT 50; 12/11/2026 người dùng mở cho Bắc Ninh
     # 1.115460 (21/11/2026): thủ tục riêng Bắc Ninh ("Bắc Ninh - …"), chưa có trong bảng theo dõi → mở cho Bắc Ninh.
     "dang-ky-bien-dong-doi-ten-nguoi-su-dung-dat-bac-ninh": frozenset({"bacninh"}),
@@ -12714,8 +12979,11 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "dang-ky-bien-dong-dat-dai-ninh-binh": frozenset({"ninhbinh"}),
     "dinh-chinh-da-cap-ninh-binh": frozenset({"ninhbinh"}),
     "dinh-chinh-gcn-da-cap-ninh-binh": frozenset({"ninhbinh"}),
+    "tach-thua-hop-thua-dat-ninh-binh": frozenset({"ninhbinh"}),
     # 24/11/2026: 1.115148 bản Khánh Hòa ("Khánh Hòa - …"), người dùng giới hạn chỉ tài khoản Khánh Hòa.
     "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa": frozenset({"khanhhoa"}),
+    # 27/11/2026: 1.013314 bản Khánh Hòa ("Khánh Hòa - …"), bản riêng của tỉnh → chỉ tài khoản Khánh Hòa.
+    "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru-khanh-hoa": frozenset({"khanhhoa"}),
     "thong-bao-san-pham-quang-cao-bang-ron": _TAT_CA,
     "cap-giay-phep-xuat-ban-tai-lieu-khong-kinh-doanh": _TAT_CA,
     "cap-the-huong-dan-vien-du-lich-noi-dia": _TAT_CA,

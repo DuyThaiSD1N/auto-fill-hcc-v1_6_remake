@@ -3,6 +3,16 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.30.4",
+    date: "27/11/2026",
+    items: [
+      "Thêm thủ tục tách thửa hoặc hợp thửa đất (Ninh Bình, cấp xã) và xác nhận điều kiện diện tích nhà ở để đăng ký thường trú (Khánh Hòa): quét đơn, giấy tờ để điền biểu mẫu và đính kèm đúng dòng, hỗ trợ cả chế độ tách giấy tờ.",
+      "Trợ lý người dân (tài khoản Lai Châu): thêm đính chính Giấy chứng nhận có sai sót, đăng ký đất đai, tài sản lần đầu cho người Việt Nam ở nước ngoài và hỗ trợ mai táng người dân tộc thiểu số.",
+      "Đính kèm: tên tệp bỏ ngoặc kép và ký tự cấm (vd Bằng “Tổ quốc ghi công”) để cổng nhận tệp, không còn hiện “%22”.",
+      "Khai sinh liên thông: tờ khai viết tay ghi bệnh viện đa khoa tỉnh Lâm Đồng không còn bị nhận nhầm thành bệnh viện Sản Nhi, nơi sinh giữ cả số nhà, tên đường của tờ khai.",
+    ],
+  },
+  {
     version: "1.30.3",
     date: "27/11/2026",
     items: [

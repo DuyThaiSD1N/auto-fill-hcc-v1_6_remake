@@ -249,6 +249,8 @@ from app.pipelines.cap_doi_gcn_ninh_binh.process import run as cap_doi_gcn_ninh_
 from app.pipelines.cap_doi_gcn_ninh_binh.attach import plan as cap_doi_gcn_ninh_binh_attach
 from app.pipelines.dang_ky_bien_dong_dat_dai_ninh_binh.process import run as dang_ky_bien_dong_dat_dai_ninh_binh_process
 from app.pipelines.dang_ky_bien_dong_dat_dai_ninh_binh.attach import plan as dang_ky_bien_dong_dat_dai_ninh_binh_attach
+from app.pipelines.tach_thua_hop_thua_dat_ninh_binh.process import run as tach_thua_hop_thua_dat_ninh_binh_process
+from app.pipelines.tach_thua_hop_thua_dat_ninh_binh.attach import plan as tach_thua_hop_thua_dat_ninh_binh_attach
 from app.pipelines.dang_ky_dat_dai_lan_dau_quang_ninh_mien_nui_hai_dao.attach import plan as dang_ky_dat_dai_lan_dau_quang_ninh_mien_nui_hai_dao_attach
 from app.pipelines.dang_ky_bien_dong_chuyen_nhuong_quang_ninh_mien_nui_hai_dao.attach import plan as dang_ky_bien_dong_chuyen_nhuong_quang_ninh_mien_nui_hai_dao_attach
 from app.pipelines.chuyen_muc_dich_su_dung_dat_quang_ninh_mien_nui_hai_dao.attach import plan as chuyen_muc_dich_su_dung_dat_quang_ninh_mien_nui_hai_dao_attach
@@ -281,6 +283,12 @@ from app.pipelines.tinh_tien_su_dung_dat_nd_50_2026_khanh_hoa.process import (
 )
 from app.pipelines.tinh_tien_su_dung_dat_nd_50_2026_khanh_hoa.attach import (
     plan as tinh_tien_su_dung_dat_nd_50_2026_khanh_hoa_attach,
+)
+from app.pipelines.xac_nhan_dieu_kien_dien_tich_nha_o_dang_ky_thuong_tru_khanh_hoa.process import (
+    run as xn_dien_tich_nha_o_thuong_tru_khanh_hoa_process,
+)
+from app.pipelines.xac_nhan_dieu_kien_dien_tich_nha_o_dang_ky_thuong_tru_khanh_hoa.attach import (
+    plan as xn_dien_tich_nha_o_thuong_tru_khanh_hoa_attach,
 )
 from app.pipelines.cap_lai_gcn_do_bi_mat_quang_ninh.attach import (
     plan as cap_lai_gcn_do_bi_mat_quang_ninh_attach,
@@ -3779,6 +3787,41 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        "key": "tach-thua-hop-thua-dat-ninh-binh",
+        # Mã TTHC 1.012784 (27/11/2026), theo file "Mapping_Tach-thua-hop-thua-dat_Phi-dia-gioi.xlsx" (DOM cổng Ninh Bình,
+        # quy trình "Phi địa giới" và "Phi địa giới - Miền núi" cùng ô) + ảnh ánh xạ đính kèm. Cơ quan UBND phường/xã →
+        # link kê khai DVCQG cùng key chọn Tỉnh + Phường/Xã. SPA không có mã trong URL, tên thủ tục trùng bản Đà Nẵng/Lâm
+        # Đồng/Quảng Ninh → khoá tên miền Ninh Bình.
+        "detect": {
+            "urlScope": ["dichvucong.ninhbinh.gov.vn"],
+            "textIncludes": ["Tách thửa hoặc hợp thửa đất"],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": "Ninh Bình - Tách thửa hoặc hợp thửa đất",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        # Cài đặt "Có tách hồ sơ khi đính kèm" (options.splitDocuments) chọn attach/dinh_kem_tach hay dinh_kem_khong_tach.
+        "supportsSplitDocuments": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ nên tải lên (cả bộ có thể là một PDF scan gộp):\n"
+            "1. Đơn đề nghị tách thửa đất, hợp thửa đất (Mẫu số 01/ĐK) đã ký — người sử dụng đất, số CCCD, địa chỉ, "
+            "điện thoại, thửa đất gốc và các thửa sau tách/hợp.\n"
+            "2. Giấy chứng nhận đã cấp (hoặc bản sao có công chứng, chứng thực).\n"
+            "3. Bản vẽ tách thửa đất, hợp thửa đất (Mẫu số 02/ĐK) kèm Giấy phép hoạt động đo đạc và bản đồ của đơn vị "
+            "lập bản vẽ.\n"
+            "4. Văn bản của cơ quan có thẩm quyền về tách/hợp thửa (nếu có).\n"
+            "5. Căn cước công dân của người sử dụng đất; nếu nộp thay: văn bản ủy quyền.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Đính kèm: Bản vẽ + Giấy phép đo đạc -> dòng 1; Giấy chứng nhận -> dòng 2; văn bản của cơ quan có thẩm quyền "
+            "-> dòng 3 (không có thì để trống); Đơn -> dòng 4; văn bản ủy quyền, CCCD -> nút 'Thêm giấy tờ'. Không tách "
+            "(mặc định): mỗi file đính NGUYÊN FILE một lần vào chỗ của giấy chính (file gộp có Đơn -> dòng 4). Bật 'Có "
+            "tách hồ sơ khi đính kèm': mỗi giấy cắt thành tệp riêng vào chỗ của nó, trang chụp lặp chỉ đính một bản.\n"
+        ),
+    },
+    {
         "key": "dang-ky-dat-dai-lan-dau-quang-ninh-mien-nui-hai-dao",
         # URL /nop-ho-so/145099 có thể đổi theo cấu hình cổng; khóa domain và hai đoạn tiêu đề đặc
         # trưng để không nhận nhầm các biến thể đồng bằng hoặc thủ tục đất đai khác tại Quảng Ninh.
@@ -4244,6 +4287,51 @@ PROCEDURES: list[dict] = [
             "giấy của người nộp thay thì bỏ tích, điền cả hai khối. Ô giấy tờ không có (ngày sinh, ngày cấp…) để "
             "trống, ô bắt buộc tô đỏ.\n"
             "Đính kèm: bảng chỉ có một dòng 'Văn bản đề nghị tính hoặc tính lại tiền sử dụng đất' — mọi tệp đính "
+            "vào dòng này. Không tách (mặc định): mỗi file đính nguyên một lần. Bật 'Tách giấy tờ': mỗi giấy cắt "
+            "thành tệp riêng."
+        ),
+    },
+    {
+        "key": "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru-khanh-hoa",
+        # 1.013314 (27/11/2026) — key TRÙNG ke_khai_links (nhãn "Khánh Hòa - …" → link chỉ tài khoản Khánh Hòa thấy).
+        # Cổng iGate Khánh Hòa (UBND phường/xã, quy trình 1.013314.H32.01, stepper 4 bước), form theo file
+        # "Mapping_XN-cho-o-hop-phap_Mau02_KhanhHoa.xlsx" — TRÙNG form 1.115148 Khánh Hòa (owner* + "Người nộp hồ sơ đồng
+        # thời là chủ hồ sơ" + khối người nộp); bảng đính kèm một dòng Tờ khai Mẫu 02 (NĐ 58/2026). Bản chung cùng mã
+        # "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru" (form Quảng Ngãi) chỉ khớp tên thủ tục → bản này khóa
+        # urlScope tỉnh + thêm MÃ in ở dòng "Quy trình: 1.013314.H32.01" nên điểm textPriority cao hơn trên cổng Khánh Hòa.
+        "collectFormContext": True,  # tài khoản đăng nhập = người nộp → giữ khối người nộp cổng đổ sẵn
+        "detect": {
+            "urlScope": ["khanhhoa.gov.vn"],
+            "textIncludes": [
+                "1.013314",
+                "Xác nhận về điều kiện diện tích bình quân nhà ở để đăng ký thường trú",
+            ],
+            "headingDisabled": True,
+            "textPriority": True,
+        },
+        "label": (
+            "Khánh Hòa - Xác nhận về điều kiện diện tích bình quân nhà ở để đăng ký thường trú vào chỗ ở do thuê, "
+            "mượn, ở nhờ; nhà ở, đất ở không có tranh chấp quyền sở hữu nhà ở, quyền sử dụng đất ở, không thuộc địa "
+            "điểm không được đăng ký thường trú mới"
+        ),
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        "supportsSplitDocuments": True,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên (có thể gộp chung một PDF):\n"
+            "1. Tờ khai xác nhận tình trạng chỗ ở hợp pháp, diện tích nhà ở tối thiểu để đăng ký thường trú, đăng ký "
+            "tạm trú (Mẫu số 02, NĐ 58/2026/NĐ-CP) đã ký — điền người đề nghị (chủ hồ sơ), nội dung yêu cầu (địa chỉ "
+            "chỗ ở hợp pháp, mục III).\n"
+            "2. Căn cước công dân của người đề nghị — ngày sinh, giới tính, số, ngày cấp, nơi cấp, nơi cư trú.\n"
+            "3. Nếu có: Giấy chứng nhận / hợp đồng thuê, mượn, ở nhờ của chỗ ở; nộp thay: giấy ủy quyền hoặc CCCD "
+            "người đi nộp.\n"
+            "Không cần chọn trước vai trò giấy tờ; hệ thống tự phân biệt theo nội dung OCR.\n"
+            "Điền đơn: tự nộp thì tích 'Người nộp hồ sơ đồng thời là chủ hồ sơ' và khai người nộp bằng chủ hồ sơ; có "
+            "giấy của người nộp thay thì bỏ tích, điền cả hai khối. Ô giấy tờ không có (điện thoại, ngày cấp…) để "
+            "trống, ô bắt buộc tô đỏ.\n"
+            "Đính kèm: bảng chỉ có một dòng 'Tờ khai xác nhận tình trạng chỗ ở hợp pháp … (Mẫu số 02)' — mọi tệp đính "
             "vào dòng này. Không tách (mặc định): mỗi file đính nguyên một lần. Bật 'Tách giấy tờ': mỗi giấy cắt "
             "thành tệp riêng."
         ),
@@ -12599,6 +12687,7 @@ _PIPELINE = {
     "tinh-tien-su-dung-dat-nd-50-2026-quang-ngai": tinh_tien_su_dung_dat_nd_50_2026_quang_ngai_process,
     "tinh-tien-su-dung-dat-nd-50-2026-lam-dong": tinh_tien_su_dung_dat_nd_50_2026_lam_dong_process,
     "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa": tinh_tien_su_dung_dat_nd_50_2026_khanh_hoa_process,
+    "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru-khanh-hoa": xn_dien_tich_nha_o_thuong_tru_khanh_hoa_process,
     "xac-dinh-lai-dien-tich-dat-o-quang-ngai": xac_dinh_lai_dien_tich_dat_o_quang_ngai_process,
     "xac-dinh-lai-dien-tich-dat-o-truoc-01-7-2004": xac_dinh_lai_dien_tich_dat_o_process,
     "xac-dinh-lai-dien-tich-dat-o-truoc-01-7-2004-igate-lao-cai": xac_dinh_lai_dien_tich_dat_o_igate_lao_cai_process,
@@ -12612,6 +12701,7 @@ _PIPELINE = {
     "dang-ky-dat-dai-lan-dau-ninh-binh": dang_ky_dat_dai_lan_dau_ninh_binh_process,
     "cap-doi-gcn-ninh-binh": cap_doi_gcn_ninh_binh_process,
     "dang-ky-bien-dong-dat-dai-ninh-binh": dang_ky_bien_dong_dat_dai_ninh_binh_process,
+    "tach-thua-hop-thua-dat-ninh-binh": tach_thua_hop_thua_dat_ninh_binh_process,
     "dang-ky-dat-dai-lan-dau-bac-ninh": dang_ky_dat_dai_lan_dau_bac_ninh_process,
     "thu-hoi-gcn-cap-sai-bac-ninh": thu_hoi_gcn_cap_sai_bac_ninh_process,
     "dang-ky-bien-dong-chuyen-nhuong-bac-ninh": dang_ky_bien_dong_chuyen_nhuong_bac_ninh_process,
@@ -12925,6 +13015,7 @@ _ATTACH_PIPELINE = {
     "dang-ky-dat-dai-lan-dau-ninh-binh": dang_ky_dat_dai_lan_dau_ninh_binh_attach,
     "cap-doi-gcn-ninh-binh": cap_doi_gcn_ninh_binh_attach,
     "dang-ky-bien-dong-dat-dai-ninh-binh": dang_ky_bien_dong_dat_dai_ninh_binh_attach,
+    "tach-thua-hop-thua-dat-ninh-binh": tach_thua_hop_thua_dat_ninh_binh_attach,
     "dang-ky-dat-dai-lan-dau-quang-ninh-mien-nui-hai-dao": dang_ky_dat_dai_lan_dau_quang_ninh_mien_nui_hai_dao_attach,
     "dang-ky-bien-dong-chuyen-nhuong-quang-ninh-mien-nui-hai-dao": dang_ky_bien_dong_chuyen_nhuong_quang_ninh_mien_nui_hai_dao_attach,
     "chuyen-muc-dich-su-dung-dat-quang-ninh-mien-nui-hai-dao": chuyen_muc_dich_su_dung_dat_quang_ninh_mien_nui_hai_dao_attach,
@@ -12940,6 +13031,7 @@ _ATTACH_PIPELINE = {
     "tinh-tien-su-dung-dat-nd-50-2026-quang-ngai": tinh_tien_su_dung_dat_nd_50_2026_quang_ngai_attach,
     "tinh-tien-su-dung-dat-nd-50-2026-lam-dong": tinh_tien_su_dung_dat_nd_50_2026_lam_dong_attach,
     "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa": tinh_tien_su_dung_dat_nd_50_2026_khanh_hoa_attach,
+    "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru-khanh-hoa": xn_dien_tich_nha_o_thuong_tru_khanh_hoa_attach,
     "cap-lai-gcn-do-bi-mat-quang-ninh": cap_lai_gcn_do_bi_mat_quang_ninh_attach,
     "dang-ky-bien-dong-chuyen-muc-dich-sdd-khong-xin-phep-quang-ninh": (
         dang_ky_bien_dong_chuyen_muc_dich_sdd_khong_xin_phep_quang_ninh_attach
