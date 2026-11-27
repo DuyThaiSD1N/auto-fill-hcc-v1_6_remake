@@ -923,8 +923,10 @@ def test_registered_procedures_use_their_declared_flow_family():
     # không bước chủ hồ sơ; detect giống hệt core.
     core_detect = {procedure["key"]: procedure["detect"] for procedure in core_registry.PROCEDURES}
     # 24/11: + cấp Phiếu lý lịch tư pháp 3.000333 (Công an tỉnh, cùng trang nộp một trang SurveyJS).
+    # 27/11: + đăng ký thành lập hộ kinh doanh 1.001612 bản Cổng DVC quốc gia (cấp xã, cùng trang một trang).
     for key in ("khai-sinh-dang-ky-thuong", "trich-luc-ks", "khai-tu", "thay-doi-cai-chinh-ho-tich",
-                "xac-nhan-tinh-trang-hon-nhan", "cap-phieu-ly-lich-tu-phap-cong-an-cap-tinh"):
+                "xac-nhan-tinh-trang-hon-nhan", "cap-phieu-ly-lich-tu-phap-cong-an-cap-tinh",
+                "dang-ky-thanh-lap-ho-kinh-doanh"):
         single_page = procedures.pop(key)
         assert single_page["flowProfile"] == "tu-phap-moi"
         assert single_page["singlePageDossier"] is True
@@ -1125,7 +1127,9 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     #    "giao-thue-chuyen-muc-dich-dat-ninh-binh" (1.013949), "cap-doi-gcn-ninh-binh" (1.012783),
     #    "dang-ky-bien-dong-dat-dai-ninh-binh" (1.013831), "dinh-chinh-da-cap-ninh-binh" (1.012790),
     #    "dinh-chinh-gcn-da-cap-ninh-binh" (1.012796), luồng "xay-dung".
-    assert len(procedures) == 207
+    # +1 Cổng DVC quốc gia (27/11) "dang-ky-thanh-lap-ho-kinh-doanh" (1.001612), luồng "tu-phap-moi" chọn Tỉnh + Xã;
+    #    bản HkdOnline "dang-ky-kinh-doanh" giữ nguyên.
+    assert len(procedures) == 208
 
     for procedure in procedures:
         key = procedure["key"]

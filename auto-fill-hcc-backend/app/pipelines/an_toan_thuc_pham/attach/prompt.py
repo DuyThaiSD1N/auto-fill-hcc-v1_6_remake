@@ -43,6 +43,8 @@ và xếp vào đúng MỘT loại giấy tờ để đính vào đúng dòng th
   người đủ sức khỏe của chủ cơ sở và người trực tiếp sản xuất, kinh doanh thực phẩm.
 - tap_huan: danh sách người sản xuất thực phẩm, kinh doanh dịch vụ ăn uống đã được tập huấn kiến thức an
   toàn thực phẩm (có xác nhận của chủ cơ sở), hoặc giấy xác nhận đã tập huấn / đạt kiến thức ATTP.
+  Kể cả danh sách lao động / danh sách nhân viên / danh sách người làm việc của cơ sở (bảng STT, họ tên,
+  chủ cơ sở ký xác nhận) dù không in chữ "tập huấn" — đó là giấy của dòng này, KHÔNG phải other.
 - other: mọi giấy khác (CCCD, giấy ủy quyền, Giấy chứng nhận ATTP đã cấp trước đây, hợp đồng thuê mặt
   bằng…) hoặc không đủ bằng chứng.
 </type_definitions>
@@ -51,6 +53,7 @@ và xếp vào đúng MỘT loại giấy tờ để đính vào đúng dòng th
 - Giấy chứng nhận đăng ký kinh doanh/doanh nghiệp (gcn_dkkd) KHÁC Giấy chứng nhận cơ sở đủ điều kiện an
   toàn thực phẩm đã cấp (other).
 - Danh sách có cả cột sức khỏe lẫn cột tập huấn → chọn theo TIÊU ĐỀ in đầu danh sách.
+- Danh sách lao động / nhân viên chỉ có họ tên (không có kết quả khám sức khỏe) → tap_huan.
 - Một tài liệu quét gộp nhiều giấy: có Đơn đề nghị → don_de_nghi; không có Đơn → loại chiếm phần lớn số
   trang; ngang nhau → loại ở trang đầu. Không trả hai loại cho một tài liệu.
 </disambiguation>

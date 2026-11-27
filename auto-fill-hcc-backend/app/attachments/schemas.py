@@ -105,6 +105,12 @@ class AttachmentPlanItem(BaseModel):
     bcaPlainTable: bool | None = None
     # Ô phụ của dòng: {"kind": Loại giấy tờ, "count": Số lượng, "note": Ghi chú}.
     rowFields: dict[str, str] | None = None
+    # Trang nộp Cổng DVC quốc gia (SurveyJS): chọn option chứa chữ này ở ô "Chọn trường hợp thực hiện" TRƯỚC khi đính
+    # (vd đăng ký thành lập hộ kinh doanh: giấy ủy quyền nộp hồ sơ cần dòng của trường hợp ủy quyền); nhiều option cùng
+    # chứa chữ thì lấy option có executionCasePrefer (đã fold). KHÔNG khai ở đây thì response_model lược mất → extension
+    # không chọn trường hợp, giấy rơi về dòng dự phòng.
+    executionCase: str | None = None
+    executionCasePrefer: str | None = None
 
 
 class AttachmentPlanResp(BaseModel):

@@ -28,6 +28,8 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát (theo mẫu "khai-sinh-dang-ky": thêm "(txuas ntxiv)" = liên thông).
     "khai-tu-lien-thong": "Cuv npe tuag (txuas ntxiv)",
     "dang-ky-kinh-doanh": "Cuv npe tsim lag luam tsev neeg",
+    # BẢN NHÁP chờ anh Dư soát — như "dang-ky-kinh-doanh" (bản Cổng Dịch vụ công quốc gia, cùng thủ tục).
+    "dang-ky-thanh-lap-ho-kinh-doanh": "Cuv npe tsim lag luam tsev neeg",
     "dang-ky-giam-ho": "Cuv npe saib xyuas tus neeg",
     # BẢN NHÁP chờ anh Dư soát — ghép từ "Cuv npe saib xyuas tus neeg" (đăng ký giám hộ); "xaus kev"
     # (chấm dứt việc) là TỪ MỚI.

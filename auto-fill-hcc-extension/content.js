@@ -50,7 +50,7 @@
   // header hiện "1.17 · 8/9" trong khi manifest đã là 1.17.0.6. Đúng lúc cần trả
   // lời "bản vá đã tới máy này chưa?" thì nhãn lại nói sai.
   // NGÀY vẫn ghi tay (để hỗ trợ), đổi cùng mục đầu changelog.js — tests/release-version.test.js kiểm.
-  const APP_RELEASE_DATE = "26/11";
+  const APP_RELEASE_DATE = "27/11";
   const APP_VERSION_LABEL = (() => {
     let v = "?";
     try { v = chrome.runtime.getManifest().version; } catch (e) { /* context đã mất */ }
@@ -6326,6 +6326,8 @@
         readLizAccountValue(["ten nguoi"]) ||
         readSurveyJsAccountValue("citizenName") ||
         // Lý lịch tư pháp (3.000333) đã chọn "Khai hộ": tài khoản là người được ủy quyền.
+        // Đăng ký thành lập hộ kinh doanh (1.001612) đã chọn "Người được ủy quyền": tài khoản ở khối người nộp _NYQ.
+        readSurveyJsAccountValue("citizenName_NYQ") ||
         readSurveyJsAccountValue("citizenHoVaTen_NYC_UyQuyen"),
       applicantIdentityNumber:
         readInputLikeValue("data[identityNumber]") ||
@@ -6337,6 +6339,7 @@
         readSurveyJsAccountValue("citizenIdentity") ||
         // Lý lịch tư pháp (3.000333): số giấy tờ của tài khoản ở khối Cá nhân / Khai hộ.
         readSurveyJsAccountValue("citizenSoGiayTo") ||
+        readSurveyJsAccountValue("citizenIdentity_NYQ") ||
         readSurveyJsAccountValue("citizenSoGiayTo_NYC_UyQuyen"),
       ownerFullname: readInputLikeValue("data[ownerFullname]"),
       ownerIdentityNumber: readInputLikeValue("data[ownerIdentityNumber]"),

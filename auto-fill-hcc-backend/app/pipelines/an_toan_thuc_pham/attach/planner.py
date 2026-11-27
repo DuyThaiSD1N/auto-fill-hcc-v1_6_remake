@@ -130,7 +130,17 @@ def _rule_doc_type(text: str) -> str:
     if any(k in h for k in ("dang ky kinh doanh", "dang ky ho kinh doanh", "dang ky doanh nghiep",
                             "ma so doanh nghiep")):
         return _GCN_DKKD
+    # Danh sách người lao động / nhân viên của cơ sở (chủ cơ sở ký) không in chữ "tập huấn" nhưng chính là giấy
+    # của dòng e) (ca thật: "Danh sách lao động của Hộ kinh doanh …" bị LLM trả other → rơi dòng a)).
+    # Đặt sau sức khỏe / ĐKKD: danh sách khám sức khỏe vẫn về dòng d).
+    if _DANH_SACH_LAO_DONG.search(h):
+        return _TAP_HUAN
     return ""
+
+
+_DANH_SACH_LAO_DONG = re.compile(
+    r"\bdanh sach\s+(?:nguoi\s+)?(?:lao dong|nhan vien|nhan su|nguoi lam viec|nguoi truc tiep)\b"
+)
 
 
 async def _classify_with_llm(documents: list[dict[str, Any]]) -> dict[int, dict[str, str]]:

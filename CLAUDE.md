@@ -192,6 +192,10 @@ Chỉ chạy hai cây `tests/unit` và `tests/integration`. Cây `tests/handfree
 Baseline hiện tại có sẵn một số test đỏ không liên quan đến code mới; so số fail trước và sau khi
 sửa thay vì cố đưa về 0.
 
+Baseline ngày 2026-11-27, sau khi thêm pipeline 1.001612 đăng ký thành lập hộ kinh doanh bản Cổng DVC quốc gia
+(`dang_ky_thanh_lap_ho_kinh_doanh`, máy local, plugin win_socketpair, có PYTHONUTF8=1):
+`23 failed, 6501 passed, 42 skipped, 13 errors`. Vẫn đúng 23 đỏ như dòng dưới.
+
 Baseline ngày 2026-11-26 tối, sau khi đưa 6 thủ tục đất đai Ninh Bình lên trợ lý (máy local, plugin win_socketpair, có
 PYTHONUTF8=1): `23 failed, 6479 passed, 42 skipped, 13 errors`. Vẫn đúng 23 đỏ như dòng dưới.
 

@@ -741,6 +741,7 @@ def test_cau_hinh_bo_sung_o_moi_thu_tuc_mot_file_rieng_va_key_co_trong_registry(
                                      "trich-luc-ks", "dang-ky-lai-ket-hon", "ket-hon-nuoc-ngoai",
                                      "khai-tu-dang-ky-lai", "khai-tu-nuoc-ngoai", "khai-tu-luu-dong", "dang-ky-giam-ho", "khai-sinh-da-co-ho-so",
                                      "cap-phieu-ly-lich-tu-phap-cong-an-cap-tinh",
+                                     "dang-ky-thanh-lap-ho-kinh-doanh",
                                      "dang-ky-nhan-cha-me-con", "yeu-cau-tro-giup-phap-ly",
                                      "khai-sinh-dang-ky", "cap-giay-phep-xay-dung-moi-nha-o-rieng-le",
                                      "dieu-chinh-giay-phep-xay-dung", "sua-chua-cai-tao-gpxd-nha-o-rieng-le",

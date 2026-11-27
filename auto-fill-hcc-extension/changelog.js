@@ -3,9 +3,25 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
-    version: "1.30.1",
-    date: "26/11/2026",
+    version: "1.30.3",
+    date: "27/11/2026",
     items: [
+      "Đăng ký thành lập hộ kinh doanh trên Cổng Dịch vụ công quốc gia: quét Giấy đề nghị (kèm giấy ủy quyền nếu người khác nộp thay) để điền biểu mẫu — tự chọn chủ hộ tự nộp / người được ủy quyền theo tài khoản, tên hộ bắt đầu bằng “HỘ KINH DOANH”, bảng ngành nghề, vốn, thông tin thuế; hình thức nhận kết quả mặc định nhận tại bộ phận tiếp nhận và trả kết quả.",
+      "Đính kèm trên Cổng Dịch vụ công quốc gia: có giấy ủy quyền nộp hồ sơ thì tự chọn “Trường hợp ủy quyền thực hiện thủ tục” rồi đính vào đúng dòng văn bản ủy quyền.",
+    ],
+  },
+  {
+    version: "1.30.2",
+    date: "27/11/2026",
+    items: [
+      "Chứng thực giao dịch tài sản: tick “Mỗi tài liệu 1 hồ sơ riêng (tách hồ sơ)” thì mỗi file là một hồ sơ riêng trên một tab, đính vào dòng Dự thảo giao dịch.",
+    ],
+  },
+  {
+    version: "1.30.1",
+    date: "27/11/2026",
+    items: [
+      "Lấy từ Cổng DVC (chứng thực bản sao, cấp bản sao từ sổ gốc): hiện cả giấy tờ chưa ký số trong Ví cá nhân; giấy đã ký số có dấu ✓ và xếp lên đầu mỗi mục.",
       "Khai sinh liên thông: ô Số lượng bản sao gõ từng chữ số như người dùng nên cổng giữ đúng số, không còn trống, về 0 hay bị đúp số khi bấm vào ô.",
       "Kết hôn: địa chỉ ghi đủ xã, huyện cũ, tỉnh chọn đúng xã sau sáp nhập khi tên xã trùng ở nhiều huyện.",
       "Trợ lý người dân (tài khoản Ninh Bình): thêm 6 thủ tục đất đai trên Cổng DVC Ninh Bình — đăng ký đất đai lần đầu, giao/thuê/chuyển mục đích sử dụng đất, cấp đổi Giấy chứng nhận, đăng ký biến động chuyển nhượng/thừa kế/tặng cho, đính chính Giấy chứng nhận đã cấp và đã cấp lần đầu có sai sót.",

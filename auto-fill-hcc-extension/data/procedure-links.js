@@ -184,6 +184,14 @@ window.PROCEDURE_KE_KHAI_LINKS = [
     autoConfirm: false,
   },
   {
+    // Cùng thủ tục 1.001612 trên Cổng DVC quốc gia: chọn Tỉnh + Phường/Xã rồi vào biểu mẫu SurveyJS /nop-ho-so.
+    key: "dang-ky-thanh-lap-ho-kinh-doanh",
+    label: "Đăng ký thành lập hộ kinh doanh (Cổng Dịch vụ công quốc gia)",
+    url: "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-d76d-737f-81b9-69258b07240b",
+    needsAgencySelect: true,
+    autoConfirm: true,
+  },
+  {
     key: "dang-ky-dat-dai-tai-san-gan-lien-lan-dau",
     label: "Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
     url: "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8678-770b-8917-1872078767cd",

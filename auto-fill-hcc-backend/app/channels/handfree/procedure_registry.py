@@ -747,6 +747,51 @@ PROCEDURES: list[dict] = [
         ),
     },
     {
+        # Mã 1.001612 trên Cổng DVC quốc gia: DVCQG chọn Tỉnh + Phường/Xã → "Nộp trực tuyến" vào trang nộp một trang
+        # /nop-ho-so (SurveyJS) như hộ tịch mới. Tài khoản là chủ hộ → radio "Người có thẩm quyền ký giấy đề nghị", người
+        # nộp thay → "Người được ủy quyền" (pipeline tự chọn theo mốc tài khoản). Bản cổng HkdOnline vẫn là
+        # "dang-ky-kinh-doanh", không dùng chung luồng.
+        "key": "dang-ky-thanh-lap-ho-kinh-doanh",
+        "detect": {
+            "urlIncludes": ["formalityId=019d2bfb-d76d-737f-81b9-69258b07240b"],
+            "urlScope": ["://dichvucong.gov.vn/nop-ho-so"],
+            "textIncludes": ["giấy đề nghị đăng ký hộ kinh doanh", "tên hộ kinh doanh"],
+            "textPriority": True,
+            "headingDisabled": True,
+        },
+        "label": "Đăng ký thành lập hộ kinh doanh (Cổng Dịch vụ công quốc gia)",
+        "shortLabel": "Thành lập hộ kinh doanh (DVC quốc gia)",
+        "subtitle": "Đăng ký hộ kinh doanh mới trên Cổng Dịch vụ công quốc gia",
+        "icon": "🏪",
+        "flowProfile": "tu-phap-moi",
+        "keKhaiUrl": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-d76d-737f-81b9-69258b07240b",
+        "supportsSplitDocuments": True,
+        "hideRepeatableHint": True,
+        "requiredDocs": [
+            {"key": "giay_de_nghi", "name": "Giấy đề nghị đăng ký hộ kinh doanh", "icon": "📄",
+             "sides": 1, "repeatable": True},
+            {"key": "uy_quyen", "name": "Giấy ủy quyền nộp hồ sơ (nếu người khác nộp thay)", "icon": "📝",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "cccd", "name": "Căn cước của chủ hộ / người nộp (nếu có)", "icon": "🪪",
+             "sides": 1, "optional": True, "repeatable": True},
+            {"key": "khac", "name": "Giấy tờ khác (văn bản ủy quyền của thành viên hộ gia đình…)", "icon": "📎",
+             "sides": 1, "optional": True, "repeatable": True},
+        ],
+        "mode": "agent",
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy đề nghị đăng ký hộ kinh doanh.\n"
+            "2. Giấy ủy quyền nộp hồ sơ nếu người khác nộp thay chủ hộ.\n"
+            "3. Căn cước, giấy tờ khác nếu có.\n"
+            "Đính kèm: có giấy ủy quyền nộp hồ sơ thì chọn trường hợp ủy quyền rồi đính vào dòng văn bản ủy quyền cho "
+            "cá nhân; dòng 1 nhận Giấy đề nghị + giấy khác; dòng 2 chỉ nhận văn bản ủy quyền "
+            "của các thành viên hộ gia đình."
+        ),
+    },
+    {
         "key": "khai-tu-lien-thong",
         # Liên thông khai tử nằm trên cổng riêng lienthong.dichvucong.gov.vn (SPA hash-route, Angular)
         # như liên thông khai sinh → nhận diện THEO URL, mã 1.006714 (cùng URL với app/procedures/registry.py
@@ -12490,6 +12535,7 @@ _HOAN_THIEN_THEO_TINH: dict[str, frozenset[str]] = {
     "xac-nhan-tinh-trang-hon-nhan": _TAT_CA,
     "xac-nhan-thong-tin-ho-tich": _TAT_CA,
     "dang-ky-kinh-doanh": _TAT_CA,
+    "dang-ky-thanh-lap-ho-kinh-doanh": _TAT_CA,  # 27/11: bản Cổng DVC quốc gia của 1.001612, toàn quốc
     "chung-thuc-ban-sao": _TAT_CA,
     "chung-thuc-giao-dich-tai-san": _TAT_CA,
     "chung-thuc-phan-chia-di-san": _TAT_CA,

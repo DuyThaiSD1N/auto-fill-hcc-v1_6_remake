@@ -350,6 +350,14 @@
       "autoConfirm": false
     },
     {
+      "key": "dang-ky-thanh-lap-ho-kinh-doanh",
+      "code": "1.001612",
+      "label": "Đăng ký thành lập hộ kinh doanh (Cổng Dịch vụ công quốc gia)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-d76d-737f-81b9-69258b07240b",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "thanh-lap-cong-ty-co-phan",
       "code": "2.002043",
       "label": "Đăng ký thành lập công ty cổ phần",

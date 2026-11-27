@@ -571,6 +571,8 @@ from app.pipelines.khai_sinh_dvc_moi.attach import plan as khai_sinh_dvc_moi_att
 from app.pipelines.khai_sinh_dvc_moi.process import run as khai_sinh_dvc_moi_process
 from app.pipelines.cap_phieu_ly_lich_tu_phap_cong_an_cap_tinh.attach import plan as cap_phieu_lltp_attach
 from app.pipelines.cap_phieu_ly_lich_tu_phap_cong_an_cap_tinh.process import run as cap_phieu_lltp_process
+from app.pipelines.dang_ky_thanh_lap_ho_kinh_doanh.attach import plan as dang_ky_thanh_lap_hkd_attach
+from app.pipelines.dang_ky_thanh_lap_ho_kinh_doanh.process import run as dang_ky_thanh_lap_hkd_process
 from app.pipelines.khai_sinh_nuoc_ngoai.attach import plan as khai_sinh_nuoc_ngoai_attach
 from app.pipelines.khai_sinh_nuoc_ngoai.process import run as khai_sinh_nuoc_ngoai_process
 from app.pipelines.xac_nhan_tthn_dvc_moi.attach import plan as xac_nhan_tthn_dvc_moi_attach
@@ -1049,6 +1051,40 @@ PROCEDURES: list[dict] = [
             {"key": "thong-tin-ve-thue", "label": "Thông tin về thuế"},
             {"key": "nguoi-nop-ho-so", "label": "Người nộp hồ sơ"},
         ],
+    },
+    {
+        "key": "dang-ky-thanh-lap-ho-kinh-doanh",
+        # Mã 1.001612 trên Cổng DVC quốc gia: DVCQG chọn Tỉnh + Phường/Xã → "Nộp trực tuyến" vào trang nộp một trang
+        # /nop-ho-so (SurveyJS) như hộ tịch mới. Bản cổng HkdOnline vẫn là "dang-ky-kinh-doanh" ở trên (nhận diện theo
+        # domain hokinhdoanh), không dùng chung pipeline. Mốc tài khoản (citizenName / citizenIdentity, khối người được
+        # ủy quyền citizenName_NYQ / citizenIdentity_NYQ) để chọn radio chủ hộ tự nộp / người được ủy quyền.
+        "collectFormContext": True,
+        "detect": {
+            "urlIncludes": ["formalityId=019d2bfb-d76d-737f-81b9-69258b07240b"],
+            "urlScope": ["://dichvucong.gov.vn/nop-ho-so"],
+            "textIncludes": ["giấy đề nghị đăng ký hộ kinh doanh", "tên hộ kinh doanh"],
+            "textPriority": True,
+            "headingDisabled": True,
+        },
+        "label": "Đăng ký thành lập hộ kinh doanh (Cổng Dịch vụ công quốc gia)",
+        "mode": "agent",
+        "hasAttachmentStep": True,
+        # Cài đặt "Tách giấy tờ" của extension → chia tệp theo trang, mỗi giấy một tệp vào đúng dòng.
+        "supportsSplitDocuments": True,
+        "review": False,
+        "roles": [],
+        "useDangKyBy": False,
+        "uploadHint": (
+            "Giấy tờ cần tải lên:\n"
+            "1. Giấy đề nghị đăng ký hộ kinh doanh (Mẫu số 1).\n"
+            "2. Giấy ủy quyền nộp hồ sơ (nếu người khác nộp thay chủ hộ).\n"
+            "3. Căn cước của chủ hộ / người nộp (nếu có).\n"
+            "Tài khoản là chủ hộ → chọn 'Người có thẩm quyền ký giấy đề nghị' (cổng tự đổ nhân thân); tài khoản là người "
+            "nộp thay → chọn 'Người được ủy quyền' và điền khối chủ hộ theo giấy tờ.\n"
+            "Đính kèm: có giấy ủy quyền nộp hồ sơ thì tự chọn 'Trường hợp ủy quyền thực hiện thủ tục' rồi đính vào dòng "
+            "'Văn bản ủy quyền cho cá nhân'; dòng 1 nhận Giấy đề nghị (nguyên tệp) + giấy khác; dòng 2 chỉ nhận văn "
+            "bản ủy quyền của các thành viên hộ gia đình."
+        ),
     },
     {
         "key": "thanh-lap-cong-ty-co-phan",
@@ -12460,6 +12496,7 @@ del _key, _cu, _cu_detect, _goc
 _PIPELINE = {
     "khai-sinh-dang-ky-thuong": khai_sinh_dvc_moi_process,
     "cap-phieu-ly-lich-tu-phap-cong-an-cap-tinh": cap_phieu_lltp_process,
+    "dang-ky-thanh-lap-ho-kinh-doanh": dang_ky_thanh_lap_hkd_process,
     "khai-sinh-nuoc-ngoai": khai_sinh_nuoc_ngoai_process,
     "khai-sinh-ket-hop-nhan-cha-me-con": khai_sinh_ket_hop_nhan_cmc_process,
     "khai-sinh-dang-ky": khai_sinh_lien_thong_process,
@@ -13005,6 +13042,7 @@ _ATTACH_PIPELINE = {
     "dieu-chinh-huu-tri-xa-hoi": dieu_chinh_huu_tri_xa_hoi_attach,
     "khai-sinh-dang-ky-thuong": khai_sinh_dvc_moi_attach,
     "cap-phieu-ly-lich-tu-phap-cong-an-cap-tinh": cap_phieu_lltp_attach,
+    "dang-ky-thanh-lap-ho-kinh-doanh": dang_ky_thanh_lap_hkd_attach,
     "khai-sinh-nuoc-ngoai": khai_sinh_nuoc_ngoai_attach,
     "khai-sinh-ket-hop-nhan-cha-me-con": khai_sinh_ket_hop_nhan_cmc_attach,
     "khai-sinh-dang-ky": khai_sinh_lien_thong_attach,

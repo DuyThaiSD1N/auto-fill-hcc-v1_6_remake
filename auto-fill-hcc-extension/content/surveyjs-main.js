@@ -162,6 +162,158 @@
     return { ok: true, text: choice.text };
   }
 
+  // Bảng nhiều dòng (matrixdynamic, vd "Ngành, nghề kinh doanh" của đăng ký thành lập hộ kinh doanh trên Cổng DVC quốc
+  // gia): BE gửi mảng dòng {ma, ten, chiTiet, chinh}; cột dò theo tiêu đề. Chọn MÃ trước (cổng có thể tự đổ tên theo
+  // mã); mã chưa chọn được thì chọn TÊN trước rồi thử lại mã (danh mục mã có thể lọc theo tên). Tên chỉ ghi khi ô còn
+  // trống. Dòng thiếu mã (cổng bắt buộc) báo trượt để tô đỏ. Lý do trượt ghi theo từng ô để dò trên console.
+  async function setMatrix(q, rows) {
+    if (!Array.isArray(rows) || !rows.length) return { ok: false, reason: "no-rows" };
+    const columns = q.columns || [];
+    const col = (re) => columns.find((c) => re.test(fold(c.title || c.name)));
+    const cols = { ma: col(/ma nganh/), ten: col(/ten nganh/), chiTiet: col(/chi tiet/), chinh: col(/nganh chinh/) };
+    if (!cols.ma && !cols.ten) return { ok: false, reason: "no-columns" };
+    if ((q.rowCount || 0) < rows.length) q.rowCount = rows.length;
+    await sleep(300);
+    const visible = q.visibleRows || [];
+    const failed = [];
+    for (let i = 0; i < rows.length; i++) {
+      const row = visible[i];
+      const want = rows[i] || {};
+      if (!row) { failed.push(`${i + 1}(no-row)`); continue; }
+      const notes = [];
+      const cellOf = (c) => (c
+        ? (row.getQuestionByColumnName?.(c.name) || (row.cells || []).find((x) => x.column === c)?.question || null)
+        : null);
+      const setCell = async (key, value, code, strict = false) => {
+        const cq = cellOf(cols[key]);
+        if (!cq || value === undefined || value === null || value === "") return true;
+        if (cq.isReadOnly) {
+          if (cq.isEmpty?.()) notes.push(`${key}:readonly`);
+          return !cq.isEmpty?.();
+        }
+        const type = cq.getType?.() || "";
+        if (["dropdown", "radiogroup", "tagbox"].includes(type)) {
+          const r = await setCellChoice(cq, value, code, strict);
+          if (!r.ok) notes.push(`${key}:${r.reason}`);
+          return r.ok;
+        }
+        if (type === "checkbox") {
+          const first = choicesOf(cq)[0];
+          cq.value = value ? [first ? first.value : true] : [];
+          return true;
+        }
+        if (type === "boolean") { cq.value = !!value; return true; }
+        cq.value = String(value);
+        return true;
+      };
+      const tenEmpty = () => !!cellOf(cols.ten)?.isEmpty?.();
+      let ok = true;
+      let maOk = await setCell("ma", want.ma, want.ma, true);
+      let tenTried = false;
+      if (!maOk && want.ten && tenEmpty()) {
+        tenTried = true;
+        ok = (await setCell("ten", want.ten, want.ma)) && ok;
+        await sleep(300);
+        maOk = await setCell("ma", want.ma, want.ma, true);
+      }
+      ok = maOk && ok;
+      if (want.ma && maOk) await sleep(300);
+      if (!tenTried && tenEmpty()) ok = (await setCell("ten", want.ten, want.ma)) && ok;
+      ok = (await setCell("chiTiet", want.chiTiet)) && ok;
+      if (want.chinh) ok = (await setCell("chinh", true)) && ok;
+      if (cols.ma && !want.ma) { notes.push("ma:missing"); ok = false; }
+      if (!ok) failed.push(`${i + 1}(${notes.join(",")})`);
+    }
+    return failed.length ? { ok: false, reason: `matrix-rows:${failed.join(";")}` } : { ok: true };
+  }
+
+  // Ô dropdown trong bảng KHÔNG có data-name (openToLoad không mở được) và danh mục ngành nạp từ API của cổng → mở theo
+  // model / inputId, chưa thấy mục cần thì gõ chữ tìm vào ô lọc (danh mục nạp theo trang / theo chữ gõ).
+  const CELL_OPENER = ".sd-dropdown, [role='combobox']";
+
+  // strict (cột mã): chỉ nhận đúng mã, không đoán theo chữ — chọn nhầm ngành tệ hơn để trống cho cán bộ chọn.
+  function pickCellChoice(cq, value, code, strict) {
+    const list = choicesOf(cq);
+    if (code) {
+      const wantCode = String(code);
+      const byCode = list.find((c) => String(c.value) === wantCode) ||
+        list.find((c) => fold(c.text) === wantCode || fold(c.text).startsWith(`${wantCode} `));
+      if (byCode || strict) return byCode || null;
+    }
+    return bestChoice(cq, value);
+  }
+
+  async function waitCell(found, timeout) {
+    const t0 = Date.now();
+    while (Date.now() - t0 < timeout) {
+      if (found()) return true;
+      await sleep(250);
+    }
+    return found();
+  }
+
+  function cellElement(cq) {
+    const el = (cq.inputId && document.getElementById(cq.inputId)) || (cq.id && document.getElementById(cq.id));
+    if (!el) return null;
+    return el.matches(CELL_OPENER) ? el : (el.querySelector(CELL_OPENER) || el.closest(CELL_OPENER) || el);
+  }
+
+  function setCellPopup(cq, visible) {
+    try {
+      const popup = cq.dropdownListModel?.popupModel;
+      if (popup && "isVisible" in popup) { popup.isVisible = visible; return true; }
+    } catch { /* bản survey-core khác: dùng DOM */ }
+    return false;
+  }
+
+  async function openCell(cq, found) {
+    if (setCellPopup(cq, true) && await waitCell(found, 5000)) return true;
+    const el = cellElement(cq);
+    if (el) {
+      el.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+      el.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    }
+    return waitCell(found, 5000);
+  }
+
+  async function searchCell(cq, text, found) {
+    if (!text) return false;
+    let typed = false;
+    try {
+      const model = cq.dropdownListModel;
+      if (model && "filterString" in model) { model.filterString = String(text); typed = true; }
+    } catch { /* gõ qua DOM */ }
+    if (!typed) {
+      const input = cellElement(cq)?.querySelector("input");
+      if (input) {
+        const desc = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), "value");
+        if (desc?.set) desc.set.call(input, String(text));
+        else input.value = String(text);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        typed = true;
+      }
+    }
+    return typed && waitCell(found, 6000);
+  }
+
+  async function setCellChoice(cq, value, code, strict) {
+    const found = () => !!pickCellChoice(cq, value, code, strict);
+    let ok = found() || await waitCell(found, 1500);
+    let opened = false;
+    if (!ok) { opened = true; ok = await openCell(cq, found); }
+    for (const text of strict ? [code] : [value, code]) {
+      if (ok) break;
+      ok = await searchCell(cq, text, found);
+    }
+    const choice = pickCellChoice(cq, value, code, strict);
+    const count = choicesOf(cq).length;
+    if (choice) cq.value = choice.value;
+    if (opened && !setCellPopup(cq, false)) {
+      document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    }
+    return choice ? { ok: true } : { ok: false, reason: `${count ? "no-match" : "no-choices"}/${count}` };
+  }
+
   async function setOne(survey, field) {
     const q = findQuestion(survey, field.name);
     if (!q) return { ok: false, reason: "not-found" };
@@ -176,6 +328,11 @@
       return { ok: false, reason: CLEARED_BY_BE };
     }
     const type = q.getType?.() || "";
+    if (field.comp === "sjs-matrix" || type === "matrixdynamic") return setMatrix(q, field.value);
+    if (field.comp === "sjs-boolean" || type === "boolean") {
+      q.value = field.value === true || ["true", "1", "co"].includes(fold(field.value));
+      return { ok: true };
+    }
     if (field.comp === "sjs-dropdown" || field.comp === "sjs-radio" ||
         ["dropdown", "radiogroup", "tagbox"].includes(type)) {
       return setChoice(q, field.value, field.code);

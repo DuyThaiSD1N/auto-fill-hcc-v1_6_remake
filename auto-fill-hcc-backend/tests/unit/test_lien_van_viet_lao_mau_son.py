@@ -67,6 +67,23 @@ def test_mapper_uu_tien_so_in_tren_giay_xe_va_bo_mau_son_lan_so():
     assert car["tuNgay"] == "08/10/2026" and "denNgay" not in car
 
 
+def test_mapper_cua_khau_viet_tu_do_ve_option_web():
+    cua_khau = lambda raw: mapper._vehicles([{"bienSo": "43A00001", "cuaKhau": raw}])[0].get("cuaKhau")  # noqa: E731
+    lao_bao = "Lao Bảo (Quảng Trị) - Danesavanh (Savanakhet)"
+    assert cua_khau("Lao Bảo (Quảng Trị - Densavan thuộc tỉnh Savannakhet, Lào.") == lao_bao
+    assert cua_khau("Cửa khẩu Lao Bảo") == lao_bao
+    assert cua_khau("Densavanh - Savannakhet") == lao_bao
+    assert cua_khau("La Lay (Quảng Trị) - La Lay thuộc tỉnh Salavan, Lào") == "La Lay (Quảng Trị) - La Lay (Salavan)"
+    assert cua_khau("Cha Lo, Quảng Bình - Na Phao, Khăm Muộn") == "Cha Lo (Quảng Bình) - Na Phao (Khăm Muộn)"
+    assert cua_khau("Nam Giang (Quảng Nam) - Đắc Ta Oóc (Sê Kông)") == "Nam Giang (Quảng Nam) - Đắc Ta Ooc(Sê Kông)"
+    assert cua_khau("Dak Ta Ok") == "Nam Giang (Quảng Nam) - Đắc Ta Ooc(Sê Kông)"
+    assert cua_khau("Cầu Treo (Hà Tĩnh) - Nậm Phao") == "Cầu Treo"
+    assert cua_khau("Na Phao") != "Cầu Treo"
+    assert cua_khau("Tất cả các cửa khẩu") == "Tất cả cửa khẩu"
+    assert cua_khau("Cửa khẩu Lao Bảo, cửa khẩu Cha Lo") == lao_bao  # nhiều tên → lấy tên đầu
+    assert cua_khau("Cửa khẩu chưa có trong bảng") == "Cửa khẩu chưa có trong bảng"
+
+
 def _run(monkeypatch, llm_fields, parsed):
     async def fake_compact(_files_by_role, **_kwargs):
         return {"fields": llm_fields, "errors": []}

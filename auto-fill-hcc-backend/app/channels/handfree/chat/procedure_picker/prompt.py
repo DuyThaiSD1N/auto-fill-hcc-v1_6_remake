@@ -74,6 +74,11 @@ PROCEDURE_HINTS: dict[str, list[str]] = {
     "dang-ky-kinh-doanh": ["đăng ký thành lập hộ kinh doanh", "mở hộ kinh doanh",
                             "thành lập hộ kinh doanh", "đăng ký kinh doanh hộ gia đình",
                             "làm giấy phép kinh doanh cho cửa hàng, quán"],
+    # Bản Cổng Dịch vụ công quốc gia của cùng thủ tục 1.001612 (khác "dang-ky-kinh-doanh" là cổng hộ kinh doanh riêng):
+    # dân nói rõ nộp trên Cổng Dịch vụ công quốc gia / dichvucong.gov.vn thì chọn bản này.
+    "dang-ky-thanh-lap-ho-kinh-doanh": ["đăng ký thành lập hộ kinh doanh trên cổng dịch vụ công quốc gia",
+                                        "mở hộ kinh doanh trên dịch vụ công quốc gia",
+                                        "đăng ký hộ kinh doanh qua dichvucong.gov.vn"],
     # Dân hay gọi "công chứng" thay cho "chứng thực" + gọi kèm tên giấy tờ cụ thể.
     "chung-thuc-ban-sao": ["công chứng căn cước công dân", "công chứng giấy tờ",
                            "chứng thực bản sao căn cước công dân từ bản chính",

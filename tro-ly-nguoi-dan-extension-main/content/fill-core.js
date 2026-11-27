@@ -439,6 +439,8 @@ function collectFormContext() {
       readSurveyJsAccountValue("citizenName") ||
       // Lý lịch tư pháp (3.000333) đã chọn "Khai hộ": tài khoản là người được ủy quyền.
       readSurveyJsAccountValue("citizenHoVaTen_NYC_UyQuyen") ||
+      // Đăng ký thành lập hộ kinh doanh (1.001612) đã chọn "Người được ủy quyền": tài khoản ở khối người nộp _NYQ.
+      readSurveyJsAccountValue("citizenName_NYQ") ||
       readInputLikeValue("data[fullname]") ||
       readNgReflectValue("ng-reflect-fullname") ||
       // Form eform (vd Xác nhận TTHN, Khai tử): người yêu cầu cổng điền sẵn ở HoVaTenC.
@@ -451,6 +453,7 @@ function collectFormContext() {
       // Lý lịch tư pháp (3.000333): số giấy tờ của tài khoản ở khối Cá nhân / Khai hộ.
       readSurveyJsAccountValue("citizenSoGiayTo") ||
       readSurveyJsAccountValue("citizenSoGiayTo_NYC_UyQuyen") ||
+      readSurveyJsAccountValue("citizenIdentity_NYQ") ||
       readInputLikeValue("data[identityNumber]") ||
       readNgReflectValue("ng-reflect-identity-number") ||
       readInputLikeValue(["SoDinhDanhC", "SoGiayToDinhDanhC", "NYC_SoGiayToTuyThan"]) ||
