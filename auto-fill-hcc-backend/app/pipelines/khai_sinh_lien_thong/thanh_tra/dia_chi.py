@@ -34,8 +34,13 @@ SLOTS = {
     "Tk_NoiCuTruCha": (_FATHER, "cha của trẻ"),
     "ThongTinBo_NoiCuTru": (_FATHER, "cha của trẻ"),
 }
+# Nơi đề nghị đăng ký thường trú (mục 10 CT01, viết tay): form chỉ có ô chi tiết, không qua soát tên xã.
+_DKTT = "Ct01_NoiDeNghiDktt"
+_DKTT_OWNER = "trẻ được khai sinh"
 UNITS = tuple(Unit(name, slot.label_text, (Field(name, "địa chỉ {tinh, xa, diaChi}", "area"),))
-              for name, (slot, _) in SLOTS.items())
+              for name, (slot, _) in SLOTS.items()) + (
+    Unit(_DKTT, "Nơi đề nghị đăng ký thường trú của trẻ (mục 10 tờ CT01)",
+         (Field(_DKTT, "địa chỉ {tinh, xa, diaChi}", "area"),)),)
 _UNIT = {unit.key: unit for unit in UNITS}
 
 RULES = """
@@ -59,6 +64,13 @@ theo địa giới MỚI (chỉ còn xã / phường + tỉnh, xã có trong dan
 kể cả khi thôn / số nhà khác A (người dân đã chuyển nơi ở, CCCD chưa cập nhật). Dòng trích dẫn là nơi cư trú của người
 khác (cột kia của giấy kết hôn) → KHONG_DU_CAN_CU.
 </dia_gioi_moi>
+<dktt>
+Vụ có tín hiệu mã "nơi đề nghị đăng ký thường trú": A là chi tiết nơi đề nghị đăng ký thường trú ở mục 10 tờ CT01 (viết
+tay); B là chi tiết nơi cư trú của mẹ / cha in trên giấy chứng sinh / giấy kết hôn, CÙNG xã. Mã đã kiểm: mọi chữ số của A có
+trong B, các chữ của A không có trong B chỉ lệch 1–2 ký tự với một chữ của B (OCR đọc sai chữ viết tay: số nhà thành chữ,
+tên đường / thôn lệch dấu, lệch chữ cái) → chọn B: cùng một nơi, B là bản in. Trên dòng nào đó A và B rõ là hai nơi khác
+nhau (khác tên đường / thôn hẳn) → GIU_A.
+</dktt>
 """
 # Cấp dưới xã đứng đầu chi tiết: so tên thôn / tổ phải bỏ phần này (giấy khác hay ghi "Khu phố" thay "Tổ dân phố").
 _UNIT_PREFIX = re.compile(r"(?i)^\s*(?:th[oô]n|t[oổ]\s*d[aâ]n\s*ph[oố]|tdp|t[oổ]|x[oó]m|b[aả]n|khu\s*ph[oố]|khu|[aấ]p|"
@@ -182,7 +194,8 @@ _WARD_HEAD = re.compile(r"(?i)^\s*(?:x[aã]|ph[uư][oờ]ng|th[iị]\s*tr[aấ]n
 def _ward_in(segment: str, wards: tuple[str, ...]) -> str:
     """Xã hiện hành mà cụm này ghi (chữ của tên xã nằm trọn, theo thứ tự, trong cụm — OCR hay đọc lặp chữ: "Phường Tây
     Nha Nha Trang"); nhiều xã khớp thì lấy tên dài nhất, hoà thì không đoán."""
-    words = fold(segment).split()
+    # Bỏ tiền tố loại đơn vị trước khi so: "Phường" bỏ dấu trùng chữ "Phượng" → "Phường Nam Sơn" khớp nhầm "Phượng Sơn".
+    words = fold(ten_xa._bare(segment)).split()
 
     def inside(ward: str) -> bool:
         key = fold(ten_xa._bare(ward)).split()
@@ -279,6 +292,46 @@ def boundary_fix(values: dict, page_list: list[dict]) -> list[tuple[str, dict, s
     return out
 
 
+# Chữ chỉ cấp / loại (số, đường, thôn, tổ...) không mang tên nơi — bỏ khi so chi tiết.
+_DETAIL_FILLER = {"so", "duong", "pho", "thon", "to", "tdp", "khu", "ap", "xom", "ban", "dan", "ngo", "hem", "kiet"}
+
+
+def _detail_words(text) -> list[str]:
+    return [word for word in (_bare(token) for token in _tokens(text)) if word not in _DETAIL_FILLER]
+
+
+def dktt_fix(values: dict, page_list: list[dict]) -> dict | None:
+    """Chi tiết nơi đề nghị đăng ký thường trú (mục 10 CT01 viết tay) là bản OCR đọc sai của chi tiết nơi cư trú mẹ / cha in
+    trên giấy chứng sinh / giấy kết hôn cùng xã → {"diaChi", "quote", "doc", "why"}.
+
+    Chỉ nhận khi: mọi chữ số của A có trong B; ≥ một nửa chữ của A có nguyên trong B; chữ còn lại lệch ≤2 ký tự với một
+    chữ của B; có ít nhất một chữ lệch (A chỉ là bản rút gọn của B thì không phải OCR sai). Khác số nhà / khác tên đường
+    → không đề xuất (trẻ có thể đăng ký ở nơi khác nơi mẹ ở)."""
+    value = values.get(_DKTT)
+    detail = mapper._dktt_detail(value)
+    ward = fold(ten_xa._bare((value or {}).get("xa"))) if isinstance(value, dict) else ""
+    mine = _detail_words(detail)
+    if not ward or len(mine) < 2:
+        return None
+    for person in ("mẹ", "cha"):
+        for area, line, doc, paper in _newer_residences(page_list, person):
+            printed = area.get("diaChi") or ""
+            if fold(ten_xa._bare(area["xa"])) != ward or not printed or fold(printed) == fold(detail):
+                continue
+            theirs = _detail_words(printed)
+            if not set(re.findall(r"\d+", detail)) <= set(re.findall(r"\d+", printed)):
+                continue
+            off = [word for word in mine if word not in theirs]
+            if not off or len(off) * 2 > len(mine):
+                continue
+            if all(min(_edit_distance(word, other) for other in theirs) <= 2 for word in off):
+                return {"diaChi": printed, "quote": line, "doc": doc,
+                        "why": f'chi tiết A "{detail}" (mục 10 CT01) và B "{printed}" ({paper}, nơi cư trú của {person}) '
+                               f'cùng xã; chữ của A không có trong B ({", ".join(off)}) chỉ lệch 1–2 ký tự; mọi chữ số '
+                               f'của A có trong B'}
+    return None
+
+
 def _area_given(value) -> bool:
     return isinstance(value, dict) and any(str(value.get(key) or "").strip() for key in ("tinh", "xa", "diaChi"))
 
@@ -322,6 +375,11 @@ async def find(inspector: Inspector, case: Case, title: str) -> list[Finding]:
         out.append(Finding(INSPECTOR, _UNIT[name], {name: {**value, "diaChi": fix["diaChi"]}}, fix["quote"], fix["doc"],
                            "dòng giấy ghi tên thôn / tổ của nơi cư trú", SLOTS[name][1], backed=True,
                            evidence=(f"cách viết tên thôn / tổ: {fix['why']}",)))
+    fix = dktt_fix(case.values, page_list)
+    if fix:
+        out.append(Finding(INSPECTOR, _UNIT[_DKTT], {_DKTT: {**case.values[_DKTT], "diaChi": fix["diaChi"]}}, fix["quote"],
+                           fix["doc"], "dòng nơi cư trú in trên giấy", _DKTT_OWNER, backed=True,
+                           evidence=(f"nơi đề nghị đăng ký thường trú: {fix['why']}",)))
     return out
 
 

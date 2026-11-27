@@ -15,10 +15,9 @@ DEFAULTS: dict[str, object] = {
     "renameAttachmentFiles": True,
     # Handfree: lấy người nộp theo tờ khai (bỏ so khớp tài khoản đăng nhập) → options.submitterMode của pipeline.
     "submitterFromDeclaration": False,
-    # Handfree, chứng thực bản sao: tới bước Thành phần hồ sơ thì hỏi công dân có dùng lại giấy tờ trong Ví cá nhân
-    # của cổng không. Bật mặc định: cổng chỉ ghi nhận "dùng lại giấy tờ" khi chọn từ ví. Mặc định chỉ áp cho extension
-    # đính bằng nút "Chọn" của ví (chat/wallet_reuse.py::setting_on); bản cũ chỉ hỏi khi tài khoản đã tự bật.
-    "reuseWalletDocuments": True,
+    # Handfree, chứng thực bản sao + cấp bản sao từ sổ gốc: tới bước Thành phần hồ sơ thì hỏi công dân có dùng lại giấy
+    # tờ đã ký số trong Ví cá nhân của cổng không (chat/wallet_reuse.py). Tắt mặc định: tài khoản tự bật trong Cài đặt.
+    "reuseWalletDocuments": False,
     # Handfree: tỉ lệ cỡ chữ của khung Trợ lý (extension phóng cả khung). Khoảng 0.9–1.3 do router chặn: nhỏ hơn thì
     # chữ phụ dưới 10px khó đọc, lớn hơn thì khung 400px còn chưa tới 310px, các khối rộng bị vỡ.
     "fontScale": 1.0,

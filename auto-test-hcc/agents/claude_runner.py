@@ -78,6 +78,7 @@ class AgentResult:
     cost: float
     turns: int
     denied: list[str] = field(default_factory=list)
+    seconds: int = 0  # orchestrator ghi, tính cả lần thử lại
 
 
 def available() -> str | None:

@@ -313,6 +313,9 @@ async def plan(
     _retype_uy_quyen_transaction(detected_types, {d["index"]: d["text"] for d in llm_docs})
     rows = _live_rows(((options or {}).get("attachmentContext") or {}).get("components"))
     promoted = _promoted_target(detected_types)
+    # Tách hồ sơ (đa tab): mỗi tệp là một hồ sơ riêng nên tệp nào cũng vào dòng dự thảo (bắt buộc)
+    # của tab mình; giấy tờ khác cán bộ scan chung trong cùng tệp.
+    split_tabs = (options or {}).get("splitMode") is True
 
     asset_seen = 0
     transaction_seen = 0
@@ -322,18 +325,20 @@ async def plan(
     for idx, file in enumerate(raw_files):
         detected = detected_types[idx]
         doc_type = detected["type"]
-        route_type = "transaction_draft" if idx == promoted else doc_type
+        route_type = "transaction_draft" if idx == promoted or split_tabs else doc_type
         item = _build_item(
             file,
             idx,
             doc_type,
             detected.get("title", ""),
             asset_seen,
-            transaction_seen,
+            0 if split_tabs else transaction_seen,
             used_names,
             rows,
             route_type,
         )
+        if split_tabs:
+            item["keepPlannedRow"] = True
         attachments.append(item)
         if route_type == "asset_ownership_proof":
             asset_seen += 1

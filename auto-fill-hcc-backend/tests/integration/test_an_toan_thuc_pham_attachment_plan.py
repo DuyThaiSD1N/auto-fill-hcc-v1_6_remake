@@ -190,3 +190,35 @@ async def test_an_toan_thuc_pham_attach_hai_tep_trung_ten_khong_lay_nham_ocr(mon
     assert [(item["documentName"], item["componentIndex"]) for item in res["attachments"]] == [
         ("image", 1), ("Danh sách người đã tập huấn kiến thức ATTP", 5),
     ]
+
+
+async def test_an_toan_thuc_pham_danh_sach_lao_dong_vao_dong_e(monkeypatch):
+    """Danh sách lao động (chỉ STT + họ tên, chủ cơ sở ký) không in chữ "tập huấn": LLM trả other → vẫn vào dòng e)."""
+    texts = {
+        "scan-1.pdf": "Danh sách lao động của Hộ Kinh doanh Nước sạch ABC\n| STT | Họ và tên |\n| 1 | Nguyễn Văn A |\n"
+                      "Chủ Cơ sở\n(Ký, ghi rõ họ tên)",
+        "scan-2.pdf": "DANH SÁCH NHÂN VIÊN ĐÃ KHÁM SỨC KHỎE, đủ sức khỏe làm việc",
+        "scan-3.pdf": "Căn cước công dân",
+    }
+
+    async def fake_chat(messages, max_tokens, enable_thinking):
+        return json.dumps({"documents": [
+            {"index": 0, "docType": "other", "title": "Danh sách lao động"},
+            {"index": 1, "docType": "other", "title": ""},
+            {"index": 2, "docType": "other", "title": "Căn cước công dân"},
+        ]})
+
+    monkeypatch.setattr(attp_attach.ocr, "ocr_per_file", _fake_ocr(texts))
+    monkeypatch.setattr(attp_attach.client, "chat", fake_chat)
+
+    res = await attp_attach.plan([_file(n) for n in texts], {}, None)
+    items = res["attachments"]
+
+    assert [(i["documentName"], i["componentIndex"], i["slotKey"]) for i in items] == [
+        ("Danh sách người đã tập huấn kiến thức ATTP", 5, "attp_byt_tap_huan"),
+        ("Giấy xác nhận đủ sức khỏe", 4, "attp_byt_suc_khoe"),
+        ("Căn cước công dân", 1, "attp_byt_don"),
+    ]
+    rows = [text + _ROW_TAIL for text in _ROW_TEXTS]
+    assert _fe_row_for(items[0], rows) == 4
+    assert "danh sách lao động" in SYSTEM_PROMPT.lower()

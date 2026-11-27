@@ -228,8 +228,8 @@ def test_loi_mapper_hop_sua_kiem_thu_dat(world):
     orch.run()
     data = job.data
     assert data["outcome"] == "fixed", data["error"]
-    # Có vòng phản biện gồm 3 thành viên + người phản biện, rồi mới tới trọng tài.
-    assert world.calls.count("review") == 4 and world.calls.index("arbiter") > world.calls.index("review")
+    # Cả hội đồng cùng "mapper" 90%: bỏ vòng phản biện, thẳng tới trọng tài.
+    assert "review" not in world.calls and data["rounds"][0]["debate"]["consensus"] is True
     order = ["fixer", "pipeline-tests", "full-tests", "deploy", "replay:round1"]
     assert [c for c in world.calls if c in order] == order
     assert world.code() == "x = 2\n"
@@ -606,6 +606,108 @@ def test_hoi_dong_khong_du_y_kien_thi_dung(world):
     job, orch = start()
     orch.run()
     assert job.data["status"] == "failed" and "không đủ ý kiến" in job.data["error"]
+
+
+# ---- tốc độ họp ------------------------------------------------------------------------------------------------------
+
+def _spy_prompts(world, monkeypatch):
+    seen = []
+    real = world.run_agent
+
+    def spy(**kwargs):
+        seen.append(kwargs)
+        return real(**kwargs)
+
+    monkeypatch.setattr(claude_runner, "run_agent", spy)
+    return seen
+
+
+def test_y_kien_khac_nhau_thi_van_mo_vong_phan_bien(world):
+    world.opinions["form"] = opinion("llm")
+    job, orch = start()
+    orch.run()
+    assert job.data["outcome"] == "fixed", job.data["error"]
+    # 3 thành viên + người phản biện, rồi mới tới trọng tài.
+    assert world.calls.count("review") == 4 and world.calls.index("arbiter") > world.calls.index("review")
+    assert job.data["rounds"][0]["debate"] == {"skipped": False}
+
+
+def test_dong_thuan_nhung_co_nguoi_khong_chac_thi_van_phan_bien(world):
+    world.opinions["ocr"] = opinion("mapper", confidence=70)
+    job, orch = start()
+    orch.run()
+    assert world.calls.count("review") == 4
+
+
+def test_dong_thuan_bo_phan_bien_thi_trong_tai_tu_soat_va_biet_khoa_field(world, monkeypatch):
+    seen = _spy_prompts(world, monkeypatch)
+    job, orch = start()
+    orch.run()
+    arbiter = next(k["prompt"] for k in seen if k["schema"] is roles.DECISION_SCHEMA)
+    assert "Không có vòng phản biện" in arbiter and "_shared" in arbiter
+    # Khoá field hợp lệ có sẵn trong prompt, trọng tài khỏi mở reproduce.json để tra.
+    assert "Khoá field dùng được trong acceptance" in arbiter and "gioiTinh" in arbiter and "hoTen" in arbiter
+
+
+def test_co_phan_bien_thi_trong_tai_khong_nhan_danh_sach_tu_soat(world, monkeypatch):
+    world.opinions["form"] = opinion("llm")
+    seen = _spy_prompts(world, monkeypatch)
+    job, orch = start()
+    orch.run()
+    arbiter = next(k["prompt"] for k in seen if k["schema"] is roles.DECISION_SCHEMA)
+    assert "## Phản biện" in arbiter and "Không có vòng phản biện" not in arbiter
+
+
+def test_ghi_thoi_gian_tung_agent_nhung_khong_dua_cho_agent_khac(world, monkeypatch):
+    world.opinions["form"] = opinion("llm")
+    seen = _spy_prompts(world, monkeypatch)
+    job, orch = start()
+    orch.run()
+    round_ = job.data["rounds"][0]
+    assert all("seconds" in o for o in round_["opinions"] + round_["reviews"])
+    assert "seconds" in round_["decision"]
+    assert any(e["text"].startswith("Xong sau") for e in job.data["events"])
+    later = [k["prompt"] for k in seen if k["schema"] in (roles.REVIEW_SCHEMA, roles.DECISION_SCHEMA)]
+    assert later and not any('"seconds"' in p or '"sessionId"' in p for p in later)
+
+
+def test_phan_bien_khong_bat_chep_lai_bang_chung():
+    assert set(roles.REVIEW_SCHEMA["required"]) == {"cause", "confidence", "summary", "stance", "rebuttal"}
+    assert "Không đọc lại cả hồ sơ" in roles.CRITIC["task"]
+
+
+def test_lap_lai_ke_hoach_tiep_phien_cu_cua_trong_tai(world, reviewer, monkeypatch):
+    revised = {**world.decisions[0], "plan": {**PLAN, "summary": "khoanh riêng thủ tục"}}
+    world.decisions = [world.decisions[0], revised]
+    reviewer["plans"] = [{"decision": "retry", "note": "khoanh riêng thủ tục này"}, {"decision": "approve", "note": ""}]
+    seen = _spy_prompts(world, monkeypatch)
+    job, orch = start()
+    orch.run()
+    assert job.data["outcome"] == "fixed", job.data["error"]
+    arbiter = [k for k in seen if k["schema"] is roles.DECISION_SCHEMA]
+    assert arbiter[0].get("resume") is None and arbiter[1]["resume"] == "sess"
+    # Phiên cũ đã có hồ sơ: lượt lập lại chỉ gửi góp ý, không gửi lại cả brief.
+    assert "khoanh riêng thủ tục này" in arbiter[1]["prompt"] and "# Ca lỗi" not in arbiter[1]["prompt"]
+
+
+def test_khong_tiep_duoc_phien_trong_tai_thi_lap_lai_tu_dau(world, reviewer, monkeypatch):
+    reviewer["plans"] = [{"decision": "retry", "note": "khoanh riêng thủ tục này"}, {"decision": "approve", "note": ""}]
+    seen = _spy_prompts(world, monkeypatch)
+    real = claude_runner.run_agent
+
+    def flaky(**kwargs):
+        if kwargs.get("schema") is roles.DECISION_SCHEMA and kwargs.get("resume"):
+            seen.append(kwargs)
+            raise AgentError("phiên đã hết hạn")
+        return real(**kwargs)
+
+    monkeypatch.setattr(claude_runner, "run_agent", flaky)
+    job, orch = start()
+    orch.run()
+    assert job.data["outcome"] == "fixed", job.data["error"]
+    fresh = [k for k in seen if k["schema"] is roles.DECISION_SCHEMA and not k.get("resume")]
+    assert len(fresh) == 2 and "# Ca lỗi" in fresh[1]["prompt"] and "plan_note" in fresh[1]["prompt"]
+    assert any("Không tiếp được phiên cũ của trọng tài" in e["text"] for e in job.data["events"])
 
 
 def test_vuot_tran_chi_phi_thi_dung_va_hoan_tac(world, monkeypatch):

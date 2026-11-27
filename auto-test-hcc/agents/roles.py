@@ -28,14 +28,17 @@ OPINION_SCHEMA = {
     "required": ["cause", "confidence", "summary", "evidence", "proposal"],
 }
 
+# Vòng phản biện không bắt chép lại bằng chứng / đề xuất đã nêu: viết lại nguyên ý kiến dài là phần chậm nhất của vòng này.
 REVIEW_SCHEMA = {
     "type": "object",
     "properties": {
         **OPINION_SCHEMA["properties"],
+        "evidence": {"type": "array", "items": {"type": "string"}, "description": "Chỉ bằng chứng MỚI tự đọc ở vòng này"},
+        "proposal": {"type": "string", "description": "Chỉ ghi khi đổi hoặc chốt lại cách sửa"},
         "stance": {"type": "string", "enum": ["agree", "partly", "disagree"]},
         "rebuttal": {"type": "string", "description": "Đồng ý/bác bỏ điểm nào của ai, vì sao"},
     },
-    "required": [*OPINION_SCHEMA["required"], "stance", "rebuttal"],
+    "required": ["cause", "confidence", "summary", "stance", "rebuttal"],
 }
 
 DECISION_SCHEMA = {
@@ -185,15 +188,19 @@ def analysts(kind: str | None, thanh_tra: bool = False) -> dict:
     return {**ANALYSTS, "thanh_tra": THANH_TRA_ANALYST} if thanh_tra else ANALYSTS
 
 
-CRITIC = {
-    "label": "Phản biện",
-    "task": """Việc của bạn: tìm chỗ yếu trong các ý kiến của hội đồng, không đề xuất lại từ đầu. Soi các điểm:
-- Kết luận nào thiếu bằng chứng, hoặc đổ cho OCR trong khi chưa đối chiếu ảnh gốc?
+# Trọng tài cũng dùng danh sách này khi hội đồng đồng thuận và vòng phản biện bị bỏ.
+_CRITIC_CHECKS = """- Kết luận nào thiếu bằng chứng, hoặc đổ cho OCR trong khi chưa đối chiếu ảnh gốc?
 - Cách sửa có chỉ khớp riêng bộ giấy tờ này không (viết cứng giá trị, regex quá hẹp)?
 - Sửa code dùng chung (_shared) có làm hỏng thủ tục khác không? Hãy Grep xem ai đang gọi.
 - Có vi phạm quy tắc repo trong CLAUDE.md không?
 - Thủ tục có thanh tra: có ai đổ lỗi cho mapper trong khi chính thanh tra ghi đè ô (hoặc ngược lại) không? Có định sửa CẢ HAI
-  tầng cho cùng một ô, hay chép logic của lượt điền đầu vào thanh tra (thanh tra phải đọc giấy độc lập) không?""",
+  tầng cho cùng một ô, hay chép logic của lượt điền đầu vào thanh tra (thanh tra phải đọc giấy độc lập) không?"""
+
+CRITIC = {
+    "label": "Phản biện",
+    "task": "Việc của bạn: tìm chỗ yếu trong các ý kiến của hội đồng, không đề xuất lại từ đầu. Soi các điểm:\n" + _CRITIC_CHECKS + """
+Không đọc lại cả hồ sơ: chỉ mở đúng file / dòng (codeRefs, field) cần để kiểm điểm bạn nghi ngờ. Ý kiến nào đã có bằng chứng
+rõ và bạn không nghi thì để yên, không cần kiểm lại.""",
 }
 
 _REVIEW_TASK = """Đây là ý kiến của cả hội đồng ở vòng đầu:
@@ -201,7 +208,9 @@ _REVIEW_TASK = """Đây là ý kiến của cả hội đồng ở vòng đầu:
 {opinions}
 
 Đọc kỹ rồi nêu lập trường. Chỗ nào người khác có bằng chứng mạnh hơn thì đổi ý thẳng thắn; chỗ nào bạn bác thì nói rõ
-vì sao, kèm bằng chứng. Với lỗi sửa được, hãy cùng chốt cách sửa cụ thể nhất."""
+vì sao, kèm bằng chứng. Với lỗi sửa được, hãy cùng chốt cách sửa cụ thể nhất.
+Trả lời gọn: không chép lại bằng chứng / đề xuất đã có ở trên; evidence chỉ ghi bằng chứng mới, proposal chỉ ghi khi đổi
+hoặc chốt lại cách sửa. Chỉ mở file khi cần kiểm một điểm còn tranh cãi."""
 
 ARBITER_SYSTEM = _COMMON + """
 
@@ -462,20 +471,43 @@ def critic_prompt(brief: str, opinions: list[dict]) -> tuple[str, str]:
     return _COMMON + "\n\n" + CRITIC["task"], brief + "\n\n" + _REVIEW_TASK.format(opinions=_json(opinions))
 
 
+def _plan_notes(plan_notes: list[str]) -> list[str]:
+    return ["\n## Góp ý của người vận hành về kế hoạch\nKế hoạch mới phải đáp ứng các góp ý này; không làm được thì "
+            "chọn report_only và nói rõ vì sao.",
+            *(f"<plan_note lan=\"{i}\">\n{note}\n</plan_note>" for i, note in enumerate(plan_notes, 1))]
+
+
 def arbiter_prompt(brief: str, opinions: list[dict], reviews: list[dict], plan_notes: list[str] | None = None,
-                   previous: dict | None = None) -> str:
+                   previous: dict | None = None, consensus: bool = False, fields: list[str] | None = None) -> str:
     parts = [brief, "\n## Ý kiến vòng đầu\n" + _json(opinions)]
     if reviews:
         parts.append("\n## Phản biện\n" + _json(reviews))
+    elif consensus:
+        # Bỏ vòng phản biện vì hội đồng đồng thuận: trọng tài tự soi đúng các điểm người phản biện sẽ soi.
+        parts.append("\n## Không có vòng phản biện\nCả hội đồng cùng một nguyên nhân với độ tin cậy cao nên vòng phản biện "
+                     "đã bỏ cho nhanh. Không cần kiểm lại phần bằng chứng các ý kiến trích trùng nhau; trước khi chốt, tự soi "
+                     "các điểm người phản biện vẫn soi:\n" + _CRITIC_CHECKS)
+    if fields:
+        # Khoá field hợp lệ cho acceptance: trước đây trọng tài phải tự mở reproduce.json mới biết, và thỉnh thoảng
+        # ghi sai khoá làm trượt cả vòng (_decision_problem).
+        parts.append("\n## Khoá field dùng được trong acceptance (lượt gốc + các lần chạy lại)\n" + ", ".join(fields[:400]))
     if plan_notes:
         # Người vận hành đã đọc kế hoạch trước và không cho sửa như vậy: lập lại kế hoạch đáp ứng góp ý.
         parts.append("\n## Kế hoạch trước (người vận hành chưa đồng ý)\n"
                      + _json({k: (previous or {}).get(k) for k in ("decision", "cause", "plan", "acceptance", "risk")}))
-        parts.append("\n## Góp ý của người vận hành về kế hoạch\nKế hoạch mới phải đáp ứng các góp ý này; không làm được thì "
-                     "chọn report_only và nói rõ vì sao.")
-        parts.extend(f"<plan_note lan=\"{i}\">\n{note}\n</plan_note>" for i, note in enumerate(plan_notes, 1))
-    parts.append("\nHãy tự kiểm chứng điểm còn tranh cãi rồi ra quyết định.")
+        parts.extend(_plan_notes(plan_notes))
+    parts.append("\nHãy tự kiểm chứng điểm còn tranh cãi rồi ra quyết định. Chỉ mở file cần cho điểm đó và cho plan / "
+                 "acceptance; không đọc lại phần hội đồng đã trích đúng.")
     return "\n".join(parts)
+
+
+def replan_prompt(plan_notes: list[str]) -> str:
+    """Tiếp phiên cũ của trọng tài: hồ sơ, ý kiến và kế hoạch trước đã nằm trong phiên, chỉ gửi góp ý."""
+    return "\n".join([
+        "Người vận hành đã đọc kế hoạch bạn vừa lập và CHƯA đồng ý. Hãy lập lại kế hoạch (cùng schema) đáp ứng góp ý dưới đây.",
+        *_plan_notes(plan_notes),
+        "\nChỉ mở thêm file khi góp ý đòi kiểm điều bạn chưa đọc.",
+    ])
 
 
 def fixer_prompt(brief: str, decision: dict) -> str:

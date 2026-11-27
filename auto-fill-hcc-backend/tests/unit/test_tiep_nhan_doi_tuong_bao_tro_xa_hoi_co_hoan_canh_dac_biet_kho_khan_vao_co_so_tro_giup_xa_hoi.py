@@ -117,6 +117,12 @@ _TK04_TEXT = (
 _BB_TEXT = "BIÊN BẢN TIẾP NHẬN ĐỐI TƯỢNG Đại diện UBND xã, đại diện cơ sở trợ giúp xã hội"
 _CCCD_TEXT = "CĂN CƯỚC CÔNG DÂN Số định danh cá nhân"
 
+_TK_TCXH_TEXT = (
+    "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM Độc lập - Tự do - Hạnh phúc TỜ KHAI ĐỀ NGHỊ TRỢ CẤP XÃ HỘI, TRỢ CẤP HƯU TRÍ "
+    "XÃ HỘI Kính gửi: Chủ tịch UBND xã I. Thông tin chung 1.1. Họ và tên: NGUYỄN VĂN A Số căn cước 2. Thông tin "
+    "người giám hộ"
+)
+
 
 def _files(*names):
     return [{"name": n, "type": "application/pdf", "dataUrl": ""} for n in names]
@@ -156,6 +162,21 @@ def test_thieu_to_khai_va_tep_la_thi_canh_bao():
     assert any("mo.pdf" in w and "Tờ khai Mẫu số 04 —" in w for w in warnings)
     assert any("Không thấy Tờ khai Mẫu số 04" in w for w in warnings)
     assert not any("Biên bản" in w for w in warnings)
+
+
+def test_khong_co_mau_04_thi_dinh_to_khai_mau_khac_vao_dong_duy_nhat():
+    files = _files("cccd.pdf", "to_khai.pdf")
+    ocr = [{"name": "cccd.pdf", "text": _CCCD_TEXT}, {"name": "to_khai.pdf", "text": _TK_TCXH_TEXT}]
+    items, warnings, _ = _plan_items(files, ocr, {0: "can_cuoc", 1: "other"})
+
+    assert [(i["fileName"], i["componentName"]) for i in items] == [
+        ("to_khai.pdf", "Tờ khai đề nghị chăm sóc, nuôi dưỡng tại cơ sở trợ giúp xã hội"),
+    ]
+    assert len(warnings) == 1 and "không phải Tờ khai Mẫu số 04" in warnings[0]
+
+
+def test_prompt_rieng_co_loai_to_khai_mau_khac():
+    assert "to_khai_khac" in ap.SYSTEM_PROMPT
 
 
 async def test_plan_dung_prompt_rieng_va_mot_dong(monkeypatch):

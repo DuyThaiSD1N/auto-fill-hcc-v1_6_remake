@@ -152,6 +152,9 @@ VÍ DỤ: CCCD 1 = Người A, Nam, sinh 1984; CCCD 2 = Người B, Nữ, sinh 1
      KHÔNG suy "Cục Cảnh sát..."/"Bộ Công an" cho CMND.
 4. PreviousRegistration_* (Số / Quyển số / Ngày / Nơi ĐĂNG KÝ KHAI SINH LẦN ĐẦU của Subject): CHỈ đọc từ
    GIẤY KHAI SINH cũ / TRÍCH LỤC KHAI SINH / TỜ KHAI ĐĂNG KÝ LẠI (mục "Đã đăng ký khai sinh tại").
+   - Giấy khai sinh / trích lục phải là của CHÍNH Subject (người được khai sinh trên giấy là người ở <con>).
+     Giấy khai sinh của người khác — hay gặp: giấy của CON Subject ghi Subject ở mục cha/mẹ — KHÔNG lấy số,
+     quyển, ngày, nơi đăng ký. Mục "Đã đăng ký khai sinh tại" trên tờ khai đăng ký lại vẫn là nguồn hợp lệ.
    - BẪY: "Số:"/"Quyển số:"/ngày trên GIẤY KẾT HÔN (có "Họ tên chồng"+"vợ") và TRÍCH LỤC KHAI TỬ (số đuôi
      "TLKT") rất giống nhưng KHÔNG phải khai sinh → không lấy. Không lấy số thứ tự mục "(7)"/"(10)".
    - PreviousRegistration_Number dạng "NN" hoặc "NN/YYYY". BookNumber chỉ lấy khi có nhãn "Quyển số" rõ,

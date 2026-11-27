@@ -8,6 +8,7 @@ from app.channels.handfree.procedure_registry import (
     is_allowed_in_province,
     public_list,
 )
+from app.procedures import ke_khai_links as core_ke_khai_links
 from app.procedures import registry as core_registry
 
 
@@ -396,7 +397,8 @@ def test_registered_procedures_use_their_declared_flow_family():
                           "cap-lai-to-quoc-ghi-cong", "cap-bo-sung-cap-lai-giay-chung-nhan-nguoi-co-cong",
                           "bo-sung-than-nhan-liet-si", "tham-vieng-mo-liet-si", "giai-quyet-che-do-khang-chien",
                           "mai-tang-dan-cong-hoa-tuyen", "ho-tro-co-so-san-xuat-thiet-hai-dich-benh-dong-vat",
-                          "hoa-giai-tranh-chap-dat-dai", "cong-nhan-che-do-khang-chien-nhiem-chat-doc-hoa-hoc"):
+                          "hoa-giai-tranh-chap-dat-dai", "cong-nhan-che-do-khang-chien-nhiem-chat-doc-hoa-hoc",
+                          "giai-quyet-che-do-mai-tang-cuu-chien-binh-2002307"):
         moha_ward = procedures.pop(moha_ward_key)
         assert moha_ward.get("flowProfile") is None
         assert moha_ward["needsAgencySelect"] is True
@@ -765,6 +767,10 @@ def test_registered_procedures_use_their_declared_flow_family():
         ("chuyen-muc-dich-su-dung-dat-mien-nui-lai-chau", "laichau", "dichvucong.laichau.gov.vn"),
         ("giao-dat-cho-thue-dat-lai-chau", "laichau", "dichvucong.laichau.gov.vn"),
         ("to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an-lai-chau", "laichau", "dichvucong.laichau.gov.vn"),
+        # 27/11: key lõi không mang đuôi tỉnh ("dinh-chinh-sai-sot") hoặc urlScope "laichau.gov.vn" như lõi.
+        ("dinh-chinh-sai-sot", "laichau", "dichvucong.laichau.gov.vn"),
+        ("dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai", "laichau", "laichau.gov.vn"),
+        ("ho-tro-mai-tang-dan-toc-thieu-so-lai-chau", "laichau", "laichau.gov.vn"),
     ):
         local = procedures.pop(key)
         assert local["provinceOnly"] == [slug], key
@@ -808,7 +814,9 @@ def test_registered_procedures_use_their_declared_flow_family():
     kh_ward_level = ("dang-ky-dat-dai-lan-dau-khanh-hoa", "giao-thue-chuyen-muc-dich-dat-khanh-hoa",
                      "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa",
                      # 25/11: 1.012796 quy trình "(Cấp Xã)", cơ quan UBND phường/xã.
-                     "dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa")
+                     "dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa",
+                     # 27/11: 1.013314 quy trình 1.013314.H32.01, cơ quan UBND phường/xã.
+                     "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru-khanh-hoa")
     for key in (*kh_ward_level,
                 "cap-doi-gcn-khanh-hoa",
                 "dang-ky-bien-dong-chuyen-nhuong-thua-ke-tang-cho-khanh-hoa",
@@ -847,6 +855,31 @@ def test_registered_procedures_use_their_declared_flow_family():
         assert ld["detect"]["urlScope"] == ["lamdong.gov.vn"], key
         assert ld["bxdFlow"]["capability"] == "supportsBxdFlowLamDong", key
         assert is_allowed_in_province(ld, "lamdong") and not is_allowed_in_province(ld, "khanhhoa"), key
+
+    # Cổng iGate Ninh Bình (26/11): 6 thủ tục đất đai, luồng chung "xay-dung" như Lâm Đồng, cờ extension riêng
+    # supportsBxdFlowNinhBinh. 1.013978 / 1.013949 / 1.012796 (UBND phường/xã) chọn đủ Tỉnh + Xã; 1.012783 / 1.013831 /
+    # 1.012790 (Chi nhánh VPĐK) chỉ chọn Tỉnh như bản Khánh Hòa cùng mã. 1.012784 tách/hợp thửa (27/11) cơ quan UBND
+    # phường/xã (quy trình "Phi địa giới") → chọn đủ Tỉnh + Xã.
+    nb_ward_level = ("dang-ky-dat-dai-lan-dau-ninh-binh", "giao-thue-chuyen-muc-dich-dat-ninh-binh",
+                     "dinh-chinh-gcn-da-cap-ninh-binh", "tach-thua-hop-thua-dat-ninh-binh")
+    for key in (*nb_ward_level, "cap-doi-gcn-ninh-binh", "dang-ky-bien-dong-dat-dai-ninh-binh",
+                "dinh-chinh-da-cap-ninh-binh"):
+        nb = procedures.pop(key)
+        assert nb["provinceOnly"] == ["ninhbinh"], key
+        assert nb["flowProfile"] == "xay-dung" and nb["maePortal"] is True, key
+        assert nb["maeDialogChoice"] == {"enabled": True}, key
+        assert nb["wizard"] == {"ownerStep": 5, "declarationStep": 1, "attachmentStep": 2, "resultStep": 4}, key
+        assert nb["needsAgencySelect"] is True and nb["agencyProvince"] == "Ninh Bình", key
+        assert "agencySoFirst" not in nb and "agencyCardIncludesByWard" not in nb, key
+        if key in nb_ward_level:
+            assert "agencyProvinceOnly" not in nb, key
+        else:
+            assert nb["agencyProvinceOnly"] is True, key
+        assert nb["detect"]["urlScope"] == ["dichvucong.ninhbinh.gov.vn"], key
+        assert nb["bxdFlow"]["capability"] == "supportsBxdFlowNinhBinh", key
+        assert nb["keKhaiUrl"] == next(link["url"] for link in core_ke_khai_links.KE_KHAI_LINKS
+                                       if link["key"] == key), key
+        assert is_allowed_in_province(nb, "ninhbinh") and not is_allowed_in_province(nb, "khanhhoa"), key
 
     # DVCQG chỉ chọn Tỉnh + gạt "Sở" rồi chọn đúng Sở; không trang chọn nơi/loại của cổng bộ. Cổng Bộ Công Thương
     # cùng stepper iGate với cổng NN&MT → khai wizard như mae_fishing; các cổng còn lại không wizard.
@@ -897,8 +930,10 @@ def test_registered_procedures_use_their_declared_flow_family():
     # không bước chủ hồ sơ; detect giống hệt core.
     core_detect = {procedure["key"]: procedure["detect"] for procedure in core_registry.PROCEDURES}
     # 24/11: + cấp Phiếu lý lịch tư pháp 3.000333 (Công an tỉnh, cùng trang nộp một trang SurveyJS).
+    # 27/11: + đăng ký thành lập hộ kinh doanh 1.001612 bản Cổng DVC quốc gia (cấp xã, cùng trang một trang).
     for key in ("khai-sinh-dang-ky-thuong", "trich-luc-ks", "khai-tu", "thay-doi-cai-chinh-ho-tich",
-                "xac-nhan-tinh-trang-hon-nhan", "cap-phieu-ly-lich-tu-phap-cong-an-cap-tinh"):
+                "xac-nhan-tinh-trang-hon-nhan", "cap-phieu-ly-lich-tu-phap-cong-an-cap-tinh",
+                "dang-ky-thanh-lap-ho-kinh-doanh"):
         single_page = procedures.pop(key)
         assert single_page["flowProfile"] == "tu-phap-moi"
         assert single_page["singlePageDossier"] is True
@@ -1094,7 +1129,19 @@ def test_all_handfree_procedures_delegate_business_core_to_autofill_registry():
     # +1 Bộ Công an (24/11) "cap-phieu-ly-lich-tu-phap-cong-an-cap-tinh" (3.000333), luồng "tu-phap-moi" chỉ chọn Tỉnh.
     # +1 cổng Lai Châu (25/11) "to-chuc-kinh-te-nhan-chuyen-nhuong-qsdd-du-an-lai-chau" (1.115591).
     # +1 cổng iGate Khánh Hòa (25/11) "dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa" (1.012796), luồng "xay-dung".
-    assert len(procedures) == 200
+    # +1 cổng Bộ Nội vụ (26/11) "giai-quyet-che-do-mai-tang-cuu-chien-binh-2002307" (2.002307), cấp xã.
+    # +6 cổng iGate Ninh Bình (26/11) đất đai: "dang-ky-dat-dai-lan-dau-ninh-binh" (1.013978),
+    #    "giao-thue-chuyen-muc-dich-dat-ninh-binh" (1.013949), "cap-doi-gcn-ninh-binh" (1.012783),
+    #    "dang-ky-bien-dong-dat-dai-ninh-binh" (1.013831), "dinh-chinh-da-cap-ninh-binh" (1.012790),
+    #    "dinh-chinh-gcn-da-cap-ninh-binh" (1.012796), luồng "xay-dung".
+    # +1 Cổng DVC quốc gia (27/11) "dang-ky-thanh-lap-ho-kinh-doanh" (1.001612), luồng "tu-phap-moi" chọn Tỉnh + Xã;
+    #    bản HkdOnline "dang-ky-kinh-doanh" giữ nguyên.
+    # +1 cổng iGate Ninh Bình (27/11) "tach-thua-hop-thua-dat-ninh-binh" (1.012784), luồng "xay-dung", chọn Tỉnh + Xã.
+    # +3 cổng Lai Châu (27/11) "dinh-chinh-sai-sot" (1.115585), "dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai"
+    #    (1.115583), "ho-tro-mai-tang-dan-toc-thieu-so-lai-chau" (2.002862), chọn Tỉnh + Xã.
+    # +1 cổng iGate Khánh Hòa (27/11) "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru-khanh-hoa" (1.013314),
+    #    luồng "xay-dung", chọn Tỉnh + Xã.
+    assert len(procedures) == 213
 
     for procedure in procedures:
         key = procedure["key"]

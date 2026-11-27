@@ -239,3 +239,31 @@ def test_registry_va_ke_khai_links_cung_key():
 
     link = next(item for item in KE_KHAI_LINKS if item["key"] == KEY)
     assert link["code"] == "2.002862"
+
+
+# ---------------------------------------------------------------- trợ lý người dân
+
+
+def test_tro_ly_cung_key_va_dung_pipeline_loi():
+    from app.channels.handfree import procedure_registry as handfree
+    from app.channels.handfree.chat.procedure_picker.prompt import PROCEDURE_HINTS
+    from app.channels.handfree.chat.script_mong import PROCEDURE_HMONG
+
+    procedure = handfree.get_procedure(KEY)
+    assert procedure is not None
+    assert procedure["provinceOnly"] == ["laichau"]
+    assert procedure["needsAgencySelect"] is True and procedure["agencyProvince"] == "Lai Châu"
+    assert not procedure.get("agencyProvinceOnly") and "agencySoFirst" not in procedure
+    assert procedure["detect"] == get_procedure(KEY)["detect"]
+    assert procedure["keKhaiUrl"] == next(item["url"] for item in KE_KHAI_LINKS if item["key"] == KEY)
+    assert get_procedure(KEY)["label"] == "[Lai Châu] " + procedure["label"]
+    assert handfree.get_pipeline(KEY) is get_pipeline(KEY)
+    assert handfree.get_attach_pipeline(KEY) is get_attach_pipeline(KEY)
+    assert procedure["laiChauFeeStep"]
+    assert handfree.is_allowed_in_province(procedure, "laichau")
+    assert not handfree.is_allowed_in_province(procedure, "bacninh")
+    assert "Lai Châu" not in procedure["shortLabel"]
+    assert {doc["key"] for doc in procedure["requiredDocs"] if not doc.get("optional")} == {
+        "to_khai", "bien_ban", "trich_luc_khai_tu", "ho_ngheo",
+    }
+    assert PROCEDURE_HMONG[KEY] and PROCEDURE_HINTS[KEY]

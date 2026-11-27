@@ -49,7 +49,7 @@ def test_phien_moi_lay_noi_tu_acc(monkeypatch):
     assert saved["auth_user"] == {
         "id": "u1", "username": "hcctanphong", "name": "Phường Tân Phong",
         "province_slug": "laichau", "tinh": "Tỉnh Lai Châu", "xa": "Phường Tân Phong", "role": "commune",
-        "reuseWalletDocuments": True, "reuseWalletDocumentsSaved": False,
+        "reuseWalletDocuments": False, "reuseWalletDocumentsSaved": False,
     }
 
 

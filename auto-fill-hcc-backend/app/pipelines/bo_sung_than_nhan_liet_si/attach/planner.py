@@ -49,7 +49,7 @@ _SLOT_BY_KEY = {s["slotKey"]: s for s in SLOTS}
 
 _NEW_DOCS: dict[str, dict[str, str]] = {
     _HO_SO_LS: {"documentName": "Hồ sơ liệt sĩ", "detectedType": "Hồ sơ liệt sĩ"},
-    _BANG: {"documentName": 'Bằng "Tổ quốc ghi công"', "detectedType": 'Bằng "Tổ quốc ghi công"'},
+    _BANG: {"documentName": "Bằng Tổ quốc ghi công", "detectedType": 'Bằng "Tổ quốc ghi công"'},
     _CONG_VAN: {"documentName": "Công văn đề nghị của UBND cấp xã", "detectedType": "Công văn UBND"},
 }
 _ALLOWED_DOC_TYPES = set(_SLOT_BY_KEY) | set(_NEW_DOCS) | {_OTHER}

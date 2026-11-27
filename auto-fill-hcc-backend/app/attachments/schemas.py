@@ -22,6 +22,13 @@ class AttachmentSourceSegment(BaseModel):
     pageIndexes: list[Annotated[int, Field(ge=0)]] | None = None
 
 
+class WalletPick(BaseModel):
+    """Tệp có sẵn trong Ví cá nhân của cổng (Bộ Tư pháp): FE mở ví của dòng và bấm "Chọn" thay vì tải lên."""
+    id: str
+    name: str = ""
+    tab: Literal["uploaded", "issued"] = "uploaded"
+
+
 class AttachmentPlanItem(BaseModel):
     fileIndex: int
     # Các file gốc (theo thứ tự) FE sẽ GỘP thành 1 PDF cho item này; None/1 phần tử = file lẻ.
@@ -52,6 +59,9 @@ class AttachmentPlanItem(BaseModel):
     # shared: một giấy tùy thân dùng chung và chỉ đính ở tab đầu; matched: giấy tùy thân khớp riêng
     # với người ký của bundle.
     identityScope: Literal["shared", "matched"] | None = None
+    # Chế độ tách hồ sơ (đa tab): engine mặc định ép mọi tệp về STT1; True = giữ đúng dòng kế hoạch
+    # (chứng thực giao dịch: dòng "Dự thảo giao dịch"). Extension cũ không đọc → không gửi splitMode.
+    keepPlannedRow: bool | None = None
     # Dùng cho target "fixed-slot" (vd Hỗ trợ mai táng): chỉ định ô upload cố định trên form.
     slotKey: str | None = None
     slotIndex: int | None = None
@@ -105,6 +115,14 @@ class AttachmentPlanItem(BaseModel):
     bcaPlainTable: bool | None = None
     # Ô phụ của dòng: {"kind": Loại giấy tờ, "count": Số lượng, "note": Ghi chú}.
     rowFields: dict[str, str] | None = None
+    # Mục dùng nguyên một tệp lấy từ Ví cá nhân (chỉ khi extension gửi options.walletFiles — app/attachments/wallet_pick.py).
+    walletPick: WalletPick | None = None
+    # Trang nộp Cổng DVC quốc gia (SurveyJS): chọn option chứa chữ này ở ô "Chọn trường hợp thực hiện" TRƯỚC khi đính
+    # (vd đăng ký thành lập hộ kinh doanh: giấy ủy quyền nộp hồ sơ cần dòng của trường hợp ủy quyền); nhiều option cùng
+    # chứa chữ thì lấy option có executionCasePrefer (đã fold). KHÔNG khai ở đây thì response_model lược mất → extension
+    # không chọn trường hợp, giấy rơi về dòng dự phòng.
+    executionCase: str | None = None
+    executionCasePrefer: str | None = None
 
 
 class AttachmentPlanResp(BaseModel):

@@ -1,4 +1,4 @@
-"""Dùng lại giấy tờ trong Ví cá nhân của cổng Bộ Tư pháp (chứng thực bản sao).
+"""Dùng lại giấy tờ trong Ví cá nhân của cổng Bộ Tư pháp (chứng thực bản sao, cấp bản sao từ sổ gốc).
 
 Tới bước Thành phần hồ sơ, trước khi lập kế hoạch đính kèm:
 1. ``wallet_list`` — extension mở hộp thoại "Danh sách tài liệu điện tử" của dòng hồ sơ; chính trang gọi API danh
@@ -17,13 +17,14 @@ Bật khi: extension khai ``supportsWalletReuse`` + tài khoản bật cài đ�
 Extension khai thêm ``supportsWalletPick``: đọc cả tab "Tài liệu được cấp", và giấy lấy từ ví được đính bằng nút "Chọn"
 trên đúng dòng của ví (cổng chỉ ghi nhận "dùng lại giấy tờ" khi chọn từ ví) thay vì tải lên lại. Tệp vẫn được tải về
 phiên hồ sơ để planner đọc nội dung đặt tên thành phần; ``apply_picks`` gắn ``walletPick`` vào mục kế hoạch.
-Bản này chỉ đưa ra giấy ĐÃ KÝ SỐ (cờ ``signed`` = ``isSigned`` của API ví, cột "Đã ký số" trên cổng): giấy chưa ký số
-không dùng lại được. Bản trên chợ chỉ có ``supportsWalletReuse`` không gửi cờ này → giữ danh sách như cũ.
+Bản này xếp giấy ĐÃ KÝ SỐ (cờ ``signed`` = ``isSigned`` của API ví, cột "Đã ký số" trên cổng) lên đầu mỗi mục, giấy
+chưa ký số vẫn hiện ở dưới. Bản trên chợ chỉ có ``supportsWalletReuse`` không gửi cờ này → giữ danh sách như cũ.
 """
 import json
 import logging
 import re
 
+from app.attachments import wallet_pick
 from app.channels.handfree.chat import script_vi as vi
 from app.channels.handfree.chat.intents import fold
 from app.services.llm.client import chat as llm_chat
@@ -39,12 +40,14 @@ SETTING = "reuseWalletDocuments"
 # lại) giữ hành vi cũ: chỉ hỏi khi tài khoản đã tự bật cài đặt — router ghi giá trị đã lưu vào khoá này.
 SETTING_SAVED = "reuseWalletDocumentsSaved"
 TABS = ("uploaded", "issued")
-PROCEDURES = frozenset({"chung-thuc-ban-sao"})
+PROCEDURES = frozenset({"chung-thuc-ban-sao", "cap-ban-sao-so-goc"})
+# Thủ tục mở sau khi có nút "Chọn" của ví: bản extension chỉ có CAPABILITY (tải lên lại) không hỏi ví ở các thủ tục này.
+PICK_ONLY_PROCEDURES = frozenset({"cap-ban-sao-so-goc"})
 STATE = "wallet_reuse"
 LIMIT = 20
 # Mỗi lần trợ lý đính bằng "Tải lên từ thiết bị" là thêm một tệp CHƯA ký số lên đầu mục tải lên → chỉ đọc 20 tệp mới
-# nhất thì giấy ký số hay bị đẩy khỏi danh sách. Bản chỉ hiện giấy ký số đọc sâu hơn (extension cho tối đa 50 mỗi mục,
-# 10 tệp một trang); thẻ vẫn tối đa LIMIT giấy mỗi mục.
+# nhất thì giấy ký số hay bị đẩy khỏi danh sách. Bản xếp giấy ký số lên đầu đọc sâu hơn (extension cho tối đa 50 mỗi
+# mục, 10 tệp một trang); thẻ vẫn tối đa LIMIT giấy mỗi mục.
 READ_LIMIT = 50
 # Extension vẽ được danh sách giấy chưa ký số bị ẩn ở cuối mỗi mục của thẻ.
 HIDDEN_CAPABILITY = "supportsWalletHiddenList"
@@ -58,9 +61,11 @@ _ORIGIN_RE = re.compile(r"https://[a-z0-9-]+(?:\.[a-z0-9-]+)*\.gov\.vn", re.IGNO
 
 
 def enabled(conv: dict, proc: dict | None) -> bool:
+    key = str((proc or {}).get("key") or conv.get("procedure_key") or "")
     return ((conv.get("client_capabilities") or {}).get(CAPABILITY) is True
             and (conv.get("lang") or "vi") == "vi"
-            and str((proc or {}).get("key") or conv.get("procedure_key") or "") in PROCEDURES)
+            and key in PROCEDURES
+            and (key not in PICK_ONLY_PROCEDURES or pick_enabled(conv)))
 
 
 def pick_enabled(conv: dict) -> bool:
@@ -139,12 +144,12 @@ def _same_file_key(name: str) -> str:
     return re.sub(r"(\s*(\(\d+\)|-\s*copy))+$", "", stem).strip()
 
 
-def _clean_items(raw, *, signed_only: bool = False, info: dict | None = None) -> list[dict]:
+def _clean_items(raw, *, signed_first: bool = False, info: dict | None = None) -> list[dict]:
     """Tối đa LIMIT tệp mỗi tab; tab "Tài liệu tải lên" đứng trước để số thứ tự liền nhau qua hai tab. Bản extension
     cũ không gửi ``tab`` → coi là tab tải lên (bản cũ chỉ đọc tab đó).
 
-    signed_only: chỉ giữ giấy đã ký số; giấy chưa ký số ghi vào ``info["hidden"]`` (tab, tên) để báo công dân, bản
-    trùng (cùng tên gốc + cùng dung lượng, giữ bản mới nhất) đếm vào ``info["duplicates"]``."""
+    signed_first: giấy đã ký số lên đầu mỗi mục (giữ thứ tự mới nhất trong từng nhóm), giấy chưa ký số lấp phần còn
+    lại tới LIMIT; bản trùng (cùng tên gốc + cùng dung lượng, giữ bản mới nhất) đếm vào ``info["duplicates"]``."""
     by_tab: dict[str, list[dict]] = {tab: [] for tab in TABS}
     seen = set()
     same_file = set()
@@ -159,24 +164,23 @@ def _clean_items(raw, *, signed_only: bool = False, info: dict | None = None) ->
             continue
         name = _text(item.get("name")) or uri
         size = int(item.get("size") or 0) if str(item.get("size") or "0").isdigit() else 0
-        if signed_only:
+        if signed_first:
             seen.add((tab, wid))
-            if item.get("signed") is not True:
-                if info is not None:
-                    info.setdefault("hidden", []).append({"tab": tab, "name": name})
-                continue
             # Mục được cấp không có dung lượng (size = 0) → không đủ căn cứ coi là bản trùng.
             if size and (tab, _same_file_key(name), size) in same_file:
                 if info is not None:
                     info["duplicates"] = int(info.get("duplicates") or 0) + 1
                 continue
             same_file.add((tab, _same_file_key(name), size))
-        if len(by_tab[tab]) >= LIMIT:
+        if not signed_first and len(by_tab[tab]) >= LIMIT:
             continue
         seen.add((tab, wid))
         by_tab[tab].append({"id": wid, "uri": uri, "name": name, "size": size,
                             "createdAt": _text(item.get("createdAt"))[:32],
                             "tab": tab, "signed": item.get("signed") is True})
+    if signed_first:
+        # Cắt LIMIT sau khi xếp: giấy ký số cũ hơn vẫn giữ được chỗ trước giấy chưa ký số mới hơn.
+        by_tab = {tab: sorted(items, key=lambda it: not it["signed"])[:LIMIT] for tab, items in by_tab.items()}
     return [item for tab in TABS for item in by_tab[tab]]
 
 
@@ -273,18 +277,17 @@ def _card(conv: dict) -> dict:
         "skipSend": "__action:wallet_skip",
     }
     if pick_enabled(conv):
-        hidden = conv.get("wallet_hidden") or []
-        card["hidden"] = hidden
-        card["stats"].update({"hidden": len(hidden), "duplicates": int(conv.get("wallet_duplicates") or 0)})
+        card["stats"]["duplicates"] = int(conv.get("wallet_duplicates") or 0)
     return card
 
 
-def _hidden_count(conv: dict) -> int:
-    return len(conv.get("wallet_hidden") or [])
+def _signed_note(conv: dict) -> str:
+    signed = sum(1 for item in conv.get("wallet_items") or [] if item.get("signed") is True)
+    return vi.WALLET_SIGNED_FIRST_NOTE.format(signed=signed) if signed else ""
 
 
 def _ask_reply(conv: dict, *, more: str = ""):
-    """Câu hỏi có dùng thêm giấy trong ví không. Bản chỉ hiện giấy ký số nói rõ số giấy ký số theo từng mục."""
+    """Câu hỏi có dùng thêm giấy trong ví không. Bản chọn từ ví nói rõ số giấy theo từng mục và số giấy đã ký số."""
     if not pick_enabled(conv):
         r = _reply(vi.WALLET_ASK, more=more)
         yes = vi.WALLET_YES_LABEL
@@ -293,9 +296,8 @@ def _ask_reply(conv: dict, *, more: str = ""):
         counts = {tab: sum(1 for item in items if item.get("tab") == tab) for tab in TABS}
         parts = [tpl.format(count=counts[tab]) for tab, tpl in
                  (("uploaded", vi.WALLET_SIGNED_UPLOADED_PART), ("issued", vi.WALLET_SIGNED_ISSUED_PART)) if counts[tab]]
-        hidden = _hidden_count(conv)
         r = _reply(vi.WALLET_ASK_SIGNED, docs=len(items), parts=vi.WALLET_SIGNED_PARTS_JOIN.join(parts),
-                   hidden=vi.WALLET_HIDDEN_NOTE.format(hidden=hidden) if hidden else "")
+                   note=_signed_note(conv))
         yes = vi.WALLET_YES_SIGNED_LABEL
     r.chips = [{"label": yes, "send": "__action:wallet_use", "solid": True},
                {"label": vi.WALLET_NO_LABEL, "send": "__action:wallet_skip"}]
@@ -305,11 +307,7 @@ def _ask_reply(conv: dict, *, more: str = ""):
 def _list_reply(conv: dict, tpl: dict | None = None, **kw):
     conv["wallet_phase"] = "choosing"
     if tpl is None and pick_enabled(conv):
-        hidden = _hidden_count(conv)
-        note = (vi.WALLET_LIST_HIDDEN_NOTE_LISTED
-                if (conv.get("client_capabilities") or {}).get(HIDDEN_CAPABILITY) is True
-                else vi.WALLET_LIST_HIDDEN_NOTE)
-        tpl, kw = vi.WALLET_LIST_READY_SIGNED, {**kw, "hidden": note.format(hidden=hidden) if hidden else ""}
+        tpl, kw = vi.WALLET_LIST_READY_SIGNED, {**kw, "note": _signed_note(conv)}
     r = _reply(tpl or vi.WALLET_LIST_READY, docs=len(conv.get("wallet_items") or []), **kw)
     r.cards = [_card(conv)]
     r.chips = _choice_chips(conv)
@@ -321,8 +319,6 @@ def _only_note(note: dict | None) -> dict:
     kèm giấy tờ vừa nhận" (hồ sơ chưa có giấy nào)."""
     if note is vi.WALLET_ONLY_EMPTY:
         return note
-    if note is vi.WALLET_NONE_SIGNED:
-        return vi.WALLET_ONLY_NONE_SIGNED
     if note is vi.WALLET_UNAVAILABLE:
         return vi.WALLET_ONLY_UNAVAILABLE
     return vi.WALLET_ONLY_NONE_PICKED
@@ -338,7 +334,7 @@ async def _finish(conv: dict, resume, back, note: dict | None = None, *, importe
     only = conv.get("wallet_only") is True
     conv["wallet_reuse_done"] = True
     for key in ("wallet_phase", "wallet_items", "wallet_origin", "wallet_catalog", "wallet_picked",
-                "wallet_reuse_return_state", "wallet_only", "wallet_hidden", "wallet_duplicates"):
+                "wallet_reuse_return_state", "wallet_only", "wallet_duplicates"):
         conv.pop(key, None)
     await _drop_staging(conv)
     if only and not imported:
@@ -364,22 +360,19 @@ async def handle(conv: dict, intent, resume, back):
 
     if phase == "checking":
         if kind == "event" and value == "wallet_list":
-            info: dict = {"hidden": [], "duplicates": 0}
-            items = _clean_items(payload.get("items"), signed_only=pick_enabled(conv), info=info)
+            info: dict = {"duplicates": 0}
+            items = _clean_items(payload.get("items"), signed_first=pick_enabled(conv), info=info)
             origin = str(payload.get("origin") or "")
             if not _ORIGIN_RE.fullmatch(origin):
-                items, info = [], {"hidden": [], "duplicates": 0}
+                items, info = [], {"duplicates": 0}
             if not payload.get("ok"):
                 return await _finish(conv, resume, back, vi.WALLET_UNAVAILABLE)
             if not items:
-                if info["hidden"]:
-                    return await _finish(conv, resume, back, vi.WALLET_NONE_SIGNED, read=len(info["hidden"]))
                 return await _finish(conv, resume, back, vi.WALLET_ONLY_EMPTY if conv.get("wallet_only") else None)
             conv["wallet_items"] = items
             conv["wallet_origin"] = origin
             conv["wallet_picked"] = []
             if pick_enabled(conv):
-                conv["wallet_hidden"] = info["hidden"]
                 conv["wallet_duplicates"] = info["duplicates"]
             if conv.get("wallet_only"):
                 return _list_reply(conv)
@@ -512,77 +505,11 @@ async def import_staged(conv: dict, mapping: dict[str, str]) -> int:
     return len(metas)
 
 
-def _sources(item: dict) -> list[dict]:
-    segments = item.get("sourceSegments")
-    if isinstance(segments, list) and segments:
-        return [s for s in segments if isinstance(s, dict)]
-    return [{"fileIndex": item.get("fileIndex"), "pageIndexes": None}]
-
-
 def apply_picks(conv: dict, attachments: list[dict], session_files: list[dict]) -> list[dict]:
-    """Gắn ``walletPick`` cho mục kế hoạch dùng NGUYÊN một tệp lấy từ ví → extension bấm "Chọn" trên dòng của ví.
-
-    ``session_files[i]`` là tệp phiên ứng với ``fileIndex`` i. Nút "Chọn" đính nguyên tệp trong ví, không gộp / cắt
-    trang được, nên:
-    - mục gộp tệp ví với phần khác → tách: mỗi tệp ví một dòng riêng ("<tên> phần k"), phần còn lại giữ dòng cũ;
-    - tệp ví bị planner cắt ra nhiều giấy (dùng ở nhiều mục) → giữ đường tải lên như cũ cho các mục đó.
-    """
+    """Gắn ``walletPick`` cho mục kế hoạch dùng NGUYÊN một tệp lấy từ ví (``session_files[i]`` = tệp phiên ứng với
+    ``fileIndex`` i) — xem ``app.attachments.wallet_pick.apply_wallet_picks``."""
     if not pick_enabled(conv) or not attachments:
         return attachments
-    wallet_of = {i: f["wallet"] for i, f in enumerate(session_files or [])
+    wallet_of = {i: {**f["wallet"], "fileName": str(f.get("name") or "")} for i, f in enumerate(session_files or [])
                  if isinstance(f, dict) and isinstance(f.get("wallet"), dict) and f["wallet"].get("id")}
-    if not wallet_of:
-        return attachments
-    uses: dict[int, int] = {}
-    for item in attachments:
-        if item.get("target") == "skipped":
-            continue
-        for index in {s.get("fileIndex") for s in _sources(item)}:
-            uses[index] = uses.get(index, 0) + 1
-
-    def pickable(source: dict) -> bool:
-        return source.get("fileIndex") in wallet_of and uses.get(source.get("fileIndex")) == 1
-
-    def picked(item: dict, index: int) -> dict:
-        out = {k: v for k, v in item.items() if k not in ("sourceSegments", "sourceFileIndexes")}
-        out["fileIndex"] = index
-        out["fileName"] = str(session_files[index].get("name") or out.get("fileName") or "")
-        out["walletPick"] = dict(wallet_of[index])
-        return out
-
-    result: list[dict] = []
-    for item in attachments:
-        sources = _sources(item)
-        if item.get("target") == "skipped" or not any(pickable(s) for s in sources):
-            result.append(item)
-            continue
-        if len(sources) == 1:
-            result.append(picked(item, sources[0]["fileIndex"]))
-            continue
-        picks = list(dict.fromkeys(s["fileIndex"] for s in sources if pickable(s)))
-        rest = [s for s in sources if not pickable(s)]
-        parts: list[dict] = []
-        if rest:
-            kept = dict(item)
-            if len(rest) == 1 and rest[0].get("pageIndexes") is None:
-                kept.pop("sourceSegments", None)
-                kept["fileIndex"] = rest[0]["fileIndex"]
-            else:
-                kept["sourceSegments"] = rest
-                kept["fileIndex"] = rest[0]["fileIndex"]
-            parts.append(kept)
-        parts.extend(picked(item, index) for index in picks)
-        name = str(item.get("documentName") or "").strip()
-        stem = name[:42].rstrip()
-        for k, part in enumerate(parts):
-            if k == 0:
-                continue
-            part_name = f"{stem} phần {k + 1}".strip()
-            part.update({"documentName": part_name, "componentName": part_name, "target": "new",
-                         "componentIndex": None, "needsAddComponent": True})
-        if len(parts) > 1 and name:
-            parts[0]["documentName"] = f"{stem} phần 1".strip()
-            if parts[0].get("target") == "new":
-                parts[0]["componentName"] = parts[0]["documentName"]
-        result.extend(parts)
-    return result
+    return wallet_pick.apply_wallet_picks(attachments, wallet_of)

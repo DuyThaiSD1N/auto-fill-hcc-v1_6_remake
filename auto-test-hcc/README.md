@@ -133,6 +133,23 @@ Thủ tục khai `"secondPass"` trong `app/procedures/registry.py` có lớp tha
   độc lập. Trọng tài ghi `balance`.
 - Bản sửa trong `thanh_tra/` không sinh ca hồi quy (lượt soát chạy nền với context rỗng, bộ phát lại chỉ phát lượt đầu).
 
+## Tốc độ họp (27/11/2026)
+
+Đo 11 ca 7–17/11: vòng độc lập 30–70 s, phản biện 40–107 s (~1,5 USD), trọng tài Opus 50–280 s. Người phản biện mở lại cả hồ sơ
+(8–21 lượt tool) và mọi người phải viết lại nguyên ý kiến, nên vòng phản biện chậm; khi cả hội đồng cùng một nguyên nhân ≥ 80 % thì
+vòng này chưa lần nào đổi kết luận. Đã đổi:
+
+- `Orchestrator._debate_skip_reason`: mọi thành viên cùng một cause (khác `unknown`), độ tin cậy ≥ `_NO_DEBATE_CONFIDENCE` (80) thì
+  bỏ phản biện, kể cả khi cause sửa được; `rounds[].debate.consensus = True` và trọng tài nhận `roles._CRITIC_CHECKS` để tự soát.
+  Ý kiến khác nhau hoặc có người dưới 80 % thì vẫn phản biện như cũ.
+- `REVIEW_SCHEMA` chỉ bắt `cause / confidence / summary / stance / rebuttal`; `evidence` chỉ ghi bằng chứng mới, `proposal` khi đổi.
+  Người phản biện chỉ mở đúng file / dòng nghi ngờ.
+- Trọng tài nhận sẵn danh sách khoá field hợp lệ (`scoring.known_fields`), khỏi mở `reproduce.json` để tra và bớt trượt vòng vì sai khoá.
+- Lập lại kế hoạch theo góp ý: tiếp phiên cũ của trọng tài (`rounds[].decision.sessionId`, `roles.replan_prompt`), chỉ gửi góp ý; tiếp
+  phiên lỗi thì lập lại từ đầu như trước.
+- Mỗi ý kiến / quyết định ghi `seconds`, log "Xong sau N giây" theo từng thành viên, để đo lại về sau (`_public_opinion` bỏ trường này
+  khỏi prompt của agent khác).
+
 ## Cách xem cho tester (từ 26/11/2026)
 
 Trang job có nút "Dễ hiểu / Đầy đủ kỹ thuật" (`localStorage` `autotest.agent.view`, mặc định Dễ hiểu). Khung "Tóm tắt dễ hiểu"

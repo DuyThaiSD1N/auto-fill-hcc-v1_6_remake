@@ -145,6 +145,10 @@ def _is_san_nhi_lam_dong(text) -> bool:
         return False
     if re.search(r"\b57\b", low) and re.search(r"\bthanh\s+m", low):
         return True
+    # OCR tờ khai viết tay hay chèn chữ "Nhi" vào tên BV Đa khoa tỉnh ("Bệnh Viện Nhi Tỉnh Đa Khoa Lâm Đồng,
+    # số 01 Phạm Ngọc Thạch") → có "đa khoa" / "Phạm Ngọc Thạch" thì không phải Sản Nhi.
+    if "da khoa" in low or "pham ngoc th" in low:
+        return False
     return bool(re.search(r"\bnhi\b", low)) and ("lam dong" in low or "da lat" in low)
 
 
@@ -152,6 +156,18 @@ def _has_street_address(text) -> bool:
     """Chuỗi nơi sinh có phần địa chỉ (số nhà / tên đường) sau tên bệnh viện."""
     low = _fold(text)
     return bool(re.search(r"\d", low) or re.search(r"\bthanh\s+m", low))
+
+
+def _street_tail(text) -> str:
+    """Phần số nhà / đường sau tên cơ sở y tế: "<tên>, số 01 Phạm Ngọc Thạch" → "số 01 Phạm Ngọc Thạch"."""
+    text = " ".join(str(text or "").split())
+    sep = re.search(r"\s*,\s*|\s+-\s+", text)
+    tail = text[sep.end():] if sep else ""
+    if not tail:
+        num = re.search(r"\b(?:số|so)\s*\d", text, flags=re.IGNORECASE)
+        tail = text[num.start():] if num else ""
+    tail = tail.strip(" ,-")
+    return tail if tail and _has_street_address(tail) else ""
 
 
 def _blank_dots(value) -> str:
@@ -284,6 +300,9 @@ def _tk_unknown_facility_use_gcs(tk, gcs):
     Lâm Đồng, số 57 thanh mưu" cho "Bệnh viện Sản Nhi …, số 57 Thánh Mẫu") → không tra được xã, ô
     Phường/Xã bắt buộc để trống. Dòng "Tại:" của giấy chứng sinh là chữ in, đọc đúng tên. Tờ khai ghi địa
     chỉ nhà (sinh ngoài cơ sở y tế) hoặc cơ sở bảng đã biết thì giữ tờ khai.
+
+    Giấy chứng sinh chỉ có tên cơ sở → giữ phần số nhà / đường của tờ khai ("Bệnh Viện Nhi Tỉnh Đa Khoa Lâm Đồng,
+    số 01 Phạm Ngọc Thạch" → "Bệnh viện đa khoa tỉnh Lâm Đồng, số 01 Phạm Ngọc Thạch").
     """
     if not (isinstance(tk, dict) and isinstance(gcs, dict)):
         return tk
@@ -298,7 +317,13 @@ def _tk_unknown_facility_use_gcs(tk, gcs):
     tk_key = _province_key(tk_tinh)
     if tk_key and tk_key not in (_province_key(hospital["tinh"]), _province_key(gcs_tinh)):
         return tk
-    return {**gcs, "tinh": gcs_tinh or tk_tinh}
+    out = {**gcs, "tinh": gcs_tinh or tk_tinh}
+    gcs_dia = str(gcs.get("diaChi") or gcs.get("dia_chi") or gcs.get("diachi") or "").strip()
+    tail = _street_tail(tk_dia)
+    if gcs_dia and tail and not _has_street_address(gcs_dia):
+        out = {k: v for k, v in out.items() if k not in ("dia_chi", "diachi")}
+        out["diaChi"] = f"{gcs_dia}, {tail}"
+    return out
 
 
 def _is_birth_cert_serial(value) -> bool:

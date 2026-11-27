@@ -30,3 +30,17 @@ def test_so_ngay_giay_ket_hon_khong_thanh_dang_ky_khai_sinh_truoc_day():
         "PreviousRegistration_Number"}
     assert not reason._foreign_previous_registration(
         {"PreviousRegistration_Number": "12", "PreviousRegistration_Date": "05/06/1990"}, context)
+
+
+_KS_MAU_CU = ("ỦY BAN NHÂN DÂN    CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nGIẤY KHAI SINH\n(BẢN SAO)\n"
+              "Họ và tên: {ten}    Nam hay nữ:\nNgày, tháng, năm sinh: 15 tháng 10 năm 1977\n"
+              "| Họ và tên | Lê Thị C | Trần Văn D |\n")
+
+
+def test_giay_khai_sinh_mau_cu_cua_nguoi_khac_khong_thanh_dang_ky_truoc_day():
+    con = "Họ tên: LÊ THỊ C\nNgày sinh: 1949"
+    docs = [{"name": "ks-con.pdf", "text": _KS_MAU_CU.format(ten="Trần Văn E")}]
+    assert reason._valid_birth_source_names(docs) == ["ks-con.pdf"]
+    assert reason._subject_birth_source_names(docs, con) == []
+    docs = [{"name": "ks.pdf", "text": _KS_MAU_CU.format(ten="Lê Thị C")}]
+    assert reason._subject_birth_source_names(docs, con) == ["ks.pdf"]

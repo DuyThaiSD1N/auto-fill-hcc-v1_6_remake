@@ -350,6 +350,14 @@
       "autoConfirm": false
     },
     {
+      "key": "dang-ky-thanh-lap-ho-kinh-doanh",
+      "code": "1.001612",
+      "label": "Đăng ký thành lập hộ kinh doanh (Cổng Dịch vụ công quốc gia)",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-d76d-737f-81b9-69258b07240b",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
       "key": "thanh-lap-cong-ty-co-phan",
       "code": "2.002043",
       "label": "Đăng ký thành lập công ty cổ phần",
@@ -1003,6 +1011,14 @@
       "code": "1.010456",
       "label": "Giải quyết chế độ mai táng phí đối với đối tượng cựu chiến binh tham gia kháng chiến chống Pháp, chống Mỹ, chiến tranh bảo vệ Tổ quốc và làm nhiệm vụ quốc tế hưởng trợ cấp theo Quyết định số 49/2015/QĐ-TTg của Thủ tướng Chính phủ",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019dbe41-6991-743a-819d-5be7935767c7",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "giai-quyet-che-do-mai-tang-cuu-chien-binh-2002307",
+      "code": "2.002307",
+      "label": "Giải quyết chế độ mai táng phí đối với cựu chiến binh",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfb-4a4e-7368-a306-f665291850ca",
       "needsAgencySelect": true,
       "autoConfirm": true
     },
@@ -1899,6 +1915,57 @@
       "code": "1.013978",
       "label": "[Tỉnh Ninh Bình] Đăng ký đất đai, tài sản gắn liền với đất, cấp Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất lần đầu đối với hộ gia đình, cá nhân, cộng đồng dân cư, người gốc Việt Nam định cư ở nước ngoài",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-8678-770b-8917-1872078767cd",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "giao-thue-chuyen-muc-dich-dat-ninh-binh",
+      "code": "1.013949",
+      "label": "[Tỉnh Ninh Bình] Giao đất, cho thuê đất, chuyển mục đích sử dụng đất đối với trường hợp giao đất, cho thuê đất không đấu giá quyền sử dụng đất, không đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; trường hợp giao đất, cho thuê đất thông qua đấu thầu lựa chọn nhà đầu tư thực hiện dự án có sử dụng đất; giao đất và giao rừng; cho thuê đất và cho thuê rừng, gia hạn sử dụng đất khi hết thời hạn sử dụng đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-867b-703e-a311-18fc1df76fc8",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "cap-doi-gcn-ninh-binh",
+      "code": "1.012783",
+      "label": "[Tỉnh Ninh Bình] Cấp đổi Giấy chứng nhận quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-6f3b-7238-9e41-307101b01795",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dang-ky-bien-dong-dat-dai-ninh-binh",
+      "code": "1.013831",
+      "label": "[Tỉnh Ninh Bình] Đăng ký biến động quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất trong các trường hợp chuyển đổi quyền sử dụng đất nông nghiệp mà không theo phương án dồn điền, đổi thửa; chuyển nhượng, thừa kế, tặng cho quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất; góp vốn bằng quyền sử dụng đất, quyền sở hữu tài sản gắn liền với đất; cho thuê, cho thuê lại quyền sử dụng đất trong dự án xây dựng kinh doanh kết cấu hạ tầng; bán hoặc tặng cho hoặc để thừa kế hoặc góp vốn bằng tài sản gắn liền với đất thuê của Nhà nước theo hình thức thuê đất trả tiền hàng năm",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-7ece-728d-9b60-6563e0a7a94e",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dinh-chinh-da-cap-ninh-binh",
+      "code": "1.012790",
+      "label": "[Tỉnh Ninh Bình] Đính chính Giấy chứng nhận đã cấp",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76cb-741b-996e-2fec707cd623",
+      "needsAgencySelect": true,
+      "provinceOnlyAgency": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "dinh-chinh-gcn-da-cap-ninh-binh",
+      "code": "1.012796",
+      "label": "[Tỉnh Ninh Bình] Đính chính Giấy chứng nhận đã cấp lần đầu có sai sót",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-76cb-741b-996e-33d1ef50be50",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "tach-thua-hop-thua-dat-ninh-binh",
+      "code": "1.012784",
+      "label": "Ninh Bình - Tách thửa hoặc hợp thửa đất",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bfa-6f5d-72e6-9a68-ab8e3ba11c8b",
       "needsAgencySelect": true,
       "autoConfirm": true
     },
@@ -3522,6 +3589,14 @@
       "key": "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru",
       "code": "1.013314",
       "label": "Xác nhận về điều kiện diện tích bình quân nhà ở để đăng ký thường trú vào chỗ ở do thuê, mượn, ở nhờ; nhà ở, đất ở không có tranh chấp quyền sở hữu nhà ở, quyền sử dụng đất ở, không thuộc địa điểm không được đăng ký thường trú mới",
+      "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf7-9660-707e-97b1-ef8876f54d3b",
+      "needsAgencySelect": true,
+      "autoConfirm": true
+    },
+    {
+      "key": "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru-khanh-hoa",
+      "code": "1.013314",
+      "label": "Khánh Hòa - Xác nhận về điều kiện diện tích bình quân nhà ở để đăng ký thường trú vào chỗ ở do thuê, mượn, ở nhờ; nhà ở, đất ở không có tranh chấp quyền sở hữu nhà ở, quyền sử dụng đất ở, không thuộc địa điểm không được đăng ký thường trú mới",
       "url": "https://dichvucong.gov.vn/thu-tuc-hanh-chinh/019d2bf7-9660-707e-97b1-ef8876f54d3b",
       "needsAgencySelect": true,
       "autoConfirm": true

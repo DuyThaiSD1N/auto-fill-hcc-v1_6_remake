@@ -174,6 +174,8 @@
 
   async function fillFormSurveyJs(fields, toolAccount) {
     injectMarkStyles();
+    // "Hình thức nhận kết quả" trợ lý chọn ở bước riêng (tu-phap-moi.js, resultMethods của luồng) → bỏ ô BE gửi kèm.
+    fields = fields.filter((f) => f.comp !== "dvc-result-method");
     document.querySelectorAll(`[${MARK_ATTR}]`).forEach((el) => el.removeAttribute(MARK_ATTR));
     const result = { filled: 0, notFound: [], errors: [], skipped: [] };
     const res = await callMain({ op: "setValues", fields });
@@ -223,6 +225,7 @@
   // tay, cổng khoá, không còn trên trang) giữ nguyên dấu cũ.
   async function patchFormSurveyJs(fields) {
     injectMarkStyles();
+    fields = fields.filter((f) => f.comp !== "dvc-result-method");
     const result = { filled: 0, skipped: [] };
     const res = await callMain({ op: "patchValues", fields }, 60000);
     if (!res.ok) {
@@ -243,6 +246,135 @@
     return result;
   }
 
+  // ---- Ô chọn cc-select của trang nộp (React tự viết, ngoài form SurveyJS, không id/name) ----
+  // Khung: .cc-select-wrapper > .cc-select-container > [.cc-select (ô điều khiển), .cc-select-dropdown >
+  // (.cc-select-search-wrapper, .cc-select-option-list)]. "Hình thức nhận kết quả" neo theo nhãn; "Chọn trường hợp thực
+  // hiện" (cạnh tiêu đề THÀNH PHẦN HỒ SƠ, bản large) neo theo chữ / placeholder trong ô, không thấy thì theo tiêu đề.
+  // Danh sách option chỉ dựng khi mở → bấm như người thật rồi lấy phần tử sâu nhất chứa chữ.
+  const CC_LOG = "[cc-select]";
+
+  function ccClick(el) {
+    for (const type of ["pointerdown", "mousedown", "pointerup", "mouseup", "click"]) {
+      try {
+        el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }));
+      } catch (_) { el.click(); return; }
+    }
+  }
+
+  // Chữ đang hiện ở ô điều khiển (giá trị đã chọn hoặc placeholder), bỏ phần dropdown / ô tìm kiếm.
+  function ccSelectedText(wrapper) {
+    const label = wrapper?.querySelector(".cc-select-selected-label");
+    if (label) return fold(label.getAttribute("title") || label.textContent || "");
+    const control = wrapper?.querySelector(".cc-select") || wrapper;
+    if (!control) return "";
+    const parts = [];
+    const walk = (node) => {
+      for (const child of node.childNodes) {
+        if (child.nodeType === 3) parts.push(child.textContent);
+        if (child.nodeType !== 1) continue;
+        if (child.matches(".cc-select-dropdown, .cc-select-option-list, .cc-select-search-wrapper")) continue;
+        if (child.tagName === "INPUT") {
+          if (!child.matches(".cc-select-search-input")) parts.push(child.value || "");
+          continue;
+        }
+        walk(child);
+      }
+    };
+    walk(control);
+    return fold(parts.join(" "));
+  }
+
+  function resultMethodWrapper() {
+    const title = Array.from(document.querySelectorAll("span, label, div, p"))
+      .find((el) => !el.children.length && isVisible(el) && fold(el.textContent) === "hinh thuc nhan ket qua");
+    let node = title;
+    for (let i = 0; node && i < 5; i++) {
+      node = node.parentElement;
+      const wrapper = node?.querySelector(".cc-select-wrapper");
+      if (wrapper) return wrapper;
+    }
+    return null;
+  }
+
+  function executionCaseWrapper() {
+    const result = resultMethodWrapper();
+    const wrappers = Array.from(document.querySelectorAll(".cc-select-wrapper"))
+      .filter((w) => w !== result && isVisible(w));
+    // Chữ "trường hợp" có thể chỉ nằm ở placeholder (thuộc tính, không có trong textContent).
+    const textOf = (w) => fold([w.textContent, ...Array.from(w.querySelectorAll("[placeholder]"))
+      .map((el) => el.getAttribute("placeholder"))].join(" "));
+    const byText = wrappers.find((w) => /truong hop/.test(textOf(w)) && !/tra ket qua/.test(textOf(w)));
+    if (byText) return byText;
+    const title = Array.from(document.querySelectorAll("h1, h2, h3, h4, h5, h6, span, label, div, p"))
+      .find((el) => !el.children.length && isVisible(el) && fold(el.textContent) === "thanh phan ho so");
+    let node = title;
+    for (let i = 0; node && i < 6; i++) {
+      node = node.parentElement;
+      const near = wrappers.find((w) => node?.contains(w));
+      if (near) return near;
+    }
+    return null;
+  }
+
+  function ccOptions(wrapper) {
+    const list = wrapper?.querySelector(".cc-select-option-list");
+    return list && isVisible(list) ? Array.from(list.children).filter((el) => isVisible(el)) : [];
+  }
+
+  function ccOption(wrapper, want, prefer) {
+    const has = (el) => fold(el.textContent).includes(want);
+    // Ưu tiên option trong danh sách của CHÍNH ô này; không có danh sách thì dò cả trang như trước.
+    const items = ccOptions(wrapper).filter(has);
+    if (items.length) return (prefer && items.find((el) => fold(el.textContent).includes(prefer))) || items[0];
+    const found = Array.from(document.querySelectorAll('[role="option"], li, div, span'))
+      .filter((el) => !el.closest(".cc-select-selector") && !el.closest(".cc-select-search-wrapper") && has(el)
+        && isVisible(el))
+      .filter((el) => !Array.from(el.children).some(has));
+    return (prefer && found.find((el) => fold(el.textContent).includes(prefer))) || found[0] || null;
+  }
+
+  // Chọn option chứa `label` (đã chọn sẵn thì giữ). `prefer`: nhiều option cùng chứa label thì lấy option có chữ này.
+  async function ccChoose(wrapper, label, prefer = "") {
+    const want = fold(label);
+    const wantPrefer = fold(prefer);
+    const chosen = () => !!want && ccSelectedText(wrapper).includes(want);
+    const opener = () => wrapper.querySelector(".cc-select-selector") || wrapper.querySelector(".cc-select") || wrapper;
+    for (let round = 0; round < 3 && !chosen(); round++) {
+      ccClick(opener());
+      let option = null;
+      for (let i = 0; i < 14 && !option; i++) {
+        await sleep(150);
+        // Bấm mở mà danh sách chưa hiện (ô bật/tắt hai lần trong một lượt sự kiện) → bấm lại một lần.
+        if (i === 4 && !ccOptions(wrapper).length) ccClick(opener());
+        option = ccOption(wrapper, want, wantPrefer);
+      }
+      console.info(CC_LOG, "vòng", round + 1, { want, options: ccOptions(wrapper).length, found: !!option });
+      if (option) {
+        ccClick(option);
+        await sleep(500);
+      } else {
+        document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        await sleep(200);
+      }
+    }
+    console.info(CC_LOG, "kết quả", { want, shown: ccSelectedText(wrapper), ok: chosen() });
+    return chosen();
+  }
+
+  // Có giấy cần dòng của một trường hợp riêng (vd giấy ủy quyền nộp hồ sơ hộ kinh doanh) → chọn trường hợp trước khi
+  // đính: cổng dựng lại bảng thành phần theo trường hợp.
+  async function chooseExecutionCase(attachments) {
+    const item = attachments.find((a) => a.executionCase);
+    if (!item) return "";
+    const wrapper = executionCaseWrapper();
+    if (!wrapper) console.warn(CC_LOG, "không thấy ô Chọn trường hợp thực hiện");
+    if (wrapper && await ccChoose(wrapper, item.executionCase, item.executionCasePrefer || "")) {
+      await sleep(800);
+      return "";
+    }
+    return `Không chọn được "${item.executionCase}" ở ô Chọn trường hợp thực hiện — chọn tay rồi đính lại giấy ủy quyền.`;
+  }
+
   function uploadRows() {
     return Array.from(document.querySelectorAll("tr"))
       .filter((tr) => isVisible(tr) && tr.querySelector(UPLOAD_BUTTON));
@@ -251,8 +383,13 @@
   function findUploadRow(item) {
     const rows = uploadRows();
     const want = fold(item.slotName || item.componentName).slice(0, 40);
-    // Có tên dòng mà không khớp thì báo lỗi, không đính nhầm sang dòng cùng số thứ tự.
-    if (want) return rows.find((tr) => fold(tr.textContent).includes(want)) || null;
+    // Có tên dòng mà không khớp thì báo lỗi, không đính nhầm sang dòng cùng số thứ tự — trừ khi BE chỉ dòng dự phòng
+    // (dòng chỉ có sau khi chọn trường hợp thực hiện, chọn hỏng thì về dòng dự phòng).
+    if (want) {
+      const fallback = fold(item.fallbackSlotName || "").slice(0, 40);
+      return rows.find((tr) => fold(tr.textContent).includes(want))
+        || (fallback ? rows.find((tr) => fold(tr.textContent).includes(fallback)) : null) || null;
+    }
     return rows[item.slotIndex || 0] || null;
   }
 
@@ -320,6 +457,8 @@
     // Dòng tệp tải hỏng (đỏ) hoặc kẹt "đang tải" (không fileId — nộp sẽ thiếu tệp) còn từ lượt trước: tên vẫn hiện
     // nên bị coi là đã đính và bỏ qua → dọn trước.
     await callMain({ op: "removeUploads", statuses: ["error", "pending", "uploading"] }, 30000);
+    const caseError = await chooseExecutionCase(attachments);
+    if (caseError) errors.push(caseError);
     try {
       for (let i = 0; i < attachments.length; i++) {
         const item = attachments[i];

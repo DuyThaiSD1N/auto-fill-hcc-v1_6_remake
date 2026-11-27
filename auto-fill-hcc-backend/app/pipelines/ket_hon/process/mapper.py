@@ -258,13 +258,16 @@ def _area(value, nationality: str = "Việt Nam"):
         return None
     # Chỉ remap địa chỉ Việt Nam (bảng remap_lam_dong không có địa danh nước ngoài)
     if not is_foreign(quoc_gia):
-        remapped = remap_area(out)
+        district = _tach_part(value, "huyện (bỏ)")
+        two_level = district is not None and (
+            not district or _fold(district) in (_fold(value.get("tinh") or ""), _fold(tinh_raw)))
+        # Địa chỉ BA CẤP: huyện cũ chép ở "_tach" làm gợi ý cho bảng sáp nhập, gỡ tên xã trùng ở nhiều huyện
+        # ("Vạn Thắng, Nha Trang" là phường cũ của TP Nha Trang, không phải Xã Vạn Thắng của Vạn Ninh).
+        remapped = remap_area(out, huyen_hint=district if district and not two_level else None)
         # Địa chỉ HAI CẤP (giấy không ghi huyện) mà tên xã trên giấy là xã HIỆN HÀNH của tỉnh đó: giữ tên trên giấy.
         # Bảng sáp nhập còn mang một xã CŨ trùng tên của tỉnh cũ, đã nhập vào xã khác.
         # Cụm chép vào chỗ huyện chính là cụm model đã dùng làm tỉnh (tỉnh viết tắt đứng cuối dòng) thì dòng không có huyện.
-        district = _tach_part(value, "huyện (bỏ)")
-        if isinstance(remapped, dict) and district is not None and (
-                not district or _fold(district) in (_fold(value.get("tinh") or ""), _fold(tinh_raw))):
+        if isinstance(remapped, dict) and two_level:
             current = canonical_ward(remapped.get("tinh"), out["xa"])
             if current:
                 remapped = {**remapped, "xa": current}

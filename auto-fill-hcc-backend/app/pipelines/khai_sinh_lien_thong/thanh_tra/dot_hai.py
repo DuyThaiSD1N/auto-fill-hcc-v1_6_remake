@@ -18,6 +18,7 @@ _CLUSTERS = (
     (None, dia_chi.INSPECTOR.key, ("QqDiaChi",)),
     ("MeMaQuocTich", dia_chi.INSPECTOR.key, ("MeDiaChi",)),
     ("ChaMaQuocTich", dia_chi.INSPECTOR.key, ("ChaDiaChi",)),
+    (None, dia_chi.INSPECTOR.key, ("DkttDiaChi",)),
     (None, giay_to.INSPECTOR.key, ("GiayCNKHSo", "GiayCNKHQuyenSo", "GiayCNKHNgayCap", "GiayCNKHNoiCap")),
 )
 

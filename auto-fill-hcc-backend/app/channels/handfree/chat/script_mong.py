@@ -28,6 +28,8 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát (theo mẫu "khai-sinh-dang-ky": thêm "(txuas ntxiv)" = liên thông).
     "khai-tu-lien-thong": "Cuv npe tuag (txuas ntxiv)",
     "dang-ky-kinh-doanh": "Cuv npe tsim lag luam tsev neeg",
+    # BẢN NHÁP chờ anh Dư soát — như "dang-ky-kinh-doanh" (bản Cổng Dịch vụ công quốc gia, cùng thủ tục).
+    "dang-ky-thanh-lap-ho-kinh-doanh": "Cuv npe tsim lag luam tsev neeg",
     "dang-ky-giam-ho": "Cuv npe saib xyuas tus neeg",
     # BẢN NHÁP chờ anh Dư soát — ghép từ "Cuv npe saib xyuas tus neeg" (đăng ký giám hộ); "xaus kev"
     # (chấm dứt việc) là TỪ MỚI.
@@ -86,6 +88,9 @@ PROCEDURE_HMONG = {
     "tinh-tien-su-dung-dat-nd-50-2026-lam-dong": "Suav nyiaj siv av dua tshiab (Lâm Đồng)",
     # BẢN NHÁP chờ anh Dư soát — chép thẻ tính lại tiền sử dụng đất Lâm Đồng, đổi tên tỉnh.
     "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa": "Suav nyiaj siv av dua tshiab (Khánh Hòa)",
+    # BẢN NHÁP chờ anh Dư soát — chép thẻ bản chung 1.013314 ("lees paub qhov loj ntawm tsev nyob"), thêm tên tỉnh.
+    "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru-khanh-hoa":
+        "Lees paub qhov loj ntawm tsev nyob kom cuv npe nyob mus ib txhis (Khánh Hòa)",
     # BẢN NHÁP chờ anh Dư soát — chép thẻ cấp đổi GCN Bắc Ninh ("pauv daim ntawv av tshiab"), đổi tên tỉnh.
     "cap-doi-gcn-khanh-hoa": "Pauv daim ntawv av tshiab (Khánh Hòa)",
     # BẢN NHÁP chờ anh Dư soát — chép thẻ đăng ký biến động Bắc Ninh ("cuv npe hloov daim av, muag daim av"), đổi tỉnh.
@@ -99,6 +104,15 @@ PROCEDURE_HMONG = {
     # BẢN NHÁP chờ anh Dư soát — chép thẻ đính chính GCN đã cấp Bắc Ninh ("kho daim ntawv av"), đổi tên tỉnh.
     "dinh-chinh-gcn-da-cap-khanh-hoa": "Kho daim ntawv av (Khánh Hòa)",
     "dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa": "Kho daim ntawv av sau yuam kev (Khánh Hòa)",
+    # BẢN NHÁP chờ anh Dư soát — chép 6 thẻ đất đai Khánh Hòa cùng nghiệp vụ ngay trên, đổi tên tỉnh (26/11/2026).
+    "dang-ky-dat-dai-lan-dau-ninh-binh": "Cuv npe av, muab daim ntawv av thawj zaug (Ninh Bình)",
+    "giao-thue-chuyen-muc-dich-dat-ninh-binh": "Hloov daim av (Ninh Bình)",
+    "cap-doi-gcn-ninh-binh": "Pauv daim ntawv av tshiab (Ninh Bình)",
+    "dang-ky-bien-dong-dat-dai-ninh-binh": "Cuv npe hloov daim av, muag daim av (Ninh Bình)",
+    "dinh-chinh-da-cap-ninh-binh": "Kho daim ntawv av (Ninh Bình)",
+    "dinh-chinh-gcn-da-cap-ninh-binh": "Kho daim ntawv av sau yuam kev (Ninh Bình)",
+    # BẢN NHÁP chờ anh Dư soát — chép thẻ tách/hợp thửa Bắc Ninh, Quảng Ninh ("faib los yog muab daim av ua ke"), đổi tỉnh.
+    "tach-thua-hop-thua-dat-ninh-binh": "Faib los yog muab daim av ua ke (Ninh Bình)",
     # BẢN NHÁP ghép từ chữ đã có của hai thẻ Khánh Hòa ngay trên + "kho" (sửa) — chờ anh Dư soát.
     "dang-ky-dat-dai-lan-dau-tuyen-quang": "Cuv npe av, muab daim ntawv av thawj zaug (Tuyên Quang)",
     "dinh-chinh-gcn-cap-lan-dau-sai-sot-tuyen-quang": "Kho daim ntawv av sau yuam kev (Tuyên Quang)",
@@ -311,6 +325,9 @@ PROCEDURE_HMONG = {
     "cong-nhan-che-do-khang-chien-nhiem-chat-doc-hoa-hoc": "Nyiaj pab neeg tau koom tsov rog raug tshuaj lom",
     "sua-doi-thong-tin-ho-so-nguoi-co-cong": "Kho ntaub ntawv tus neeg muaj nuj nqi rau teb chaws",
     "mai-tang-dan-cong-hoa-tuyen": "Nyiaj pab faus neeg tau pab tub rog thaum tsov rog",
+    # BẢN NHÁP chờ anh Dư soát — ghép "Nyiaj pab faus" (mai táng phí) của "mai-tang-dan-cong-hoa-tuyen" với "tub rog
+    # qub" (cựu chiến binh = lính cũ) là TỪ MỚI.
+    "giai-quyet-che-do-mai-tang-cuu-chien-binh-2002307": "Nyiaj pab faus tub rog qub",
     "uu-dai-ncc-tu-tran": "Pab tsev neeg ntawm neeg muaj nuj nqi rau teb chaws uas tuag lawm",
     "di-chuyen-ho-so-nguoi-huong-tro-cap": "Tsiv ntaub ntawv tus neeg tau nyiaj pab",
     "cap-giay-chung-nhan-co-so-du-dieu-kien-an-toan-thuc-pham": "Ntawv lees paub chaw ua zaub mov huv si",
@@ -441,6 +458,15 @@ PROCEDURE_HMONG = {
         "Lub tuam txhab yuav, xauj daim av los ua qhov project (Lai Châu)",
     # BẢN NHÁP chờ anh Dư soát — chép y câu thẻ cấp lại GCN bị mất Quảng Ninh ("dua tshiab vim ploj"), không thêm từ mới.
     "cap-lai-giay-chung-nhan-do-bi-mat-lai-chau": "Muab daim ntawv av dua tshiab vim ploj (Lai Châu)",
+    # BẢN NHÁP chờ anh Dư soát — chép y câu thẻ đính chính sai sót Khánh Hòa/Tuyên Quang, chỉ đổi tên tỉnh, không thêm
+    # từ mới.
+    "dinh-chinh-sai-sot": "Kho daim ntawv av sau yuam kev (Lai Châu)",
+    # BẢN NHÁP chờ anh Dư soát — chép y câu thẻ đăng ký đất đai lần đầu Khánh Hòa/Ninh Bình, chỉ đổi tên tỉnh, không thêm
+    # từ mới.
+    "dang-ky-dat-dai-tai-san-lan-dau-nguoi-o-nuoc-ngoai": "Cuv npe av, muab daim ntawv av thawj zaug (Lai Châu)",
+    # BẢN NHÁP chờ anh Dư soát — ghép "Nyiaj pab faus neeg tuag" (hỗ trợ mai táng) của "ho-tro-mai-tang-1116910"; TỪ MỚI:
+    # "haiv neeg tsawg" (dân tộc thiểu số).
+    "ho-tro-mai-tang-dan-toc-thieu-so-lai-chau": "Nyiaj pab faus neeg tuag haiv neeg tsawg (Lai Châu)",
     # BẢN NHÁP chờ anh Dư soát — chép y câu thẻ cấp lại GCN bị mất Lai Châu, chỉ đổi tên tỉnh, không thêm từ mới.
     "cap-lai-giay-chung-nhan-do-bi-mat-bac-ninh": "Muab daim ntawv av dua tshiab vim ploj (Bắc Ninh)",
     # BẢN NHÁP chờ anh Dư soát — chép y câu thẻ đổi tên Quảng Ninh, chỉ đổi tên tỉnh, không thêm từ mới.

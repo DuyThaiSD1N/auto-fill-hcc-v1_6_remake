@@ -191,6 +191,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Cú bấm nộp mang mã tab (tab gốc + tab tách) và báo tab tách bị đóng → đính tách nhiều
         # hồ sơ chỉ mời đánh giá khi mọi tab đã nộp. Client cũ không khai → mời ngay như cũ.
         "supportsSplitSubmitTabs": raw.get("supportsSplitSubmitTabs") is True,
+        # Biết đa tab cho thủ tục registry khai supportsSplitTabs (lệnh attach_plan mang splitTabs).
+        # Client cũ chỉ đa tab với danh sách thủ tục chép cứng → BE không cho chọn tách ở thủ tục khác.
+        "supportsRegistrySplitTabs": raw.get("supportsRegistrySplitTabs") is True,
         # Bản extension mới hiểu nút chuyển bước/gửi hồ sơ do BE điều phối (guided_steps).
         # Extension cũ không khai → BE giữ nguyên câu thoại và luồng "công dân tự bấm nút
         # của trang" như cũ.
@@ -353,6 +356,8 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         "supportsBxdFlowKhanhHoa": raw.get("supportsBxdFlowKhanhHoa") is True,
         # Cổng tỉnh iGate Lâm Đồng (dichvucong.lamdong.gov.vn) — cùng luồng 4 bước như Khánh Hòa.
         "supportsBxdFlowLamDong": raw.get("supportsBxdFlowLamDong") is True,
+        # Cổng tỉnh iGate Ninh Bình (dichvucong.ninhbinh.gov.vn) — cùng luồng 4 bước như Lâm Đồng.
+        "supportsBxdFlowNinhBinh": raw.get("supportsBxdFlowNinhBinh") is True,
         # Cổng Bắc Ninh (chat/bac_ninh.py): báo tab đang mở (bnTab), chuyển tab bằng hàm của cổng, bổ sung ô trên
         # tab Chọn cơ quan tiếp nhận / Nhập đơn đăng ký, chọn nơi nhận kết quả, bấm Nộp hồ sơ.
         "supportsBacNinhTabFlow": raw.get("supportsBacNinhTabFlow") is True,

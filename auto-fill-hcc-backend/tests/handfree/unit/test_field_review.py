@@ -741,6 +741,7 @@ def test_cau_hinh_bo_sung_o_moi_thu_tuc_mot_file_rieng_va_key_co_trong_registry(
                                      "trich-luc-ks", "dang-ky-lai-ket-hon", "ket-hon-nuoc-ngoai",
                                      "khai-tu-dang-ky-lai", "khai-tu-nuoc-ngoai", "khai-tu-luu-dong", "dang-ky-giam-ho", "khai-sinh-da-co-ho-so",
                                      "cap-phieu-ly-lich-tu-phap-cong-an-cap-tinh",
+                                     "dang-ky-thanh-lap-ho-kinh-doanh",
                                      "dang-ky-nhan-cha-me-con", "yeu-cau-tro-giup-phap-ly",
                                      "khai-sinh-dang-ky", "cap-giay-phep-xay-dung-moi-nha-o-rieng-le",
                                      "dieu-chinh-giay-phep-xay-dung", "sua-chua-cai-tao-gpxd-nha-o-rieng-le",
@@ -767,6 +768,7 @@ def test_cau_hinh_bo_sung_o_moi_thu_tuc_mot_file_rieng_va_key_co_trong_registry(
                                      "cap-lai-to-quoc-ghi-cong", "cap-bo-sung-cap-lai-giay-chung-nhan-nguoi-co-cong",
                                      "bo-sung-than-nhan-liet-si", "tham-vieng-mo-liet-si", "giai-quyet-che-do-khang-chien",
                                      "cong-nhan-che-do-khang-chien-nhiem-chat-doc-hoa-hoc",
+                                     "giai-quyet-che-do-mai-tang-cuu-chien-binh-2002307",
                                      "sua-doi-thong-tin-ho-so-nguoi-co-cong", "mai-tang-dan-cong-hoa-tuyen",
                                      "dang-ky-noi-quy-lao-dong", "mien-giam-hoc-phi-gdnn-dai-hoc-tu-thuc",
                                      "cung-cap-thong-tin-quy-hoach", "cap-moi-chung-chi-hanh-nghe-moi-gioi-bat-dong-san",
@@ -821,7 +823,12 @@ def test_cau_hinh_bo_sung_o_moi_thu_tuc_mot_file_rieng_va_key_co_trong_registry(
                                      "giao-thue-dat-giao-rung-gia-han-su-dung-dat",
                                      "tinh-tien-su-dung-dat-nd-50-2026-lam-dong",
                                      "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa",
-                                     "dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa"}
+                                     "dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa",
+                                     "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru-khanh-hoa",
+                                     "dang-ky-dat-dai-lan-dau-ninh-binh", "giao-thue-chuyen-muc-dich-dat-ninh-binh",
+                                     "cap-doi-gcn-ninh-binh", "dang-ky-bien-dong-dat-dai-ninh-binh",
+                                     "dinh-chinh-da-cap-ninh-binh", "dinh-chinh-gcn-da-cap-ninh-binh",
+                                     "tach-thua-hop-thua-dat-ninh-binh"}
     assert set(registry._CONFIGS) <= keys
     # Đăng ký lại kết hôn / kết hôn có yếu tố nước ngoài: cùng khuôn eForm với kết hôn → cùng bộ ô bắt buộc.
     assert registry.get("ket-hon-nuoc-ngoai") == registry.get("ket-hon")

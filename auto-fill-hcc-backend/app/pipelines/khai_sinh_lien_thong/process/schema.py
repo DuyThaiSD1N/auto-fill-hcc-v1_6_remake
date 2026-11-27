@@ -190,7 +190,9 @@ UI_COMP_BY_NAME = {
     # Người yêu cầu. SĐT chỉ điền khi người đăng nhập đúng là người ký tờ khai → comp riêng để
     # extension tự so tên với ô NycHoTen readonly mà cổng đổ sẵn.
     "NycSdt": "sdt-nguoiyeucau",
-    # Đề nghị cấp bản sao trên form liên thông Angular.
+    # Đề nghị cấp bản sao trên form liên thông Angular. Số lượng là input-type-number gắn AutoNumeric:
+    # PHẢI là "raw" để extension gõ đè từng phím (fillRawNumberAngular). Kiểu "text" gán thẳng .value →
+    # AutoNumeric định dạng lại từ giá trị cũ, bấm vào ô là trống / về 0.
     "CapBanSao": "radio",
     "BanSaoSoLuong": "raw",
     # Quan hệ người yêu cầu với trẻ: extension tự so khớp CCCD/tên người đăng nhập (cổng điền

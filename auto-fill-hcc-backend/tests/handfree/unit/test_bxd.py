@@ -101,6 +101,7 @@ def test_cau_hinh_bo_sung_o_doc_dau_bat_buoc_cua_form_io():
     ("bo-sung-than-nhan-liet-si", ("ghiChu",)), ("tham-vieng-mo-liet-si", ("ghiChu",)),
     ("giai-quyet-che-do-khang-chien", ("ghiChu",)), ("sua-doi-thong-tin-ho-so-nguoi-co-cong", ("ghiChu",)),
     ("cong-nhan-che-do-khang-chien-nhiem-chat-doc-hoa-hoc", ("ghiChu",)),
+    ("giai-quyet-che-do-mai-tang-cuu-chien-binh-2002307", ("ghiChu",)),
     ("mai-tang-dan-cong-hoa-tuyen", ("ghiChu",)), ("dang-ky-noi-quy-lao-dong", ("ghiChu",)),
     # Cổng Bộ Y tế nộp tại Sở, có hộp thoại "Chọn trường hợp giải quyết" như GPXD.
     ("cap-lai-dieu-chinh-gcn-du-dieu-kien-kinh-doanh-duoc-so-y-te", ("ghiChu",)), ("dang-ky-hanh-nghe", ("ghiChu",)),
@@ -241,6 +242,7 @@ def test_cong_tuyen_quang_can_co_rieng_ban_cu_giu_luong_cu(key):
     "dinh-chinh-gcn-da-cap-khanh-hoa",
     "tinh-tien-su-dung-dat-nd-50-2026-khanh-hoa",
     "dinh-chinh-gcn-cap-lan-dau-sai-sot-khanh-hoa",
+    "xac-nhan-dieu-kien-dien-tich-nha-o-dang-ky-thuong-tru-khanh-hoa",
 ])
 def test_cong_khanh_hoa_can_co_rieng_ban_cu_giu_luong_cu(key):
     """Cổng tỉnh Khánh Hòa (dichvucong.khanhhoa.gov.vn, nền iGate): bản extension cũ chưa đọc trang chọn trường hợp /
@@ -296,6 +298,41 @@ def test_cong_lam_dong_can_co_rieng_ban_cu_giu_luong_cu(key):
     assert flow._resolve_page_docs_target(proc, {"wizardStep": 2}) == "attachment"
 
 
+_LD_CAPS = {**_KH_CAPS, "supportsBxdFlowLamDong": True}
+
+
+@pytest.mark.parametrize("key", ["dang-ky-dat-dai-lan-dau-ninh-binh", "giao-thue-chuyen-muc-dich-dat-ninh-binh",
+                                 "cap-doi-gcn-ninh-binh", "dang-ky-bien-dong-dat-dai-ninh-binh",
+                                 "dinh-chinh-da-cap-ninh-binh", "dinh-chinh-gcn-da-cap-ninh-binh",
+                                 "tach-thua-hop-thua-dat-ninh-binh"])
+def test_cong_ninh_binh_can_co_rieng_ban_cu_giu_luong_cu(key):
+    """Cổng tỉnh Ninh Bình (dichvucong.ninhbinh.gov.vn, nền iGate): bản extension cũ chưa chạy content/bxd/*.js trên host
+    này → thiếu supportsBxdFlowNinhBinh thì không bật luồng 4 bước, không bổ sung ô (cờ Khánh Hòa / Lâm Đồng không mở)."""
+    from app.channels.handfree.chat import tu_phap_v2
+    from app.channels.handfree.chat.field_review import registry
+
+    proc = flow.get_procedure(key)
+    assert proc["bxdFlow"]["resultGroups"] == _proc()["bxdFlow"]["resultGroups"]
+    old = _conv("filling", caps=_LD_CAPS, procedure_key=key)
+    assert not bxd.enabled(old, proc) and not field_review.active(old, proc) and not tu_phap_v2.enabled(old, proc)
+    new = _conv("filling", caps={**_LD_CAPS, "supportsBxdFlowNinhBinh": True}, procedure_key=key)
+    assert bxd.enabled(new, proc) and field_review.active(new, proc) and tu_phap_v2.enabled(new, proc)
+    config = registry.get(key)
+    assert config["required"] == () and "organization" in config["noAsk"]
+    if key == "tach-thua-hop-thua-dat-ninh-binh":
+        # Form tách/hợp thửa (quy trình "Phi địa giới") không có ô Nội dung yêu cầu / Ghi chú; khối tổ chức, tư cách người
+        # nộp, Tỉnh/TP thửa đất (cổng khoá) không hỏi; Phường/Xã người nộp (village) và thửa đất (village2) vẫn hỏi.
+        assert {"taxCode", "address1", "TuCachNguoiNopHoSo", "province2"} <= set(config["noAsk"])
+        assert not {"village", "village2", "SoThuaDat", "SoToBanDo"} & set(config["noAsk"])
+    else:
+        assert {"noidungyeucaugiaiquyet", "note"} <= set(config["noAsk"])
+    # data[district] trên form Ninh Bình là ô Phường/Xã người nộp → vẫn hỏi khi trống.
+    assert "district" not in config["noAsk"]
+    assert not {"fullname", "identityNumber", "birthday", "phoneNumber", "ownerFullname"} & set(config["noAsk"])
+    assert flow._resolve_page_docs_target(proc, {"wizardStep": 1}) == "declaration"
+    assert flow._resolve_page_docs_target(proc, {"wizardStep": 2}) == "attachment"
+
+
 @pytest.mark.parametrize("key", [
     "dang-ky-dat-dai-lan-dau-khanh-hoa",
     "giao-thue-chuyen-muc-dich-dat-khanh-hoa",
@@ -338,6 +375,7 @@ def test_co_cong_tinh_igate_qua_duoc_whitelist_cua_router():
     assert caps["supportsBxdFlowTuyenQuang"] is True and caps["supportsBxdFlowKhanhHoa"] is True
     assert router._clean_client_capabilities({})["supportsBxdFlowKhanhHoa"] is False
     assert router._clean_client_capabilities({"supportsBxdFlowLamDong": True})["supportsBxdFlowLamDong"] is True
+    assert router._clean_client_capabilities({"supportsBxdFlowNinhBinh": True})["supportsBxdFlowNinhBinh"] is True
     capabilities = {(p.get("bxdFlow") or {}).get("capability") for p in PROCEDURES} - {None}
     assert capabilities <= set(router._clean_client_capabilities({}))
 

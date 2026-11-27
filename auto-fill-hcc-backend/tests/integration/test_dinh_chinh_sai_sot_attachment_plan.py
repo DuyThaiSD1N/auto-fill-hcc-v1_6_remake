@@ -297,3 +297,29 @@ def test_registry_enables_lai_chau_attachment_pipeline():
     }
     assert "Mẫu số 11/ĐK" in procedure["uploadHint"]
     assert "Mẫu số 18" in procedure["uploadHint"]
+
+
+def test_tro_ly_cung_key_va_dung_pipeline_loi():
+    # Key lõi không mang đuôi tỉnh nhưng pipeline chỉ chạy cổng Lai Châu → thẻ trợ lý khoá provinceOnly.
+    from app.channels.handfree import procedure_registry as handfree
+    from app.channels.handfree.chat.procedure_picker.prompt import PROCEDURE_HINTS
+    from app.channels.handfree.chat.script_mong import PROCEDURE_HMONG
+    from app.procedures.ke_khai_links import KE_KHAI_LINKS
+    from app.procedures.registry import get_pipeline
+
+    key = "dinh-chinh-sai-sot"
+    procedure = handfree.get_procedure(key)
+    assert procedure is not None
+    assert procedure["provinceOnly"] == ["laichau"]
+    assert procedure["needsAgencySelect"] is True and procedure["agencyProvince"] == "Lai Châu"
+    assert not procedure.get("agencyProvinceOnly") and "agencySoFirst" not in procedure
+    assert procedure["detect"] == get_procedure(key)["detect"]
+    assert procedure["keKhaiUrl"] == next(item["url"] for item in KE_KHAI_LINKS if item["key"] == key)
+    assert get_procedure(key)["label"] == "[Lai Châu] " + procedure["label"]
+    assert handfree.get_pipeline(key) is get_pipeline(key)
+    assert handfree.get_attach_pipeline(key) is get_attach_pipeline(key)
+    assert procedure["laiChauFeeStep"]
+    assert handfree.is_allowed_in_province(procedure, "laichau")
+    assert not handfree.is_allowed_in_province(procedure, "lamdong")
+    assert {doc["key"] for doc in procedure["requiredDocs"] if not doc.get("optional")} == {"don", "gcn", "chung_minh"}
+    assert PROCEDURE_HMONG[key] and PROCEDURE_HINTS[key]

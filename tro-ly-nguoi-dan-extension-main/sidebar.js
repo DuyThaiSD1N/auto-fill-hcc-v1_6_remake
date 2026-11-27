@@ -283,6 +283,9 @@
     // Cổng tỉnh Lâm Đồng (dichvucong.lamdong.gov.vn, nền iGate): content.js đọc hộp thoại chọn trường hợp + bước stepper
     // trên host này, content/bxd chạy ở đây (bản cũ không) → BE mới bật luồng 4 bước.
     supportsBxdFlowLamDong: true,
+    // Cổng tỉnh Ninh Bình (dichvucong.ninhbinh.gov.vn, nền iGate như Lâm Đồng): content.js đọc hộp thoại chọn trường hợp +
+    // bước stepper trên host này, content/bxd chạy ở đây (bản cũ không) → BE mới bật luồng 4 bước.
+    supportsBxdFlowNinhBinh: true,
     // Cổng Bắc Ninh (trang nộp hồ sơ 4 tab cùng trang): báo tab đang mở (bnTab), chuyển tab bằng hàm của cổng
     // (content/bacninh/tabs-main.js), điền khối người ủy quyền ở tab đầu, bổ sung ô (content/bacninh/field-review.js),
     // chọn nơi nhận kết quả, bấm Nộp hồ sơ (content/bacninh/tab-flow.js). Thiếu cờ → BE giữ luồng cũ.

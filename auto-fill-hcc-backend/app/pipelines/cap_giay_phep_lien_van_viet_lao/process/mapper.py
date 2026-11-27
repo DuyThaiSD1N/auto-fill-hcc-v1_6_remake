@@ -191,6 +191,44 @@ _VEHICLE_KEYS = (
 )
 
 
+# Cửa khẩu Việt – Lào: Giấy đề nghị ghi tự do ("Lao Bảo (Quảng Trị - Densavan thuộc tỉnh Savannakhet, Lào"),
+# option web lại phiên âm phía Lào khác ("Danesavanh (Savanakhet)") → chuỗi thô không khớp option nào.
+# Nhận diện theo TÊN cửa khẩu (phía Việt hoặc phía Lào, KHÔNG theo tỉnh: Lao Bảo và La Lay cùng Quảng Trị) rồi
+# trả về option web. 4 cửa khẩu đầu chép nguyên văn option đã thấy trên cổng; các cửa khẩu còn lại chưa thấy
+# option → trả tên phía Việt, extension khớp "option chứa chuỗi". Không đụng bảng phường/xã.
+# (option web, regex trên chuỗi đã fold, ký tự không phải chữ/số thành một dấu cách)
+_CUA_KHAU: tuple[tuple[str, re.Pattern[str]], ...] = tuple((opt, re.compile(pat)) for opt, pat in (
+    # Densavan / Densavanh / Dansavanh / Danesavanh / Đen Sa Văn
+    ("Lao Bảo (Quảng Trị) - Danesavanh (Savanakhet)", r"\blao bao\b|\bd[ae]ne? ?sa ?vanh?\b"),
+    ("La Lay (Quảng Trị) - La Lay (Salavan)", r"\bla lay\b"),
+    ("Cha Lo (Quảng Bình) - Na Phao (Khăm Muộn)", r"\bcha lo\b|\bna phao\b"),
+    # Đắc Ta Oóc / Dak Ta Ok / Đắk Ta Oc
+    ("Nam Giang (Quảng Nam) - Đắc Ta Ooc(Sê Kông)", r"\bnam giang\b|\bda[ck]k? ?ta ?o+[ck]k?\b"),
+    ("Tây Trang", r"\btay trang\b|\bpang ho[ck]\b"),
+    ("Chiềng Khương", r"\bchieng khuong\b"),
+    ("Lóng Sập", r"\blong sap\b|\bpa hang\b"),
+    ("Na Mèo", r"\bna meo\b|\bnam xoi\b"),
+    ("Tén Tằn", r"\bten tan\b"),
+    ("Nậm Cắn", r"\bnam can\b"),
+    ("Thanh Thủy", r"\bthanh thuy\b|\bnam on\b"),
+    ("Cầu Treo", r"\bcau treo\b|\bnam phao\b"),
+    ("Bờ Y", r"\bbo y\b|\bphu cua\b"),
+))
+
+
+def _cua_khau(value: Any) -> str | None:
+    """Chuỗi cửa khẩu tự do → option web. Gặp nhiều tên thì lấy tên xuất hiện TRƯỚC; không nhận ra → giữ nguyên."""
+    text = _text(value)
+    if not text:
+        return None
+    folded = _fold(text)
+    if "tat ca" in folded:
+        return "Tất cả cửa khẩu"  # option web KHÔNG có chữ "các"
+    spaced = re.sub(r"[^a-z0-9]+", " ", folded).strip()
+    hits = [(m.start(), option) for option, pat in _CUA_KHAU if (m := pat.search(spaced))]
+    return min(hits)[1] if hits else text
+
+
 def _vehicles(value: Any) -> list[dict]:
     """Chuẩn hoá danh sách phương tiện. LLM có thể trả list[dict], chuỗi JSON, hoặc 1 biển số lẻ."""
     import json
@@ -221,8 +259,8 @@ def _vehicles(value: Any) -> list[dict]:
                 v = _bienso(item.get(k))  # bỏ ký tự đặc biệt (cổng không cho lưu).
             elif k in ("tuNgay", "denNgay"):
                 v = _date(item.get(k))
-            elif k == "cuaKhau" and v and "tat ca" in _fold(v):
-                v = "Tất cả cửa khẩu"  # option web KHÔNG có chữ "các"
+            elif k == "cuaKhau":
+                v = _cua_khau(v)
             elif k == "mauSon" and v and re.search(r"\d", v):
                 v = None  # tên màu không có chữ số; chuỗi lẫn số là OCR đọc ô bị cắt góc ("B1").
             elif k == "trongTai" and v:

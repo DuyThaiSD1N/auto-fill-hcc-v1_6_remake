@@ -42,7 +42,9 @@ _SAVE_EVERY_S = 1.0
 _SAVE_RETRY_S = (0.05, 0.1, 0.2, 0.4, 0.8)
 # Chạy lại ra dưới chừng này field của lượt gốc thì coi là không giống lượt gốc.
 _FAITHFUL_RATIO = 0.7
-# Cả hội đồng cùng kết luận không có gì để sửa thì khỏi tốn một vòng phản biện.
+# Cả hội đồng cùng một nguyên nhân, ai cũng chắc từ chừng này trở lên, thì khỏi tốn một vòng phản biện. Đo 11 ca 7–17/11:
+# phản biện mất 40–107 giây và ~1,5 USD mỗi vòng mà chưa lần nào đổi nguyên nhân khi hội đồng đã đồng thuận. Ca có thể sửa
+# thì trọng tài (Opus) tự soi các điểm của người phản biện (roles.arbiter_prompt(consensus=True)).
 _NO_DEBATE = {"ocr", "extension", "input", "not_a_bug"}
 _NO_DEBATE_CONFIDENCE = 80
 
@@ -509,6 +511,7 @@ class Orchestrator:
             self.job.log(text, level="tool", who=who)
 
         tries = 1 if can_edit else 2  # agent sửa đã có thể sửa dở, không chạy lại mù
+        started = time.monotonic()
         for attempt in range(1, tries + 1):
             try:
                 result = claude_runner.run_agent(
@@ -524,6 +527,8 @@ class Orchestrator:
                 if attempt == tries:
                     raise
                 self.job.log(f"{who} lỗi, thử lại: {reason}", level="warn")
+        # Thời gian từng agent, để đo hội đồng họp lâu ở đâu (trước đây chỉ suy được từ mốc log).
+        result.seconds = round(time.monotonic() - started)
         with self.job.lock:
             cost = self.job.data["cost"]
             cost["usd"] = round(cost["usd"] + result.cost, 4)
@@ -540,7 +545,9 @@ class Orchestrator:
             result = self._agent(label, "analyst", system, prompt, schema, resume=resume)
         except AgentError as reason:
             return {"role": role, "label": label, "error": str(reason)}
-        return {"role": role, "label": label, "sessionId": result.session_id, "cost": result.cost, **result.output}
+        self.job.log(f"Xong sau {result.seconds} giây", who=label)
+        return {"role": role, "label": label, "sessionId": result.session_id, "cost": result.cost, "seconds": result.seconds,
+                **result.output}
 
     def _together(self, tasks: list[Callable[[], dict]]) -> list[dict]:
         with ThreadPoolExecutor(max_workers=max(1, len(tasks))) as pool:
@@ -564,7 +571,7 @@ class Orchestrator:
         skip = self._debate_skip_reason(valid)
         if skip:
             with self.job.lock:
-                round_["debate"] = {"skipped": True, "reason": skip}
+                round_["debate"] = {"skipped": True, "reason": skip, "consensus": True}
             self.job.log(skip)
             return
 
@@ -587,24 +594,41 @@ class Orchestrator:
 
     @staticmethod
     def _debate_skip_reason(opinions: list[dict]) -> str | None:
-        causes = {o["cause"] for o in opinions}
-        if len(causes) == 1 and causes <= _NO_DEBATE and min(o["confidence"] for o in opinions) >= _NO_DEBATE_CONFIDENCE:
+        causes = {o.get("cause") for o in opinions}
+        if len(causes) != 1 or causes == {"unknown"} or min(o.get("confidence") or 0 for o in opinions) < _NO_DEBATE_CONFIDENCE:
+            return None
+        if causes <= _NO_DEBATE:
             return "Cả hội đồng cùng kết luận và không có gì để sửa nên bỏ vòng phản biện."
-        return None
+        return (f"Cả hội đồng cùng kết luận một nguyên nhân, độ tin cậy từ {_NO_DEBATE_CONFIDENCE}% trở lên, nên bỏ vòng phản "
+                "biện cho nhanh; trọng tài tự soát chỗ yếu của cách sửa.")
 
     @staticmethod
     def _public_opinion(opinion: dict) -> dict:
-        return {k: v for k, v in opinion.items() if k not in ("sessionId", "cost")}
+        return {k: v for k, v in opinion.items() if k not in ("sessionId", "cost", "seconds")}
 
     def _arbiter(self, round_: dict, plan_notes: list[str] | None = None) -> dict:
         self._stage("arbiter", "Trọng tài lập lại kế hoạch theo góp ý…" if plan_notes else "Trọng tài xem xét và ra quyết định…")
-        brief = roles.case_brief(self.job.data, self.case, self.attempts)
-        opinions = [self._public_opinion(o) for o in round_["opinions"] if not o.get("error")]
-        reviews = [self._public_opinion(o) for o in round_["reviews"] if not o.get("error")]
-        prompt = roles.arbiter_prompt(brief, opinions, reviews, plan_notes=plan_notes, previous=round_.get("decision"))
-        result = self._agent("Trọng tài", "arbiter", roles.ARBITER_SYSTEM, prompt, roles.DECISION_SCHEMA)
+        previous = round_.get("decision")
+        result = None
+        if plan_notes and (previous or {}).get("sessionId"):
+            # Lập lại kế hoạch theo góp ý: tiếp phiên cũ của trọng tài, khỏi đọc lại cả hồ sơ (lượt đầu mất 1–4 phút).
+            try:
+                result = self._agent("Trọng tài", "arbiter", roles.ARBITER_SYSTEM, roles.replan_prompt(plan_notes),
+                                     roles.DECISION_SCHEMA, resume=previous["sessionId"])
+            except AgentError as reason:
+                self.job.log(f"Không tiếp được phiên cũ của trọng tài, lập lại từ đầu: {reason}", level="warn")
+        if result is None:
+            brief = roles.case_brief(self.job.data, self.case, self.attempts)
+            opinions = [self._public_opinion(o) for o in round_["opinions"] if not o.get("error")]
+            reviews = [self._public_opinion(o) for o in round_["reviews"] if not o.get("error")]
+            prompt = roles.arbiter_prompt(
+                brief, opinions, reviews, plan_notes=plan_notes, previous=previous,
+                consensus=bool((round_.get("debate") or {}).get("consensus")) and not reviews,
+                fields=sorted(scoring.known_fields(self.case["fields"], self.pre_runs)),
+            )
+            result = self._agent("Trọng tài", "arbiter", roles.ARBITER_SYSTEM, prompt, roles.DECISION_SCHEMA)
         with self.job.lock:
-            round_["decision"] = {**result.output, "cost": result.cost}
+            round_["decision"] = {**result.output, "cost": result.cost, "seconds": result.seconds, "sessionId": result.session_id}
         self.job.save()
         self.job.log(f"Trọng tài: {result.output.get('decision')} ({result.output.get('cause')})")
         return result.output

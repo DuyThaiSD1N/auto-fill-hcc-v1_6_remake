@@ -3,6 +3,49 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.30.4",
+    date: "27/11/2026",
+    items: [
+      "Thêm thủ tục tách thửa hoặc hợp thửa đất (Ninh Bình, cấp xã) và xác nhận điều kiện diện tích nhà ở để đăng ký thường trú (Khánh Hòa): quét đơn, giấy tờ để điền biểu mẫu và đính kèm đúng dòng, hỗ trợ cả chế độ tách giấy tờ.",
+      "Trợ lý người dân (tài khoản Lai Châu): thêm đính chính Giấy chứng nhận có sai sót, đăng ký đất đai, tài sản lần đầu cho người Việt Nam ở nước ngoài và hỗ trợ mai táng người dân tộc thiểu số.",
+      "Đính kèm: tên tệp bỏ ngoặc kép và ký tự cấm (vd Bằng “Tổ quốc ghi công”) để cổng nhận tệp, không còn hiện “%22”.",
+      "Khai sinh liên thông: tờ khai viết tay ghi bệnh viện đa khoa tỉnh Lâm Đồng không còn bị nhận nhầm thành bệnh viện Sản Nhi, nơi sinh giữ cả số nhà, tên đường của tờ khai.",
+    ],
+  },
+  {
+    version: "1.30.3",
+    date: "27/11/2026",
+    items: [
+      "Đăng ký thành lập hộ kinh doanh trên Cổng Dịch vụ công quốc gia: quét Giấy đề nghị (kèm giấy ủy quyền nếu người khác nộp thay) để điền biểu mẫu — tự chọn chủ hộ tự nộp / người được ủy quyền theo tài khoản, tên hộ bắt đầu bằng “HỘ KINH DOANH”, bảng ngành nghề, vốn, thông tin thuế; hình thức nhận kết quả mặc định nhận tại bộ phận tiếp nhận và trả kết quả.",
+      "Đính kèm trên Cổng Dịch vụ công quốc gia: có giấy ủy quyền nộp hồ sơ thì tự chọn “Trường hợp ủy quyền thực hiện thủ tục” rồi đính vào đúng dòng văn bản ủy quyền.",
+    ],
+  },
+  {
+    version: "1.30.2",
+    date: "27/11/2026",
+    items: [
+      "Chứng thực giao dịch tài sản: tick “Mỗi tài liệu 1 hồ sơ riêng (tách hồ sơ)” thì mỗi file là một hồ sơ riêng trên một tab, đính vào dòng Dự thảo giao dịch.",
+    ],
+  },
+  {
+    version: "1.30.1",
+    date: "27/11/2026",
+    items: [
+      "Lấy từ Cổng DVC (chứng thực bản sao, cấp bản sao từ sổ gốc): hiện cả giấy tờ chưa ký số trong Ví cá nhân; giấy đã ký số có dấu ✓ và xếp lên đầu mỗi mục.",
+      "Khai sinh liên thông: ô Số lượng bản sao gõ từng chữ số như người dùng nên cổng giữ đúng số, không còn trống, về 0 hay bị đúp số khi bấm vào ô.",
+      "Kết hôn: địa chỉ ghi đủ xã, huyện cũ, tỉnh chọn đúng xã sau sáp nhập khi tên xã trùng ở nhiều huyện.",
+      "Trợ lý người dân (tài khoản Ninh Bình): thêm 6 thủ tục đất đai trên Cổng DVC Ninh Bình — đăng ký đất đai lần đầu, giao/thuê/chuyển mục đích sử dụng đất, cấp đổi Giấy chứng nhận, đăng ký biến động chuyển nhượng/thừa kế/tặng cho, đính chính Giấy chứng nhận đã cấp và đã cấp lần đầu có sai sót.",
+    ],
+  },
+  {
+    version: "1.30",
+    date: "26/11/2026",
+    items: [
+      "Chứng thực bản sao, cấp bản sao từ sổ gốc: thêm nút “Lấy từ Cổng DVC” ở bước Thành phần hồ sơ để chọn giấy tờ đã ký số có sẵn trong Ví cá nhân của công dân; khi đính kèm trợ lý bấm Chọn trên cổng để cổng ghi nhận dùng lại giấy tờ.",
+      "Bật trong Cài đặt: “Dùng lại giấy tờ đã ký số trong Ví cá nhân” (theo tài khoản, mặc định tắt, dùng chung với trợ lý handfree).",
+    ],
+  },
+  {
     version: "1.29.2",
     date: "26/11/2026",
     items: [

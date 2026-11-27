@@ -465,6 +465,9 @@ function safeAttachmentFileName(payload, documentName, { forceRename = false } =
   let base = String(documentName || "").trim() || attachmentDocumentName(payload);
   // documentName có thể ĐÃ kèm đuôi (vd "…đất.pdf") → bỏ đuôi trùng để KHÔNG thành "…đất.pdf.pdf".
   if (ext && base.toLowerCase().endsWith(ext.toLowerCase())) base = base.slice(0, -ext.length);
+  // Ngoặc kép / ký tự cấm trong tên tệp (vd Bằng "Tổ quốc ghi công") → cổng hiện "%22" và không nhận tệp.
+  base = base.replace(/["“”]/g, "").replace(/[\\/:*?<>|\u0000-\u001f]+/g, " ").replace(/\s+/g, " ").trim()
+    || attachmentDocumentName(payload);
   return base + ext;
 }
 

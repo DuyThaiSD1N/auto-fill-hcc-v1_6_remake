@@ -24,6 +24,9 @@ from app.pipelines.dang_ky_dat_dai_lan_dau_khanh_hoa.process.mapper import (
 from app.pipelines.dang_ky_kinh_doanh.process.mapper import (
     with_account_process_options as with_hkd_account_process_options,
 )
+from app.pipelines.dang_ky_thanh_lap_ho_kinh_doanh.process.mapper import (
+    with_account_process_options as with_hkd_dvcqg_account_process_options,
+)
 from app.pipelines.giao_thue_chuyen_muc_dich_dat_ninh_binh.process.mapper import (
     with_account_process_options as with_giao_dat_ninh_binh_account_process_options,
 )
@@ -141,6 +144,9 @@ async def process(body: ProcessReq, background: BackgroundTasks,
             prepared.pipeline_options, user, body.procedure
         )
         prepared.pipeline_options = with_hkd_account_process_options(
+            prepared.pipeline_options, user, body.procedure
+        )
+        prepared.pipeline_options = with_hkd_dvcqg_account_process_options(
             prepared.pipeline_options, user, body.procedure
         )
         prepared.pipeline_options = with_cai_chinh_account_process_options(
