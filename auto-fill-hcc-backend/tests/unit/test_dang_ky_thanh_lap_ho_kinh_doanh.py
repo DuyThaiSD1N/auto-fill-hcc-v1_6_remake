@@ -3,13 +3,17 @@ import asyncio
 import json
 from pathlib import Path
 
+import pytest
+
+from app.core.errors import AppError
 from app.pipelines.dang_ky_thanh_lap_ho_kinh_doanh.attach import planner as attach
 from app.pipelines.dang_ky_thanh_lap_ho_kinh_doanh.attach.dinh_kem_khong_tach import planner as khong_tach
 from app.pipelines.dang_ky_thanh_lap_ho_kinh_doanh.attach.dinh_kem_tach import planner as tach
 from app.pipelines.dang_ky_thanh_lap_ho_kinh_doanh.process import mapper
 from app.pipelines.dang_ky_thanh_lap_ho_kinh_doanh.process import runner as process_runner
 from app.pipelines.dang_ky_thanh_lap_ho_kinh_doanh.process.schema import ALLOWED, UI_COMP_BY_NAME
-from app.process.schemas import FileItem
+from app.process import service as process_service
+from app.process.schemas import FileItem, ProcessReq
 from app.procedures.registry import PROCEDURES, get_attach_pipeline, get_pipeline
 from app.services import ocr
 
@@ -267,6 +271,143 @@ def test_runner_doc_on_huy_luot_anh_va_tra_canh_bao(monkeypatch):
     assert "visionPatched" not in res["extracted"]
     assert _by_name(res["fields"])["citizenloaitokhai"]["code"] == "1"
     assert any("trụ sở" in e for e in res["errors"])
+
+
+# ── Không cần quét tờ khai: Auto Fill điền thẳng từ tờ khai cán bộ nhập trên tab, chọn người nộp trước ──
+
+def _to_khai(loai: str | None = "chu_ho", **over) -> dict:
+    """Tờ khai như tab gửi lên (GiayDeNghi + khối người nộp). Dữ liệu giả."""
+    form = {
+        "hoTen": "LÊ THỊ HOA", "ngaySinh": "05/06/1990", "gioiTinh": "Nữ", "soDinhDanh": CHU_HO_ID,
+        "dienThoai": "0912 000 111", "email": "lethihoa@gmail.com", "danToc": "Kinh", "quocTich": "Việt Nam",
+        "thuongTru": {"chiTiet": "Xóm A", "xa": "Phường Hoa Lư", "tinh": "Tỉnh Ninh Bình"},
+        "noiO": {"chiTiet": "Số 2 ngõ B", "xa": "Phường Đại Mỗ", "tinh": "Thành phố Hà Nội"},
+        "tenViet": "QUÁN HOA",
+        "truSo": {"chiTiet": "Số 9 phố C", "xa": "Phường Đại Mỗ", "tinh": "Thành phố Hà Nội"},
+        "truSoDienThoai": "0912000111",
+        "nganh": [{"ma": "5610", "ten": "Nhà hàng và các dịch vụ ăn uống phục vụ lưu động", "chinh": True},
+                  {"ma": "4781", "ten": "Bán lẻ lương thực (gạo nếp)", "chinh": False}],
+        "vonKinhDoanh": "100.000.000 đồng (Một trăm triệu đồng)",
+        "ngayBatDau": "01/12/2026", "soLaoDong": "2", "phuongPhapThue": "ke_khai", "chuThe": "ca_nhan",
+    }
+    if loai:
+        form["nguoiNop"] = {"loai": loai}
+    if loai == "uy_quyen":
+        form["nguoiNop"].update({
+            "hoTen": "PHẠM VĂN NAM", "soDinhDanh": NOP_THAY_ID, "dienThoai": "0988 000 222",
+            "email": "phamnam@gmail.com", "noiO": {"chiTiet": "Thôn E", "xa": "Xã Đông Hưng", "tinh": "Tỉnh Hưng Yên"},
+        })
+    form.update(over)
+    return form
+
+
+def _from_to_khai(form, options: dict | None = None, monkeypatch=None) -> dict:
+    async def _khong_ocr(*_a, **_k):
+        raise AssertionError("có tờ khai thì không được OCR/LLM")
+
+    async def _khong_doc_anh(*_a, **_k):
+        raise AssertionError("có tờ khai thì không được đọc ảnh")
+
+    monkeypatch.setattr(process_runner.runner, "run", _khong_ocr)
+    monkeypatch.setattr(process_runner.vision, "read_application", _khong_doc_anh)
+    return asyncio.run(process_runner.run({}, {**(options or {}), mapper.TO_KHAI_OPTION: form}))
+
+
+def test_to_khai_chu_ho_tu_nop_khong_ocr(monkeypatch):
+    res = _from_to_khai(_to_khai("chu_ho"), _account("Lê Thị Hoa", CHU_HO_ID), monkeypatch)
+    got = _by_name(res["fields"])
+    assert res["extracted"]["nguon"] == "to-khai"
+    assert res["fields"][0]["name"] == "citizenloaitokhai"
+    assert (got["citizenloaitokhai"]["value"], got["citizenloaitokhai"]["code"]) == (mapper.CHU_HO, "1")
+    assert "default" not in got["citizenloaitokhai"]
+    assert got["citizenPhone1"]["value"] == "0912000111"
+    assert got["citizenEmail1"]["value"] == "lethihoa@gmail.com"
+    assert got["câu hỏi1__1782221422172"]["value"] == "Số 2 ngõ B" and "default" not in got["câu hỏi1__1782221422172"]
+    assert got["phuongXahientai"]["value"].endswith("Đại Mỗ")
+    for name in ("citizensdt", "citizennguoidangkyhkd", "SoDinhdanhcanhanNDK"):
+        assert name not in got
+    assert got["tenHoKinhDoanh"]["value"] == "HỘ KINH DOANH QUÁN HOA"
+    assert got["diaChiChiTiet"]["value"] == "Số 9 phố C"
+    assert [(r["ma"], r["chinh"]) for r in got["nganhNgheKinhDoanh"]["value"]] == [("5610", True), ("4781", False)]
+    assert got["vonKinhDoanh"]["value"] == "100000000"         # chỉ phần bằng số, không dính chữ
+    assert got["soLuongLaoDong"]["value"] == "2"
+    assert got["ngayBatDauHoatDong"]["value"] == "01/12/2026"
+    assert (got["doiTuongThanhLap"]["value"], got["doiTuongThanhLap"]["code"]) == (mapper.CA_NHAN, "CA_NHAN")
+    assert "default" not in got["doiTuongThanhLap"]
+    assert "khongHoatDongTaiTruSo" not in got
+    assert not any(w in res["errors"] for w in (mapper.CHU_HO_NOT_ACCOUNT_WARNING, mapper.UY_QUYEN_IS_ACCOUNT_WARNING))
+
+
+def test_to_khai_nguoi_duoc_uy_quyen_phat_khoi_nguoi_nop_va_khoi_chu_ho(monkeypatch):
+    form = _to_khai("uy_quyen", chuThe="ho_gia_dinh", khongKinhDoanhTaiTruSo=True)
+    res = _from_to_khai(form, _account("Phạm Văn Nam", NOP_THAY_ID), monkeypatch)
+    got = _by_name(res["fields"])
+    assert (got["citizenloaitokhai"]["value"], got["citizenloaitokhai"]["code"]) == (mapper.UY_QUYEN, "2")
+    assert "default" not in got["citizenloaitokhai"]
+    # Khối người được ủy quyền: cổng khoá nhân thân theo tài khoản, còn liên hệ + nơi ở hiện tại theo tờ khai.
+    assert got["citizensdt"]["value"] == "0988000222"
+    assert got["citizenEmail"]["value"] == "phamnam@gmail.com"
+    assert got["câu hỏi3__1761724625529"]["value"] == "Thôn E" and "default" not in got["câu hỏi3__1761724625529"]
+    assert got["câu hỏi5__1761724625529"]["value"].endswith("Đông Hưng")
+    # Khối chủ hộ nhập tay toàn bộ theo tờ khai.
+    assert got["citizennguoidangkyhkd"]["value"] == "LÊ THỊ HOA"
+    assert got["citizenngaythang"]["value"] == "05/06/1990"
+    assert got["citizengioitinhnguoidangky"]["value"] == "Nữ"
+    assert got["SoDinhdanhcanhanNDK"]["value"] == CHU_HO_ID
+    assert got["câu hỏi5__1779097616381"]["value"] == "0912000111"
+    assert got["citizenDantoc_NDK"]["value"] == "Kinh"
+    assert got["citizenQuocTich_NDK"]["value"] == "Việt Nam" and "default" not in got["citizenQuocTich_NDK"]
+    assert got["Diachichitietnoithuongtrunguoidangky"]["value"] == "Xóm A"
+    assert got["Noiohientaichitiet"]["value"] == "Số 2 ngõ B"
+    assert "citizenPhone1" not in got and "tinhThanhhientai" not in got
+    assert got["doiTuongThanhLap"]["code"] == "HO_GIA_DINH" and mapper.HO_GIA_DINH_WARNING in res["errors"]
+    assert got["khongHoatDongTaiTruSo"]["value"] is True
+
+
+def test_to_khai_lua_chon_nguoi_nop_thang_moc_tai_khoan_nhung_canh_bao_khi_lech(monkeypatch):
+    # Chọn chủ hộ tự nộp mà tài khoản là người khác → vẫn theo tờ khai, báo cán bộ.
+    res = _from_to_khai(_to_khai("chu_ho"), _account("Phạm Văn Nam", NOP_THAY_ID), monkeypatch)
+    assert _by_name(res["fields"])["citizenloaitokhai"]["code"] == "1"
+    assert mapper.CHU_HO_NOT_ACCOUNT_WARNING in res["errors"]
+    # Chọn người được ủy quyền mà tài khoản chính là chủ hộ → vẫn theo tờ khai, báo cán bộ.
+    res = _from_to_khai(_to_khai("uy_quyen"), _account("Lê Thị Hoa", CHU_HO_ID), monkeypatch)
+    assert _by_name(res["fields"])["citizenloaitokhai"]["code"] == "2"
+    assert mapper.UY_QUYEN_IS_ACCOUNT_WARNING in res["errors"]
+    # Thiếu mốc tài khoản: theo tờ khai, không tô vàng, không cảnh báo lệch.
+    res = _from_to_khai(_to_khai("uy_quyen"), {}, monkeypatch)
+    radio = _by_name(res["fields"])["citizenloaitokhai"]
+    assert radio["code"] == "2" and "default" not in radio
+    assert mapper.UY_QUYEN_IS_ACCOUNT_WARNING not in res["errors"]
+
+
+def test_to_khai_trong_noi_o_hien_tai_lay_thuong_tru_o_vang_va_bao_thieu_lien_he(monkeypatch):
+    form = _to_khai("chu_ho", noiO={}, dienThoai="", email="")
+    got = _by_name(_from_to_khai(form, _account("Lê Thị Hoa", CHU_HO_ID), monkeypatch)["fields"])
+    assert got["câu hỏi1__1782221422172"]["value"] == "Xóm A" and got["câu hỏi1__1782221422172"]["default"] is True
+    assert "citizenPhone1" not in got and "citizenEmail1" not in got
+    res = _from_to_khai(form, _account("Lê Thị Hoa", CHU_HO_ID), monkeypatch)
+    assert mapper.PHONE_EMAIL_WARNING.format(what="điện thoại và thư điện tử") in res["errors"]
+
+
+@pytest.mark.parametrize("form, message", [
+    (_to_khai(None), "chưa chọn người nộp"),
+    (_to_khai("nguoi_khac"), "chưa chọn người nộp"),
+    (_to_khai("chu_ho", ngaySinh="5/6/1990"), "ngaySinh"),
+    ("khong-phai-object", "không đúng dạng"),
+])
+def test_to_khai_thieu_nguoi_nop_hoac_sai_dang_bao_400(form, message, monkeypatch):
+    with pytest.raises(AppError) as err:
+        _from_to_khai(form, {}, monkeypatch)
+    assert err.value.code == 400 and err.value.error == "BAD_TO_KHAI" and message in err.value.message
+
+
+def test_process_nhan_luot_khong_tep_khi_co_to_khai():
+    assert process_service.has_form_input(ProcessReq(procedure=KEY, options={"giayDeNghi": {}}, files=[]))
+    with pytest.raises(AppError) as err:
+        process_service.prepare_process(ProcessReq(procedure=KEY, options={}, files=[]),
+                                        proc={"roles": []}, pipeline=process_runner.run, include_review=False)
+    assert err.value.error == "NO_FILES"
+    assert "Tạo tờ khai đăng ký hộ kinh doanh" in _entry(KEY)["uploadHint"]
 
 
 # ── Đính kèm ──

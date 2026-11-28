@@ -135,12 +135,38 @@
       || (Array.isArray(data.nganh) && data.nganh.some((n) => coChu(n?.ten) || coChu(n?.ma)));
   }
 
-  // Tên hiện trên panel để cán bộ nhận ra tờ khai của ai trước khi điền.
+  // ── Hai thủ tục dùng chung tab tờ khai ──
+  // HkdOnline (8 trang) là thủ tục gốc; bản Cổng DVC quốc gia (SurveyJS một trang) hỏi thêm NGƯỜI NỘP đầu tiên
+  // (radio "Người có thẩm quyền ký giấy đề nghị" / "Người được ủy quyền") nên tab bắt chọn trước khi kê khai.
+  const THU_TUC_HKD_ONLINE = "dang-ky-kinh-doanh";
+  const THU_TUC_DVCQG = "dang-ky-thanh-lap-ho-kinh-doanh";
+  const THU_TUC_TO_KHAI = [THU_TUC_HKD_ONLINE, THU_TUC_DVCQG];
+  const NGUOI_NOP = { chu_ho: "Người có thẩm quyền ký giấy đề nghị", uy_quyen: "Người được ủy quyền" };
+
+  // Tab mở kèm ?thuTuc=<key>; thiếu / lạ thì là bản HkdOnline như trước khi có bản DVCQG.
+  const thuTucTuTrang = (search) => {
+    const key = new URLSearchParams(String(search || "")).get("thuTuc");
+    return THU_TUC_TO_KHAI.includes(key) ? key : THU_TUC_HKD_ONLINE;
+  };
+  // Mỗi thủ tục một khoá: mở cùng lúc tab tờ khai HkdOnline và tab bản DVCQG thì không ghi đè nhau. Khoá HkdOnline giữ
+  // nguyên tên cũ.
+  const KHOA_AUTO_FILL_DVCQG = "hccToKhaiHkdDvcqg";
+  const khoaAutoFill = (thuTuc) => (thuTuc === THU_TUC_DVCQG ? KHOA_AUTO_FILL_DVCQG : KHOA_AUTO_FILL);
+  // Bản ghi lưu trước khi có bản DVCQG không mang thuTuc: đó là tờ khai HkdOnline.
+  const thuTucCuaBanGhi = (rec) => (THU_TUC_TO_KHAI.includes(rec?.thuTuc) ? rec.thuTuc : THU_TUC_HKD_ONLINE);
+  // Tờ khai chỉ dùng cho đúng thủ tục đã soạn: bản DVCQG phải có lựa chọn người nộp, bản HkdOnline không hỏi.
+  function dungChoThuTuc(rec, key) {
+    if (!rec?.data || thuTucCuaBanGhi(rec) !== key) return false;
+    return key !== THU_TUC_DVCQG || !!NGUOI_NOP[rec.data.nguoiNop?.loai];
+  }
+
+  // Tên hiện trên panel để cán bộ nhận ra tờ khai của ai trước khi điền (bản DVCQG kèm người nộp đã chọn).
   function tenToKhai(data) {
     const ten = String(data?.tenViet || "").trim();
     const chuHo = String(data?.hoTen || "").trim();
-    if (ten && chuHo) return `${ten} (chủ hộ ${chuHo})`;
-    return ten || (chuHo ? `chủ hộ ${chuHo}` : "chưa có tên");
+    const nguoiNop = NGUOI_NOP[data?.nguoiNop?.loai];
+    const base = ten && chuHo ? `${ten} (chủ hộ ${chuHo})` : (ten || (chuHo ? `chủ hộ ${chuHo}` : "chưa có tên"));
+    return nguoiNop ? `${base} · người nộp: ${nguoiNop}` : base;
   }
 
   // Giờ:phút của lần lưu, hiện cạnh bản xem trước và dòng Auto Fill.
@@ -152,7 +178,8 @@
   const api = {
     chuanHoaNgay, loiNgay, chuanHoaSoDinhDanh, loiSoDinhDanh, loiDienThoai, loiEmail, loiMaNganh, loiLaoDong,
     loiChu, chiLaySo, dinhDangTien, docTienBangChu, dongVon, timTheoMa, KHOA_AUTO_FILL, coNoiDung, tenToKhai,
-    gioPhut,
+    gioPhut, THU_TUC_HKD_ONLINE, THU_TUC_DVCQG, THU_TUC_TO_KHAI, NGUOI_NOP, thuTucTuTrang, thuTucCuaBanGhi,
+    dungChoThuTuc, KHOA_AUTO_FILL_DVCQG, khoaAutoFill,
   };
   if (typeof window !== "undefined") window.HccGiayDeNghiHkd = api;
   if (typeof module !== "undefined") module.exports = api;

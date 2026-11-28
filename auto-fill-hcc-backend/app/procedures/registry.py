@@ -1096,6 +1096,8 @@ PROCEDURES: list[dict] = [
             "3. Căn cước của chủ hộ / người nộp (nếu có).\n"
             "Tài khoản là chủ hộ → chọn 'Người có thẩm quyền ký giấy đề nghị' (cổng tự đổ nhân thân); tài khoản là người "
             "nộp thay → chọn 'Người được ủy quyền' và điền khối chủ hộ theo giấy tờ.\n"
+            "Không cần quét tờ khai: bấm '📝 Tạo tờ khai đăng ký hộ kinh doanh', chọn người nộp (chủ hộ / người được ủy "
+            "quyền) rồi kê khai và bấm Lưu — Auto Fill điền cổng theo tờ khai, tệp chỉ còn dùng để đính kèm.\n"
             "Đính kèm: có giấy ủy quyền nộp hồ sơ thì tự chọn 'Trường hợp ủy quyền thực hiện thủ tục' rồi đính vào dòng "
             "'Văn bản ủy quyền cho cá nhân'; dòng 1 nhận Giấy đề nghị (nguyên tệp) + giấy khác; dòng 2 chỉ nhận văn "
             "bản ủy quyền của các thành viên hộ gia đình."

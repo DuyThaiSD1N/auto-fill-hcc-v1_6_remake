@@ -5,6 +5,10 @@
 // Gõ không cập nhật gì: cán bộ điền hết rồi bấm "Lưu" (đầu trang, hoặc Ctrl+S) — kiểm ô, dựng bản xem trước MỘT lần
 // và chuyển tờ khai cho Auto Fill qua chrome.storage.session (chỉ trong RAM, không ghi đĩa vì có số định danh); popup
 // đọc khi bấm điền, Auto Fill điền cổng thẳng theo bản đã lưu, không quét. Đóng tab / làm lại là xoá.
+//
+// Mở từ thủ tục bản Cổng DVC quốc gia (?thuTuc=dang-ky-thanh-lap-ho-kinh-doanh): cổng hỏi người nộp đầu tiên
+// ("Người có thẩm quyền ký giấy đề nghị" / "Người được ủy quyền") nên tab hỏi câu đó TRƯỚC, chưa chọn thì ẩn phần kê
+// khai; chọn ủy quyền thì thêm khối người được ủy quyền. Khối người nộp không in lên giấy, chỉ gửi cho Auto Fill.
 (() => {
   "use strict";
 
@@ -13,6 +17,9 @@
   const MAX_NGANH = 50;
   const MAX_THANH_VIEN = 20;
   const lib = window.HccGiayDeNghiHkd;
+  const THU_TUC = lib.thuTucTuTrang(location.search);
+  const DVCQG = THU_TUC === lib.THU_TUC_DVCQG;
+  const KHOA = lib.khoaAutoFill(THU_TUC);
 
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => (
@@ -81,8 +88,32 @@
     if (slot) slot.textContent = error;
     return error;
   }
+  // ── Người nộp trên Cổng DVC quốc gia (chỉ bản DVCQG) ──
+  const nguoiNopLoai = () => document.querySelector('input[name="nguoiNop"]:checked')?.value || "";
+  function syncNguoiNop() {
+    if (!DVCQG) return;
+    const loai = nguoiNopLoai();
+    $("uyQuyenBox").hidden = loai !== "uy_quyen";
+    $("askFirst").hidden = !!loai;
+    $("form").dataset.hoiNguoiNop = loai ? "false" : "true";
+    if (loai) $("nguoiNopErr").textContent = "";
+  }
+  function readNguoiNop() {
+    const loai = nguoiNopLoai();
+    const out = { loai };
+    if (loai !== "uy_quyen") return out;
+    document.querySelectorAll("#uyQuyenBox [data-nn]").forEach((el) => setPath(out, el.dataset.nn, el.value.trim()));
+    return out;
+  }
+
   // Có ô sai thì mở khối thu gọn chứa nó, cuộn tới ô đầu và trả false: sai ngày/số định danh là in ra phải làm lại.
   function validateAll() {
+    if (DVCQG && !nguoiNopLoai()) {
+      $("nguoiNopErr").textContent = "Chọn người nộp hồ sơ trên cổng trước.";
+      $("nguoiNopBox").scrollIntoView({ block: "start", behavior: "smooth" });
+      toast("Chọn người nộp hồ sơ trên cổng trước, rồi mới kê khai.");
+      return false;
+    }
     let first = null;
     document.querySelectorAll("#form input[data-kind]").forEach((input) => {
       if (input.closest("[hidden]")) return; // bảng thành viên đang ẩn thì không gửi, không được chặn nút In
@@ -251,6 +282,7 @@
     data.phuongPhapThue = document.querySelector('input[name="phuongPhapThue"]:checked')?.value || "";
     data.chuThe = document.querySelector('input[name="chuThe"]:checked')?.value || "";
     data.thanhVien = data.chuThe === "ho_gia_dinh" ? thanhVienRows() : [];
+    if (DVCQG) data.nguoiNop = readNguoiNop();
     return data;
   }
 
@@ -258,7 +290,9 @@
   // backendFetch đọc phản hồi bằng res.text(): file nhị phân qua đó là hỏng, nên render fetch thẳng. Hết hạn token
   // thì gọi /auth/me để apiCall tự làm mới rồi gửi lại.
   async function renderFile(format, data) {
-    const body = JSON.stringify({ format, ...data });
+    // Khối người nộp (bản DVCQG) không có trên Mẫu số 1: không gửi sang bước dựng giấy.
+    const { nguoiNop: _nguoiNop, ...giay } = data || {};
+    const body = JSON.stringify({ format, ...giay });
     const send = async () => {
       const tokens = await AuthStore.getTokens();
       return fetch(`${activeBackendBase()}${API}/render`, {
@@ -400,13 +434,13 @@
     if (!sessionStore || state.gateShown) return;
     try {
       if (!lib.coNoiDung(data)) {
-        await sessionStore.remove(lib.KHOA_AUTO_FILL);
+        await sessionStore.remove(KHOA);
         state.savedAt = 0;
         return;
       }
       const savedAt = Date.now();
-      await sessionStore.set({ [lib.KHOA_AUTO_FILL]: {
-        data, ten: lib.tenToKhai(data), tabId: state.tabId, savedAt,
+      await sessionStore.set({ [KHOA]: {
+        data, ten: lib.tenToKhai(data), tabId: state.tabId, savedAt, thuTuc: THU_TUC,
       } });
       state.savedAt = savedAt;
     } catch (error) {
@@ -416,7 +450,7 @@
   }
   function forgetForAutoFill() {
     state.savedAt = 0;
-    try { void sessionStore?.remove(lib.KHOA_AUTO_FILL); } catch (_) { /* tab đang đóng */ }
+    try { void sessionStore?.remove(KHOA); } catch (_) { /* tab đang đóng */ }
   }
   function showAutoFillState() {
     const el = $("autoFillState");
@@ -428,7 +462,9 @@
     }
     const ready = !!state.savedAt && !state.unsaved;
     el.dataset.ready = ready ? "true" : "false";
-    if (ready) {
+    if (ready && DVCQG) {
+      el.textContent = "✓ Đã chuyển cho Auto Fill. Trên trang nộp hồ sơ của Cổng Dịch vụ công quốc gia bấm \"Quét và nhập dữ liệu\" (hoặc \"⚡ Điền biểu mẫu và đính kèm hồ sơ\" khi có tệp cần đính): Auto Fill chọn người nộp và điền biểu mẫu theo tờ khai này, không cần quét tờ khai.";
+    } else if (ready) {
       el.textContent = "✓ Đã chuyển cho Auto Fill. Trên trang hokinhdoanh.dkkd.gov.vn bấm \"⚡ Quét nhập thông tin và đính kèm\": Auto Fill điền 8 trang theo tờ khai này, không cần quét tờ khai.";
     } else if (state.savedAt) {
       el.textContent = `Có thay đổi chưa lưu. Auto Fill đang giữ bản lưu lúc ${lib.gioPhut(state.savedAt)}; bấm Lưu để Auto Fill điền theo thông tin mới.`;
@@ -450,8 +486,11 @@
     $("thanhVienRows").innerHTML = "";
     document.querySelectorAll("#form .invalid").forEach((el) => el.classList.remove("invalid"));
     document.querySelectorAll("#form details").forEach((el) => { el.open = false; });
+    if (DVCQG) $("chuHoThem").open = true; // cổng bắt buộc nơi ở hiện tại (và nhân thân chủ hộ khi ủy quyền)
+    $("nguoiNopErr").textContent = "";
     addNganh();
     syncThanhVienBox();
+    syncNguoiNop();
     state.vonChuTuDoc = true;
     state.dirty = false;
     state.unsaved = false;
@@ -484,6 +523,7 @@
         syncThanhVienBox();
         if (e.target.value === "ho_gia_dinh" && !$("thanhVienRows").children.length) addThanhVien();
       }
+      if (e.target.name === "nguoiNop") syncNguoiNop();
       markUnsaved();
     });
     form.addEventListener("focusout", (e) => {
@@ -576,7 +616,19 @@
     window.addEventListener("pagehide", forgetForAutoFill);
   }
 
+  // Bản DVCQG: hiện câu hỏi người nộp, ghi chú ô cổng bắt buộc, mở sẵn khối nơi ở / nhân thân chủ hộ.
+  function applyThuTuc() {
+    if (!DVCQG) return;
+    $("nguoiNopBox").hidden = false;
+    document.querySelectorAll(".dvcqg-only").forEach((el) => { el.hidden = false; });
+    $("chuHoThem").open = true;
+    $("congLabel").textContent = " · bản Cổng Dịch vụ công quốc gia";
+    document.title = "Tờ khai đăng ký hộ kinh doanh (Cổng DVC quốc gia)";
+    syncNguoiNop();
+  }
+
   async function init() {
+    applyThuTuc();
     wire();
     addNganh();
     syncThanhVienBox();

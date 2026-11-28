@@ -313,6 +313,9 @@
     supportsHkdSubmit: true,
     // Nút "Tải tờ khai bản giấy (docx)": biết lệnh download_file + gửi nhân thân chủ hộ đọc lại sau khi sao chép.
     supportsHkdDeclarationDocx: true,
+    // Hộ kinh doanh bản Cổng DVC quốc gia (trang nộp một trang SurveyJS): hkd_fill / hkd_focus điền và trỏ câu hỏi
+    // SurveyJS (content/business-registration-adapter.js) → BE mở lối "không có tờ khai" cho thủ tục này.
+    supportsHkdTroLyDvcqg: true,
     // Báo kết quả đính kèm theo từng tệp (attach_report.files: tên gốc, tên đổi, hồ sơ số mấy, nhóm lý do) và vẽ thẻ
     // attach_files (nút xem tệp đã đính, khung tệp lỗi, bảng danh sách). Thiếu cờ → BE giữ câu báo cũ.
     supportsAttachFileReport: true,

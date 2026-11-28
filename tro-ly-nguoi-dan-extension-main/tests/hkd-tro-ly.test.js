@@ -212,3 +212,21 @@ test("điền ngay thuế 'Giống trụ sở': đảo Khác → Giống lúc ch
   assert.match(business, /await waitForPanelSettle\(TAX_ADDR_WARD_FIELD/);
   assert.match(business, /async function handleTaxAddressRetoggle/, "lượt chốt lúc Lưu vẫn giữ");
 });
+
+test("bản Cổng DVC quốc gia: khai cờ; trang SurveyJS thì hkdFill / hkdFocus điền và trỏ câu hỏi SurveyJS", () => {
+  assert.match(sidebar, /supportsHkdTroLyDvcqg: true/);
+  const adapter = strip(fs.readFileSync(
+    path.join(__dirname, "..", "content", "business-registration-adapter.js"), "utf8"));
+  assert.match(adapter, /const isSurveyPage = \(\) => !isBusinessHost\(\) && typeof H\.callSurveyJs === "function"/);
+  const fill = adapter.slice(adapter.indexOf("async function hkdSurveyFill("), adapter.indexOf("function hkdSurveyFocus("));
+  assert.match(fill, /H\.callSurveyJs\(\{ op: "setValues", fields: list \}/, "điền qua model survey (cả bảng ngành, ô tích)");
+  assert.match(fill, /f\.comp !== "dvc-result-method"/, "ô cách nhận kết quả để bước riêng chọn");
+  const focus = adapter.slice(adapter.indexOf("function hkdSurveyFocus("), adapter.indexOf("function hkdSubmit"));
+  assert.match(focus, /H\.surveyJsQuestionEl\?\.\(n\)/);
+  assert.match(focus, /pointer\?\.unfocus\?\.\(\)/, "không còn ô để hỏi thì cất con trỏ");
+  assert.match(adapter, /sendResponse\(isSurveyPage\(\) \? hkdSurveyFocus\(msg\.names\) : hkdFocus\(msg\.names\)\)/);
+  assert.match(adapter, /\(isSurveyPage\(\) \? hkdSurveyFill\(msg\.fields\) : hkdFill\(msg\.fields\)\)/);
+  const sjs = strip(fs.readFileSync(path.join(__dirname, "..", "content", "fill-surveyjs.js"), "utf8"));
+  assert.match(sjs, /isSurveyDossierPage, fillFormSurveyJs/);
+  assert.match(sjs, /callSurveyJs: callMain, surveyJsQuestionEl: questionEl/);
+});

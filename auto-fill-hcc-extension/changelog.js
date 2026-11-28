@@ -3,6 +3,14 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.30.5",
+    date: "28/11/2026",
+    items: [
+      "Đăng ký thành lập hộ kinh doanh trên Cổng Dịch vụ công quốc gia: có nút “📝 Tạo tờ khai đăng ký hộ kinh doanh” — tờ khai hỏi trước người nộp hồ sơ (Người có thẩm quyền ký giấy đề nghị / Người được ủy quyền), nhập xong bấm Lưu thì Auto Fill điền biểu mẫu theo tờ khai, không cần quét tờ khai; tệp chỉ còn dùng để đính kèm.",
+      "Trợ lý người dân: đăng ký thành lập hộ kinh doanh trên Cổng Dịch vụ công quốc gia làm được khi không có giấy tờ — trợ lý hỏi trước người nộp hồ sơ, rồi hỏi lần lượt từng phần của tờ khai và điền ngay vào ô; hỏi xong điền cả tờ khai, có nút tải tờ khai bản giấy để ký và nút đính kèm giấy tờ.",
+    ],
+  },
+  {
     version: "1.30.4",
     date: "27/11/2026",
     items: [

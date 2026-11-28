@@ -68,6 +68,19 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .autofill-state[data-ready="true"] { color: #14544f; background: var(--mint); border-color: var(--mint-2); font-weight: 650; }
 .panel { padding: 20px; border: 1px solid var(--line); border-radius: 16px; background: #fff; box-shadow: 0 5px 14px rgba(16,42,67,.045); }
 .panel + .panel { margin-top: 16px; }
+.panel[hidden] + .panel { margin-top: 0; }
+
+/* Bản Cổng DVC quốc gia: hỏi người nộp TRƯỚC, chưa chọn thì ẩn phần kê khai và các nút cuối form. */
+.panel-ask { border-color: #f2c94c; box-shadow: 0 0 0 3px rgba(255,209,102,.28); }
+.ws-form[data-hoi-nguoi-nop="true"] > :not(#nguoiNopBox):not(.lead):not(.autofill-state) { display: none !important; }
+.choice-stack { flex-direction: column; align-items: stretch; gap: 10px; }
+.choice-stack label { align-items: flex-start; flex-wrap: wrap; gap: 4px 8px; padding: 11px 13px; border: 1.5px solid #d5e3e2; border-radius: 12px; }
+.choice-stack label:has(input:checked) { border-color: var(--teal); background: var(--mint); }
+.choice-stack input { margin-top: 4px; }
+.choice-hint { flex-basis: 100%; padding-left: 24px; color: var(--muted); font-size: 13px; }
+#nguoiNopErr { display: block; margin-top: 8px; color: #b42318; font-size: 12.5px; font-weight: 650; }
+#nguoiNopErr:empty { display: none; }
+.ask-first { margin: 12px 0 0; color: #8a5a00; font-size: 14px; font-weight: 700; }
 .panel-title { margin: 0 0 4px; font-size: 16px; }
 .panel-title.gap-top { margin-top: 18px; }
 .panel-sub { margin: 4px 0 12px; color: var(--muted); font-size: 13px; line-height: 1.45; }

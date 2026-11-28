@@ -13,7 +13,7 @@
         <span class="ws-id-icon" aria-hidden="true">📝</span>
         <div>
           <h1>Tờ khai đăng ký hộ kinh doanh</h1>
-          <p>Mẫu số 1, Phụ lục II, Thông tư 68/2025/TT-BTC</p>
+          <p>Mẫu số 1, Phụ lục II, Thông tư 68/2025/TT-BTC<span id="congLabel"></span></p>
         </div>
       </div>
       <div class="ws-top-actions">
@@ -40,6 +40,40 @@
           <b>Tải mẫu trống</b> ở góc trên.</p>
         <p class="autofill-state" id="autoFillState" role="status" data-ready="false"></p>
 
+        <!-- Chỉ bản Cổng DVC quốc gia (mở kèm ?thuTuc=dang-ky-thanh-lap-ho-kinh-doanh): cổng hỏi câu này ĐẦU TIÊN,
+             chọn xong phần kê khai bên dưới mới hiện. Khối này không in lên giấy, chỉ để Auto Fill điền cổng. -->
+        <section class="panel panel-ask" id="nguoiNopBox" hidden>
+          <h2 class="panel-title">Ai nộp hồ sơ trên Cổng Dịch vụ công quốc gia?</h2>
+          <p class="panel-sub">Cổng hỏi câu này đầu tiên. Chọn theo người sẽ đăng nhập VNeID để nộp; chọn xong mới kê
+            khai tờ khai bên dưới.</p>
+          <fieldset class="choice choice-stack" id="nguoiNopChoice">
+            <legend class="sr-only">Người nộp hồ sơ</legend>
+            <label><input type="radio" name="nguoiNop" value="chu_ho"> <b>Người có thẩm quyền ký giấy đề nghị</b>
+              <span class="choice-hint">chủ hộ kinh doanh tự nộp bằng tài khoản của mình</span></label>
+            <label><input type="radio" name="nguoiNop" value="uy_quyen"> <b>Người được ủy quyền</b>
+              <span class="choice-hint">người khác nộp thay chủ hộ (kèm giấy ủy quyền)</span></label>
+          </fieldset>
+          <small class="err" id="nguoiNopErr"></small>
+          <div id="uyQuyenBox" hidden>
+            <h3 class="sub-title">Người được ủy quyền (người đăng nhập để nộp)</h3>
+            <p class="panel-sub">Họ tên, ngày sinh, số định danh cổng tự lấy theo tài khoản VNeID: ghi ở đây để Auto Fill
+              đối chiếu đúng người. Điện thoại, thư điện tử và nơi ở hiện tại cổng bắt buộc.</p>
+            <div class="fields two">
+              <div class="field wide"><label for="uqHoTen">Họ và tên</label><input id="uqHoTen" data-nn="hoTen" data-kind="hoa" maxlength="120"><small class="err"></small></div>
+              <div class="field wide"><label for="uqSoDinhDanh">Số định danh cá nhân</label><input id="uqSoDinhDanh" data-nn="soDinhDanh" data-kind="dinhDanh" inputmode="numeric" maxlength="20"><small class="err"></small></div>
+              <div class="field"><label for="uqDienThoai">Điện thoại</label><input id="uqDienThoai" data-nn="dienThoai" data-kind="dienThoai" inputmode="tel" maxlength="30"><small class="err"></small></div>
+              <div class="field"><label for="uqEmail">Thư điện tử</label><input id="uqEmail" data-nn="email" data-kind="email" inputmode="email" maxlength="120"><small class="err"></small></div>
+            </div>
+            <h3 class="sub-title">Nơi ở hiện tại của người được ủy quyền</h3>
+            <div class="fields two">
+              <div class="field wide"><label for="uqNoChiTiet">Số nhà, đường phố, tổ/xóm/ấp/thôn</label><input id="uqNoChiTiet" data-nn="noiO.chiTiet" maxlength="300"></div>
+              <div class="field"><label for="uqNoXa">Xã/Phường/Đặc khu</label><input id="uqNoXa" data-nn="noiO.xa" maxlength="120"></div>
+              <div class="field"><label for="uqNoTinh">Tỉnh/Thành phố</label><input id="uqNoTinh" data-nn="noiO.tinh" maxlength="120"></div>
+            </div>
+          </div>
+          <p class="ask-first" id="askFirst" hidden>Chọn người nộp ở trên để bắt đầu kê khai tờ khai.</p>
+        </section>
+
         <section class="panel">
           <h2 class="panel-title">Đầu giấy</h2>
           <div class="fields two">
@@ -60,8 +94,11 @@
             <div class="field"><label for="dienThoai">Điện thoại (nếu có)</label><input id="dienThoai" data-f="dienThoai" data-kind="dienThoai" inputmode="tel" maxlength="30"><small class="err"></small></div>
             <div class="field"><label for="email">Thư điện tử (nếu có)</label><input id="email" data-f="email" data-kind="email" inputmode="email" maxlength="120"><small class="err"></small></div>
           </div>
-          <details class="more">
+          <details class="more" id="chuHoThem">
             <summary>Kê khai thêm khi kết nối Cơ sở dữ liệu dân cư bị gián đoạn</summary>
+            <p class="panel-sub dvcqg-only" hidden>Cổng Dịch vụ công quốc gia bắt buộc <b>nơi ở hiện tại</b> của chủ hộ; khi
+              người được ủy quyền nộp thì cổng còn bắt buộc <b>dân tộc, quốc tịch, nơi thường trú</b> của chủ hộ. Chủ hộ tự
+              nộp thì cổng bắt buộc cả điện thoại và thư điện tử ở trên.</p>
             <div class="fields two">
               <div class="field"><label for="danToc">Dân tộc</label><input id="danToc" data-f="danToc" maxlength="60"></div>
               <div class="field"><label for="quocTich">Quốc tịch</label><input id="quocTich" data-f="quocTich" maxlength="60"></div>
