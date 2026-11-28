@@ -1184,3 +1184,190 @@ def test_loi_doc_nganh_chi_doc_ten_khong_doc_ma():
     st = {"nganh": [{"hoatDong": "bán tạp hóa", "ma": ["4711"]}]}
     md, tts = hkd._question(st, "nganh_chon")  # một mã chưa chắc → câu nganh_chon_mot
     assert "4711" in md and "4711" not in tts and nganh_nghe.ten("4711") in tts
+
+
+# ── Bản Cổng DVC quốc gia (dang-ky-thanh-lap-ho-kinh-doanh, trang nộp một trang SurveyJS) ──
+# Dữ liệu giả (không phải người thật).
+
+DV_PROC = {"key": hkd.DVCQG_KEY}
+DV_OWNER_ACCOUNT = {"applicantFullname": "LÊ THỊ HOA", "applicantIdentityNumber": "001190000011"}
+DV_PROXY_ACCOUNT = {"applicantFullname": "PHẠM VĂN NAM", "applicantIdentityNumber": "001203000022"}
+_DV_ANSWERS = {
+    "chu_ho_la_ban": True, "nn_dien_thoai": "0912000111", "nn_email": "lethihoa@gmail.com",
+    "nn_noi_o": {"tinh": "Thành phố Hà Nội", "xa": "Phường Đại Mỗ", "diaChi": "Số 2 ngõ B"},
+    "ten_ho": "Quán Hoa", "ten_nuoc_ngoai": "__skip__", "ten_viet_tat": "__skip__",
+    "dia_chi_kd": {"diaChi": "Số 9 phố C"}, "dien_thoai": "0912000111", "email": "__skip__", "fax": "__skip__",
+    "website": "__skip__", "khong_kd_tru_so": True, "nganh_them": False, "von": 100000000, "dia_chi_thue": True,
+    "ngay_bat_dau": "01/12/2026", "so_lao_dong": 2, "chu_the": "ca_nhan",
+}
+_DV_PROXY_ANSWERS = {
+    **_DV_ANSWERS, "chu_ho_la_ban": False, "nn_dien_thoai": "0988000222", "nn_email": "phamnam@gmail.com",
+    "nn_noi_o": {"tinh": "Tỉnh Hưng Yên", "xa": "Xã Đông Hưng", "diaChi": "Thôn E"},
+    "chu_ho_ho_ten": "Lê Thị Hoa", "chu_ho_gioi_tinh": "Nữ", "chu_ho_ngay_sinh": "05/06/1990",
+    "chu_ho_so_dinh_danh": "001190000011", "chu_ho_dan_toc": "Kinh",
+    "chu_ho_thuong_tru": {"tinh": "Tỉnh Ninh Bình", "xa": "Phường Hoa Lư", "diaChi": "Xóm A"},
+    "chu_ho_noi_o_dv": "giong", "chu_ho_dien_thoai": "__skip__",
+}
+
+
+def _dv_conv(account=None, **extra):
+    conv = {"_id": "c1", "procedure_key": hkd.DVCQG_KEY, "lang": "vi", "consent": {"accepted": True},
+            "client_capabilities": {hkd.DVCQG_CAPABILITY: True, hkd.DOCX_CAPABILITY: True},
+            "location": {"province": "Thành phố Hà Nội", "ward": "Phường Đại Mỗ"},
+            "form_context": dict(account or DV_OWNER_ACCOUNT)}
+    conv.update(extra)
+    return conv
+
+
+async def _dv_drive(conv, first, limit=60):
+    """Trang một trang: không mở / lưu khối — chỉ trả lời tới khi hỏi xong. Ghi lại lệnh điền / trỏ ô."""
+    log = {"fills": {}, "focus": [], "fill_actions": []}
+    r = first
+    for _ in range(limit):
+        for a in r.actions:
+            if a["type"] == "hkd_fill":
+                log["fill_actions"].append(a)
+                log["fills"].update({f["name"]: f for f in a["fields"]})
+            if a["type"] == "hkd_focus" and a["names"]:
+                log["focus"].append(a["names"])
+        if conv["hkd"].get("phase") != "ask":
+            return r, log
+        r = await hkd.handle(conv, DV_PROC, Intent("action", "hkd_answer", {"text": "trả lời"}))
+    raise AssertionError(f"kẹt: phần {hkd._page(conv['hkd'])} mục {conv['hkd'].get('field')}")
+
+
+def test_dvcqg_bat_theo_co_rieng_va_whitelist(monkeypatch):
+    monkeypatch.setattr(hkd, "NO_DOCS_ENABLED", True)
+    assert hkd.active(_dv_conv(), DV_PROC)
+    assert not hkd.active(_dv_conv(client_capabilities={hkd.CAPABILITY: True}), DV_PROC), "cờ HkdOnline không đủ"
+    assert not hkd.active(_dv_conv(lang="hmong"), DV_PROC)
+    assert not hkd.active(_conv(client_capabilities={hkd.DVCQG_CAPABILITY: True}), PROC), "cờ DVCQG không bật HkdOnline"
+    assert hkd.consent_card_extra(_dv_conv(), DV_PROC) == {"no_docs_label": vi.HKD_NO_DOCS_LABEL}
+    assert router._clean_client_capabilities({hkd.DVCQG_CAPABILITY: True}).get(hkd.DVCQG_CAPABILITY) is True
+
+
+async def test_dvcqg_hoi_nguoi_nop_truoc_chu_ho_tu_nop_dien_ngay_tung_o(monkeypatch, _no_db):
+    _fake_lookup(monkeypatch, [("Mở quán cơm", ["5610"], True, "Bán cơm bình dân")], chinh="5610")
+    _fake_answers(monkeypatch, _DV_ANSWERS)
+    conv = _dv_conv()
+    first = await hkd.start_no_docs(conv)
+    # Câu đầu tiên là người nộp (cổng hỏi trước), hai nút đúng chữ radio của cổng, trỏ vào radio.
+    assert "người nộp hồ sơ" in first.display_md and "LÊ THỊ HOA" in first.display_md
+    assert [c["label"] for c in first.chips] == [vi.HKD_DV_ROLE_OWNER_LABEL, vi.HKD_DV_ROLE_PROXY_LABEL]
+    assert next(a for a in first.actions if a["type"] == "hkd_focus")["names"] == ["citizenloaitokhai"]
+    assert not any(a["type"] in ("hkd_open_block", "start_business_registration") for a in first.actions)
+    r, log = await _dv_drive(conv, first)
+    fills = log["fills"]
+    assert (fills["citizenloaitokhai"]["value"], fills["citizenloaitokhai"]["code"]) == ("Người có thẩm quyền ký giấy đề nghị", "1")
+    assert log["fill_actions"][0]["fields"][0]["name"] == "citizenloaitokhai", "radio điền ngay khi trả lời"
+    assert fills["citizenPhone1"]["value"] == "0912000111" and fills["citizenEmail1"]["value"] == "lethihoa@gmail.com"
+    assert fills["câu hỏi1__1782221422172"]["value"] == "Số 2 ngõ B"
+    assert fills["diaChiChiTiet"]["value"] == "Số 9 phố C"
+    assert fills["tenHoKinhDoanh"]["value"] == "HỘ KINH DOANH QUÁN HOA"
+    assert [(row["ma"], row["chinh"]) for row in fills["nganhNgheKinhDoanh"]["value"]] == [("5610", True)]
+    assert fills["vonKinhDoanh"]["value"] == "100000000" and fills["soLuongLaoDong"]["value"] == "2"
+    assert fills["khongHoatDongTaiTruSo"]["value"] is False, "kinh doanh tại trụ sở → bỏ tích ô ngược nghĩa"
+    assert fills["doiTuongThanhLap"]["code"] == "CA_NHAN"
+    # Chủ hộ tự nộp: không hỏi / không điền khối chủ hộ nhập tay; tỉnh / phường trụ sở cổng khoá → chỉ hỏi số nhà.
+    assert not any(n in fills for n in ("citizennguoidangkyhkd", "citizensdt", "SoDinhdanhcanhanNDK"))
+    assert ["diaChiChiTiet"] in log["focus"] and ["tinhThanhTruSo"] not in log["focus"]
+    assert set(conv["hkd"]["skipped"]) == {"email", "fax", "website", "ten_nuoc_ngoai", "ten_viet_tat"}
+    # Hỏi xong: điền lại cả tờ khai qua lệnh điền chung của trang một trang, không lập kế hoạch đính kèm.
+    fill = next(a for a in r.actions if a["type"] == "fill_fields")
+    names = {f["name"] for f in fill["fields"]}
+    assert {"citizenloaitokhai", "tenHoKinhDoanh", "nganhNgheKinhDoanh", "hinhThucNhanKetQua"} <= names
+    assert conv["hkd"]["phase"] == "done" and conv["state"] == "filling" and conv["tpm_auto_attach"] is False
+    assert vi.HKD_DV_DONE["md"].split("{")[0] in r.display_md
+    # Một lượt điền 0 tệp cho Traces / Monitor, hồ sơ được tính là có việc điền.
+    assert [(t["key"], t["files"], t["page"]) for t in _no_db] == [(hkd.DVCQG_KEY, [], "Hỏi đáp không giấy tờ")]
+    assert conv["trace_request_id"] == "req_test" and flow.dossier_has_real_work(conv)
+
+
+async def test_dvcqg_nguoi_duoc_uy_quyen_hoi_them_phan_chu_ho(monkeypatch, _no_db):
+    _fake_lookup(monkeypatch, [("Mở quán cơm", ["5610"], True, "Bán cơm bình dân")], chinh="5610")
+    _fake_answers(monkeypatch, _DV_PROXY_ANSWERS)
+    conv = _dv_conv(DV_PROXY_ACCOUNT)
+    r, log = await _dv_drive(conv, await hkd.start_no_docs(conv))
+    fills = log["fills"]
+    assert fills["citizenloaitokhai"]["code"] == "2"
+    # Khối người được ủy quyền: liên hệ + nơi ở theo câu trả lời (nhân thân cổng khoá theo tài khoản).
+    assert fills["citizensdt"]["value"] == "0988000222" and fills["citizenEmail"]["value"] == "phamnam@gmail.com"
+    assert fills["câu hỏi3__1761724625529"]["value"] == "Thôn E"
+    # Phần chủ hộ nhập tay; nơi ở hiện tại "giống nơi thường trú".
+    assert fills["citizennguoidangkyhkd"]["value"] == "LÊ THỊ HOA"
+    assert fills["SoDinhdanhcanhanNDK"]["value"] == "001190000011"
+    assert fills["citizenDantoc_NDK"]["value"] == "Kinh" and fills["citizenQuocTich_NDK"]["value"] == "Việt Nam"
+    assert fills["Diachichitietnoithuongtrunguoidangky"]["value"] == "Xóm A"
+    assert fills["Noiohientaichitiet"]["value"] == "Xóm A"
+    assert "citizenPhone1" not in fills, "khối chủ hộ tự nộp ẩn khi chọn ủy quyền"
+    assert "chu_ho_dien_thoai" in conv["hkd"]["skipped"]
+    assert ["citizennguoidangkyhkd"] in log["focus"], "trỏ vào ô họ tên chủ hộ khi hỏi"
+    assert next(a for a in r.actions if a["type"] == "fill_fields")
+
+
+async def test_dvcqg_doi_sang_uy_quyen_khi_da_qua_phan_chu_ho_thi_quay_lai_hoi(monkeypatch):
+    _fake_answers(monkeypatch, _DV_ANSWERS)
+    conv = _dv_conv()
+    await hkd.start_no_docs(conv)
+    st = conv["hkd"]
+    for key in ("chu_ho_la_ban", "nn_dien_thoai", "nn_email", "nn_noi_o"):
+        hkd._apply(st, key, _DV_ANSWERS[key])
+    st["block"] = hkd._blocks(st).index("dv-ten-ho")
+    hkd._apply(st, "chu_ho_la_ban", False)
+    assert hkd._page(st) == "dv-chu-ho" and hkd._next_field(st) == "chu_ho_ho_ten"
+    refill = hkd._dv_fill_action(st, ["chu_ho_la_ban"])[0]["fields"]
+    names = {f["name"] for f in refill}
+    assert {"citizenloaitokhai", "citizensdt", "citizenEmail"} <= names, "liên hệ người nộp điền lại vào khối ủy quyền"
+    # Đổi ngược lại: phần chủ hộ ẩn → đứng ở phần ngay sau nó.
+    hkd._apply(st, "chu_ho_la_ban", True)
+    assert hkd._page(st) == "dv-ten-ho"
+
+
+async def test_dvcqg_sau_vong_hoi_nut_cuoi_dinh_giay_to_tai_to_khai_dien_lai(monkeypatch, _no_db):
+    _fake_lookup(monkeypatch, [("Mở quán cơm", ["5610"], True, "Bán cơm bình dân")], chinh="5610")
+    _fake_answers(monkeypatch, _DV_ANSWERS)
+    conv = _dv_conv()
+    await _dv_drive(conv, await hkd.start_no_docs(conv))
+    chips = [{"label": "🗂️ Điều chỉnh giấy tờ", "send": "__action:add_documents"},
+             {"label": "🔁 Điền lại", "send": "__action:refill"},
+             {"label": "📎 Đính kèm lại", "send": "__action:tpm_attach"},
+             {"label": "Lưu và nộp", "send": "__action:tpm_submit"}]
+    sends = [c["send"] for c in hkd.final_chips(conv, chips)]
+    assert sends == [hkd.ATTACH_DOCS_SEND, hkd.DOCX_SEND, "__action:refill", "__action:tpm_submit"]
+    assert hkd.final_chips(_conv(), chips) == chips, "luồng khác giữ nguyên nút"
+    # Điền lại: theo câu trả lời đã có (không có phiên giấy tờ để chạy lại pipeline).
+    refill = await hkd.handle(conv, DV_PROC, Intent("action", "refill"))
+    assert refill.actions[0]["type"] == "fill_fields" and conv["tpm_auto_attach"] is False
+    # Tờ khai bản giấy: chủ hộ tự nộp → họ tên / số định danh theo tài khoản, nơi ở theo câu trả lời.
+    docx = await hkd.handle(conv, DV_PROC, Intent("action", "hkd_docx"))
+    assert docx.actions[0]["type"] == "download_file"
+    paper = hkd.to_khai_data(conv)
+    assert (paper.chuHo.hoTen, paper.chuHo.soDinhDanh) == ("LÊ THỊ HOA", "001190000011")
+    assert paper.chuHo.noiO["diaChi"] == "Số 2 ngõ B" and paper.ten == "HỘ KINH DOANH Quán Hoa"
+
+
+async def test_dvcqg_dinh_giay_to_chi_lap_ke_hoach_dinh_kem_khong_doc_lai_de_dien(monkeypatch, _no_db):
+    from app.channels.handfree.chat import tu_phap_moi
+    _fake_lookup(monkeypatch, [("Mở quán cơm", ["5610"], True, "Bán cơm bình dân")], chinh="5610")
+    _fake_answers(monkeypatch, _DV_ANSWERS)
+    conv = _dv_conv()
+    await _dv_drive(conv, await hkd.start_no_docs(conv))
+    asked = await hkd.handle(conv, DV_PROC, Intent("action", "hkd_attach_docs"))
+    assert conv["state"] == "ask_doc_method" and hkd.attaching_docs(conv)
+    assert "Giấy đề nghị đăng ký hộ kinh doanh" in asked.display_md
+    planned = []
+
+    async def progress(_sid):
+        return {"files_count": 2}
+    monkeypatch.setattr(flow.upload_service, "progress_of", progress)
+    monkeypatch.setattr(tu_phap_moi, "_spawn_attach_planner", lambda c: planned.append(c["_id"]))
+    conv["upload_session_id"] = "s1"
+    got = await hkd.attach_docs_complete(conv)
+    assert "2 tệp" in got.display_md and planned == ["c1"]
+    assert conv["state"] == "attaching" and conv["tpm_attach_requested"] is True and conv["docs_target"] == "attachment"
+    again = await hkd.attach_docs_complete(conv)  # nút chốt + WS complete tới sát nhau
+    assert planned == ["c1"] and not again.display_md
+    # Đính xong (luồng một trang chốt attach_done) → nút đính giấy tờ dùng lại được.
+    conv.update(attach_done=True, state="done")
+    assert await hkd.handle(conv, DV_PROC, Intent("event", "page_status")) is None
+    assert conv["hkd"]["phase"] == "done"

@@ -47,6 +47,19 @@ HO_GIA_DINH_WARNING = ("Chủ thể thành lập là 'Các thành viên hộ gia
 ACCOUNT_WARNING = ("Tài khoản đang nộp không phải chủ hộ cũng không phải bên được ủy quyền trên giấy ủy quyền — tự nhập "
                    "điện thoại, email, nơi ở hiện tại của người nộp.")
 PHONE_EMAIL_WARNING = "Giấy tờ không ghi {what} của người nộp — cổng bắt buộc, nhập tay."
+CHU_HO_NOT_ACCOUNT_WARNING = ("Tờ khai chọn 'Người có thẩm quyền ký giấy đề nghị' nhưng tài khoản đang đăng nhập không "
+                              "phải chủ hộ — cổng lấy nhân thân người nộp theo tài khoản: chủ hộ tự đăng nhập, hoặc sửa tờ "
+                              "khai thành 'Người được ủy quyền'.")
+UY_QUYEN_IS_ACCOUNT_WARNING = ("Tờ khai chọn 'Người được ủy quyền' nhưng tài khoản đang đăng nhập là chính chủ hộ — kiểm "
+                               "tra lại người nộp trên tờ khai.")
+
+# Tờ khai cán bộ nhập trên tab của Auto Fill (khoá options như bản HkdOnline): runner map thẳng, KHÔNG OCR/LLM.
+TO_KHAI_OPTION = hkd.TO_KHAI_OPTION
+# Lựa chọn người nộp trên tờ khai (cán bộ chọn TRƯỚC khi kê khai) — dữ kiện chỉ có ở luồng tờ khai, LLM không trả.
+NGUOI_NOP_FACT = "NguoiNop_Loai"
+_TO_KHAI_NGUOI_NOP = {"chu_ho": CHU_HO, "uy_quyen": UY_QUYEN}
+_TO_KHAI_CHU_THE = {"ca_nhan": CA_NHAN, "ho_gia_dinh": HO_GIA_DINH}
+_LEADING_AMOUNT = re.compile(r"^\s*(\d[\d.,\s]*)")
 
 
 def with_account_process_options(options: dict | None, user: dict | None, procedure: str) -> dict:
@@ -124,9 +137,49 @@ def _card_of(values: dict, name: Any, number: Any) -> dict:
     return {}
 
 
+def facts_from_to_khai(form: dict[str, Any]) -> list[dict]:
+    """Tờ khai đã nhập (ToKhaiDvcqg.model_dump()) → dữ kiện cùng tên với LLM trả, để ``enrich`` dùng chung.
+
+    Phần Giấy đề nghị dùng lại hàm của bản HkdOnline (chỉ gọi, không sửa), rồi tách riêng thường trú / nơi ở hiện tại,
+    dân tộc, quốc tịch, chủ thể thành lập như biểu mẫu cổng. Bỏ ``ChuHo_DiaChi`` và thẻ căn cước dựng từ tờ khai:
+    nơi ở hiện tại để trống thì ``enrich`` lấy thường trú và tô vàng như khi đọc giấy. Người nộp lấy theo lựa chọn trên
+    tờ khai, không đoán theo giấy ủy quyền.
+    """
+    values = {f["name"]: f["value"] for f in hkd.facts_from_to_khai(form)}
+    for name in ("ChuHo_DiaChi", "Cccd_DanhSach", "HinhThucDangKy"):
+        values.pop(name, None)
+    amount = _LEADING_AMOUNT.match(_text(form.get("vonKinhDoanh")))
+    values.update({
+        "ChuHo_NoiThuongTru": hkd._to_khai_addr(form.get("thuongTru")),
+        "ChuHo_NoiOHienTai": hkd._to_khai_addr(form.get("noiO")),
+        "ChuHo_DanToc": _text(form.get("danToc")),
+        "ChuHo_QuocTich": _text(form.get("quocTich")),
+        "ChuTheThanhLap": _TO_KHAI_CHU_THE.get(_text(form.get("chuThe")), ""),
+        "TruSo_KhongKinhDoanhTaiTruSo": True if form.get("khongKinhDoanhTaiTruSo") is True else None,
+        # "150.000.000 đồng (Một trăm năm mươi triệu đồng)" → chỉ phần bằng số; không có số thì bỏ.
+        "Von_SoTien": amount.group(1) if amount else "",
+    })
+    nguoi_nop = form.get("nguoiNop") if isinstance(form.get("nguoiNop"), dict) else {}
+    variant = _TO_KHAI_NGUOI_NOP.get(_text(nguoi_nop.get("loai")), "")
+    values[NGUOI_NOP_FACT] = variant
+    if variant == UY_QUYEN:
+        values.update({
+            "UyQuyen_CoGiayUyQuyen": True,
+            "UyQuyen_NguoiDuocUyQuyen_HoTen": _text(nguoi_nop.get("hoTen")),
+            "UyQuyen_NguoiDuocUyQuyen_SoDinhDanh": _digits(nguoi_nop.get("soDinhDanh")),
+            "UyQuyen_NguoiDuocUyQuyen_DienThoai": _text(nguoi_nop.get("dienThoai")),
+            "UyQuyen_NguoiDuocUyQuyen_Email": _text(nguoi_nop.get("email")),
+            "UyQuyen_NguoiDuocUyQuyen_NoiOHienTai": hkd._to_khai_addr(nguoi_nop.get("noiO")),
+        })
+    return [{"name": name, "value": value} for name, value in values.items() if value not in (None, "", {}, [])]
+
+
 def loai_nguoi_nop(values: dict, options: dict | None) -> tuple[str, bool]:
-    """(radio loại người nộp, suy đoán). Tài khoản trùng chủ hộ → 1; khác → 2; thiếu mốc tài khoản → có giấy ủy quyền
-    (hoặc đọc được bên được ủy quyền) thì 2, không thì 1 (ô vàng)."""
+    """(radio loại người nộp, suy đoán). Tờ khai đã chọn → theo lựa chọn đó. Còn lại: tài khoản trùng chủ hộ → 1; khác
+    → 2; thiếu mốc tài khoản → có giấy ủy quyền (hoặc đọc được bên được ủy quyền) thì 2, không thì 1 (ô vàng)."""
+    chosen = values.get(NGUOI_NOP_FACT)
+    if chosen in _LOAI_NGUOI_NOP_CODE:
+        return chosen, False
     account_name, account_id = requester_context(options)
     same = _same_person(account_name, account_id, values.get("ChuHo_HoTen"), values.get("ChuHo_SoDinhDanh"))
     if same is not None:
@@ -214,6 +267,14 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
     variant, guessed = loai_nguoi_nop(values, options)
     # Radio chốt TRƯỚC: cổng ẩn / hiện cả khối ô theo lựa chọn này.
     add(LOAI_NGUOI_NOP, variant, default=guessed, code=_LOAI_NGUOI_NOP_CODE[variant])
+    if values.get(NGUOI_NOP_FACT) in _LOAI_NGUOI_NOP_CODE:
+        # Lựa chọn trên tờ khai thắng mốc tài khoản, nhưng lệch thì báo: cổng đổ nhân thân người nộp theo tài khoản.
+        account_name, account_id = requester_context(options)
+        owner = _same_person(account_name, account_id, values.get("ChuHo_HoTen"), values.get("ChuHo_SoDinhDanh"))
+        if variant == CHU_HO and owner is False:
+            warnings.append(CHU_HO_NOT_ACCOUNT_WARNING)
+        elif variant == UY_QUYEN and owner is True:
+            warnings.append(UY_QUYEN_IS_ACCOUNT_WARNING)
 
     if variant == CHU_HO:
         add("citizenPhone1", phones["ChuHo_DienThoai"])

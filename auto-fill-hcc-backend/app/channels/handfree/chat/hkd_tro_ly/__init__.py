@@ -13,6 +13,15 @@ Hai mức, cùng một vòng:
 
 Chỉ bật khi extension khai supportsHkdTroLy và không ở chế độ tiếng Mông (câu thoại mới chưa có bản dịch). Bản extension
 cũ trên chợ không khai cờ → luồng tải tờ khai như trước.
+
+Bản Cổng DVC quốc gia (dang-ky-thanh-lap-ho-kinh-doanh, trang nộp một trang SurveyJS, cờ supportsHkdTroLyDvcqg) — chỉ có
+mức không giấy tờ, cùng vòng hỏi (mục, cách hiểu câu trả lời, tra mã ngành), khác ở chỗ:
+- cổng hỏi NGƯỜI NỘP đầu tiên (radio "Người có thẩm quyền ký giấy đề nghị" / "Người được ủy quyền") → hỏi câu đó trước,
+  ủy quyền thì thêm phần chủ hộ nhập tay;
+- một trang: không mở / lưu khối — hỏi tới ô nào điền ngay ô đó (hkd_fill mang ô SurveyJS do mapper của pipeline
+  dang_ky_thanh_lap_ho_kinh_doanh phát), sửa mục phần trước cũng điền ngay;
+- hỏi xong: điền lại cả tờ khai (fill_fields) rồi giao luồng một trang (chat/tu_phap_moi): kết luận, bổ sung ô, cách nhận
+  kết quả, nộp. Giấy tờ (giấy đề nghị đã ký, giấy ủy quyền) đính sau bằng nút riêng — chỉ đính, không đọc lại để điền.
 """
 import asyncio
 import json
@@ -200,12 +209,108 @@ def _slot_of(name: str, key: str) -> bool:
     return bool(rx.search(name)) if rx else name in _DOM.get(key, [])
 
 
+# ── Bản Cổng DVC quốc gia (trang nộp một trang SurveyJS) ──
+DVCQG_KEY = "dang-ky-thanh-lap-ho-kinh-doanh"
+DVCQG_CAPABILITY = "supportsHkdTroLyDvcqg"
+_DV_NGUOI_NOP = "dv-nguoi-nop"
+_DV_CHU_HO = "dv-chu-ho"
+# Phần theo thứ tự trên biểu mẫu cổng. Người nộp đứng đầu (cổng hỏi trước); phần chủ hộ chỉ khi người được ủy quyền nộp
+# thay (chủ hộ tự nộp thì cổng đổ nhân thân, thường trú theo tài khoản). Ngành dùng chung khoá trang với HkdOnline để
+# đi chung các bước tra mã / chọn ngành chính.
+_BLOCKS_DVCQG = [
+    (_DV_NGUOI_NOP, ["chu_ho_la_ban", "nn_dien_thoai", "nn_email", "nn_noi_o"]),
+    (_DV_CHU_HO, ["chu_ho_ho_ten", "chu_ho_gioi_tinh", "chu_ho_ngay_sinh", "chu_ho_so_dinh_danh", "chu_ho_dan_toc",
+                  "chu_ho_thuong_tru", "chu_ho_noi_o_dv", "chu_ho_dien_thoai"]),
+    ("dv-ten-ho", ["ten_ho", "ten_nuoc_ngoai", "ten_viet_tat"]),
+    ("dv-tru-so", ["dia_chi_kd", "dien_thoai", "email", "fax", "website", "khong_kd_tru_so"]),
+    (_NGANH_PAGE, []),
+    ("dv-von", ["von"]),
+    ("dv-thue", ["dia_chi_thue", "dia_chi_thue_khac", "ngay_bat_dau", "so_lao_dong"]),
+    ("dv-chu-the", ["chu_the"]),
+]
+# Mục riêng của bản DVCQG: liên hệ + nơi ở của NGƯỜI NỘP (người đăng nhập — chủ hộ hoặc người được ủy quyền), phần chủ hộ
+# nhập tay khi nộp thay (dân tộc, thường trú, nơi ở hiện tại "giống thường trú", điện thoại không bắt buộc).
+_SLOTS.update({
+    "nn_dien_thoai": {"kind": "phone"},
+    "nn_email": {"kind": "email"},
+    "nn_noi_o": {"kind": "address"},
+    "chu_ho_dien_thoai": {"kind": "phone", "skip": True},
+    "chu_ho_dan_toc": {"kind": "text"},
+    "chu_ho_thuong_tru": {"kind": "address"},
+    "chu_ho_noi_o_dv": {"kind": "address", "same": True},
+})
+# Câu hỏi SurveyJS (tên như mapper pipeline phát) của từng mục: trỏ khi hỏi + lọc ô điền ngay khi có câu trả lời. Mục
+# địa chỉ ghi đúng thứ tự tỉnh, xã, số nhà (trỏ đúng phần đang hỏi). Tỉnh / phường trụ sở cổng khoá theo cơ quan đã chọn
+# — chỉ để trỏ, mapper không phát.
+_DOM_DVCQG = {
+    "chu_ho_la_ban": ["citizenloaitokhai"],
+    "chu_ho_ho_ten": ["citizennguoidangkyhkd"],
+    "chu_ho_gioi_tinh": ["citizengioitinhnguoidangky"],
+    "chu_ho_ngay_sinh": ["citizenngaythang"],
+    "chu_ho_so_dinh_danh": ["SoDinhdanhcanhanNDK"],
+    "chu_ho_dien_thoai": ["câu hỏi5__1779097616381"],
+    # Quốc tịch không hỏi: mapper ghi "Việt Nam" (ô vàng) khi có số định danh — điền cùng lượt với dân tộc.
+    "chu_ho_dan_toc": ["citizenDantoc_NDK", "citizenQuocTich_NDK"],
+    "chu_ho_thuong_tru": ["bảng3__1782890713158", "citizenxanguoidangky", "Diachichitietnoithuongtrunguoidangky"],
+    "chu_ho_noi_o_dv": ["Noiohientaitinh", "Noiohientaiphuong", "Noiohientaichitiet"],
+    "ten_ho": ["tenHoKinhDoanh"],
+    "ten_nuoc_ngoai": ["tenNuocNgoai"],
+    "ten_viet_tat": ["tenVietTat"],
+    "dia_chi_kd": ["tinhThanhTruSo", "phuongXaTruSo", "diaChiChiTiet"],
+    "dien_thoai": ["dienThoai"],
+    "email": ["Thudientu"],
+    "fax": ["fax"],
+    "website": ["website"],
+    "khong_kd_tru_so": ["khongHoatDongTaiTruSo"],
+    "nganh": ["nganhNgheKinhDoanh"],
+    "von": ["vonKinhDoanh"],
+    # Cổng không có ô chọn "giống trụ sở": chỉ kê khai địa chỉ nhận thông báo thuế khi khác trụ sở.
+    "dia_chi_thue": ["câu hỏi8__1782890713158"],
+    "dia_chi_thue_khac": ["câu hỏi8__1782890713158", "câu hỏi9__1782890713158", "câu hỏi7__1782890713158"],
+    "ngay_bat_dau": ["ngayBatDauHoatDong"],
+    "so_lao_dong": ["soLuongLaoDong"],
+    "chu_the": ["doiTuongThanhLap"],
+}
+# Ô của người nộp đổi theo lựa chọn người nộp (cổng hiện khối "chủ hộ tự nộp" hoặc khối "người được ủy quyền").
+_DOM_DVCQG_ROLE = {
+    "nn_dien_thoai": {True: ["citizenPhone1"], False: ["citizensdt"]},
+    "nn_email": {True: ["citizenEmail1"], False: ["citizenEmail"]},
+    "nn_noi_o": {True: ["tinhThanhhientai", "phuongXahientai", "câu hỏi1__1782221422172"],
+                 False: ["câu hỏi4__1761724625529", "câu hỏi5__1761724625529", "câu hỏi3__1761724625529"]},
+}
+
+
+def _dvcqg(st: dict | None) -> bool:
+    return bool((st or {}).get("dvcqg"))
+
+
+def _table(st: dict) -> list:
+    """Bảng khối → mục của luồng đang chạy (HkdOnline hay bản Cổng DVC quốc gia)."""
+    return _BLOCKS_DVCQG if _dvcqg(st) else _BLOCKS
+
+
+def _dom(st: dict, key: str) -> list[str]:
+    """Ô trên cổng của một mục (để trỏ khi hỏi)."""
+    if not _dvcqg(st):
+        return _DOM.get(key) or []
+    if key.startswith("nganh"):
+        return _DOM_DVCQG["nganh"]
+    role = st["values"].get("chu_ho_la_ban")
+    if key in _DOM_DVCQG_ROLE:
+        return _DOM_DVCQG_ROLE[key].get(role, []) if isinstance(role, bool) else []
+    return _DOM_DVCQG.get(key) or []
+
+
 # ── Bật / trạng thái ──
 
 def active(conv: dict, proc: dict | None) -> bool:
-    return bool(proc and proc.get("businessWorkflow") == "create"
-                and (conv.get("client_capabilities") or {}).get(CAPABILITY)
-                and (conv.get("lang") or "vi") != "hmong")
+    if not proc or (conv.get("lang") or "vi") == "hmong":
+        return False
+    caps = conv.get("client_capabilities") or {}
+    if proc.get("key") == DVCQG_KEY:
+        # Bản Cổng DVC quốc gia: extension phải điền / trỏ được ô SurveyJS theo lệnh hkd_fill / hkd_focus.
+        return bool(caps.get(DVCQG_CAPABILITY))
+    return bool(proc.get("businessWorkflow") == "create" and caps.get(CAPABILITY))
 
 
 def asking(conv: dict) -> bool:
@@ -350,6 +455,8 @@ def _merge_addr(old, new):
 
 
 def _blocks(st: dict) -> list[str]:
+    if _dvcqg(st):
+        return [page for page, _ in _BLOCKS_DVCQG if page != _DV_CHU_HO or st["values"].get("chu_ho_la_ban") is False]
     return [page for page, _ in _BLOCKS
             if (page != MEMBERS_PAGE or st["values"].get("chu_the") == "ho_gia_dinh")
             and (page != AUTH_PAGE or _submitter_authorized(st))]
@@ -365,7 +472,7 @@ def _page(st: dict) -> str:
 
 
 def _label(page: str) -> str:
-    return vi.HKD_BLOCK_LABELS.get(page, page)
+    return vi.HKD_DV_BLOCK_LABELS.get(page) or vi.HKD_BLOCK_LABELS.get(page, page)
 
 
 # ── Mục còn phải hỏi trong khối ──
@@ -383,6 +490,8 @@ def _needed(st: dict, key: str) -> bool:
     if key.endswith("_giu"):
         check = (st.get("name_check") or {}).get(key[:-4]) or {}
         return bool(check.get("count")) and check.get("name") == _name_value(st, key[:-4])
+    if key.startswith("nn_"):
+        return isinstance(values.get("chu_ho_la_ban"), bool)  # liên hệ của người nộp: hỏi sau khi biết ai nộp
     if key == "nguoi_nop_noi_o":
         owner = st.get("submitter_owner")
         # Người nộp thay → luôn hỏi; chủ hộ tự nộp → lấy nơi ở chủ hộ, chỉ hỏi khi chưa có đủ (giấy không ghi nơi ở).
@@ -433,12 +542,31 @@ def _next_field(st: dict) -> str:
         return _nganh_step(st)
     if page == MEMBERS_PAGE:
         return _member_step(st)
-    return next((k for k in dict(_BLOCKS)[page] if _needed(st, k)), "")
+    return next((k for k in dict(_table(st))[page] if _needed(st, k)), "")
 
 
 # ── Câu hỏi + nút ──
 
+def _dv_question(st: dict, key: str) -> tuple[str, str] | None:
+    """Câu hỏi riêng của bản Cổng DVC quốc gia (None = dùng câu chung)."""
+    who = vi.HKD_DV_WHO.get(st["values"].get("chu_ho_la_ban"), "")
+    if key == "chu_ho_la_ban":
+        name = str(st.get("account_name") or "").strip()
+        return _say(vi.HKD_DV_QUESTIONS[key], account=vi.HKD_DV_ACCOUNT.format(name=name) if name else "")
+    if _spec(key).get("kind") == "address" and key in vi.HKD_DV_ADDR_WHAT:
+        part = _addr_part(_current(st, key))
+        if part != "tinh":
+            return _say(vi.HKD_ADDR_QUESTIONS[part], what=vi.HKD_DV_ADDR_WHAT[key].format(who=who))
+    if key in vi.HKD_DV_QUESTIONS:
+        return _say(vi.HKD_DV_QUESTIONS[key], who=who, account="")
+    return None
+
+
 def _question(st: dict, key: str) -> tuple[str, str]:
+    if _dvcqg(st):
+        asked = _dv_question(st, key)
+        if asked:
+            return asked
     if key == "nganh_chon":
         row = next(r for r in st["nganh"] if r.get("ma") and not r.get("chac"))
         if len(row["ma"]) == 1:
@@ -473,6 +601,9 @@ def _chips(st: dict, key: str, target: bool = False) -> list:
         payload = f'"v":{_json(v)}' + (f',"k":{_json(key)}' if target else "")
         return {"label": label, "send": f'__action:hkd_value:{{{payload}}}'}
 
+    if key == "chu_ho_la_ban" and _dvcqg(st):
+        # Hai lựa chọn đúng chữ radio "Loại người nộp" của cổng (true = chủ hộ tự nộp).
+        return [value(vi.HKD_DV_ROLE_OWNER_LABEL, True), value(vi.HKD_DV_ROLE_PROXY_LABEL, False)]
     if key == "nganh_chon":
         i, row = next((i, r) for i, r in enumerate(st["nganh"]) if r.get("ma") and not r.get("chac"))
         one = len(row["ma"]) == 1
@@ -505,6 +636,8 @@ def _chips(st: dict, key: str, target: bool = False) -> list:
                 chips.append(value(vi.HKD_SAME_HEAD_OFFICE_LABEL, "giong"))
             elif key == "tv_noi_o":
                 chips.append(value(vi.HKD_SAME_OWNER_LABEL, "giong"))
+            elif key == "chu_ho_noi_o_dv":
+                chips.append(value(vi.HKD_DV_SAME_RESIDENCE_LABEL, "giong"))
             if loc.get("province"):
                 chips.append(value(loc["province"], {"tinh": loc["province"]}))  # bấm nhanh tỉnh của quầy
         elif part == "xa" and loc.get("ward") and fold(mapper._clean_city(current.get("tinh"))) == fold(
@@ -519,15 +652,20 @@ def _chips(st: dict, key: str, target: bool = False) -> list:
 
 def _addr_text(value, key: str = "") -> str:
     if value == "giong":
+        if key == "chu_ho_noi_o_dv":
+            return vi.HKD_DV_VALUE_SAME_RESIDENCE
         return vi.HKD_VALUE_TEXT["same_owner" if key == "tv_noi_o" else "same_head_office"]
     if not isinstance(value, dict):
         return ""
     return ", ".join(v for v in (value.get("diaChi"), value.get("xa"), value.get("tinh")) if v)
 
 
-def _show(key: str, value) -> tuple[str, str]:
+def _show(key: str, value, dvcqg: bool = False) -> tuple[str, str]:
     """(chữ hiển thị, chữ đọc) của một giá trị đã ghi."""
     kind = _spec(key).get("kind")
+    if dvcqg and key == "chu_ho_la_ban" and isinstance(value, bool):
+        text = vi.HKD_DV_ROLE_OWNER_LABEL if value else vi.HKD_DV_ROLE_PROXY_LABEL
+        return text, text
     if kind == "address":
         text = _addr_text(value, key)
         return text, text
@@ -556,15 +694,27 @@ def _show(key: str, value) -> tuple[str, str]:
 
 def _noted_current(st: dict, key: str, value) -> tuple[str, str]:
     """Đọc lại giá trị sau khi ghi (địa chỉ: cả phần đã có, không chỉ phần vừa nghe)."""
-    return _noted(key, _current(st, key) if _spec(key).get("kind") == "address" else value)
+    return _noted(key, _current(st, key) if _spec(key).get("kind") == "address" else value, st)
 
 
 _NOTED_TTS = vi.HKD_NOTED["tts"]
 
 
-def _noted(key: str, value) -> tuple[str, str]:
-    shown, spoken = _show(key, value)
-    return _say(vi.HKD_NOTED, label=vi.HKD_LABELS.get(key, key), value=shown, value_tts=spoken)
+def _item_label(st: dict | None, key: str) -> str:
+    """Nhãn hiển thị của mục (bản DVCQG có nhãn riêng cho mục người nộp / trụ sở)."""
+    return (vi.HKD_DV_LABELS.get(key) if _dvcqg(st) else None) or vi.HKD_LABELS.get(key, key)
+
+
+def _prompt_label(st: dict, key: str) -> str:
+    """Nghĩa của mục cho LLM hiểu câu trả lời."""
+    if _dvcqg(st) and key in vi.HKD_DV_PROMPT_LABELS:
+        return vi.HKD_DV_PROMPT_LABELS[key]
+    return vi.HKD_PROMPT_LABELS.get(key) or vi.HKD_LABELS.get(key, key)
+
+
+def _noted(key: str, value, st: dict | None = None) -> tuple[str, str]:
+    shown, spoken = _show(key, value, _dvcqg(st))
+    return _say(vi.HKD_NOTED, label=_item_label(st, key), value=shown, value_tts=spoken)
 
 
 def _nganh_lines(st: dict) -> list[str]:
@@ -604,16 +754,16 @@ def _block_rows(st: dict, page: str) -> list[str]:
         if st["submitter_owner"] and not values.get("nguoi_nop_noi_o") and _owner_address(st):
             rows.append(f"- **{vi.HKD_LABELS['nguoi_nop_noi_o']}:** {_addr_text(_owner_address(st))} "
                         f"_({vi.HKD_VALUE_TEXT['owner_address']})_")
-    for key in dict(_BLOCKS)[page]:
+    for key in dict(_table(st))[page]:
         if key == "dia_chi_thue_khac" or key.endswith("_giu"):
             continue
         if key in skipped:
-            rows.append(f"- **{vi.HKD_LABELS[key]}:** _{vi.HKD_VALUE_TEXT['skipped']}_")
+            rows.append(f"- **{_item_label(st, key)}:** _{vi.HKD_VALUE_TEXT['skipped']}_")
         elif values.get(key) not in (None, "__docs__") and (_has(values.get(key)) or values.get(key) is False):
-            shown, _ = _show(key, values[key])
+            shown, _ = _show(key, values[key], _dvcqg(st))
             if key == "dia_chi_thue" and values[key] is False:
                 shown = _addr_text(values.get("dia_chi_thue_khac"))
-            rows.append(f"- **{vi.HKD_LABELS.get(key, key)}:** {shown}")
+            rows.append(f"- **{_item_label(st, key)}:** {shown}")
     if st["mode"] == "bo_sung":
         rows.append(f"- _{vi.HKD_VALUE_TEXT['from_docs']}_")
     return rows
@@ -727,8 +877,72 @@ def page_fields(st: dict, page: str) -> list[dict]:
     return fields
 
 
+def _dv_facts(st: dict) -> dict:
+    """Dữ kiện cho mapper của pipeline bản DVCQG (dang_ky_thanh_lap_ho_kinh_doanh) từ câu trả lời — cùng tên với dữ kiện
+    LLM đọc giấy trả, thêm lựa chọn người nộp (mapper chọn radio theo đó, không đoán theo giấy ủy quyền)."""
+    from app.pipelines.dang_ky_thanh_lap_ho_kinh_doanh.process import mapper as dv
+
+    facts = _schema_facts(st)
+    facts.pop("ChuHo_DiaChi", None)  # bản HkdOnline gộp nơi ở; biểu mẫu này tách thường trú / nơi ở hiện tại
+    v = {k: val for k, val in st["values"].items() if val != "__docs__"}
+
+    def put(name, value):
+        if value not in (None, "", {}):
+            facts[name] = value
+
+    owner = v.get("chu_ho_la_ban")
+    if isinstance(owner, bool):
+        facts[dv.NGUOI_NOP_FACT] = dv.CHU_HO if owner else dv.UY_QUYEN
+    if owner is True:
+        put("ChuHo_DienThoai", v.get("nn_dien_thoai"))
+        put("ChuHo_Email", v.get("nn_email"))
+        put("ChuHo_NoiOHienTai", v.get("nn_noi_o"))
+    elif owner is False:
+        facts["UyQuyen_CoGiayUyQuyen"] = True
+        put("UyQuyen_NguoiDuocUyQuyen_DienThoai", v.get("nn_dien_thoai"))
+        put("UyQuyen_NguoiDuocUyQuyen_Email", v.get("nn_email"))
+        put("UyQuyen_NguoiDuocUyQuyen_NoiOHienTai", v.get("nn_noi_o"))
+        put("ChuHo_DienThoai", v.get("chu_ho_dien_thoai"))
+        put("ChuHo_DanToc", v.get("chu_ho_dan_toc"))
+        home = v.get("chu_ho_thuong_tru")
+        put("ChuHo_NoiThuongTru", home)
+        put("ChuHo_NoiOHienTai", home if v.get("chu_ho_noi_o_dv") == "giong" else v.get("chu_ho_noi_o_dv"))
+    put("ChuTheThanhLap", {"ca_nhan": dv.CA_NHAN, "ho_gia_dinh": dv.HO_GIA_DINH}.get(v.get("chu_the")))
+    if v.get("khong_kd_tru_so") is False:  # mục hỏi theo nghĩa NGƯỢC ô "Không kinh doanh tại trụ sở"
+        facts["TruSo_KhongKinhDoanhTaiTruSo"] = True
+    return facts
+
+
+def _dv_fields(st: dict) -> tuple[list[dict], list[str]]:
+    """(ô SurveyJS cả tờ khai, cảnh báo) — mapper của pipeline bản DVCQG, cờ theo địa bàn như lượt Auto Fill."""
+    from app.pipelines.dang_ky_thanh_lap_ho_kinh_doanh.process import mapper as dv
+
+    options: dict = {"formContext": dict(st.get("form_context") or {})}
+    if st.get("skip_start_date"):
+        options[dv.SKIP_START_DATE_OPTION] = True
+    if st.get("line_detail"):
+        options[dv.LINE_DETAIL_OPTION] = st["line_detail"]
+    fields, warnings = dv.enrich([{"name": k, "value": v} for k, v in _dv_facts(st).items()], options)
+    if st["values"].get("khong_kd_tru_so") is True:
+        # Kinh doanh tại trụ sở: gửi cả ô bỏ tích — công dân vừa sửa lại câu trả lời thì ô đã tích phải bỏ.
+        fields.append({"name": "khongHoatDongTaiTruSo", "comp": "sjs-boolean", "value": False})
+    return fields, warnings
+
+
+def _dv_fill_action(st: dict, keys: list[str]) -> list[dict]:
+    """Điền NGAY ô của các mục vừa có câu trả lời — trang một trang nên mục của phần nào cũng điền được luôn."""
+    if "chu_ho_la_ban" in keys:
+        # Đổi người nộp: cổng hiện khối người nộp khác → điền lại liên hệ / nơi ở người nộp đã có vào khối mới.
+        keys = [*keys, "nn_dien_thoai", "nn_email", "nn_noi_o"]
+    names = {n for k in keys for n in _dom(st, k)}
+    fields = [f for f in _dv_fields(st)[0] if f["name"] in names] if names else []
+    return [{"type": "hkd_fill", "page": _page(st), "fields": fields}] if fields else []
+
+
 def _fill_now(st: dict, keys: list[str]) -> list[dict]:
     """Lệnh điền NGAY các mục vừa có câu trả lời (chỉ mục thuộc khối đang mở; mục khối khác điền khi tới khối đó)."""
+    if _dvcqg(st):
+        return _dv_fill_action(st, keys)
     page = _page(st)
     own = dict(_BLOCKS).get(page) or []
     keys = [k for k in keys if k in own]
@@ -755,9 +969,16 @@ def _open_action(page: str) -> dict:
     return {"type": "hkd_open_block", "page": page, "label": _label(page)}
 
 
-def _go_block(conv: dict, index: int, lead: tuple[str, str] = ("", ""), revisit: bool = False):
+def _go_block(conv: dict, index: int, lead: tuple[str, str] = ("", ""), revisit: bool = False,
+              actions: list | None = None):
     st = conv["hkd"]
     blocks = _blocks(st)
+    if _dvcqg(st):
+        # Trang một trang: không mở / lưu khối — sang phần kế là hỏi luôn mục đầu tiên còn thiếu của phần đó.
+        if index >= len(blocks):
+            return _dv_finish(conv, lead, actions)
+        st.update(block=index, phase="ask", field="", asked=False)
+        return _ask_next(conv, _join(lead, _block_intro(st, blocks[index])), actions)
     # revisit: lưu lại khối đã lưu có mục vừa sửa — không lọc theo lỗi / mục thiếu.
     if st.get("fix") and not revisit:
         # Sửa lỗi cổng báo khi Chuẩn bị: chỉ mở khối có lỗi.
@@ -814,12 +1035,16 @@ def _block_intro(st: dict, page: str) -> tuple[str, str]:
     if page in _LIST_PAGES:
         keys = [page]
     else:
-        keys = [k for k in dict(_BLOCKS)[page] if _needed(st, k)]
-    items = list(dict.fromkeys(vi.HKD_INTRO_ITEMS[k] for k in keys))
+        keys = [k for k in dict(_table(st))[page] if _needed(st, k)]
+    dv = _dvcqg(st)
+    items = list(dict.fromkeys((vi.HKD_DV_INTRO_ITEMS.get(k) if dv else None) or vi.HKD_INTRO_ITEMS[k] for k in keys))
     if not items:
+        if dv:
+            return "", ""  # phần không còn gì phải hỏi (vd mục đã nói trước) → đi tiếp, không báo
         return _say(vi.HKD_BLOCK_OPEN_PLAIN, label=_label(page))
-    text = items[0] if len(items) == 1 else vi.HKD_INTRO_BLOCKS.get(page) or items[0]
-    return _say(vi.HKD_BLOCK_OPEN, label=_label(page), items=text)
+    intro_blocks = vi.HKD_DV_INTRO_BLOCKS if dv else vi.HKD_INTRO_BLOCKS
+    text = items[0] if len(items) == 1 else intro_blocks.get(page) or items[0]
+    return _say(vi.HKD_DV_SECTION if dv else vi.HKD_BLOCK_OPEN, label=_label(page), items=text)
 
 
 def _submitter_address_fields(address) -> list[dict]:
@@ -916,11 +1141,16 @@ def _ask_next(conv: dict, lead: tuple[str, str] = ("", ""), actions: list | None
     key = _next_field(st)
     if key:
         st.update(phase="ask", field=key, asked=True)
-        names = _DOM.get(key) or []
+        names = _dom(st, key)
         if _spec(key).get("kind") == "address" and len(names) == len(_ADDR_PARTS):
             names = [names[_ADDR_PARTS.index(_addr_part(_current(st, key)))]]  # trỏ đúng ô tỉnh / xã / số nhà
         actions.append(_asking(st, names))
         return _reply(_join(lead, _question(st, key)), _chips(st, key), actions)
+    if _dvcqg(st):
+        # Hết mục của phần này: danh sách ngành đã chốt thì điền bảng ngành nghề lên trang, rồi sang phần kế.
+        if page == _NGANH_PAGE:
+            actions += _dv_fill_action(st, ["nganh"])
+        return _go_block(conv, st["block"] + 1, lead, actions=actions)
     if not st.get("asked"):
         return _save(conv, lead, actions)  # khối không phải hỏi gì → tự lưu
     if page in _LIST_PAGES and not st.get("list_filled"):
@@ -1166,6 +1396,110 @@ def _finish(conv: dict, lead: tuple[str, str]):
     return r
 
 
+# ── Bản Cổng DVC quốc gia: hỏi xong → giao luồng trang một trang ──
+
+def _dv_notes(warnings: list[str]) -> str:
+    """Cảnh báo mapper đáng nói với công dân sau vòng hỏi (bỏ câu kiểu "giấy tờ không ghi …" — mục đã hỏi bằng lời)."""
+    from app.pipelines.dang_ky_thanh_lap_ho_kinh_doanh.process import mapper as dv
+
+    keep = {dv.HO_GIA_DINH_WARNING, dv.CHU_HO_NOT_ACCOUNT_WARNING, dv.UY_QUYEN_IS_ACCOUNT_WARNING}
+    notes = [w for w in warnings if w in keep or "chưa có mã ngành" in w]
+    return "".join(vi.HKD_DV_NOTE.format(note=w) for w in dict.fromkeys(notes))
+
+
+def _dv_dispatch(conv: dict) -> tuple:
+    """Điền cả tờ khai theo các câu trả lời qua lệnh điền chung của trang một trang. Chưa có giấy tờ nên không lập kế
+    hoạch đính kèm (tpm_auto_attach False): điền xong luồng một trang kết luận luôn — bổ sung ô, cách nhận kết quả, nộp."""
+    from app.channels.handfree.chat import flow
+
+    fields, warnings = _dv_fields(conv["hkd"])
+    conv["fields"] = fields
+    conv["fill_report"] = {}
+    conv["tpm_auto_attach"] = False
+    conv["state"] = "filling"
+    conv["pipeline_status"] = "hkd_dv_filled"
+    conv["dossier_has_activity"] = True  # không qua pipeline đọc giấy: đánh dấu hồ sơ đã có việc như bản HkdOnline
+    return flow._fill_fields_reply(conv), warnings
+
+
+def _dv_finish(conv: dict, lead: tuple[str, str], actions: list | None = None):
+    st = conv["hkd"]
+    st.update(phase="done", field="", dv_record=True)  # handle() ghi lượt điền (trace) sau khi trả lời
+    conv["attach_plan"] = []
+    r, warnings = _dv_dispatch(conv)
+    md, tts = _join(lead, _say(vi.HKD_DV_DONE, notes=_dv_notes(warnings)))
+    r.display_md = md + (r.display_md or "")
+    r.tts_text = tts + (r.tts_text or "")
+    r.actions = [*(actions or []), *r.actions]
+    return r
+
+
+def _dv_refill(conv: dict):
+    """"Điền lại" sau vòng hỏi: không có phiên giấy tờ để chạy lại pipeline — điền lại theo các câu trả lời đã có."""
+    r, _ = _dv_dispatch(conv)
+    r.display_md, r.tts_text = _say(vi.HKD_DV_REFILLING)
+    return r
+
+
+def _dv_start_attach(conv: dict):
+    """Nút "Đính kèm giấy tờ" sau vòng hỏi: về bước chọn cách gửi giấy tờ như luồng thường; chốt giấy tờ thì CHỈ lập kế
+    hoạch đính kèm (attach_docs_complete) — không đọc giấy để điền lại đè câu trả lời."""
+    from app.channels.handfree.chat import flow
+    conv["hkd"]["phase"] = "attach_docs"
+    conv["pipeline_status"] = ""
+    return flow._to_ask_doc_method(conv, intro=_say(vi.HKD_DV_ATTACH_INTRO))
+
+
+def final_chips(conv: dict | None, chips: list[dict]) -> list[dict]:
+    """Nút cuối của luồng một trang (tu_phap_moi._final_chips) khi tờ khai đến từ vòng hỏi không giấy tờ: chưa có phiên
+    giấy tờ nên "Điều chỉnh giấy tờ" / "Đính kèm lại" thành nút đính giấy tờ riêng (+ tải tờ khai bản giấy để ký)."""
+    st = (conv or {}).get("hkd") or {}
+    if not _dvcqg(st) or st.get("mode") != "khong_giay":
+        return chips
+    out = [c for c in chips if c.get("send") not in ("__action:add_documents", "__action:tpm_attach")]
+    extra = [{"label": vi.HKD_DV_ATTACH_LABEL, "send": ATTACH_DOCS_SEND, "desc": vi.HKD_DV_ATTACH_DESC}]
+    if _docx_on(conv):
+        extra.append({"label": vi.HKD_DOCX_LABEL, "send": DOCX_SEND, "desc": "tải / in tờ khai bản giấy, file Word"})
+    return [*extra, *out]
+
+
+def _dv_chips(conv: dict) -> list[dict]:
+    from app.channels.handfree.chat import tu_phap_moi
+    from app.channels.handfree.procedure_registry import get_procedure
+    return tu_phap_moi._final_chips(get_procedure(conv.get("procedure_key") or "") or {}, conv)
+
+
+def _dv_after(conv: dict, intent: Intent):
+    """Lệnh của bản DVCQG sau vòng hỏi (tải tờ khai bản giấy, đính giấy tờ, điền lại). None = luồng một trang lo."""
+    st = conv["hkd"]
+    if st.get("phase") == "attach_wait" and (conv.get("attach_done") or conv.get("state") != "attaching"):
+        st["phase"] = "done"  # lượt đính đã xong (hoặc đã thôi) → nút đính giấy tờ dùng lại được
+    if intent.kind != "action" or conv.get("submitted_completed"):
+        return None
+    if intent.value == "hkd_docx":
+        return _docx_reply(conv) if _docx_on(conv) else _reply(("", ""))
+    if intent.value in ("hkd_attach_docs", "add_documents") or (
+            intent.value == "tpm_attach" and not conv.get("upload_session_id")):
+        if st.get("phase") == "attach_wait":
+            return None  # đang đính: lệnh "đính kèm lại" của luồng một trang lo
+        return _dv_start_attach(conv)
+    if intent.value == "refill" and st.get("phase") == "done":
+        return _dv_refill(conv)
+    return None
+
+
+async def _dv_record(conv: dict) -> None:
+    """Vòng hỏi không qua pipeline đọc giấy nên không tự sinh lượt điền: ghi một lượt điền 0 tệp mang các ô của tờ khai
+    (Traces / Monitor có hồ sơ, fill_report ghi kết quả điền vào đúng lượt)."""
+    from app.channels.handfree.chat import tracing
+    from app.channels.handfree.procedure_registry import get_procedure
+    key = conv.get("procedure_key") or ""
+    rid = await tracing.record_process(conv, key, get_procedure(key) or {}, [], {"fields": conv.get("fields") or []}, 0,
+                                       fill_page="Hỏi đáp không giấy tờ")
+    if rid:
+        conv["trace_request_id"] = rid
+
+
 def _done(conv: dict, text: tuple[str, str]):
     st = conv["hkd"]
     st.update(phase="done", field="")
@@ -1273,6 +1607,17 @@ async def attach_docs_complete(conv: dict):
     files_count = prog.get("files_count", prog.get("received", 0))
     if not files_count:
         return await flow._ask_docs_again(conv)
+    if _dvcqg(conv["hkd"]):
+        # Trang một trang: kế hoạch đính kèm chung của luồng một trang (planner của pipeline, dòng theo bảng Thành phần
+        # hồ sơ), đính luôn khi có kế hoạch. Pha attach_wait giữ tới khi đính xong → lượt chốt trùng không chạy lại.
+        if conv["hkd"].get("phase") == "attach_wait":
+            return _reply(("", ""))
+        from app.channels.handfree.chat import tu_phap_moi
+        conv["hkd"]["phase"] = "attach_wait"
+        conv.update(docs_target="attachment", owner_phase=False, state="attaching", attach_done=False,
+                    tpm_attach_requested=True)
+        tu_phap_moi._spawn_attach_planner(conv)
+        return _reply(_say(vi.HKD_ATTACH_DOCS_RECEIVED, files_count=files_count))
     if conv.get("pipeline_status") == "hkd_attaching":
         return _reply(("", ""))  # nút chốt và WS "complete" tới sát nhau
     conv["state"] = "filling"
@@ -1316,7 +1661,7 @@ def _after_attach(conv: dict, payload: dict):
 
 def _docx_reply(conv: dict):
     conv["hkd"]["docx_downloaded"] = True
-    r = _reply(_say(vi.HKD_DOCX_READY), _phase_chips(conv))
+    r = _reply(_say(vi.HKD_DOCX_READY), _dv_chips(conv) if _dvcqg(conv["hkd"]) else _phase_chips(conv))
     r.actions = [{"type": "download_file", "path": f"/api/v1/assistant/conversations/{conv['_id']}/hkd-to-khai.docx",
                   "filename": "giay-de-nghi-dang-ky-ho-kinh-doanh.docx"}]
     return r
@@ -1338,16 +1683,20 @@ def _paper_addr(value) -> dict | None:
 def to_khai_data(conv: dict) -> to_khai.ToKhai:
     """Dữ liệu tờ khai bản giấy từ chính các giá trị vòng hỏi đáp đã ghi (không thêm gì ngoài đó)."""
     st = conv["hkd"]
-    facts = _schema_facts(st)
+    dv = _dvcqg(st)
+    facts = _dv_facts(st) if dv else _schema_facts(st)
     v = st["values"]
     if v.get("chu_ho_la_ban") is True:
         acc = st.get("owner_account") or {}
+        # Bản DVCQG không sao chép tài khoản: họ tên / số định danh theo mốc tài khoản trên trang (form_context).
+        ctx = st.get("form_context") or {}
         owner = to_khai.Person(acc.get("hoTen") or st.get("account_name") or "", acc.get("ngaySinh", ""),
-                               acc.get("gioiTinh", ""), acc.get("soDinhDanh", ""))
+                               acc.get("gioiTinh", ""),
+                               acc.get("soDinhDanh") or re.sub(r"\D", "", str(ctx.get("applicantIdentityNumber") or "")))
     else:
         owner = to_khai.Person(facts.get("ChuHo_HoTen") or "", facts.get("ChuHo_NgaySinh") or "",
                                facts.get("ChuHo_GioiTinh") or "", facts.get("ChuHo_SoDinhDanh") or "")
-    owner.noiO = _paper_addr(facts.get("ChuHo_DiaChi"))
+    owner.noiO = _paper_addr(facts.get("ChuHo_NoiOHienTai" if dv else "ChuHo_DiaChi"))
     members = []
     for m in st.get("members") or []:
         place = facts.get("ChuHo_DiaChi") if m.get("tv_noi_o") == "giong" else m.get("tv_noi_o")
@@ -1525,14 +1874,14 @@ def _on_page(conv: dict, here: str):
 
 def _open_slots(st: dict) -> list[dict]:
     def label(k):
-        return vi.HKD_PROMPT_LABELS.get(k) or vi.HKD_LABELS.get(k, k)
+        return _prompt_label(st, k)
 
     if _page(st) == MEMBERS_PAGE:
         # Khối thành viên: chỉ mục của thành viên — "ở cùng chủ hộ" không được rơi vào nơi ở của chủ hộ.
         return [{"key": k, "label": label(k), **spec} for k, spec in _MEMBER_SLOTS.items()]
     # Chỉ mục của khối đang mở: câu "giống địa chỉ kinh doanh" ở ô nơi ở không được rơi sang mục địa chỉ thuế của
     # khối sau. Câu nhiều ý trong cùng khối (địa chỉ kèm điện thoại) vẫn ghi đủ; ý của khối khác tới khối đó mới hỏi.
-    keys = [k for k in dict(_BLOCKS).get(_page(st)) or []
+    keys = [k for k in dict(_table(st)).get(_page(st)) or []
             if (k != "chu_the" or st["mode"] == "khong_giay") and (not k.endswith("_giu") or _needed(st, k))]
     return [{"key": k, "label": label(k), **_SLOTS[k]} for k in keys]
 
@@ -1552,7 +1901,7 @@ def _value_text(st: dict, key: str) -> str:
         return "trống"
     if _spec(key).get("kind") == "address":
         return _addr_text(value, key) or "trống"
-    return _show(key, value)[0]
+    return _show(key, value, _dvcqg(st))[0]
 
 
 def _catalog(st: dict) -> list[dict]:
@@ -1560,7 +1909,7 @@ def _catalog(st: dict) -> list[dict]:
     công dân nói trước). Khối thành viên chỉ đưa mục thành viên ("ở cùng chủ hộ" không được rơi sang nơi ở chủ hộ)."""
     def item(key, page, status):
         spec = _spec(key)
-        return {"key": key, "label": vi.HKD_PROMPT_LABELS.get(key) or vi.HKD_LABELS.get(key, key),
+        return {"key": key, "label": _prompt_label(st, key),
                 "block": _label(page), "status": status, "kind": spec.get("kind"), "same": bool(spec.get("same")),
                 "skip": bool(spec.get("skip")), "format": _FORMAT_TEXT.get(spec.get("kind"), "chữ")
                 + (" · nhận giống" if spec.get("same") else ""), "value": _value_text(st, key)}
@@ -1574,7 +1923,7 @@ def _catalog(st: dict) -> list[dict]:
         if other in _LIST_PAGES:
             continue
         status = "dang_mo" if i == st["block"] else "da_luu" if i < st["block"] else "sap_toi"
-        for key in dict(_BLOCKS)[other]:
+        for key in dict(_table(st))[other]:
             if status == "dang_mo" and key in current:
                 out.append(item(key, other, status))
             elif status != "dang_mo" and not key.endswith("_giu") and (
@@ -1592,6 +1941,17 @@ def _current_info(st: dict, key: str) -> dict:
 
 
 def _apply(st: dict, key: str, value) -> None:
+    if _dvcqg(st) and key == "chu_ho_la_ban":
+        # Đổi người nộp thì phần chủ hộ hiện / ẩn → danh sách phần đổi: giữ đúng phần đang hỏi (phần đó vừa bị ẩn thì
+        # đứng ở phần ngay sau nó); phần trước đó vừa có mục phải hỏi (đổi sang ủy quyền khi đã qua phần chủ hộ) thì
+        # quay lại phần đó.
+        here = _page(st)
+        st["values"][key] = value
+        blocks = _blocks(st)
+        pos = blocks.index(here) if here in blocks else min(st["block"], len(blocks) - 1)
+        table = dict(_table(st))
+        st["block"] = next((i for i, p in enumerate(blocks[:pos]) if any(_needed(st, k) for k in table[p])), pos)
+        return
     if _spec(key).get("kind") == "address":
         value = _merge_addr(_current(st, key), value)
     if key.startswith("tv_"):
@@ -1653,10 +2013,12 @@ def _skip(conv: dict, lead: tuple[str, str] = ("", ""), actions: list | None = N
         return _ask_next(conv, _join(lead, _say(vi.HKD_REQUIRED)), actions)
     if key not in st.setdefault("skipped", []):
         st["skipped"].append(key)
-    if isinstance(st["values"].pop(key, None), str) and key in (dict(_BLOCKS).get(_page(st)) or []):
+    if isinstance(st["values"].pop(key, None), str) and key in (dict(_table(st)).get(_page(st)) or []):
         # Bỏ qua mục đã nghe giá trị (vd tên vừa nói rồi đổi ý): ô trên trang đã được điền ngay lúc nghe → xoá trống.
-        actions = [*(actions or []), {"type": "hkd_fill", "page": _page(st),
-                                      "fields": [{"name": n, "value": ""} for n in _DOM.get(key) or []]}]
+        # Ô SurveyJS (bản DVCQG) xoá bằng cờ clear của máy điền.
+        fields = ([{"name": n, "comp": "sjs-text", "value": "", "clear": True} for n in _dom(st, key)] if _dvcqg(st)
+                  else [{"name": n, "value": ""} for n in _DOM.get(key) or []])
+        actions = [*(actions or []), {"type": "hkd_fill", "page": _page(st), "fields": fields}]
     return _ask_next(conv, lead, actions)
 
 
@@ -1766,7 +2128,7 @@ async def _answer(conv: dict, text: str):
                                                                                 _question(st, key))
         chips = _chips(st, key) if key != _CONFIRM else []
         goal = getattr(parsed, "goal", "")
-        if key == _CONFIRM and goal in (dict(_BLOCKS).get(_page(st)) or []):
+        if key == _CONFIRM and goal in (dict(_table(st)).get(_page(st)) or []):
             # Sửa một mục từ bảng tóm tắt: nút chọn nhanh của đúng mục đó (nút mang mã mục vì ô đang hỏi là bảng tóm
             # tắt); "Bỏ qua" ghi vào ô đang hỏi nên không đưa.
             chips = [c for c in _chips(st, goal, target=True) if c["send"] != "__action:hkd_skip"]
@@ -1787,10 +2149,10 @@ async def _answer(conv: dict, text: str):
         st["paused"] = True
         return _reply(_say(vi.HKD_PAUSED), [{"label": vi.HKD_RESUME_LABEL, "send": "__action:hkd_resume", "solid": True}])
     lead = ("", "")
-    own = set(dict(_BLOCKS).get(_page(st)) or []) | (set(_MEMBER_SLOTS) if _page(st) == MEMBERS_PAGE else set())
+    own = set(dict(_table(st)).get(_page(st)) or []) | (set(_MEMBER_SLOTS) if _page(st) == MEMBERS_PAGE else set())
     for k, v in parsed.values.items():
         _apply(st, k, v)
-        if k == "chu_ho_la_ban" and v is True:
+        if k == "chu_ho_la_ban" and v is True and not _dvcqg(st):
             continue
         lead = _join(lead, _noted_current(st, k, v))
         if k not in own:
@@ -1799,7 +2161,8 @@ async def _answer(conv: dict, text: str):
         # Công dân kể việc kinh doanh khi đang ở khối khác: agent ngành tra mã luôn, tới khối ngành chỉ hỏi phần còn lại.
         found = await _lookup(st, parsed.nganh_text, conv)
         lead = _join(lead, found if found[0] else _noted_nganh(st))
-    actions = _fill_now(st, [k for k in parsed.values if k in own])
+    # Bản DVCQG: trang một trang → mục của phần nào (kể cả phần trước) cũng điền ngay.
+    actions = _fill_now(st, [k for k in parsed.values if k in own or _dvcqg(st)])
     if parsed.values.get("chu_ho_la_ban") is True and _page(st) == _OWNER_PAGE and not st.get("owner_copied"):
         return _copy_owner(conv, lead, actions)
     if (parsed.action == "khong_ro" and not parsed.values and _spec(key).get("skip")
@@ -1836,9 +2199,12 @@ def _elsewhere(st: dict, key: str) -> tuple[str, str]:
     """Mục thuộc khối khác vừa được ghi: khối đã lưu → đánh dấu lưu lại sau khối đang làm; khối chưa tới → tới đó điền
     sẵn, không hỏi lại."""
     blocks = _blocks(st)
-    page = next((p for p in blocks if key in dict(_BLOCKS).get(p, [])), "")
+    page = next((p for p in blocks if key in dict(_table(st)).get(p, [])), "")
     if not page:
         return "", ""
+    if _dvcqg(st):
+        # Trang một trang: mục vừa ghi đã điền ngay (_fill_now) — phần trước không phải lưu lại; phần sau không hỏi lại.
+        return ("", "") if blocks.index(page) < st["block"] else _say(vi.HKD_DV_NOTED_LATER, label=_label(page))
     if blocks.index(page) < st["block"]:
         dirty = st.setdefault("dirty", [])
         if page not in dirty:
@@ -1876,8 +2242,26 @@ async def start_no_docs(conv: dict):
     """Công dân không có tờ khai/giấy tờ: đi từng khối, hỏi mọi ô (sau khi đã đồng ý xử lý dữ liệu)."""
     conv["hkd"] = await _base_state(conv, "khong_giay")
     conv["attach_plan"] = []
+    if conv.get("procedure_key") == DVCQG_KEY:
+        return _dv_start(conv)
     _begin(conv)
     return _go_block(conv, 0, _say(vi.HKD_START))
+
+
+def _dv_start(conv: dict):
+    """Bản Cổng DVC quốc gia: đang đứng ở trang nộp (thẻ đồng ý chỉ hiện khi đã tới form) → hỏi người nộp trước. Tỉnh /
+    phường trụ sở cổng khoá theo cơ quan đã chọn → ghi sẵn, mục trụ sở chỉ còn hỏi số nhà, đường."""
+    st = conv["hkd"]
+    st["dvcqg"] = True
+    ctx = {k: str(v or "").strip()[:100] for k, v in (conv.get("form_context") or {}).items()
+           if k in ("applicantFullname", "applicantIdentityNumber")}
+    st["form_context"] = ctx  # mốc tài khoản: mapper cảnh báo khi lựa chọn người nộp lệch tài khoản
+    st["account_name"] = ctx.get("applicantFullname") or ""
+    loc = st.get("loc") or {}
+    if loc.get("province") and loc.get("ward"):
+        st["values"]["dia_chi_kd"] = {"tinh": loc["province"], "xa": loc["ward"]}
+    _begin(conv)
+    return _go_block(conv, 0, _say(vi.HKD_DV_START))
 
 
 async def start_review(conv: dict):
@@ -1914,9 +2298,19 @@ async def start_review(conv: dict):
 
 async def handle(conv: dict, proc: dict | None, intent: Intent):
     """Lệnh / câu trả lời / sự kiện trang của luồng đi từng khối. None = không thuộc luồng này."""
+    r = await _handle(conv, proc, intent)
+    if (conv.get("hkd") or {}).pop("dv_record", False):
+        await _dv_record(conv)  # bản DVCQG vừa hỏi xong (lệnh điền cả tờ khai nằm trong r)
+    return r
+
+
+async def _handle(conv: dict, proc: dict | None, intent: Intent):
     if not active(conv, proc):
         return None
     st = conv.get("hkd")
+    if st and _dvcqg(st) and st.get("phase") != "ask":
+        # Bản DVCQG sau vòng hỏi: luồng trang một trang lo tiếp (điền, bổ sung ô, nộp); chỉ giữ vài lệnh riêng.
+        return _dv_after(conv, intent)
     if intent.kind == "action" and intent.value == "hkd_docx":
         # Sau khi lưu đủ khối (kể cả khi hội thoại đã xong) — tải bao nhiêu lần cũng được.
         return _docx_reply(conv) if st and _docx_on(conv) else _reply(("", ""))
@@ -2044,7 +2438,7 @@ async def handle(conv: dict, proc: dict | None, intent: Intent):
         return _ask_next(conv)
     if intent.value == "hkd_value":
         key = st["field"]
-        if key == _CONFIRM and intent.payload.get("k") in (dict(_BLOCKS).get(_page(st)) or []):
+        if key == _CONFIRM and intent.payload.get("k") in (dict(_table(st)).get(_page(st)) or []):
             key = intent.payload["k"]  # nút chọn nhanh khi sửa một mục từ bảng tóm tắt
         spec = _spec(key)
         value, _ = hoi_dap.check(spec["kind"], intent.payload.get("v"), "", False, bool(spec.get("same"))) \
@@ -2052,7 +2446,7 @@ async def handle(conv: dict, proc: dict | None, intent: Intent):
         if value is None:
             return _ask_next(conv)
         _apply(st, key, value)
-        if key == "chu_ho_la_ban" and value is True and not st.get("owner_copied"):
+        if key == "chu_ho_la_ban" and value is True and not st.get("owner_copied") and not _dvcqg(st):
             return _copy_owner(conv, ("", ""), _fill_now(st, [key]))
         return _ask_next(conv, _noted_current(st, key, value), _fill_now(st, [key]))
     if intent.value == "hkd_pick":

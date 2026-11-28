@@ -216,14 +216,16 @@ def _final_chips(proc: dict | None = None, conv: dict | None = None) -> list[dic
     """Sau khi điền + đính: 3 nút sửa nhỏ, 2 nút đi tiếp to (cách nhận kết quả, nộp). Cổng liz: một nút Tiếp tục
     (tích cam kết rồi hỏi bưu điện), nút nộp chỉ hiện sau câu hỏi đó; công dân tự tích ô cam kết thì nút "Tôi đã tích ô
     cam kết", tích xong mới tới nút nộp."""
-    from app.channels.handfree.chat import flow
+    from app.channels.handfree.chat import flow, hkd_tro_ly
 
-    return [
+    chips = [
         flow._supplement_documents_chip(),
         {"label": "🔁 Điền lại", "send": "__action:refill"},
         {"label": "📎 Đính kèm lại", "send": "__action:tpm_attach"},
         *(_liz_go_chips(proc, conv) if liz(proc) else [_result_cta(), _submit_cta()]),
     ]
+    # Hộ kinh doanh khai bằng lời (không giấy tờ): chưa có phiên giấy tờ → nút đính giấy tờ riêng + tải tờ khai bản giấy.
+    return hkd_tro_ly.final_chips(conv, chips)
 
 
 def adjust_choice_chips() -> list[dict]:

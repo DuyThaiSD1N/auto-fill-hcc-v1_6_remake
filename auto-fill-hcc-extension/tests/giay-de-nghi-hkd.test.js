@@ -14,24 +14,30 @@ const page = strip(read("giay-de-nghi-hkd.js"));
 const html = read("giay-de-nghi-hkd.html");
 const lib = require("../lib/giayDeNghiHkd.js");
 
-test("nút tạo tờ khai mặc định ẩn, chỉ hiện đúng thủ tục đăng ký hộ kinh doanh", () => {
+test("nút tạo tờ khai mặc định ẩn, chỉ hiện ở đăng ký thành lập hộ kinh doanh (HkdOnline + bản DVC quốc gia)", () => {
   assert.match(popupHtml, /<button id="giayDeNghiHkdBtn"[^>]*\bhidden\b/);
   assert.match(popup, /const GIAY_DE_NGHI_HKD_KEY = "dang-ky-kinh-doanh";/);
+  assert.match(popup, /const TO_KHAI_HKD_DVCQG_KEY = "dang-ky-thanh-lap-ho-kinh-doanh";/);
+  assert.match(popup, /const TO_KHAI_HKD_KEYS = new Set\(\[GIAY_DE_NGHI_HKD_KEY, TO_KHAI_HKD_DVCQG_KEY\]\);/);
 
   const start = popup.indexOf("function applyFormUI()");
   const line = popup.slice(start).match(/giayDeNghiHkdBtn\.hidden = (.+);/);
   assert.ok(line, "applyFormUI phải bật/tắt nút theo thủ tục");
 
-  const hiddenFor = (key) => vm.runInNewContext(line[1], { cfg: { key }, GIAY_DE_NGHI_HKD_KEY: "dang-ky-kinh-doanh" });
+  const keys = new Set(["dang-ky-kinh-doanh", "dang-ky-thanh-lap-ho-kinh-doanh"]);
+  const hiddenFor = (key) => vm.runInNewContext(line[1], { cfg: { key }, TO_KHAI_HKD_KEYS: keys });
   assert.equal(hiddenFor("dang-ky-kinh-doanh"), false);
+  assert.equal(hiddenFor("dang-ky-thanh-lap-ho-kinh-doanh"), false);
   for (const key of ["dang-ky-thay-doi-noi-dung-ho-kinh-doanh", "cham-dut-hoat-dong-ho-kinh-doanh", "tam-ngung-kinh-doanh",
     "cap-lai-cap-doi-gcn-ho-kinh-doanh", "khai-sinh", undefined]) {
     assert.equal(hiddenFor(key), true, `không được hiện ở ${key}`);
   }
 });
 
-test("bấm nút mở tab riêng của extension", () => {
-  assert.match(popup, /giayDeNghiHkdBtn\?\.addEventListener\("click", \(\) => \{\s*chrome\.tabs\.create\(\{ url: chrome\.runtime\.getURL\("giay-de-nghi-hkd\.html"\) \}\)/);
+test("bấm nút mở tab riêng của extension, kèm thủ tục đang chọn", () => {
+  const click = popup.slice(popup.indexOf("giayDeNghiHkdBtn?.addEventListener(\"click\""), popup.indexOf("const toKhaiHkdNote"));
+  assert.match(click, /TO_KHAI_HKD_KEYS\.has\(currentConfig\(\)\?\.key\) \? currentConfig\(\)\.key : GIAY_DE_NGHI_HKD_KEY/);
+  assert.match(click, /chrome\.tabs\.create\(\{ url: chrome\.runtime\.getURL\(`giay-de-nghi-hkd\.html\?thuTuc=\$\{encodeURIComponent\(key\)\}`\) \}\)/);
 });
 
 test("trang nạp đủ config → auth → client → lib trước script của trang", () => {
@@ -241,6 +247,86 @@ test("tên tờ khai hiện trên panel", () => {
   assert.equal(lib.tenToKhai({ tenViet: "TẠP HÓA AN", hoTen: "TRẦN VĂN AN" }), "TẠP HÓA AN (chủ hộ TRẦN VĂN AN)");
   assert.equal(lib.tenToKhai({ hoTen: "TRẦN VĂN AN" }), "chủ hộ TRẦN VĂN AN");
   assert.equal(lib.tenToKhai({}), "chưa có tên");
+  // Bản DVC quốc gia: kèm người nộp đã chọn để cán bộ thấy trước khi điền.
+  assert.equal(lib.tenToKhai({ tenViet: "TẠP HÓA AN", hoTen: "TRẦN VĂN AN", nguoiNop: { loai: "uy_quyen" } }),
+    "TẠP HÓA AN (chủ hộ TRẦN VĂN AN) · người nộp: Người được ủy quyền");
+  assert.equal(lib.tenToKhai({ hoTen: "TRẦN VĂN AN", nguoiNop: { loai: "chu_ho" } }),
+    "chủ hộ TRẦN VĂN AN · người nộp: Người có thẩm quyền ký giấy đề nghị");
+  assert.equal(lib.tenToKhai({ hoTen: "TRẦN VĂN AN", nguoiNop: { loai: "" } }), "chủ hộ TRẦN VĂN AN");
+});
+
+// ── Bản Cổng DVC quốc gia (dang-ky-thanh-lap-ho-kinh-doanh): hỏi người nộp trước khi kê khai ──
+
+test("tab biết đang soạn cho thủ tục nào qua ?thuTuc; thiếu / lạ là bản HkdOnline", () => {
+  assert.equal(lib.thuTucTuTrang("?thuTuc=dang-ky-thanh-lap-ho-kinh-doanh"), "dang-ky-thanh-lap-ho-kinh-doanh");
+  assert.equal(lib.thuTucTuTrang("?thuTuc=dang-ky-kinh-doanh"), "dang-ky-kinh-doanh");
+  assert.equal(lib.thuTucTuTrang(""), "dang-ky-kinh-doanh");
+  assert.equal(lib.thuTucTuTrang("?thuTuc=khai-sinh"), "dang-ky-kinh-doanh");
+  // Mỗi thủ tục một khoá storage, khoá HkdOnline giữ tên cũ.
+  assert.equal(lib.khoaAutoFill("dang-ky-kinh-doanh"), "hccToKhaiHkd");
+  assert.equal(lib.khoaAutoFill("dang-ky-thanh-lap-ho-kinh-doanh"), "hccToKhaiHkdDvcqg");
+});
+
+test("tờ khai chỉ dùng cho đúng thủ tục; bản DVC quốc gia phải đã chọn người nộp", () => {
+  const dvcqg = "dang-ky-thanh-lap-ho-kinh-doanh";
+  const cu = { data: { hoTen: "TRẦN VĂN AN" }, tabId: 1 };                       // bản ghi trước khi có bản DVCQG
+  assert.equal(lib.dungChoThuTuc(cu, "dang-ky-kinh-doanh"), true);
+  assert.equal(lib.dungChoThuTuc(cu, dvcqg), false);
+  const moi = { data: { hoTen: "TRẦN VĂN AN", nguoiNop: { loai: "chu_ho" } }, thuTuc: dvcqg };
+  assert.equal(lib.dungChoThuTuc(moi, dvcqg), true);
+  assert.equal(lib.dungChoThuTuc(moi, "dang-ky-kinh-doanh"), false);
+  assert.equal(lib.dungChoThuTuc({ ...moi, data: { hoTen: "TRẦN VĂN AN", nguoiNop: { loai: "" } } }, dvcqg), false);
+  assert.equal(lib.dungChoThuTuc({ thuTuc: dvcqg }, dvcqg), false);
+});
+
+test("tab bản DVC quốc gia: câu hỏi người nộp đứng ĐẦU form, chưa chọn thì ẩn phần kê khai", () => {
+  const box = html.indexOf('id="nguoiNopBox"');
+  assert.ok(box > 0 && box < html.indexOf("Đầu giấy"), "câu hỏi người nộp phải đứng trước phần kê khai");
+  assert.match(html, /<section class="panel panel-ask" id="nguoiNopBox" hidden>/);
+  assert.match(html, /name="nguoiNop" value="chu_ho"> <b>Người có thẩm quyền ký giấy đề nghị<\/b>/);
+  assert.match(html, /name="nguoiNop" value="uy_quyen"> <b>Người được ủy quyền<\/b>/);
+  assert.match(html, /<div id="uyQuyenBox" hidden>/);
+  for (const nn of ["hoTen", "soDinhDanh", "dienThoai", "email", "noiO.chiTiet", "noiO.xa", "noiO.tinh"]) {
+    assert.match(html, new RegExp(`data-nn="${nn.replace(".", "\\.")}"`), nn);
+  }
+  const css = read("giay-de-nghi-hkd.css");
+  assert.match(css, /\.ws-form\[data-hoi-nguoi-nop="true"\] > :not\(#nguoiNopBox\)/);
+  const sync = page.slice(page.indexOf("function syncNguoiNop()"), page.indexOf("function readNguoiNop()"));
+  assert.match(sync, /if \(!DVCQG\) return;/);
+  assert.match(sync, /\$\("uyQuyenBox"\)\.hidden = loai !== "uy_quyen";/);
+  assert.match(sync, /\$\("form"\)\.dataset\.hoiNguoiNop = loai \? "false" : "true";/);
+  const apply = page.slice(page.indexOf("function applyThuTuc()"), page.indexOf("async function init()"));
+  assert.match(apply, /if \(!DVCQG\) return;/);
+  assert.match(apply, /\$\("nguoiNopBox"\)\.hidden = false;/);
+});
+
+test("tab bản DVC quốc gia: chưa chọn người nộp thì không lưu; người nộp gửi Auto Fill, không in lên giấy", () => {
+  const validate = page.slice(page.indexOf("function validateAll()"), page.indexOf("// ── Bảng ngành nghề ──"));
+  assert.ok(validate.indexOf("if (DVCQG && !nguoiNopLoai())") < validate.indexOf("let first = null;"));
+  assert.match(page.slice(page.indexOf("function readForm()")), /if \(DVCQG\) data\.nguoiNop = readNguoiNop\(\);/);
+  const read_ = page.slice(page.indexOf("function readNguoiNop()"), page.indexOf("function validateAll()"));
+  assert.match(read_, /if \(loai !== "uy_quyen"\) return out;/);
+  const render = page.slice(page.indexOf("async function renderFile"), page.indexOf("function handleError"));
+  assert.match(render, /const \{ nguoiNop: _nguoiNop, \.\.\.giay \} = data \|\| \{\};/);
+  assert.match(render, /JSON\.stringify\(\{ format, \.\.\.giay \}\)/);
+  const save = page.slice(page.indexOf("async function saveForAutoFill(data)"), page.indexOf("function forgetForAutoFill()"));
+  assert.match(save, /sessionStore\.set\(\{ \[KHOA\]:/);
+  assert.match(save, /thuTuc: THU_TUC/);
+  assert.match(page, /const KHOA = lib\.khoaAutoFill\(THU_TUC\);/);
+});
+
+test("popup bản DVC quốc gia: nút Quét và nhập dữ liệu gửi tờ khai thay tệp, không tệp thì bỏ đính kèm", () => {
+  const start = popup.indexOf("ocrBtn.addEventListener(\"click\"");
+  const body = popup.slice(start, popup.indexOf("const fillOutcome = await dispatchFill", start));
+  assert.match(body, /if \(!files\.length && !\(await toKhaiHkdForFill\(currentConfig\(\)\)\)\)/);
+  assert.match(body, /const toKhai = cfg\.key === TO_KHAI_HKD_DVCQG_KEY \? await toKhaiHkdForFill\(cfg\) : null;/);
+  assert.match(body, /if \(toKhai\) options\.giayDeNghi = toKhai\.data;/);
+  assert.match(body, /const payloadFiles = toKhai \? \[\] : buildPayloadFiles\(\);/);
+  assert.match(body, /api\.process\(\{ procedure: cfg\.key, options, files: payloadFiles \}\)/);
+  const attach = popup.slice(popup.indexOf("async function attachAfterFill("), popup.indexOf("const SECOND_PASS_WAIT_MS"));
+  assert.match(attach, /if \(!files\.length\) return;/);
+  const ui = popup.slice(popup.indexOf("function refreshAttachStepUI()"), popup.indexOf("let pageFormKind"));
+  assert.match(ui, /fillAttachBtn\.disabled = \(!files\.length && !toKhaiHkdReady\(cfg\)\)/);
 });
 
 test("tab tờ khai chỉ ghi vào storage.session, xoá khi đóng tab hoặc làm lại", () => {
@@ -271,13 +357,17 @@ test("điền 8 trang: có tờ khai thì gửi options.giayDeNghi, không gửi
   assert.match(body, /if \(payloadFiles\.length\) try \{\s*setStatus\("Đang phân tích & phân loại tài liệu đính kèm/);
 });
 
-test("chỉ luồng thành lập mới HkdOnline dùng tờ khai; tab đã đóng thì bỏ", () => {
+test("chỉ luồng thành lập mới (HkdOnline + bản DVC quốc gia) dùng tờ khai, đúng thủ tục đã soạn; tab đã đóng thì bỏ", () => {
   const fn = popup.slice(popup.indexOf("async function toKhaiHkdForFill(cfg)"), popup.indexOf("toKhaiHkdOpen?.addEventListener"));
-  assert.match(fn, /cfg\?\.key !== GIAY_DE_NGHI_HKD_KEY \|\| cfg\.businessWorkflow \|\| cfg\.enterprisePortal/);
+  assert.match(fn, /!TO_KHAI_HKD_KEYS\.has\(cfg\?\.key\) \|\| cfg\.businessWorkflow \|\| cfg\.enterprisePortal/);
   assert.match(fn, /toKhaiHkdUse && !toKhaiHkdUse\.checked/);
-  const read_ = popup.slice(popup.indexOf("async function readToKhaiHkd()"), popup.indexOf("async function renderToKhaiHkdNote()"));
+  assert.match(fn, /await readToKhaiHkd\(cfg\.key\)/);
+  const read_ = popup.slice(popup.indexOf("async function readToKhaiHkd("), popup.indexOf("async function renderToKhaiHkdNote()"));
+  assert.match(read_, /const storeKey = toKhaiHkdStoreKey\(procedure\);/);
+  assert.match(read_, /!toKhaiHkdLib\.dungChoThuTuc\(rec, procedure\)/);
   assert.match(read_, /await chrome\.tabs\.get\(Number\(rec\.tabId\)\)/);
-  assert.match(read_, /store\.remove\(TO_KHAI_HKD_KEY\)/);
+  assert.match(read_, /store\.remove\(storeKey\)/);
+  assert.match(popup, /changes\[TO_KHAI_HKD_KEY\] \|\| changes\[TO_KHAI_HKD_DVCQG_STORE_KEY\]/);
 });
 
 // ── Nút Lưu: gõ không cập nhật gì, bấm Lưu mới dựng bản xem trước + chuyển cho Auto Fill ──

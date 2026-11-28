@@ -346,6 +346,9 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         "supportsHkdPrepare": raw.get("supportsHkdPrepare") is True,
         "supportsHkdSubmit": raw.get("supportsHkdSubmit") is True,
         "supportsHkdDeclarationDocx": raw.get("supportsHkdDeclarationDocx") is True,
+        # Bản Cổng DVC quốc gia (dang-ky-thanh-lap-ho-kinh-doanh, trang SurveyJS): extension điền / trỏ ô SurveyJS theo
+        # hkd_fill / hkd_focus → bật lối "không có tờ khai" cho thủ tục này.
+        "supportsHkdTroLyDvcqg": raw.get("supportsHkdTroLyDvcqg") is True,
         # Khôi phục hồ sơ đang làm dở khi phiên bị gián đoạn (chat/resume/).
         resume.CAPABILITY: raw.get(resume.CAPABILITY) is True,
         # Luồng 4 bước trên cổng Bộ Công Thương (dichvucong-tthc.moit.gov.vn) — thủ tục khai bxdFlow.capability.

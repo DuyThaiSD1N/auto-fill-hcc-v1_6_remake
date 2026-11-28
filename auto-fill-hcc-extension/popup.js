@@ -38,32 +38,42 @@ const settingsBtn = document.getElementById("settingsBtn");
 settingsBtn?.addEventListener("click", () => {
   chrome.tabs.create({ url: chrome.runtime.getURL("settings.html") });
 });
-// Tờ khai đăng ký hộ kinh doanh: chỉ thủ tục này có. Mở TAB RIÊNG vì form + bản xem trước A4 không vừa panel.
+// Tờ khai đăng ký hộ kinh doanh: thủ tục HkdOnline + bản Cổng DVC quốc gia (cùng Mẫu số 1). Mở TAB RIÊNG vì form +
+// bản xem trước A4 không vừa panel; tab mở kèm ?thuTuc=<key> — bản DVCQG hỏi người nộp trước khi kê khai.
+const toKhaiHkdLib = window.HccGiayDeNghiHkd || null;
 const GIAY_DE_NGHI_HKD_KEY = "dang-ky-kinh-doanh";
+const TO_KHAI_HKD_DVCQG_KEY = "dang-ky-thanh-lap-ho-kinh-doanh";
+const TO_KHAI_HKD_KEYS = new Set([GIAY_DE_NGHI_HKD_KEY, TO_KHAI_HKD_DVCQG_KEY]);
 const giayDeNghiHkdBtn = document.getElementById("giayDeNghiHkdBtn");
 giayDeNghiHkdBtn?.addEventListener("click", () => {
-  chrome.tabs.create({ url: chrome.runtime.getURL("giay-de-nghi-hkd.html") });
+  const key = TO_KHAI_HKD_KEYS.has(currentConfig()?.key) ? currentConfig().key : GIAY_DE_NGHI_HKD_KEY;
+  chrome.tabs.create({ url: chrome.runtime.getURL(`giay-de-nghi-hkd.html?thuTuc=${encodeURIComponent(key)}`) });
 });
-// Tab tờ khai ghi tờ khai đang soạn vào chrome.storage.session (lib/giayDeNghiHkd.js). Có tờ khai thì nút điền 8
-// trang gửi thẳng tờ khai lên BE (options.giayDeNghi), BE map ra các trang KHÔNG OCR; tệp chỉ còn dùng để đính kèm.
+// Tab tờ khai ghi tờ khai đang soạn vào chrome.storage.session (lib/giayDeNghiHkd.js), mỗi thủ tục một khoá. Có tờ khai
+// thì lượt điền gửi thẳng tờ khai lên BE (options.giayDeNghi), BE map KHÔNG OCR; tệp chỉ còn dùng để đính kèm.
 const toKhaiHkdNote = document.getElementById("toKhaiHkdNote");
 const toKhaiHkdUse = document.getElementById("toKhaiHkdUse");
 const toKhaiHkdName = document.getElementById("toKhaiHkdName");
 const toKhaiHkdOpen = document.getElementById("toKhaiHkdOpen");
-const TO_KHAI_HKD_KEY = window.HccGiayDeNghiHkd?.KHOA_AUTO_FILL || "hccToKhaiHkd";
+const TO_KHAI_HKD_KEY = toKhaiHkdLib?.KHOA_AUTO_FILL || "hccToKhaiHkd";
+const TO_KHAI_HKD_DVCQG_STORE_KEY = toKhaiHkdLib?.KHOA_AUTO_FILL_DVCQG || "hccToKhaiHkdDvcqg";
+const toKhaiHkdStoreKey = (procedure) =>
+  (procedure === TO_KHAI_HKD_DVCQG_KEY ? TO_KHAI_HKD_DVCQG_STORE_KEY : TO_KHAI_HKD_KEY);
 let toKhaiHkdRecord = null;
 
-// Tờ khai còn dùng được: có bản ghi và tab soạn còn mở. Tab đã đóng (pagehide không kịp xoá) thì xoá luôn ở đây,
-// để hồ sơ sau không điền nhầm tờ khai của người trước.
-async function readToKhaiHkd() {
+// Tờ khai còn dùng được cho thủ tục `procedure`: có bản ghi đúng thủ tục (bản DVCQG phải đã chọn người nộp) và tab soạn
+// còn mở. Tab đã đóng (pagehide không kịp xoá) thì xoá luôn ở đây, để hồ sơ sau không điền nhầm tờ khai của người trước.
+async function readToKhaiHkd(procedure = GIAY_DE_NGHI_HKD_KEY) {
   const store = chrome.storage?.session;
   if (!store) return null;
+  const storeKey = toKhaiHkdStoreKey(procedure);
   let rec = null;
-  try { rec = (await store.get(TO_KHAI_HKD_KEY))?.[TO_KHAI_HKD_KEY] || null; } catch (_) { return null; }
+  try { rec = (await store.get(storeKey))?.[storeKey] || null; } catch (_) { return null; }
   if (!rec?.data) return null;
+  if (toKhaiHkdLib && !toKhaiHkdLib.dungChoThuTuc(rec, procedure)) return null;
   if (rec.tabId != null) {
     try { await chrome.tabs.get(Number(rec.tabId)); } catch (_) {
-      try { await store.remove(TO_KHAI_HKD_KEY); } catch (_) { /* bỏ qua */ }
+      try { await store.remove(storeKey); } catch (_) { /* bỏ qua */ }
       return null;
     }
   }
@@ -73,20 +83,26 @@ async function readToKhaiHkd() {
 async function renderToKhaiHkdNote() {
   if (!toKhaiHkdNote) return;
   const cfg = currentConfig();
-  const rec = cfg?.key === GIAY_DE_NGHI_HKD_KEY ? await readToKhaiHkd() : null;
+  const rec = TO_KHAI_HKD_KEYS.has(cfg?.key) ? await readToKhaiHkd(cfg.key) : null;
   // Tờ khai của tab khác (hồ sơ khác) → mặc định dùng lại, dù cán bộ đã bỏ tích cho tờ khai trước.
   if (rec && rec.tabId !== toKhaiHkdRecord?.tabId && toKhaiHkdUse) toKhaiHkdUse.checked = true;
   toKhaiHkdRecord = rec;
   toKhaiHkdNote.hidden = !rec;
   if (rec && toKhaiHkdName) toKhaiHkdName.textContent = rec.ten || "";
+  refreshAttachStepUI(); // bản DVCQG: có tờ khai thì nút điền chạy được cả khi chưa chọn tệp
   postPanelHeight();
 }
 
-// Tờ khai dùng cho lượt điền này (null = quét giấy như cũ). Chỉ luồng thành lập mới trên HkdOnline.
+// Có tờ khai dùng được cho thủ tục đang chọn (đọc đồng bộ từ lần render gần nhất) — để bật nút điền khi chưa có tệp.
+function toKhaiHkdReady(cfg = currentConfig()) {
+  return !!toKhaiHkdRecord && TO_KHAI_HKD_KEYS.has(cfg?.key) && !(toKhaiHkdUse && !toKhaiHkdUse.checked);
+}
+
+// Tờ khai dùng cho lượt điền này (null = quét giấy như cũ). Luồng thành lập mới trên HkdOnline + bản Cổng DVC quốc gia.
 async function toKhaiHkdForFill(cfg) {
-  if (cfg?.key !== GIAY_DE_NGHI_HKD_KEY || cfg.businessWorkflow || cfg.enterprisePortal) return null;
+  if (!TO_KHAI_HKD_KEYS.has(cfg?.key) || cfg.businessWorkflow || cfg.enterprisePortal) return null;
   if (toKhaiHkdUse && !toKhaiHkdUse.checked) return null;
-  const rec = await readToKhaiHkd();
+  const rec = await readToKhaiHkd(cfg.key);
   return rec?.data ? rec : null;
 }
 
@@ -99,8 +115,11 @@ toKhaiHkdOpen?.addEventListener("click", async () => {
     void renderToKhaiHkdNote();
   }
 });
+toKhaiHkdUse?.addEventListener("change", () => refreshAttachStepUI());
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === "session" && changes[TO_KHAI_HKD_KEY]) void renderToKhaiHkdNote();
+  if (areaName === "session" && (changes[TO_KHAI_HKD_KEY] || changes[TO_KHAI_HKD_DVCQG_STORE_KEY])) {
+    void renderToKhaiHkdNote();
+  }
 });
 const reportBtn = document.getElementById("reportBtn");
 // Nút "Xem báo cáo" (footer) mở trang thống kê của đơn vị và ĐĂNG NHẬP SẴN bằng tài khoản đang
@@ -2595,7 +2614,8 @@ function refreshAttachStepUI() {
   attachStepBtn.disabled = !cfg.hasAttachmentStep || !files.length || window.__AUTOFILL_HCC_POPUP_BUSY__;
   if (fillAttachBtn) {
     fillAttachBtn.hidden = !fillAttachAvailable();
-    fillAttachBtn.disabled = !files.length || !!window.__AUTOFILL_HCC_POPUP_BUSY__;
+    // Tờ khai đã nhập (bản DVCQG) thay cho giấy cần quét: điền được cả khi chưa chọn tệp, đính kèm thì bỏ qua.
+    fillAttachBtn.disabled = (!files.length && !toKhaiHkdReady(cfg)) || !!window.__AUTOFILL_HCC_POPUP_BUSY__;
   }
 }
 
@@ -2675,7 +2695,7 @@ function applyFormUI() {
   if (uploadHintEl) uploadHintEl.textContent = cfg.uploadHint || "";
   if (uploadHintToggle) uploadHintToggle.hidden = !cfg.uploadHint;
   setUploadHintOpen(false);
-  if (giayDeNghiHkdBtn) giayDeNghiHkdBtn.hidden = cfg.key !== GIAY_DE_NGHI_HKD_KEY;
+  if (giayDeNghiHkdBtn) giayDeNghiHkdBtn.hidden = !TO_KHAI_HKD_KEYS.has(cfg.key);
   void renderToKhaiHkdNote();
   if (uploadLabel) {
     uploadLabel.textContent = isAttachMode() ? "+ Thêm tệp đính kèm" : "+ Thêm file ảnh/PDF/DOCX";
@@ -5268,9 +5288,12 @@ ocrBtn.addEventListener("click", async () => {
   // chưa có form để điền nên gọi backend lúc này chỉ tốn lượt OCR.
   if (await startEnterpriseDossierIfNeeded()) return;
   // Kiểm file SAU bước mở hồ sơ: khi chưa vào khối dữ liệu, lượt bấm này là lệnh MỞ HỒ SƠ nên
-  // vẫn phải chạy được dù cán bộ chưa đính giấy tờ nào.
-  if (!files.length) {
-    setStatus("Chưa có file nào.", "err");
+  // vẫn phải chạy được dù cán bộ chưa đính giấy tờ nào. Hộ kinh doanh bản Cổng DVC quốc gia có tờ khai đã nhập
+  // (tab "Tạo tờ khai") thì điền theo tờ khai, không cần tệp.
+  if (!files.length && !(await toKhaiHkdForFill(currentConfig()))) {
+    setStatus(currentConfig()?.key === TO_KHAI_HKD_DVCQG_KEY
+      ? "Chưa có file nào. Có thể bấm \"📝 Tạo tờ khai đăng ký hộ kinh doanh\" để nhập tờ khai, Auto Fill điền theo đó."
+      : "Chưa có file nào.", "err");
     return;
   }
   // Cổng DVC quốc gia còn chặn một modal "Thông tin chung" trước bước kê khai — bấm hộ rồi mới
@@ -5294,8 +5317,16 @@ ocrBtn.addEventListener("click", async () => {
     }
 
     const cfg = currentConfig();
-    const payloadFiles = buildPayloadFiles();
     const options = {};
+    // Tờ khai đã nhập thay cho bước đọc giấy (chỉ hộ kinh doanh bản Cổng DVC quốc gia đi qua nút này; bản HkdOnline đi
+    // nút 8 trang): BE map thẳng, lượt điền không gửi tệp — tệp vẫn đính kèm sau đó.
+    const toKhai = cfg.key === TO_KHAI_HKD_DVCQG_KEY ? await toKhaiHkdForFill(cfg) : null;
+    if (toKhai) options.giayDeNghi = toKhai.data;
+    const payloadFiles = toKhai ? [] : buildPayloadFiles();
+    if (!payloadFiles.length && !toKhai) {
+      setStatus("Chưa có file nào.", "err");
+      return;
+    }
     // Bắc Ninh 3 bước: bước quét đầu là đọc ĐƠN đăng ký (registration_form).
     if (isBacNinhThreeStepProcedure(cfg)) options.purpose = "registration_form";
     if (cfg.useDangKyBy) options.dangKyBy = dangKyBySelect.value;
@@ -5651,7 +5682,7 @@ ocrBtn.addEventListener("click", async () => {
 
     setStatus(page
       ? `Đang xử lý trang "${page.label}" trên máy chủ...`
-      : "Đang xử lý trên máy chủ (OCR + trích trường)...",
+      : (toKhai ? "Đang lấy thông tin từ tờ khai đã nhập..." : "Đang xử lý trên máy chủ (OCR + trích trường)..."),
       "info"
     );
     // Toggle "Lấy người nộp theo tờ khai": bỏ so khớp mỏ neo UI (BE thủ tục nào hỗ trợ mới honor).
@@ -5976,6 +6007,8 @@ function buildFillDetails(fillRes, processErrors, totalFields) {
 async function attachAfterFill(fillOutcome, sessionId) {
   // Bước điền hỏng (sai trang, không đọc được giấy tờ) → dừng, giữ thông báo lỗi của bước điền.
   if (!fillOutcome?.ok) return;
+  // Điền theo tờ khai đã nhập mà chưa chọn tệp nào: không có gì để đính, giữ thông báo của bước điền.
+  if (!files.length) return;
   setStatus("Đã điền xong. Đang phân loại & đính kèm giấy tờ...", "info");
   const res = await runAttachmentPlanForCurrentFiles(sessionId ? { sessionId } : {});
   const details = [...(fillOutcome.details || []), ...(res?.details || [])];

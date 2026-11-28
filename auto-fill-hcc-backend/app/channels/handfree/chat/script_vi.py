@@ -4064,6 +4064,109 @@ HKD_SAME_OWNER_LABEL = "Giống nơi ở chủ hộ"
 HKD_MALE_LABEL = "Nam"
 HKD_FEMALE_LABEL = "Nữ"
 
+# ── Trợ lý hộ kinh doanh, bản Cổng DVC quốc gia (dang-ky-thanh-lap-ho-kinh-doanh, trang nộp một trang SurveyJS) ──
+# Cùng vòng hỏi đáp không giấy tờ, chỉ khác: cổng hỏi NGƯỜI NỘP đầu tiên (radio "Người có thẩm quyền ký giấy đề nghị" /
+# "Người được ủy quyền") nên trợ lý hỏi câu đó trước; một trang nên không mở / lưu khối — hỏi tới ô nào điền ngay ô đó,
+# hết thì điền lại cả tờ khai rồi đi tiếp như luồng một trang (bổ sung ô, cách nhận kết quả, đính kèm, nộp).
+HKD_DV_START = {
+    "md": ("Dạ, tôi hỏi lần lượt từng phần của tờ khai trên trang, trỏ vào từng ô; công dân trả lời bằng lời nói hoặc gõ, "
+           "tôi điền ngay. Câu nào không bắt buộc, không muốn trả lời cứ nói \"bỏ qua\" ạ.\n\n"),
+    "tts": "Dạ, tôi hỏi lần lượt từng phần của tờ khai, hỏi đến ô nào tôi điền ngay ô đó ạ. ",
+}
+HKD_DV_SECTION = {
+    "md": "📂 Phần **{label}**. Ở phần này công dân cung cấp cho tôi {items} ạ.\n\n",
+    "tts": "Phần {label}. Ở phần này công dân cung cấp cho tôi {items} ạ. ",
+}
+HKD_DV_SECTION_PLAIN = {"md": "📂 Phần **{label}**.\n\n", "tts": "Phần {label}. "}
+HKD_DV_BLOCK_LABELS = {
+    "dv-nguoi-nop": "Người nộp hồ sơ", "dv-chu-ho": "Thông tin chủ hộ kinh doanh", "dv-ten-ho": "Tên hộ kinh doanh",
+    "dv-tru-so": "Trụ sở hộ kinh doanh", "dv-von": "Vốn kinh doanh", "dv-thue": "Thông tin đăng ký thuế",
+    "dv-chu-the": "Chủ thể thành lập hộ kinh doanh",
+}
+HKD_DV_INTRO_BLOCKS = {
+    "dv-nguoi-nop": "người nộp hồ sơ và thông tin liên hệ",
+    "dv-chu-ho": "thông tin về chủ hộ kinh doanh",
+    "dv-ten-ho": "tên hộ kinh doanh",
+    "dv-tru-so": "địa chỉ trụ sở và thông tin liên hệ của hộ",
+    "dv-thue": "thông tin về thuế",
+}
+HKD_DV_INTRO_ITEMS = {
+    "chu_ho_la_ban": "ai là người nộp hồ sơ", "nn_dien_thoai": "số điện thoại", "nn_email": "email",
+    "nn_noi_o": "nơi ở hiện tại", "chu_ho_dien_thoai": "số điện thoại của chủ hộ", "chu_ho_dan_toc": "dân tộc",
+    "chu_ho_thuong_tru": "nơi thường trú", "chu_ho_noi_o_dv": "nơi ở hiện tại của chủ hộ",
+    "dia_chi_kd": "số nhà, đường của trụ sở",
+}
+HKD_DV_ROLE_OWNER_LABEL = "Người có thẩm quyền ký giấy đề nghị"
+HKD_DV_ROLE_PROXY_LABEL = "Người được ủy quyền"
+HKD_DV_ACCOUNT = " (tài khoản đang đăng nhập: **{name}**)"
+HKD_DV_QUESTIONS = {
+    "chu_ho_la_ban": {
+        "md": ("Cổng hỏi trước **người nộp hồ sơ** là ai ạ{account}:\n\n"
+               "- **Người có thẩm quyền ký giấy đề nghị**: chính chủ hộ kinh doanh nộp bằng tài khoản của mình;\n"
+               "- **Người được ủy quyền**: người khác nộp thay chủ hộ (có giấy ủy quyền)."),
+        "tts": ("Cổng hỏi trước người nộp hồ sơ là ai ạ: người có thẩm quyền ký giấy đề nghị, tức chính chủ hộ tự nộp, hay "
+                "người được ủy quyền nộp thay chủ hộ?"),
+    },
+    "nn_dien_thoai": {"md": "**Số điện thoại** {who} là số nào ạ?", "tts": "Số điện thoại {who} là số nào ạ?"},
+    "nn_email": {"md": "**Email (thư điện tử)** {who} là gì ạ? Cổng bắt buộc ô này.",
+                 "tts": "Email {who} là gì ạ? Cổng bắt buộc ô này."},
+    "nn_noi_o": {"md": "**Nơi ở hiện tại** {who} ở **tỉnh, thành phố** nào ạ?",
+                 "tts": "Nơi ở hiện tại {who} ở tỉnh, thành phố nào ạ?"},
+    "chu_ho_dien_thoai": {"md": "**Số điện thoại** của chủ hộ là số nào ạ? Không có thì bỏ qua ạ.",
+                          "tts": "Số điện thoại của chủ hộ là số nào ạ? Không có thì bỏ qua ạ."},
+    "chu_ho_dan_toc": {"md": "Chủ hộ là **dân tộc** gì ạ?", "tts": "Chủ hộ là dân tộc gì ạ?"},
+    "chu_ho_thuong_tru": {"md": "**Nơi thường trú** của chủ hộ ở **tỉnh, thành phố** nào ạ?",
+                          "tts": "Nơi thường trú của chủ hộ ở tỉnh, thành phố nào ạ?"},
+    "chu_ho_noi_o_dv": {"md": ("**Nơi ở hiện tại** của chủ hộ ở **tỉnh, thành phố** nào ạ? Trùng nơi thường trú thì nói "
+                               "\"giống nơi thường trú\"."),
+                        "tts": ("Nơi ở hiện tại của chủ hộ ở tỉnh, thành phố nào ạ? Trùng nơi thường trú thì nói giống "
+                                "nơi thường trú.")},
+}
+# "{who}" của các câu hỏi người nộp: theo câu trả lời người nộp (true = chủ hộ tự nộp).
+HKD_DV_WHO = {True: "của chủ hộ (người đang đăng nhập)", False: "của người được ủy quyền (người đang đăng nhập)"}
+HKD_DV_ADDR_WHAT = {"nn_noi_o": "Nơi ở hiện tại {who}", "chu_ho_thuong_tru": "Nơi thường trú của chủ hộ",
+                    "chu_ho_noi_o_dv": "Nơi ở hiện tại của chủ hộ", "dia_chi_kd": "Trụ sở hộ kinh doanh"}
+HKD_DV_LABELS = {
+    "chu_ho_la_ban": "Người nộp hồ sơ", "nn_dien_thoai": "Điện thoại người nộp", "nn_email": "Email người nộp",
+    "nn_noi_o": "Nơi ở hiện tại của người nộp", "chu_ho_dien_thoai": "Điện thoại chủ hộ", "chu_ho_dan_toc": "Dân tộc",
+    "chu_ho_thuong_tru": "Nơi thường trú", "chu_ho_noi_o_dv": "Nơi ở hiện tại của chủ hộ", "dia_chi_kd": "Trụ sở",
+    "dien_thoai": "Điện thoại trụ sở", "email": "Email trụ sở",
+}
+# Nghĩa của mục cho LLM (bản DVCQG): người nộp là người ĐANG ĐĂNG NHẬP, chủ hộ có thể là người khác.
+HKD_DV_PROMPT_LABELS = {
+    "chu_ho_la_ban": ("Người nộp hồ sơ trên cổng (true = \"Người có thẩm quyền ký giấy đề nghị\": chính chủ hộ đang đăng "
+                      "nhập tự nộp; false = \"Người được ủy quyền\": người đăng nhập nộp thay chủ hộ)"),
+    "nn_dien_thoai": "Số điện thoại của NGƯỜI NỘP hồ sơ (người đang đăng nhập)",
+    "nn_email": "Email của NGƯỜI NỘP hồ sơ (người đang đăng nhập)",
+    "nn_noi_o": "Nơi ở hiện tại của NGƯỜI NỘP hồ sơ (người đang đăng nhập)",
+    "chu_ho_dien_thoai": "Số điện thoại của CHỦ HỘ kinh doanh (khác người nộp)",
+    "chu_ho_dan_toc": "Dân tộc của CHỦ HỘ kinh doanh",
+    "chu_ho_thuong_tru": "Nơi thường trú của CHỦ HỘ kinh doanh",
+    "chu_ho_noi_o_dv": "Nơi ở hiện tại của CHỦ HỘ kinh doanh (giống nơi thường trú → \"giong\")",
+    "dia_chi_kd": "Địa chỉ trụ sở hộ kinh doanh (số nhà, đường — tỉnh, xã cổng khoá theo cơ quan đã chọn)",
+    "dien_thoai": "Số điện thoại của trụ sở hộ kinh doanh",
+    "email": "Email của trụ sở hộ kinh doanh",
+}
+HKD_DV_SAME_RESIDENCE_LABEL = "Giống nơi thường trú"
+HKD_DV_VALUE_SAME_RESIDENCE = "giống nơi thường trú"
+HKD_DV_NOTED_LATER = {"md": "_(thuộc phần **{label}** — tới phần đó tôi không hỏi lại)_\n\n", "tts": ""}
+HKD_DV_DONE = {
+    "md": "✓ Tôi đã hỏi xong các phần của tờ khai. Giờ tôi điền lại cả tờ khai một lượt cho đủ.{notes}\n\n",
+    "tts": "Dạ, tôi đã hỏi xong. Giờ tôi điền lại cả tờ khai một lượt cho đủ ạ. ",
+}
+HKD_DV_NOTE = "\n\n⚠️ {note}"
+HKD_DV_ATTACH_LABEL = "📎 Đính kèm giấy tờ (giấy đề nghị đã ký, giấy ủy quyền…)"
+HKD_DV_ATTACH_DESC = "đính kèm giấy tờ, giấy đề nghị đã ký, giấy ủy quyền, gửi / chụp / scan giấy tờ"
+HKD_DV_ATTACH_INTRO = {
+    "md": ("Cổng bắt buộc đính kèm **Giấy đề nghị đăng ký hộ kinh doanh** có chữ ký của chủ hộ (in từ nút **Tải tờ "
+           "khai bản giấy**), nộp thay thì kèm cả **giấy ủy quyền**. Công dân đưa giấy tờ, tôi chỉ đính vào đúng dòng, "
+           "không điền lại tờ khai.\n\n"),
+    "tts": ("Cổng bắt buộc đính kèm giấy đề nghị đăng ký hộ kinh doanh có chữ ký của chủ hộ, nộp thay thì kèm cả giấy ủy "
+            "quyền. Công dân đưa giấy tờ, tôi chỉ đính kèm, không điền lại tờ khai. "),
+}
+HKD_DV_REFILLING = {"md": "🔁 Tôi điền lại tờ khai theo các câu trả lời đã có, công dân chờ chút ạ.",
+                    "tts": "Tôi điền lại tờ khai theo các câu trả lời đã có, công dân chờ chút ạ."}
+
 # ── Khôi phục hồ sơ đang làm dở (chat/resume/) ──
 RESUME_OFFER = {
     "md": ("📂 Tài khoản này có hồ sơ **{procedure}** của công dân **{citizen}** đang làm dở, dừng lúc **{stopped_at}**"

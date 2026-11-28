@@ -208,6 +208,10 @@ Chỉ chạy hai cây `tests/unit` và `tests/integration`. Cây `tests/handfree
 Baseline hiện tại có sẵn một số test đỏ không liên quan đến code mới; so số fail trước và sau khi
 sửa thay vì cố đưa về 0.
 
+Baseline ngày 2026-11-28, sau khi thêm luồng tờ khai không cần quét cho 1.001612 bản Cổng DVC quốc gia
+(`dang_ky_thanh_lap_ho_kinh_doanh`, máy local, plugin win_socketpair, có PYTHONUTF8=1):
+`23 failed, 6608 passed, 42 skipped, 13 errors`. Vẫn đúng 23 đỏ như dòng dưới.
+
 Baseline ngày 2026-11-25, sau khi thêm pipeline 1.012796 đính chính GCN đã cấp lần đầu có sai sót Khánh Hòa
 (`dinh_chinh_gcn_cap_lan_dau_sai_sot_khanh_hoa`, máy local, plugin win_socketpair, có PYTHONUTF8=1):
 `23 failed, 6428 passed, 42 skipped, 13 errors`. Vẫn đúng 23 đỏ như dòng dưới.

@@ -612,6 +612,34 @@
     return { ok: true };
   }
 
+  // ── Bản Cổng DVC quốc gia (dang-ky-thanh-lap-ho-kinh-doanh, trang nộp một trang SurveyJS): cùng lệnh hkdFill / hkdFocus
+  //    của vòng hỏi đáp, nhưng ô là câu hỏi SurveyJS → điền qua model survey (op setValues của content/surveyjs-main.js,
+  //    ghi được cả bảng ngành nghề, ô tích), trỏ bằng con trỏ của vòng bổ sung ô (content/field-review.js). ──
+  const isSurveyPage = () => !isBusinessHost() && typeof H.callSurveyJs === "function"
+    && typeof H.isSurveyDossierPage === "function" && H.isSurveyDossierPage();
+
+  async function hkdSurveyFill(fields) {
+    const list = (Array.isArray(fields) ? fields : [])
+      .filter((f) => f && f.name && !/^__/.test(f.name) && f.comp !== "dvc-result-method");
+    if (!list.length) return { ok: true, filled: 0, notFound: [] };
+    const res = await H.callSurveyJs({ op: "setValues", fields: list }, 60000);
+    const results = res?.ok && Array.isArray(res.results) ? res.results : [];
+    const notFound = list.map((f) => f.name).filter((name) => !results.some((r) => r.name === name && r.ok));
+    if (notFound.length) console.warn("[HKD-DVCQG] chưa điền được", notFound, res?.error || "");
+    return { ok: !!res?.ok, filled: list.length - notFound.length, notFound };
+  }
+
+  function hkdSurveyFocus(names) {
+    const pointer = H.fieldReviewPointer;
+    const el = (Array.isArray(names) ? names : []).map((n) => H.surveyJsQuestionEl?.(n)).find(Boolean);
+    if (!el) {
+      pointer?.unfocus?.();
+      return { ok: true, focused: false };
+    }
+    void pointer?.focus?.(el); // cuộn + trỏ chạy nền: sidebar không phải chờ con trỏ tới ô mới đọc câu hỏi
+    return { ok: true, focused: true };
+  }
+
   // Nút "Nộp hồ sơ" của trợ lý (công dân bấm / nói rồi xác nhận): bấm nút Nộp trên Trang xác nhận. Cổng tự hỏi
   // confirm() "Bạn có chắc chắn…" — để nguyên cho công dân bấm OK; luật nhận nộp (BtnSave) ghi cú bấm như bấm tay.
   function hkdSubmit() {
@@ -635,7 +663,7 @@
         return true;
       }
       if (msg?.action === "hkdFocus") {
-        sendResponse(hkdFocus(msg.names));
+        sendResponse(isSurveyPage() ? hkdSurveyFocus(msg.names) : hkdFocus(msg.names));
         return false;
       }
       if (msg?.action === "hkdPrepare") {
@@ -647,7 +675,8 @@
         return true;
       }
       if (msg?.action === "hkdFill") {
-        hkdFill(msg.fields).catch((e) => ({ error: String(e?.message || e) })).then(sendResponse);
+        (isSurveyPage() ? hkdSurveyFill(msg.fields) : hkdFill(msg.fields))
+          .catch((e) => ({ error: String(e?.message || e) })).then(sendResponse);
         return true;
       }
       if (msg?.action === "prepareBusinessRegistration") {

@@ -5,6 +5,11 @@ phòng, sửa dấu tên hộ và sửa tỉnh/xã theo OCR; chỉ thêm các fi
 dân tộc, quốc tịch chủ hộ, email + nơi ở người được ủy quyền, chủ thể thành lập, không kinh doanh tại trụ sở).
 """
 
+from typing import Literal
+
+from pydantic import BaseModel, Field
+
+from app.pipelines.dang_ky_kinh_doanh.giay_de_nghi.fill import DiaChi, GiayDeNghi
 from app.pipelines.dang_ky_kinh_doanh.process.schema import COMPACT_COMP_BY_NAME as _HKD_COMP
 from app.pipelines.dang_ky_kinh_doanh.process.schema import FIELDS as _HKD_FIELDS
 
@@ -38,6 +43,23 @@ for _name in ("ChuHo_NoiThuongTru", "ChuHo_NoiOHienTai", "UyQuyen_NguoiDuocUyQuy
 # Radio "Loại người nộp": 1 = chủ hộ tự nộp (khối người nộp cổng đổ từ tài khoản / CSDLQG), 2 = người được ủy quyền
 # (khối người nộp theo tài khoản + khối chủ hộ nhập tay). Mapping_Dang_ky_HKD_DVC_Quoc_gia (2 sheet).
 LOAI_NGUOI_NOP = "citizenloaitokhai"
+
+
+# ── Tờ khai cán bộ nhập trên tab "Tạo tờ khai đăng ký hộ kinh doanh" của Auto Fill (không cần quét tờ khai) ──
+# Cùng Giấy đề nghị Mẫu số 1 với bản HkdOnline, thêm khối người nộp mà cổng hỏi ĐẦU TIÊN (radio citizenloaitokhai):
+# tab bắt chọn trước khi kê khai. Khối này không in lên giấy (mẫu không có), chỉ để Auto Fill điền cổng.
+class NguoiNopToKhai(BaseModel):
+    loai: Literal["chu_ho", "uy_quyen"]
+    # Người được ủy quyền (chỉ khi loai = uy_quyen). Họ tên / số định danh cổng khoá theo tài khoản, chỉ để đối chiếu.
+    hoTen: str = Field(default="", max_length=120)
+    soDinhDanh: str = Field(default="", max_length=20)
+    dienThoai: str = Field(default="", max_length=30)
+    email: str = Field(default="", max_length=120)
+    noiO: DiaChi = Field(default_factory=DiaChi)
+
+
+class ToKhaiDvcqg(GiayDeNghi):
+    nguoiNop: NguoiNopToKhai
 
 # Ô SurveyJS: name = phần trước hậu tố "__<số>" của data-name (extension khớp theo tiền tố). Ô cổng đặt tên chung
 # ("câu hỏi5", "bảng3"…) trùng tiền tố giữa các khối (vd "câu hỏi5" vừa là xã nơi ở người được ủy quyền vừa là điện
