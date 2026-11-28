@@ -230,3 +230,39 @@ test("bản Cổng DVC quốc gia: khai cờ; trang SurveyJS thì hkdFill / hkdF
   assert.match(sjs, /isSurveyDossierPage, fillFormSurveyJs/);
   assert.match(sjs, /callSurveyJs: callMain, surveyJsQuestionEl: questionEl/);
 });
+
+test("bản DVCQG: điền bảng ngành có report thì báo lại hkd_filled kèm mã cổng không có (cả khi lỗi)", () => {
+  assert.match(sidebar, /supportsHkdNganhCheck: true/);
+  const handler = sidebar.slice(sidebar.indexOf('a.type === "hkd_open_block" || a.type === "hkd_focus"'),
+    sidebar.indexOf('a.type === "download_file"'));
+  assert.match(handler, /if \(a\.type === "hkd_fill" && a\.report\) \{/);
+  assert.match(handler, /__event:hkd_filled:\$\{JSON\.stringify\(\{/);
+  assert.match(handler, /missingCodes: res\?\.missingCodes \|\| \[\]/);
+  assert.match(handler, /res\?\.error \|\| !res \? \{ error:/, "không có phản hồi cũng báo để BE không chờ mãi");
+  const adapter = strip(fs.readFileSync(
+    path.join(__dirname, "..", "content", "business-registration-adapter.js"), "utf8"));
+  const fill = adapter.slice(adapter.indexOf("async function hkdSurveyFill("), adapter.indexOf("function hkdSurveyFocus("));
+  assert.match(fill, /results\.flatMap\(\(r\) => \(Array\.isArray\(r\.missingCodes\) \? r\.missingCodes : \[\]\)\)/);
+  assert.match(fill, /ok: !!res\?\.ok, filled: list\.length - notFound\.length, notFound, missingCodes,/);
+});
+
+test("bản DVCQG: hỏi thành viên hộ gia đình thì trỏ vào bảng có cột Họ và tên + Số định danh (tên bảng chưa biết)", () => {
+  const adapter = strip(fs.readFileSync(
+    path.join(__dirname, "..", "content", "business-registration-adapter.js"), "utf8"));
+  const focus = adapter.slice(adapter.indexOf("const MEMBER_TABLE"), adapter.indexOf("function hkdSubmit"));
+  assert.match(focus, /const MEMBER_TABLE = "thanhVienHoGiaDinh";/, "trùng mapper.MEMBERS_FIELD của BE");
+  assert.match(focus, /\(list\.includes\(MEMBER_TABLE\) \? memberTableEl\(\) : null\)/);
+  const fnSrc = focus.slice(focus.indexOf("function memberTableEl("), focus.indexOf("function hkdSurveyFocus("));
+  const el = (headers, visible = true) => ({
+    offsetParent: visible ? {} : null, querySelectorAll: () => headers.map((t) => ({ textContent: t })),
+  });
+  const nganh = el(["Tên ngành nghề", "Mã ngành"]);
+  const hidden = el(["Họ và tên", "Số định danh cá nhân"], false);
+  const table = el(["Họ và tên", "Ngày sinh", "Số định danh cá nhân"]);
+  const memberTableEl = new Function("document", `${fnSrc}; return memberTableEl;`)(
+    { querySelectorAll: () => [nganh, hidden, table] });
+  assert.equal(memberTableEl(), table, "bỏ bảng ngành, bỏ bảng đang ẩn");
+  const sjs = strip(fs.readFileSync(path.join(__dirname, "..", "content", "fill-surveyjs.js"), "utf8"));
+  assert.match(sjs, /markField\(r\.qName \? \{ \.\.\.field, name: r\.qName \} : field, r\.ok\);/);
+  assert.match(sjs, /followTo\(questionEl\(r\.qName \|\| field\.name\)\)/);
+});

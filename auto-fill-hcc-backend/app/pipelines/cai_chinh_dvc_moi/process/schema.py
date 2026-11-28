@@ -33,12 +33,15 @@ FIELDS: list[dict] = [
      "desc": 'Loại giấy tờ hộ tịch ĐÃ ĐĂNG KÝ cần sửa: "khai sinh", "khai tử", "kết hôn", "giám hộ", '
              '"giám sát giám hộ" hoặc "nhận cha mẹ con".'},
     {"name": "HoSo_So", "desc": "Số đăng ký của giấy tờ hộ tịch đã đăng ký."},
-    {"name": "HoSo_QuyenSo", "desc": "Quyển số đăng ký, CHỈ khi nhãn 'Quyển số' có giá trị thật."},
+    {"name": "HoSo_QuyenSo",
+     "desc": "Quyển số đăng ký, CHỈ khi nhãn 'Quyển số' có giá trị thật. OCR hay đọc nhãn này lệch dấu ('Quyền số', "
+             "'Quyên số') — vẫn là nhãn quyển số."},
     {"name": "HoSo_NgayDangKy", "desc": "Ngày đăng ký giấy tờ hộ tịch, dd/mm/yyyy."},
     {"name": "HoSo_NoiDangKy", "desc": "Cơ quan / nơi đã đăng ký giấy tờ hộ tịch."},
     {"name": "NoiDung",
      "desc": "Nội dung đề nghị thay đổi / cải chính / bổ sung / xác định lại dân tộc theo dòng 'Nội dung' của "
-             "tờ khai (gồm thông tin cũ và mới), CHỈ các thay đổi — không kèm lý do; viết thành câu có nghĩa. Không "
+             "tờ khai (gồm thông tin cũ và mới), CHỈ các thay đổi — không kèm lý do; viết thành câu có nghĩa. Giá trị "
+             "CŨ (tên, số giấy tờ, ngày) soát theo chữ IN trên giấy hộ tịch cần sửa (luật SOÁT ở mục 8). Không "
              "có tờ khai mà có bản cam đoan → theo bản cam đoan, đúng chiều từ giá trị đang ghi trên giấy hộ tịch "
              "cần sửa thành giá trị theo giấy tờ khác."},
     {"name": "LyDo",

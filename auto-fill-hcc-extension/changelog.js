@@ -3,6 +3,15 @@
 // Chỉ dữ liệu, không logic. Được nạp trước popup.js (biến toàn cục APP_RELEASES).
 const APP_RELEASES = [
   {
+    version: "1.30.6",
+    date: "28/11/2026",
+    items: [
+      "Đăng ký thành lập hộ kinh doanh trên Cổng Dịch vụ công quốc gia: bảng ngành nghề không còn hiện mã ngành ở cột Tên ngành; ngành mà danh mục của cổng chưa có thì để trống dòng đó và báo trong “Xem chi tiết” để chọn ngành gần nhất có trên cổng.",
+      "Chủ thể thành lập là các thành viên hộ gia đình: điền bảng thành viên hộ gia đình theo tờ khai / Giấy đề nghị, dòng đầu là chủ hộ.",
+      "Trợ lý người dân (hộ kinh doanh trên Cổng Dịch vụ công quốc gia): ngành công dân nói mà cổng không có thì báo và hỏi ngành thay thế; chọn các thành viên hộ gia đình thì hỏi từng thành viên (họ tên, giới tính, ngày sinh, số định danh) rồi điền bảng thành viên.",
+    ],
+  },
+  {
     version: "1.30.5",
     date: "28/11/2026",
     items: [

@@ -4081,7 +4081,7 @@ HKD_DV_SECTION_PLAIN = {"md": "📂 Phần **{label}**.\n\n", "tts": "Phần {la
 HKD_DV_BLOCK_LABELS = {
     "dv-nguoi-nop": "Người nộp hồ sơ", "dv-chu-ho": "Thông tin chủ hộ kinh doanh", "dv-ten-ho": "Tên hộ kinh doanh",
     "dv-tru-so": "Trụ sở hộ kinh doanh", "dv-von": "Vốn kinh doanh", "dv-thue": "Thông tin đăng ký thuế",
-    "dv-chu-the": "Chủ thể thành lập hộ kinh doanh",
+    "dv-chu-the": "Chủ thể thành lập hộ kinh doanh", "thong-tin-ve-thanh-vien": "Thành viên hộ gia đình",
 }
 HKD_DV_INTRO_BLOCKS = {
     "dv-nguoi-nop": "người nộp hồ sơ và thông tin liên hệ",
@@ -4095,6 +4095,9 @@ HKD_DV_INTRO_ITEMS = {
     "nn_noi_o": "nơi ở hiện tại", "chu_ho_dien_thoai": "số điện thoại của chủ hộ", "chu_ho_dan_toc": "dân tộc",
     "chu_ho_thuong_tru": "nơi thường trú", "chu_ho_noi_o_dv": "nơi ở hiện tại của chủ hộ",
     "dia_chi_kd": "số nhà, đường của trụ sở",
+    # Dòng chủ hộ của bảng thành viên lấy theo phần chủ hộ trên biểu mẫu → chỉ hỏi các thành viên khác.
+    "thong-tin-ve-thanh-vien": ("họ tên, giới tính, ngày sinh, số định danh của từng thành viên khác cùng thành lập "
+                                "(dòng chủ hộ tôi lấy theo phần chủ hộ)"),
 }
 HKD_DV_ROLE_OWNER_LABEL = "Người có thẩm quyền ký giấy đề nghị"
 HKD_DV_ROLE_PROXY_LABEL = "Người được ủy quyền"
@@ -4115,6 +4118,9 @@ HKD_DV_QUESTIONS = {
     "chu_ho_dien_thoai": {"md": "**Số điện thoại** của chủ hộ là số nào ạ? Không có thì bỏ qua ạ.",
                           "tts": "Số điện thoại của chủ hộ là số nào ạ? Không có thì bỏ qua ạ."},
     "chu_ho_dan_toc": {"md": "Chủ hộ là **dân tộc** gì ạ?", "tts": "Chủ hộ là dân tộc gì ạ?"},
+    # Cổng DVCQG không bắt buộc số điện thoại trụ sở (bản HkdOnline bắt buộc).
+    "dien_thoai": {"md": "**Số điện thoại** liên hệ của hộ kinh doanh là số nào ạ? Không có thì bỏ qua ạ.",
+                   "tts": "Số điện thoại liên hệ của hộ kinh doanh là số nào ạ? Không có thì bỏ qua ạ."},
     "chu_ho_thuong_tru": {"md": "**Nơi thường trú** của chủ hộ ở **tỉnh, thành phố** nào ạ?",
                           "tts": "Nơi thường trú của chủ hộ ở tỉnh, thành phố nào ạ?"},
     "chu_ho_noi_o_dv": {"md": ("**Nơi ở hiện tại** của chủ hộ ở **tỉnh, thành phố** nào ạ? Trùng nơi thường trú thì nói "
@@ -4166,6 +4172,33 @@ HKD_DV_ATTACH_INTRO = {
 }
 HKD_DV_REFILLING = {"md": "🔁 Tôi điền lại tờ khai theo các câu trả lời đã có, công dân chờ chút ạ.",
                     "tts": "Tôi điền lại tờ khai theo các câu trả lời đã có, công dân chờ chút ạ."}
+# Danh mục ngành của cổng ít ngành hơn danh mục cấp 4 đầy đủ: chốt danh sách ngành thì điền bảng lên trang, extension
+# báo lại mã cổng không có → báo công dân, hỏi ngành thay thế.
+HKD_DV_NGANH_FILLING = {
+    "md": "✍️ Tôi đang điền **ngành nghề** lên trang và kiểm danh mục ngành của cổng, công dân chờ chút ạ.",
+    "tts": "Tôi đang điền ngành nghề lên trang và kiểm danh mục ngành của cổng, công dân chờ chút ạ.",
+}
+HKD_DV_WAIT_NGANH = "điền ngành nghề lên trang"
+HKD_DV_NGANH_FILLED = {"md": "✓ Đã điền ngành nghề lên trang.\n\n", "tts": "Đã điền ngành nghề lên trang. "}
+HKD_DV_NGANH_FILL_FAILED = {
+    "md": "⚠️ Tôi chưa điền được bảng ngành nghề lên trang; hỏi xong các phần tôi điền lại cả tờ khai.\n\n",
+    "tts": "Tôi chưa điền được bảng ngành nghề lên trang, hỏi xong tôi điền lại cả tờ khai. ",
+}
+HKD_DV_NGANH_MISSING = {
+    "md": ("⚠️ Danh mục ngành của Cổng Dịch vụ công quốc gia **chưa có** ngành:\n\n{rows}\n\nCổng dùng danh mục ít ngành "
+           "hơn nên tôi chưa điền được ngành này. Công dân nói rõ hơn mặt hàng, dịch vụ để tôi tìm ngành gần nhất có "
+           "trên cổng ạ.\n\n"),
+    "tts": ("Danh mục ngành của cổng chưa có ngành {names}. Công dân nói rõ hơn mặt hàng, dịch vụ để tôi tìm ngành gần "
+            "nhất có trên cổng ạ. "),
+}
+HKD_DV_NGANH_STILL_MISSING = {
+    "md": "⚠️ Cổng cũng chưa có ngành **{nganh}**, tôi không chọn lại ngành này ạ.\n\n",
+    "tts": "Cổng cũng chưa có ngành {ten}, tôi không chọn lại ngành này ạ. ",
+}
+HKD_DV_NGANH_THAY = {
+    "md": "Công dân thay ngành **{nganh}** bằng ngành nào ạ? Không cần nữa thì nói **không**.",
+    "tts": "Công dân thay ngành {ten} bằng ngành nào ạ? Không cần nữa thì nói không.",
+}
 
 # ── Khôi phục hồ sơ đang làm dở (chat/resume/) ──
 RESUME_OFFER = {

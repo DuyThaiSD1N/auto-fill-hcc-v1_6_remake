@@ -622,16 +622,36 @@
     const list = (Array.isArray(fields) ? fields : [])
       .filter((f) => f && f.name && !/^__/.test(f.name) && f.comp !== "dvc-result-method");
     if (!list.length) return { ok: true, filled: 0, notFound: [] };
-    const res = await H.callSurveyJs({ op: "setValues", fields: list }, 60000);
+    const res = await H.callSurveyJs({ op: "setValues", fields: list }, 120000);
     const results = res?.ok && Array.isArray(res.results) ? res.results : [];
     const notFound = list.map((f) => f.name).filter((name) => !results.some((r) => r.name === name && r.ok));
-    if (notFound.length) console.warn("[HKD-DVCQG] chưa điền được", notFound, res?.error || "");
-    return { ok: !!res?.ok, filled: list.length - notFound.length, notFound };
+    // Bảng ngành nghề: mã cổng không có trong danh mục (engine để trống dòng đó) → BE báo công dân, hỏi ngành thay thế.
+    const missingCodes = [...new Set(results.flatMap((r) => (Array.isArray(r.missingCodes) ? r.missingCodes : [])))];
+    if (notFound.length) console.warn("[HKD-DVCQG] chưa điền được", notFound, res?.error || "", results);
+    return {
+      ok: !!res?.ok, filled: list.length - notFound.length, notFound, missingCodes,
+      ...(res?.ok ? {} : { error: String(res?.error || "no-survey") }),
+    };
+  }
+
+  // Bảng thành viên hộ gia đình (BE gọi "thanhVienHoGiaDinh"): tên câu hỏi trên cổng chưa biết → trỏ vào bảng đang hiện
+  // có cột "Họ và tên" và "Số định danh".
+  const MEMBER_TABLE = "thanhVienHoGiaDinh";
+  function memberTableEl() {
+    const fold = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/gi, "d")
+      .toLowerCase();
+    return [...document.querySelectorAll("[data-name]")].find((el) => {
+      if (el.offsetParent === null) return false;
+      const head = fold([...el.querySelectorAll("th, .sd-table__cell--header")].map((th) => th.textContent).join(" "));
+      return /ho va ten|ho ten/.test(head) && /dinh danh/.test(head);
+    }) || null;
   }
 
   function hkdSurveyFocus(names) {
     const pointer = H.fieldReviewPointer;
-    const el = (Array.isArray(names) ? names : []).map((n) => H.surveyJsQuestionEl?.(n)).find(Boolean);
+    const list = Array.isArray(names) ? names : [];
+    const el = list.map((n) => H.surveyJsQuestionEl?.(n)).find(Boolean) ||
+      (list.includes(MEMBER_TABLE) ? memberTableEl() : null);
     if (!el) {
       pointer?.unfocus?.();
       return { ok: true, focused: false };

@@ -5996,6 +5996,10 @@ function buildFillDetails(fillRes, processErrors, totalFields) {
   const fillErrors = Array.isArray(fillRes?.errors) ? fillRes.errors : [];
   const extractWarnings = Array.isArray(processErrors) ? processErrors : [];
   if (filled < totalFields) details.push(`Có ${Math.max(0, totalFields - filled)} thông tin chưa được điền.`);
+  // Câu engine báo nguyên văn cho cán bộ (vd ngành cổng không có trong danh mục ngành nghề).
+  for (const notice of (Array.isArray(fillRes?.notices) ? fillRes.notices : []).slice(0, 5)) {
+    if (notice) details.push(String(notice).slice(0, 300));
+  }
   if (notFound.length) details.push(`Mã ô hỗ trợ: ${notFound.join(", ")}.`);
   if (fillErrors.length) details.push(`Có ${fillErrors.length} cảnh báo khi điền biểu mẫu.`);
   if (extractWarnings.length) details.push(`Có ${extractWarnings.length} cảnh báo khi đọc hồ sơ.`);
@@ -6123,6 +6127,7 @@ async function dispatchFill(allFields, errors, page = null, requestId = "") {
     const hasWarnings = filled < allFields.length
       || !!fillRes?.notFound?.length
       || !!fillRes?.errors?.length
+      || !!fillRes?.notices?.length
       || !!errors?.length;
     const pageSuffix = page ? ` ở trang "${page.label}"` : "";
     const message = hasWarnings

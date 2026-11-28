@@ -316,6 +316,9 @@
     // Hộ kinh doanh bản Cổng DVC quốc gia (trang nộp một trang SurveyJS): hkd_fill / hkd_focus điền và trỏ câu hỏi
     // SurveyJS (content/business-registration-adapter.js) → BE mở lối "không có tờ khai" cho thủ tục này.
     supportsHkdTroLyDvcqg: true,
+    // Bản DVCQG: lệnh hkd_fill có report → báo lại __event:hkd_filled (mã ngành cổng không có trong danh mục) để trợ lý
+    // nói với công dân và hỏi ngành thay thế.
+    supportsHkdNganhCheck: true,
     // Báo kết quả đính kèm theo từng tệp (attach_report.files: tên gốc, tên đổi, hồ sơ số mấy, nhóm lý do) và vẽ thẻ
     // attach_files (nút xem tệp đã đính, khung tệp lỗi, bảng danh sách). Thiếu cờ → BE giữ câu báo cũ.
     supportsAttachFileReport: true,
@@ -6134,6 +6137,14 @@
             action: { hkd_open_block: "hkdOpenBlock", hkd_focus: "hkdFocus", hkd_fill: "hkdFill" }[a.type],
             page: a.page || "", names: a.names || [], fields: a.fields || [],
           }).catch(() => null);
+          if (a.type === "hkd_fill" && a.report) {
+            // Hộ kinh doanh bản DVCQG: BE chờ kết quả điền bảng ngành (mã cổng không có trong danh mục) — báo cả khi lỗi
+            // để BE không chờ mãi.
+            setTimeout(() => ask(`__event:hkd_filled:${JSON.stringify({
+              page: a.page || "", ok: !!res?.ok, missingCodes: res?.missingCodes || [], notFound: res?.notFound || [],
+              ...(res?.error || !res ? { error: String(res?.error || "no-response").slice(0, 200) } : {}),
+            })}`, "system"), 0);
+          }
           if (a.type === "hkd_fill" && res && "copied" in res) {
             // Khối chủ hộ / người nộp: báo BE đã sao chép tài khoản (người nộp: kèm có trùng chủ hộ không).
             setTimeout(() => ask(`__event:hkd_copied:${JSON.stringify({

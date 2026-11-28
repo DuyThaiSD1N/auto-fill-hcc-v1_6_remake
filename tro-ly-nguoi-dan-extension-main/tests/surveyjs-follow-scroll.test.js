@@ -11,7 +11,8 @@ const attach = src.slice(src.indexOf("async function attachSurveyJsByPlan("), sr
 
 test("điền: lướt qua từng ô vừa điền, cả lượt tối đa ~3 giây", () => {
   assert.match(fill, /const delay = followDelay\(fields\.length\);/);
-  assert.match(fill, /markField\(field, r\.ok\);\s*followTo\(questionEl\(field\.name\)\);\s*await sleep\(delay\);/);
+  // Bảng tìm theo tiêu đề cột (thành viên hộ gia đình) tô / lướt theo tên câu hỏi thật engine trả về (r.qName).
+  assert.match(fill, /markField\(r\.qName \? \{ \.\.\.field, name: r\.qName \} : field, r\.ok\);\s*followTo\(questionEl\(r\.qName \|\| field\.name\)\);\s*await sleep\(delay\);/);
   assert.match(src, /const FOLLOW_TOTAL_MS = 3000;/);
   assert.match(src, /el\?\.scrollIntoView\?\.\(\{ block: "center", behavior: "smooth" \}\)/);
 });

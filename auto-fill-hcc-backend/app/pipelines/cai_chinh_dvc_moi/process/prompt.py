@@ -51,6 +51,10 @@ người nộp.
    người đó, giấy khai sinh của anh chị em ghi cùng người cha / mẹ, CCCD...) mà tên chỉ lệch dấu / vài chữ cái với tên
    trên tờ khai / cam đoan → chép NGUYÊN chữ in đó. So cả dấu thanh: hai cách viết chỉ khác dấu là hai tên khác nhau.
    Không giấy in nào ghi tên đó → giữ như OCR đọc.
+   SOÁT SỐ / NGÀY CŨ (bắt buộc khi mục sửa là số giấy tờ tùy thân, ngày tháng...): tờ khai viết tay hay có chữ số
+   viết sửa đè, OCR đọc lệch. Tìm trên giấy hộ tịch cần sửa (vd trích lục / giấy khai tử, khai sinh của chính người
+   đó) đúng dòng của thông tin đó (vd dòng "Giấy tờ tùy thân") → so TỪNG CHỮ SỐ với giá trị CŨ trên tờ khai; lệch vài
+   chữ số thì giá trị CŨ chép NGUYÊN số / ngày IN trên giấy đó, không theo tờ khai. Giá trị MỚI vẫn theo tờ khai.
    Không có tờ khai mà <viec_dang_ky> có các dòng "Thông tin cần sửa" (đã xác định chiều) → NoiDung
    ghép đúng các dòng đó: "Cải chính <thông tin> từ <đang ghi> thành <đúng theo>", nối bằng dấu chấm phẩy, KHÔNG
    đảo chiều. Không có các dòng đó mà có BẢN CAM ĐOAN → lấy từ bản cam đoan, ĐÚNG CHIỀU: câu dạng "Trong <giấy hộ
@@ -70,7 +74,7 @@ người nộp.
    thành giá trị mới) — BỎ mọi cụm lý do và nhãn "Lý do:" lạc chỗ; phần lý do đưa vào LyDo.
    Viết lại thành câu có nghĩa: sửa lỗi OCR ở TỪ THÔNG THƯỜNG (vd "Phàn"→"Phần", "tự"→"từ", "Thành"→"thành",
    "tiền thân"→"tùy thân"), nối các thay đổi bằng dấu chấm phẩy; GIỮ NGUYÊN số giấy tờ, ngày tháng như OCR
-   đọc; họ tên theo quy tắc chữ IN ở đầu mục 8, không có giấy in thì giữ như OCR đọc, không tự sửa tên.
+   đọc (trừ giá trị CŨ theo mục SOÁT SỐ / NGÀY CŨ); họ tên theo quy tắc chữ IN ở đầu mục 8, không có giấy in thì giữ như OCR đọc, không tự sửa tên.
    LyDo cũng viết thành câu ngắn có nghĩa (bỏ "lý do", gạch đầu dòng).
 9. HoSo_*: ưu tiên dòng "Đã đăng ký ... tại <cơ quan> ngày ... số ... quyển số ..." của tờ khai; thiếu thì lấy
    trên CHÍNH giấy hộ tịch cùng loại của người có nội dung thay đổi. Giấy của người khác không phải nguồn.
@@ -80,7 +84,7 @@ người nộp.
    phải nguồn, kể cả khi giấy in mới, rõ chữ hơn. Giấy khai sinh mẫu cũ: số ở "Số...<N>" góc trên, ngày ở "Đăng ký
    ngày D tháng M năm Y", cơ quan theo khối "ỦY BAN NHÂN DÂN / Xã, phường ... / Huyện, Quận ... / Tỉnh ..." đầu giấy.
    HoSo_So: dòng "Số:" sát tiêu đề giấy hộ tịch, giữ nguyên mã/năm. HoSo_QuyenSo chỉ khi "Quyển số" có giá trị
-   thật. HoSo_NoiDangKy: nhãn "Nơi đăng ký" hoặc cơ quan ở tiêu đề / khối ký tên của giấy hộ tịch.
+   thật (nhãn bị OCR đọc lệch dấu thành "Quyền số" vẫn là quyển số). HoSo_NoiDangKy: nhãn "Nơi đăng ký" hoặc cơ quan ở tiêu đề / khối ký tên của giấy hộ tịch.
    Trang CHỨNG THỰC ("Số chứng thực ... SCT") là sổ chứng thực → không lấy làm HoSo_*.
 10. HoSo_LoaiGiayTo CHỈ khi tờ khai ghi rõ giấy tờ / sự kiện đã đăng ký hoặc hồ sơ có chính giấy hộ tịch đó
     của người có nội dung thay đổi; không đoán.

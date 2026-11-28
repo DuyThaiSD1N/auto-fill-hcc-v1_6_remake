@@ -1305,6 +1305,99 @@ async def test_dvcqg_nguoi_duoc_uy_quyen_hoi_them_phan_chu_ho(monkeypatch, _no_d
     assert next(a for a in r.actions if a["type"] == "fill_fields")
 
 
+async def test_dvcqg_cau_hoi_tu_mo_mic_khong_can_ranh_tay(monkeypatch, _no_db):
+    # Chọn thủ tục bằng tay (không Rảnh tay): câu hỏi của vòng hỏi đáp vẫn đọc xong tự mở mic một lượt.
+    _fake_answers(monkeypatch, _DV_ANSWERS)
+    conv = _dv_conv()
+    first = await hkd.start_no_docs(conv)
+    assert conv["hkd"]["field"] == "chu_ho_la_ban" and first.actions[-1] == {"type": "listen_after_tts"}
+    r = await hkd.handle(conv, DV_PROC, Intent("action", "hkd_value", {"v": True}))
+    assert conv["hkd"]["field"] == "nn_dien_thoai"
+    assert [a["type"] for a in r.actions].count("listen_after_tts") == 1
+    r = await hkd.handle(conv, DV_PROC, Intent("action", "hkd_answer", {"text": "0912000111"}))
+    assert conv["hkd"]["field"] == "nn_email" and {"type": "listen_after_tts"} in r.actions
+    # Bản HkdOnline giữ như cũ.
+    old = await hkd.start_no_docs(_conv())
+    assert {"type": "listen_after_tts"} not in old.actions
+
+
+async def test_dvcqg_so_dien_thoai_tru_so_bo_qua_duoc(monkeypatch, _no_db):
+    # Cổng DVCQG không bắt buộc số điện thoại trụ sở → có nút Bỏ qua, nói "không có" là bỏ qua; HkdOnline vẫn bắt buộc.
+    _fake_answers(monkeypatch, {**_DV_ANSWERS, "dien_thoai": "__skip__"})
+    conv = _dv_conv()
+    r = await hkd.start_no_docs(conv)
+    st = conv["hkd"]
+    for _ in range(30):
+        if st["field"] == "dien_thoai":
+            break
+        r = await hkd.handle(conv, DV_PROC, Intent("action", "hkd_answer", {"text": "trả lời"}))
+    assert st["field"] == "dien_thoai" and "bỏ qua" in r.display_md
+    assert "__action:hkd_skip" in [c["send"] for c in r.chips]
+    assert next(s for s in hkd._open_slots(st) if s["key"] == "dien_thoai")["skip"] is True
+    r = await hkd.handle(conv, DV_PROC, Intent("action", "hkd_answer", {"text": "không có"}))
+    assert "dien_thoai" in st["skipped"] and st["field"] == "email"
+    assert not hkd._skippable({"values": {}}, "dien_thoai"), "bản HkdOnline: ô điện thoại vẫn bắt buộc"
+
+
+def _fake_answer_queue(monkeypatch, answers: dict):
+    """Như _fake_answers nhưng mục hỏi nhiều lần (từng thành viên) trả lần lượt theo danh sách."""
+    queues = {k: list(v) if isinstance(v, list) else [v] for k, v in answers.items()}
+
+    async def fake(text, asking, question, slots, values, location, history=None):
+        if asking == "tom_tat":
+            return hoi_dap.Parsed("dong_y")
+        queue = queues.get(asking)
+        if not queue:
+            return hoi_dap.Parsed("khong_ro")
+        value = queue.pop(0) if len(queue) > 1 else queue[0]
+        if value == "__skip__":
+            return hoi_dap.Parsed("bo_qua")
+        return hoi_dap.Parsed("tra_loi", {asking: value})
+    monkeypatch.setattr(hoi_dap, "interpret", fake)
+
+
+async def test_dvcqg_ho_gia_dinh_hoi_tung_thanh_vien_dien_bang_dong_1_la_chu_ho(monkeypatch, _no_db):
+    from app.pipelines.dang_ky_thanh_lap_ho_kinh_doanh.process import mapper as dv
+    _fake_lookup(monkeypatch, [("Mở quán cơm", ["5610"], True, "Bán cơm bình dân")], chinh="5610")
+    _fake_answer_queue(monkeypatch, {
+        **_DV_ANSWERS, "chu_the": "ho_gia_dinh",
+        "tv_ho_ten": ["Trần Văn Bình", "Lê Văn Cường"], "tv_gioi_tinh": ["Nam", "Nam"],
+        "tv_ngay_sinh": ["02/03/1988", "04/05/2001"], "tv_so_dinh_danh": ["001088000033", "001201000044"],
+        "tv_them": [True, False],
+    })
+    conv = _dv_conv()
+    r, log = await _dv_drive(conv, await hkd.start_no_docs(conv))
+    st = conv["hkd"]
+    assert hkd._DOM_DVCQG["thanh_vien"] == [dv.MEMBERS_FIELD]
+    assert hkd._blocks(st)[-1] == hkd.MEMBERS_PAGE
+    assert [m["tv_ho_ten"] for m in st["members"]] == ["Trần Văn Bình", "Lê Văn Cường"]
+    assert all("tv_noi_o" not in m for m in st["members"]), "bản DVCQG không hỏi nơi ở thành viên"
+    assert [dv.MEMBERS_FIELD] in log["focus"], "trỏ vào bảng thành viên khi hỏi"
+    # Xong mỗi thành viên điền lại cả bảng (không điền theo từng câu).
+    tables = [f for a in log["fill_actions"] for f in a["fields"] if f["name"] == dv.MEMBERS_FIELD]
+    assert [len(t["value"]) for t in tables] == [2, 3]
+    # Hỏi xong: tờ khai có bảng, dòng 1 là chủ hộ lấy theo phần chủ hộ trên biểu mẫu (chủ hộ tự nộp).
+    fill = next(a for a in r.actions if a["type"] == "fill_fields")
+    names = [f["name"] for f in fill["fields"]]
+    assert names.index(dv.MEMBERS_FIELD) == names.index("doiTuongThanhLap") + 1
+    table = fill["fields"][names.index(dv.MEMBERS_FIELD)]
+    assert table["matrix"] == "members" and table["chuHoFrom"]["hoTen"] == ["citizenName"]
+    head, *others = table["value"]
+    assert head["chuHo"] is True and "hoTen" not in head
+    assert others == [
+        {"hoTen": "TRẦN VĂN BÌNH", "gioiTinh": "Nam", "ngaySinh": "02/03/1988", "soDinhDanh": "001088000033",
+         "quocTich": "Việt Nam"},
+        {"hoTen": "LÊ VĂN CƯỜNG", "gioiTinh": "Nam", "ngaySinh": "04/05/2001", "soDinhDanh": "001201000044",
+         "quocTich": "Việt Nam"},
+    ]
+    assert "đã điền bảng thành viên hộ gia đình" in r.display_md
+    # Đổi lại "một mình chủ hộ" khi đang ở phần thành viên: phần đó ẩn, chỉ số phần không trỏ ra ngoài.
+    st.update(block=hkd._blocks(st).index(hkd.MEMBERS_PAGE), phase="ask")
+    hkd._apply(st, "chu_the", "ca_nhan")
+    assert hkd._page(st) == "dv-chu-the"
+    assert dv.MEMBERS_FIELD not in {f["name"] for f in hkd._dv_fields(st)[0]}
+
+
 async def test_dvcqg_doi_sang_uy_quyen_khi_da_qua_phan_chu_ho_thi_quay_lai_hoi(monkeypatch):
     _fake_answers(monkeypatch, _DV_ANSWERS)
     conv = _dv_conv()
@@ -1344,6 +1437,57 @@ async def test_dvcqg_sau_vong_hoi_nut_cuoi_dinh_giay_to_tai_to_khai_dien_lai(mon
     paper = hkd.to_khai_data(conv)
     assert (paper.chuHo.hoTen, paper.chuHo.soDinhDanh) == ("LÊ THỊ HOA", "001190000011")
     assert paper.chuHo.noiO["diaChi"] == "Số 2 ngõ B" and paper.ten == "HỘ KINH DOANH Quán Hoa"
+
+
+async def test_dvcqg_nganh_cong_khong_co_thi_bao_hoi_nganh_thay_va_khong_chon_lai(monkeypatch, _no_db):
+    # Danh mục ngành của Cổng DVC quốc gia ít ngành hơn danh mục cấp 4: extension báo lại mã cổng không có.
+    _fake_lookup(monkeypatch, [("Mở quán ăn", ["5610"], True, "Mở quán ăn"),
+                               ("Bán tạp hóa", ["4719"], True, "Bán tạp hóa")], chinh="5610")
+    _fake_answers(monkeypatch, _DV_ANSWERS)
+    caps = {hkd.DVCQG_CAPABILITY: True, hkd.NGANH_CHECK_CAPABILITY: True}
+    assert router._clean_client_capabilities(caps).get(hkd.NGANH_CHECK_CAPABILITY) is True
+    conv = _dv_conv(client_capabilities=caps)
+    r = await hkd.start_no_docs(conv)
+    st = conv["hkd"]
+    for _ in range(40):
+        if st["phase"] == "nganh_check":
+            break
+        r = await hkd.handle(conv, DV_PROC, Intent("action", "hkd_answer", {"text": "trả lời"}))
+    fill = next(a for a in r.actions if a["type"] == "hkd_fill")
+    assert fill["report"] is True and [f["name"] for f in fill["fields"]] == ["nganhNgheKinhDoanh"]
+    assert vi.HKD_DV_NGANH_FILLING["md"] in r.display_md and hkd._page(st) == hkd._NGANH_PAGE
+    # Đang chờ extension báo: câu nói không đi vòng hỏi; báo của lượt khác bị bỏ qua ở pha khác.
+    waiting = await hkd.handle(conv, DV_PROC, Intent("action", "hkd_answer", {"text": "xong chưa"}))
+    assert vi.HKD_DV_WAIT_NGANH in waiting.display_md
+    r = await hkd.handle(conv, DV_PROC, Intent("event", "hkd_filled", {"ok": False, "missingCodes": ["4719"]}))
+    assert st["nganh_khong_co"] == ["4719"] and [x["ma"][0] for x in st["nganh"]] == ["5610"]
+    assert "chưa có" in r.display_md and "4719 · " in r.display_md
+    assert st["phase"] == "ask" and st["field"] == "nganh_them" and "bằng ngành nào" in r.display_md
+    assert await hkd.handle(conv, DV_PROC, Intent("event", "hkd_filled", {"missingCodes": ["5610"]})) is not None
+    assert [x["ma"][0] for x in st["nganh"]] == ["5610"], "báo ngoài pha chờ thì bỏ qua"
+    # Công dân kể lại: agent tra ra lại 4719 (cổng không có → không chọn lại, báo) và 4711 (thêm).
+    _fake_lookup(monkeypatch, [("Bán tạp hóa", ["4719"], True, "Bán tạp hóa"), ("Bán gạo", ["4711"], True, "Bán gạo")])
+
+    async def ke_lai(text, asking, question, slots, values, location, history=None):
+        return hoi_dap.Parsed("tra_loi", {}, nganh_text="bán tạp hóa, bán gạo")
+    monkeypatch.setattr(hoi_dap, "interpret", ke_lai)
+    r = await hkd.handle(conv, DV_PROC, Intent("action", "hkd_answer", {"text": "bán tạp hóa, bán gạo"}))
+    assert sorted(x["ma"][0] for x in st["nganh"]) == ["4711", "5610"]
+    assert "Cổng cũng chưa có ngành" in r.display_md and "nganh_thay" not in st
+    _fake_answers(monkeypatch, _DV_ANSWERS)  # "còn ngành nào khác" → không
+    r = await hkd.handle(conv, DV_PROC, Intent("action", "hkd_answer", {"text": "không"}))
+    assert st["phase"] == "nganh_check"
+    assert sorted(row["ma"] for row in r.actions[-1]["fields"][0]["value"]) == ["4711", "5610"]
+    # Chờ quá lâu → nút Thử lại điền lại bảng.
+    st["saving_at"] = time.time() - 200
+    stuck = await hkd.handle(conv, DV_PROC, Intent("action", "hkd_answer", {"text": "sao lâu thế"}))
+    assert [c["send"] for c in stuck.chips] == ["__action:hkd_retry"]
+    again = await hkd.handle(conv, DV_PROC, Intent("action", "hkd_retry"))
+    assert again.actions[-1]["report"] is True and time.time() - st["saving_at"] < 5
+    # Cổng có đủ → sang phần vốn.
+    r = await hkd.handle(conv, DV_PROC, Intent("event", "hkd_filled", {"ok": True, "missingCodes": []}))
+    assert hkd._page(st) == "dv-von" and st["field"] == "von"
+    assert vi.HKD_DV_NGANH_FILLED["md"] in r.display_md
 
 
 async def test_dvcqg_dinh_giay_to_chi_lap_ke_hoach_dinh_kem_khong_doc_lai_de_dien(monkeypatch, _no_db):

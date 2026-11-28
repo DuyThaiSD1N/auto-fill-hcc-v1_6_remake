@@ -39,6 +39,19 @@ assert.deepEqual(
   ],
 );
 
+// Câu engine báo nguyên văn (vd ngành cổng không có trong danh mục ngành nghề) hiện trong chi tiết, trước mã ô.
+const missingLine = "Danh mục ngành của cổng chưa có mã 4719 — dòng ngành đó đang để trống, chọn ngành gần nhất có trên cổng.";
+assert.deepEqual(
+  Array.from(sandbox.buildFillDetails({ filled: 5, notFound: ["nganhNgheKinhDoanh"], notices: [missingLine] }, [], 6)),
+  ["Có 1 thông tin chưa được điền.", missingLine, "Mã ô hỗ trợ: nganhNgheKinhDoanh."],
+);
+const sjsFill = fs.readFileSync(path.join(__dirname, "..", "content", "fill-surveyjs.js"), "utf8");
+assert.match(sjsFill, /const result = \{ filled: 0, notFound: \[\], errors: \[\], skipped: \[\], notices: \[\] \};/);
+assert.match(sjsFill, /if \(Array\.isArray\(r\.missingCodes\) && r\.missingCodes\.length\) \{/);
+// Bảng thành viên hộ gia đình tìm theo tiêu đề cột: tô theo tên câu hỏi thật engine trả về.
+assert.match(sjsFill, /markField\(r\.qName \? \{ \.\.\.field, name: r\.qName \} : field, r\.ok, find\)/);
+assert.match(popupSource, /\|\| !!fillRes\?\.notices\?\.length/, "có câu báo thì kết luận là cảnh báo");
+
 const dispatchStart = popupSource.indexOf("async function dispatchFill");
 const dispatchEnd = popupSource.indexOf("\n// ===== Rà soát bbox", dispatchStart);
 const dispatchSource = popupSource.slice(dispatchStart, dispatchEnd);

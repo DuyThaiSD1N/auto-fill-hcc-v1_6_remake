@@ -248,3 +248,35 @@ def test_noi_dung_sua_chinh_la_doi_dau_hoac_lech_tieng_chung_thi_giu():
     assert noi_dung._printed_spelling(same, Case(docs, "", {"NoiDung": same}, {})) is None
     shared = "Cải chính chữ đệm của người cha từ Nguyễn Hữu Cồn thành Nguyễn Văn Cồn"
     assert noi_dung._printed_spelling(shared, Case(docs, "", {"NoiDung": shared}, {})) is None
+
+
+def test_chi_tiet_chi_co_o_mot_dong_viet_tay_chi_dien_khi_o_trong(monkeypatch):
+    # Chi tiết viết tay ở đúng một dòng chưa đủ chắc để thay chi tiết đang có, nhưng đủ để điền ô người thay đổi đang trống.
+    import json
+    import re
+    from app.pipelines.cai_chinh_dvc_moi.thanh_tra import dia_chi as base
+    from app.pipelines.cai_chinh_dvc_moi.thanh_tra import dia_chi_ghep
+    from app.services.llm import client
+
+    async def fake_chat(messages, **kwargs):
+        if kwargs.get("purpose") != "thanh_tra.dia_chi":
+            return json.dumps({"xa": "", "dong_dia_chi": "", "dong_phu": "", "ly_do": ""})
+        number = next(int(m.group(1)) for m in re.finditer(r"^\[(\d+)\] (.*)$", messages[1]["content"], re.M)
+                      if "Nhà Mẫu" in m.group(2))
+        return json.dumps({"dong": [{"so": number, "thuoc_ve": base._OWNERS[0], "loai": base._RESIDENCE}],
+                           "chon": number})
+
+    monkeypatch.setattr(client, "chat", fake_chat)
+    to_khai = ("TỜ KHAI ĐĂNG KÝ VIỆC THAY ĐỔI, CẢI CHÍNH\nHọ, chữ đệm, tên người yêu cầu: Trần Thị Mẫu\n"
+               "cho người có tên dưới đây:\nHọ, chữ đệm, tên: Lê Văn Con\nNgày, tháng, năm sinh: 01/01/1960\n"
+               "Nơi cư trú: (2) 9/1/2 Nhà Mẫu phường Xuân Hương\nĐà Lạt\nGiấy tờ tùy thân: (3) CMND số 100000001\n")
+    ctx = "<nguoi_thay_doi>\nHọ tên: Lê Văn Con\n</nguoi_thay_doi>"
+    opts = {"counterWard": "Phường Xuân Hương- Lâm Đồng"}
+
+    [finding] = asyncio.run(dia_chi_ghep.find(dia_chi_ghep.INSPECTOR, Case([{"text": to_khai}], ctx, {}, opts), "thử"))
+    assert finding.values[dia_chi_ghep.FIELD]["diaChi"] == "9/1/2 Nhà Mẫu"
+    assert finding.values[dia_chi_ghep.FIELD]["xa"] == "phường Xuân Hương"
+
+    filled = {"quocGia": "Việt Nam", "tinh": "Lâm Đồng", "xa": "Phường Xuân Hương", "diaChi": "Tổ 1"}
+    case = Case([{"text": to_khai}], ctx, {dia_chi_ghep.FIELD: filled}, opts)
+    assert asyncio.run(dia_chi_ghep.find(dia_chi_ghep.INSPECTOR, case, "thử")) == []

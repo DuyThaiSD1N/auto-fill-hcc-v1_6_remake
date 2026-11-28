@@ -389,6 +389,67 @@ def test_to_khai_trong_noi_o_hien_tai_lay_thuong_tru_o_vang_va_bao_thieu_lien_he
     assert mapper.PHONE_EMAIL_WARNING.format(what="điện thoại và thư điện tử") in res["errors"]
 
 
+# ── Bảng thành viên hộ gia đình (chủ thể là các thành viên hộ gia đình; dòng 1 là chủ hộ) ──
+
+THANH_VIEN = {"hoTen": "Trần Văn Bình", "ngaySinh": "02/03/1988", "soDinhDanh": "001088000033", "gioiTinh": "Nam"}
+
+
+def test_to_khai_ho_gia_dinh_dien_bang_thanh_vien_dong_1_la_chu_ho(monkeypatch):
+    chu_ho = {"hoTen": "LÊ THỊ HOA", "ngaySinh": "05/06/1990", "soDinhDanh": CHU_HO_ID, "gioiTinh": "Nữ",
+              "noiOHienTai": "Số 2 ngõ B, Phường Đại Mỗ, Thành phố Hà Nội"}
+    form = _to_khai("chu_ho", chuThe="ho_gia_dinh", thanhVien=[chu_ho, THANH_VIEN, {"hoTen": ""}])
+    res = _from_to_khai(form, _account("Lê Thị Hoa", CHU_HO_ID), monkeypatch)
+    names = [f["name"] for f in res["fields"]]
+    assert names.index(mapper.MEMBERS_FIELD) == names.index("doiTuongThanhLap") + 1, "bảng hiện sau khi chọn chủ thể"
+    table = _by_name(res["fields"])[mapper.MEMBERS_FIELD]
+    assert (table["comp"], table["matrix"]) == ("sjs-matrix", "members")
+    # Chủ hộ tự nộp: dòng chủ hộ lấy theo ô cổng đổ từ tài khoản.
+    assert table["chuHoFrom"]["hoTen"] == ["citizenName"] and table["chuHoFrom"]["soDinhDanh"] == ["citizenIdentity"]
+    head, member = table["value"]
+    # Dòng chủ hộ trên tờ khai gộp vào dòng 1 (không lặp), ô trống bù theo phần chủ hộ.
+    assert head["chuHo"] is True and (head["hoTen"], head["soDinhDanh"]) == ("LÊ THỊ HOA", CHU_HO_ID)
+    assert head["noiOHienTai"] == "Số 2 ngõ B, Phường Đại Mỗ, Thành phố Hà Nội"
+    assert "Xóm A" in head["noiThuongTru"] and "Ninh Bình" in head["noiThuongTru"]
+    assert member == {"hoTen": "TRẦN VĂN BÌNH", "ngaySinh": "02/03/1988", "soDinhDanh": "001088000033",
+                      "gioiTinh": "Nam", "quocTich": "Việt Nam"}
+    assert mapper.HO_GIA_DINH_MEMBERS_WARNING in res["errors"] and mapper.HO_GIA_DINH_WARNING not in res["errors"]
+
+
+def test_to_khai_bang_thanh_vien_thieu_chu_ho_thi_them_dong_chu_ho_theo_khoi_chu_ho(monkeypatch):
+    form = _to_khai("uy_quyen", chuThe="ho_gia_dinh", thanhVien=[THANH_VIEN])
+    table = _by_name(_from_to_khai(form, _account("Phạm Văn Nam", NOP_THAY_ID), monkeypatch)["fields"])[
+        mapper.MEMBERS_FIELD]
+    # Nộp thay: dòng chủ hộ theo khối chủ hộ nhập tay (cùng giá trị vừa điền).
+    assert table["chuHoFrom"]["hoTen"] == ["citizennguoidangkyhkd"]
+    assert table["chuHoFrom"]["noiThuongTru"] == ["Diachichitietnoithuongtrunguoidangky", "citizenxanguoidangky",
+                                                  "bảng3__1782890713158"]
+    head = table["value"][0]
+    assert head["chuHo"] is True
+    assert (head["hoTen"], head["soDinhDanh"], head["ngaySinh"], head["gioiTinh"], head["danToc"]) == (
+        "LÊ THỊ HOA", CHU_HO_ID, "05/06/1990", "Nữ", "Kinh")
+    assert [row["hoTen"] for row in table["value"]] == ["LÊ THỊ HOA", "TRẦN VĂN BÌNH"]
+
+
+def test_bang_thanh_vien_doc_giay_va_chi_co_chu_ho_thi_nhap_tay():
+    values = {**VALUES, "ChuTheThanhLap": "Các thành viên hộ gia đình", "ThanhVien_DanhSach": [
+        {"hoTen": "Lê Thị Hoa", "soDinhDanh": CHU_HO_ID},
+        {"hoTen": "Trần Văn Bình", "ngaySinh": "02/03/1988", "soDinhDanh": "001088000033", "gioiTinh": "nam",
+         "noiThuongTru": {"tinh": "Thành phố Hà Nội", "xa": "Phường Đại Mỗ", "chiTietDuoiXa": "Số 2 ngõ B"}},
+    ]}
+    fields, warnings = mapper.enrich(_fields(values), _account("Lê Thị Hoa", CHU_HO_ID))
+    rows = _by_name(fields)[mapper.MEMBERS_FIELD]["value"]
+    assert [row.get("chuHo") for row in rows] == [True, None]
+    assert rows[1]["gioiTinh"] == "Nam" and rows[1]["noiThuongTru"].startswith("Số 2 ngõ B, ")
+    assert mapper.HO_GIA_DINH_MEMBERS_WARNING in warnings
+    # Chỉ có chủ hộ → không phát bảng, nhắc nhập tay như trước; cá nhân → không có bảng.
+    only_owner = {**values, "ThanhVien_DanhSach": [{"hoTen": "Lê Thị Hoa", "soDinhDanh": CHU_HO_ID}]}
+    fields, warnings = mapper.enrich(_fields(only_owner), {})
+    assert mapper.MEMBERS_FIELD not in _by_name(fields) and mapper.HO_GIA_DINH_WARNING in warnings
+    personal = {**values, "ChuTheThanhLap": "Cá nhân"}
+    assert mapper.MEMBERS_FIELD not in _by_name(mapper.enrich(_fields(personal), {})[0])
+    assert "ThanhVien_DanhSach" in ALLOWED and UI_COMP_BY_NAME[mapper.MEMBERS_FIELD] == "sjs-matrix"
+
+
 @pytest.mark.parametrize("form, message", [
     (_to_khai(None), "chưa chọn người nộp"),
     (_to_khai("nguoi_khac"), "chưa chọn người nộp"),
@@ -549,3 +610,6 @@ def test_tro_ly_cung_key_trang_mot_trang_chon_tinh_xa_toan_quoc():
     # Bản HkdOnline của trợ lý giữ nguyên.
     old = handfree.get_procedure("dang-ky-kinh-doanh")
     assert old["businessWorkflow"] == "create" and old["keKhaiUrl"].startswith("https://hokinhdoanh.dkkd.gov.vn")
+    # Ô hộ kinh doanh trên màn chào mở form mới (Cổng DVC quốc gia); bản HkdOnline chỉ còn trong "Xem tất cả".
+    assert handfree.frequent_order(KEY) == len(handfree._HOME_FREQUENT_KEYS) - 1
+    assert handfree.frequent_order("dang-ky-kinh-doanh") is None and not old.get("hiddenFromList")

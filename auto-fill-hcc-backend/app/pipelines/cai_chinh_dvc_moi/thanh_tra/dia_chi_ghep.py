@@ -370,8 +370,10 @@ def compose(case: Case, read: dict) -> Finding | None:
                   if (_ward_key(cand["mapped"].get("tinh")), _ward_key(cand["mapped"].get("xa"))) == place]
     detail, detail_why, detail_sure = _pick_detail(chosen, same_place, read["lines"])
     proposed = {level: value for level, value in chosen["split"].items() if level != "diaChi" and value}
-    # Chi tiết chỉ có ở một dòng viết tay: OCR hay đọc thiếu chữ → không điền (thà thiếu còn hơn sai).
-    if detail and detail_sure:
+    current = case.values.get(FIELD)
+    # Chi tiết chỉ có ở một dòng viết tay chưa đủ chắc để thay chi tiết đang có, nhưng đủ để điền ô đang trống
+    # (chi tiết rối chữ thì _pick_detail đã trả rỗng).
+    if detail and (detail_sure or not isinstance(current, dict) or is_empty(current)):
         proposed["diaChi"] = detail
     kind = "ba cấp sau sáp nhập, xã có trong danh mục hiện hành" if chosen["new_format"] else (
         "địa chỉ cũ, xã đã quy đổi theo danh mục")
@@ -382,7 +384,6 @@ def compose(case: Case, read: dict) -> Finding | None:
     if chosen["item"].get("_split"):
         evidence.append('B lấy từ dòng nối "tại ..." ngay sau dòng địa chỉ cũ — nơi ở hiện tại ghi theo đơn vị sau sáp nhập')
 
-    current = case.values.get(FIELD)
     reasons: list[str] = []
     if isinstance(current, dict) and not is_empty(current):
         ours, theirs_area = _mapped(current, case) or {}, _mapped(proposed, case) or {}

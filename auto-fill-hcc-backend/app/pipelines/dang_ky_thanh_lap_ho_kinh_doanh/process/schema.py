@@ -30,6 +30,11 @@ FIELDS: list[dict] = [
              'dấu; không đánh dấu → bỏ.'},
     {"name": "TruSo_KhongKinhDoanhTaiTruSo",
      "desc": 'true khi ô "Không kinh doanh tại trụ sở" ở mục 2 được đánh dấu (☒/X); ô trống → bỏ.'},
+    {"name": "ThanhVien_DanhSach",
+     "desc": ('Bảng mục 7 "Thông tin về các thành viên hộ gia đình" của Giấy đề nghị, array object '
+              '{hoTen,ngaySinh,soDinhDanh,gioiTinh,quocTich,danToc,noiThuongTru,noiOHienTai}: MỖI dòng có họ tên là '
+              'một object, KỂ CẢ dòng chủ hộ; ngaySinh dd/mm/yyyy; noiThuongTru / noiOHienTai là chữ nguyên văn ô '
+              'đó. Bảng trống / chỉ có dấu chấm → bỏ.')},
 ]
 
 ALLOWED = {f["name"] for f in FIELDS}
@@ -39,6 +44,7 @@ for _name in ALLOWED - set(COMPACT_COMP_BY_NAME):
     COMPACT_COMP_BY_NAME[_name] = "x-input"
 for _name in ("ChuHo_NoiThuongTru", "ChuHo_NoiOHienTai", "UyQuyen_NguoiDuocUyQuyen_NoiOHienTai"):
     COMPACT_COMP_BY_NAME[_name] = "x-select-area"
+COMPACT_COMP_BY_NAME["ThanhVien_DanhSach"] = "raw"
 
 # Radio "Loại người nộp": 1 = chủ hộ tự nộp (khối người nộp cổng đổ từ tài khoản / CSDLQG), 2 = người được ủy quyền
 # (khối người nộp theo tài khoản + khối chủ hộ nhập tay). Mapping_Dang_ky_HKD_DVC_Quoc_gia (2 sheet).
@@ -114,6 +120,8 @@ UI_COMP_BY_NAME = {
     "soLuongLaoDong": "sjs-text",
     "phuongPhapTinhThue": "sjs-radio",
     "doiTuongThanhLap": "sjs-radio",
+    # Bảng thành viên hộ gia đình (mapper.MEMBERS_FIELD): tên thật chưa biết, extension tìm bảng theo tiêu đề cột.
+    "thanhVienHoGiaDinh": "sjs-matrix",
     # Ô "Hình thức nhận kết quả" (cc-select React ngoài form SurveyJS, không id/name): extension neo theo nhãn.
     "hinhThucNhanKetQua": "dvc-result-method",
 }

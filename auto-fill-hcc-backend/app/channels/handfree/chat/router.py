@@ -349,6 +349,8 @@ def _clean_client_capabilities(raw: dict[str, object]) -> dict[str, object]:
         # Bản Cổng DVC quốc gia (dang-ky-thanh-lap-ho-kinh-doanh, trang SurveyJS): extension điền / trỏ ô SurveyJS theo
         # hkd_fill / hkd_focus → bật lối "không có tờ khai" cho thủ tục này.
         "supportsHkdTroLyDvcqg": raw.get("supportsHkdTroLyDvcqg") is True,
+        # Bản DVCQG: hkd_fill có report thì extension báo lại __event:hkd_filled (mã ngành cổng không có trong danh mục).
+        "supportsHkdNganhCheck": raw.get("supportsHkdNganhCheck") is True,
         # Khôi phục hồ sơ đang làm dở khi phiên bị gián đoạn (chat/resume/).
         resume.CAPABILITY: raw.get(resume.CAPABILITY) is True,
         # Luồng 4 bước trên cổng Bộ Công Thương (dichvucong-tthc.moit.gov.vn) — thủ tục khai bxdFlow.capability.

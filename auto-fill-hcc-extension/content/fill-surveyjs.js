@@ -164,7 +164,8 @@
     const resultMethods = fields.filter((f) => f.comp === "dvc-result-method");
     fields = fields.filter((f) => f.comp !== "dvc-result-method");
     document.querySelectorAll(`[${MARK_ATTR}]`).forEach((el) => el.removeAttribute(MARK_ATTR));
-    const result = { filled: 0, notFound: [], errors: [], skipped: [] };
+    // notices: câu báo nguyên văn cho cán bộ (popup hiện trong "Xem chi tiết"), vd ngành cổng không có trong danh mục.
+    const result = { filled: 0, notFound: [], errors: [], skipped: [], notices: [] };
     const res = await callMain({ op: "setValues", fields }, 120000);
     const byName = new Map((res.ok ? res.results || [] : []).map((r) => [r.name, r]));
     if (!res.ok) console.warn("[AutoFill-SurveyJS] không đọc được model survey:", res.error);
@@ -181,6 +182,11 @@
           : setTextDom(field.name, field.value);
         r = ok ? { ok: true } : r;
       }
+      if (Array.isArray(r.missingCodes) && r.missingCodes.length) {
+        // Danh mục ngành của cổng ít ngành hơn danh mục cấp 4 của BE: mã không có thì engine để trống dòng đó.
+        result.notices.push(`Danh mục ngành của cổng chưa có mã ${r.missingCodes.join(", ")} — dòng ngành đó đang để `
+          + "trống, chọn ngành gần nhất có trên cổng.");
+      }
       if (r.ok) result.filled++;
       // BE trả ô về trống (giấy không có giá trị): cố ý để trống, tô đỏ cho cán bộ nhập, không tính là trượt.
       else if (r.reason === "readonly" || r.reason === "cleared-by-be") result.skipped.push(field.name);
@@ -189,7 +195,8 @@
         console.warn("[AutoFill-SurveyJS] chưa điền", field.name, r.reason);
       }
       if (Array.isArray(r.parts)) r.parts.forEach((part) => markField({ name: part.name }, part.ok, find));
-      else markField(field, r.ok, find);
+      // Bảng tìm theo tiêu đề cột (thành viên hộ gia đình): tô theo tên câu hỏi thật engine trả về.
+      else markField(r.qName ? { ...field, name: r.qName } : field, r.ok, find);
     }
 
     // Nơi chọn ở thẻ "Chọn cơ quan thực hiện" thắng tài khoản (nộp hộ về xã khác); không qua bước chọn → tài khoản.

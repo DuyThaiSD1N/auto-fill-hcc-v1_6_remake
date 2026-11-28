@@ -12760,7 +12760,9 @@ _HOME_FREQUENT_KEYS = (
     "trich-luc-ks",
     "khai-sinh-dang-ky-lai",
     "xac-nhan-tinh-trang-hon-nhan",
-    "dang-ky-kinh-doanh",
+    # Ô hộ kinh doanh mở bản Cổng DVC quốc gia (form mới 1.001612, user chốt 28/11/2026); bản HkdOnline
+    # "dang-ky-kinh-doanh" vẫn ở sheet "Xem tất cả".
+    "dang-ky-thanh-lap-ho-kinh-doanh",
 )
 
 # Thủ tục "Hoàn thiện phần mềm" theo tỉnh — chép từ bảng theo dõi thủ tục (thu-tuc-20261111-0856.xlsx, xuất

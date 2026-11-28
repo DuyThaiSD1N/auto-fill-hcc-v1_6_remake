@@ -200,8 +200,9 @@
         console.warn("[TLND-SurveyJS] chưa điền", field.name, r.reason);
       }
       if (Array.isArray(r.parts)) r.parts.forEach((part) => markField({ name: part.name }, part.ok));
-      else markField(field, r.ok);
-      followTo(questionEl(field.name));
+      // Bảng tìm theo tiêu đề cột (thành viên hộ gia đình): tô và lướt theo tên câu hỏi thật engine trả về.
+      else markField(r.qName ? { ...field, name: r.qName } : field, r.ok);
+      followTo(questionEl(r.qName || field.name));
       await sleep(delay);
     }
 

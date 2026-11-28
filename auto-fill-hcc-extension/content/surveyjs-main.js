@@ -163,19 +163,26 @@
   }
 
   // Bảng nhiều dòng (matrixdynamic, vd "Ngành, nghề kinh doanh" của đăng ký thành lập hộ kinh doanh trên Cổng DVC quốc
-  // gia): BE gửi mảng dòng {ma, ten, chiTiet, chinh}; cột dò theo tiêu đề. Chọn MÃ trước (cổng có thể tự đổ tên theo
-  // mã); mã chưa chọn được thì chọn TÊN trước rồi thử lại mã (danh mục mã có thể lọc theo tên). Tên chỉ ghi khi ô còn
-  // trống. Dòng thiếu mã (cổng bắt buộc) báo trượt để tô đỏ. Lý do trượt ghi theo từng ô để dò trên console.
+  // gia): BE gửi mảng dòng {ma, ten, chiTiet, chinh}; cột dò theo tiêu đề. Danh mục ngành của cổng (nạp từ API theo chữ
+  // gõ) ÍT ngành hơn danh mục cấp 4 đầy đủ của BE:
+  // - Mã: chỉ nhận đúng mã. Chưa chọn được thì chọn TÊN trước rồi thử lại mã (danh mục mã có thể lọc theo tên); vẫn
+  //   không có → không đoán, báo lại trong missingCodes để trợ lý / Auto Fill nói cho người dùng.
+  // - Tên: chỉ khớp và chỉ gõ tìm theo CHỮ TÊN — không gõ mã vào ô lọc của cột tên (chữ gõ đọng lại, cán bộ tưởng tên
+  //   ngành là "4719"); điền xong mà ô tên chỉ hiện một dãy số (mã) thì xoá. Tên chỉ ghi khi ô còn trống.
+  // - Chi tiết ghi sau cùng (cổng có thể xoá khi đổi tên / mã) và ghi lại nếu bị xoá.
+  // Điền lại với ít dòng hơn thì bỏ dòng thừa (bảng theo đúng danh sách BE). Lý do trượt ghi theo từng ô để dò trên
+  // console.
   async function setMatrix(q, rows) {
     if (!Array.isArray(rows) || !rows.length) return { ok: false, reason: "no-rows" };
     const columns = q.columns || [];
     const col = (re) => columns.find((c) => re.test(fold(c.title || c.name)));
     const cols = { ma: col(/ma nganh/), ten: col(/ten nganh/), chiTiet: col(/chi tiet/), chinh: col(/nganh chinh/) };
     if (!cols.ma && !cols.ten) return { ok: false, reason: "no-columns" };
-    if ((q.rowCount || 0) < rows.length) q.rowCount = rows.length;
+    if ((q.rowCount || 0) !== rows.length) q.rowCount = rows.length;
     await sleep(300);
     const visible = q.visibleRows || [];
     const failed = [];
+    const missingCodes = [];
     for (let i = 0; i < rows.length; i++) {
       const row = visible[i];
       const want = rows[i] || {};
@@ -193,7 +200,7 @@
         }
         const type = cq.getType?.() || "";
         if (["dropdown", "radiogroup", "tagbox"].includes(type)) {
-          const r = await setCellChoice(cq, value, code, strict);
+          const r = await setCellChoice(cq, value, code, strict, key === "ten");
           if (!r.ok) notes.push(`${key}:${r.reason}`);
           return r.ok;
         }
@@ -207,8 +214,22 @@
         return true;
       };
       const tenEmpty = () => !!cellOf(cols.ten)?.isEmpty?.();
+      const had = (v) => v !== undefined && v !== null && v !== "" && !(Array.isArray(v) && !v.length);
+      const clearCell = (cq) => {
+        cq.clearValue?.();
+        if (!cq.isEmpty?.()) cq.value = undefined;
+      };
+      const maCell = cellOf(cols.ma);
+      const maBefore = maCell?.value;
+      const tenBefore = cellOf(cols.ten)?.value;
       let ok = true;
       let maOk = await setCell("ma", want.ma, want.ma, true);
+      const staleTen = cellOf(cols.ten);
+      if (maOk && had(maBefore) && maCell?.value !== maBefore && staleTen && had(tenBefore)
+          && staleTen.value === tenBefore) {
+        // Điền lại dòng đang mang ngành khác: mã vừa đổi mà cổng không tự đổ lại tên → bỏ tên cũ để ghi tên mã mới.
+        clearCell(staleTen);
+      }
       let tenTried = false;
       if (!maOk && want.ten && tenEmpty()) {
         tenTried = true;
@@ -219,12 +240,49 @@
       ok = maOk && ok;
       if (want.ma && maOk) await sleep(300);
       if (!tenTried && tenEmpty()) ok = (await setCell("ten", want.ten, want.ma)) && ok;
+      if (cols.ma && want.ma && !maOk) {
+        missingCodes.push(String(want.ma));
+        // Cổng không có mã này: dòng chỉ hợp lệ khi đủ mã lẫn tên → bỏ mã cũ còn sót (điền lại) và tên vừa chọn theo chữ,
+        // giữ ô chi tiết để người dùng biết dòng này kinh doanh gì; lượt điền lại sau đó ghi được ngành mới.
+        if (maCell && !maCell.isEmpty?.()) clearCell(maCell);
+        const tenLeft = cellOf(cols.ten);
+        if (tenLeft && !tenLeft.isEmpty?.()) clearCell(tenLeft);
+      }
+      const tenCell = cellOf(cols.ten);
+      if (tenCell && !tenCell.isEmpty?.() && isCodeText(cellText(tenCell))) {
+        // Ô tên đang hiện một dãy số (mã ngành, kể cả cổng tự đổ mà không nạp được chữ tên) → xoá, để cán bộ chọn tên.
+        clearCell(tenCell);
+        notes.push("ten:code-shown");
+        ok = false;
+      }
+      const chiTietCell = cellOf(cols.chiTiet);
       ok = (await setCell("chiTiet", want.chiTiet)) && ok;
+      if (want.chiTiet && chiTietCell) {
+        await sleep(300);
+        if (chiTietCell.isEmpty?.()) ok = (await setCell("chiTiet", want.chiTiet)) && ok;
+      }
       if (want.chinh) ok = (await setCell("chinh", true)) && ok;
       if (cols.ma && !want.ma) { notes.push("ma:missing"); ok = false; }
       if (!ok) failed.push(`${i + 1}(${notes.join(",")})`);
     }
-    return failed.length ? { ok: false, reason: `matrix-rows:${failed.join(";")}` } : { ok: true };
+    if (!failed.length) return { ok: true };
+    return { ok: false, reason: `matrix-rows:${failed.join(";")}`, ...(missingCodes.length ? { missingCodes } : {}) };
+  }
+
+  // Chữ đang hiện trên một ô của bảng (mục đã chọn → chữ của mục; chưa nạp được mục → giá trị thô).
+  function cellText(cq) {
+    const item = cq?.selectedItem;
+    return String(item?.text ?? item?.calculatedText ?? cq?.displayValue ?? cq?.value ?? "").trim();
+  }
+
+  // Chữ chỉ là một dãy số (mã ngành) — không phải tên ngành.
+  const isCodeText = (text) => /^\d{2,}$/.test(String(text ?? "").replace(/[\s.]/g, ""));
+
+  // Chữ gõ tìm ở cột tên: cả tên, rồi hai chữ đầu (cổng ghi tên theo danh mục cũ có thể khác chữ BE).
+  function nameQueries(name) {
+    const full = String(name ?? "").trim();
+    const short = full.split(/\s+/).slice(0, 2).join(" ");
+    return [...new Set([full, short].filter(Boolean))];
   }
 
   // Ô dropdown trong bảng KHÔNG có data-name (openToLoad không mở được) và danh mục ngành nạp từ API của cổng → mở theo
@@ -232,15 +290,17 @@
   const CELL_OPENER = ".sd-dropdown, [role='combobox']";
 
   // strict (cột mã): chỉ nhận đúng mã, không đoán theo chữ — chọn nhầm ngành tệ hơn để trống cho cán bộ chọn.
-  function pickCellChoice(cq, value, code, strict) {
+  // nameOnly (cột tên): chỉ khớp theo chữ tên, bỏ mục có chữ là mã.
+  function pickCellChoice(cq, value, code, strict, nameOnly = false) {
     const list = choicesOf(cq);
-    if (code) {
+    if (code && !nameOnly) {
       const wantCode = String(code);
       const byCode = list.find((c) => String(c.value) === wantCode) ||
         list.find((c) => fold(c.text) === wantCode || fold(c.text).startsWith(`${wantCode} `));
       if (byCode || strict) return byCode || null;
     }
-    return bestChoice(cq, value);
+    const best = bestChoice(cq, value);
+    return best && nameOnly && isCodeText(best.text) ? null : best;
   }
 
   async function waitCell(found, timeout) {
@@ -296,26 +356,168 @@
     return typed && waitCell(found, 6000);
   }
 
-  async function setCellChoice(cq, value, code, strict) {
-    const found = () => !!pickCellChoice(cq, value, code, strict);
+  // Xoá chữ đã gõ vào ô lọc của dropdown: chữ đọng lại hiện đè lên ô (vd mã ngành trên ô tên ngành).
+  function clearSearch(cq) {
+    try {
+      const model = cq.dropdownListModel;
+      if (model && "filterString" in model) {
+        if (model.filterString) model.filterString = "";
+        return;
+      }
+    } catch { /* xoá qua DOM */ }
+    const input = cellElement(cq)?.querySelector("input");
+    if (!input || !input.value) return;
+    const desc = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(input), "value");
+    if (desc?.set) desc.set.call(input, "");
+    else input.value = "";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  // nameOnly (cột tên): chỉ gõ tìm và chỉ khớp theo chữ tên — KHÔNG gõ mã vào ô lọc của cột tên.
+  async function setCellChoice(cq, value, code, strict, nameOnly = false) {
+    const pick = () => pickCellChoice(cq, value, code, strict, nameOnly);
+    const found = () => !!pick();
     let ok = found() || await waitCell(found, 1500);
     let opened = false;
+    let typed = false;
     if (!ok) { opened = true; ok = await openCell(cq, found); }
-    for (const text of strict ? [code] : [value, code]) {
+    const queries = strict ? [code] : (nameOnly ? nameQueries(value) : [value, code]);
+    for (const text of queries) {
       if (ok) break;
+      typed = true;
       ok = await searchCell(cq, text, found);
     }
-    const choice = pickCellChoice(cq, value, code, strict);
+    const choice = pick();
     const count = choicesOf(cq).length;
     if (choice) cq.value = choice.value;
+    if (typed) clearSearch(cq);
     if (opened && !setCellPopup(cq, false)) {
       document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     }
     return choice ? { ok: true } : { ok: false, reason: `${count ? "no-match" : "no-choices"}/${count}` };
   }
 
+  // Bảng "Thành viên hộ gia đình" (matrixdynamic của đăng ký thành lập hộ kinh doanh trên Cổng DVC quốc gia, chỉ hiện
+  // khi chủ thể là các thành viên hộ gia đình). Tên câu hỏi trên cổng chưa biết → tìm bảng theo tiêu đề cột; cột nào có
+  // thì điền cột đó. BE gửi mảng dòng {hoTen, ngaySinh, soDinhDanh, gioiTinh, quocTich, danToc, noiThuongTru,
+  // noiOHienTai}; dòng chuHo (chủ hộ) lấy theo các ô chủ hộ trên chính biểu mẫu (field.chuHoFrom: khoá → tên ô, địa chỉ
+  // ghép số nhà, xã, tỉnh), ô đó trống mới dùng giá trị BE gửi.
+  const MEMBER_COLUMNS = [
+    ["hoTen", /ho va ten|ho ten/],
+    ["ngaySinh", /ngay sinh|nam sinh/],
+    ["soDinhDanh", /dinh danh|can cuoc|cccd/],
+    ["gioiTinh", /gioi tinh/],
+    ["quocTich", /quoc tich/],
+    ["danToc", /dan toc/],
+    ["noiThuongTru", /thuong tru/],
+    ["noiOHienTai", /noi o|hien tai/],
+  ];
+  const MEMBER_REQUIRED = ["hoTen", "ngaySinh", "soDinhDanh"];
+
+  function memberColumns(q) {
+    const cols = {};
+    for (const c of q.columns || []) {
+      const text = fold(c.title || c.name);
+      const hit = MEMBER_COLUMNS.find(([key, re]) => !cols[key] && re.test(text));
+      if (hit) cols[hit[0]] = c;
+    }
+    return cols;
+  }
+
+  function isMemberMatrix(q) {
+    if (!["matrixdynamic", "matrixdropdown"].includes(q?.getType?.() || "")) return false;
+    const cols = memberColumns(q);
+    return !!(cols.hoTen && (cols.soDinhDanh || cols.ngaySinh));
+  }
+
+  // Bảng chỉ hiện sau khi chọn chủ thể (field đứng ngay sau radio chủ thể) → chờ ngắn cho trang dựng bảng.
+  async function findMemberMatrix(survey, timeout = 3000) {
+    const t0 = Date.now();
+    for (;;) {
+      const hit = (survey.getAllQuestions(false) || []).find((q) => q.isVisible && isMemberMatrix(q));
+      if (hit || Date.now() - t0 >= timeout) return hit || null;
+      await sleep(250);
+    }
+  }
+
+  // Chữ đang hiện của một ô ngoài bảng (phần chủ hộ). Ô chọn: chữ của mục đã chọn; danh mục chưa nạp (chỉ có mã) → "".
+  function questionText(survey, name) {
+    const q = findQuestion(survey, name);
+    if (!q || q.isEmpty?.()) return "";
+    if (!["dropdown", "radiogroup", "tagbox"].includes(q.getType?.() || "")) return String(q.value ?? "").trim();
+    const item = q.selectedItem;
+    const text = String(item?.text ?? item?.calculatedText ?? "").trim();
+    if (text) return text;
+    const shown = String(q.displayValue ?? "").trim();
+    return shown && shown !== String(q.value ?? "").trim() ? shown : "";
+  }
+
+  function readOwner(survey, from) {
+    const out = {};
+    for (const [key, names] of Object.entries(from || {})) {
+      const parts = (Array.isArray(names) ? names : [names]).map((n) => questionText(survey, n)).filter(Boolean);
+      if (parts.length) out[key] = parts.join(", ");
+    }
+    return out;
+  }
+
+  // Ô ngày trong bảng: ô ngày (flatpickr) / mặt nạ ngày của SurveyJS lưu ISO; ô chữ thường ghi dd/mm/yyyy như trên giấy.
+  function dateCellValue(cq, value) {
+    const text = String(value ?? "").trim();
+    const iso = /^\d{4}-\d{2}-\d{2}/.test(text) ? text.slice(0, 10) : toIsoDate(text);
+    const type = cq.getType?.() || "text";
+    const isoStore = cq.inputType === "date" || type !== "text" ||
+      (cq.maskType === "datetime" && !cq.maskSettings?.saveMaskedValue);
+    if (isoStore) return iso;
+    const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : text;
+  }
+
+  async function setMemberCell(cq, key, value) {
+    if (cq.isReadOnly) return { ok: !cq.isEmpty?.(), reason: "readonly" };
+    const type = cq.getType?.() || "";
+    if (["dropdown", "radiogroup", "tagbox"].includes(type)) return setCellChoice(cq, value, undefined, false, true);
+    if (["checkbox", "boolean", "file"].includes(type)) return { ok: false, reason: `type-${type}` };
+    cq.value = key === "ngaySinh" ? dateCellValue(cq, value) : String(value);
+    return { ok: true };
+  }
+
+  async function setMemberMatrix(survey, q, rows, from) {
+    if (!Array.isArray(rows) || !rows.length) return { ok: false, reason: "no-rows" };
+    const cols = memberColumns(q);
+    if (!cols.hoTen) return { ok: false, reason: "no-columns" };
+    const owner = from ? readOwner(survey, from) : {};
+    if ((q.rowCount || 0) !== rows.length) q.rowCount = rows.length;
+    await sleep(300);
+    const visible = q.visibleRows || [];
+    const failed = [];
+    for (let i = 0; i < rows.length; i++) {
+      const row = visible[i];
+      if (!row) { failed.push(`${i + 1}(no-row)`); continue; }
+      const given = rows[i] || {};
+      const want = given.chuHo ? { ...given, ...owner } : given;
+      const notes = [];
+      for (const [key, col] of Object.entries(cols)) {
+        const value = want[key];
+        if (value === undefined || value === null || value === "") {
+          if (MEMBER_REQUIRED.includes(key)) notes.push(`${key}:missing`);
+          continue;
+        }
+        const cq = row.getQuestionByColumnName?.(col.name) ||
+          (row.cells || []).find((x) => x.column === col)?.question || null;
+        if (!cq) { notes.push(`${key}:no-cell`); continue; }
+        const r = await setMemberCell(cq, key, value);
+        if (!r.ok) notes.push(`${key}:${r.reason}`);
+      }
+      if (notes.length) failed.push(`${i + 1}(${notes.join(",")})`);
+    }
+    return failed.length ? { ok: false, reason: `matrix-rows:${failed.join(";")}` } : { ok: true };
+  }
+
   async function setOne(survey, field) {
-    const q = findQuestion(survey, field.name);
+    // Bảng thành viên hộ gia đình: tên câu hỏi trên cổng chưa biết → không thấy theo tên thì tìm theo tiêu đề cột.
+    const q = findQuestion(survey, field.name) ||
+      (field.matrix === "members" ? await findMemberMatrix(survey) : null);
     if (!q) return { ok: false, reason: "not-found" };
     // Ô cổng tự đổ (onlyIfEmpty) đã có giá trị thì giữ nguyên, coi như xong — kiểm TRƯỚC ô chỉ đọc: chọn "Bản thân"
     // cổng chép giấy tờ tùy thân / nơi cư trú của tài khoản rồi KHOÁ các ô đó, kiểm sau thì ô đúng giá trị bị tô đỏ.
@@ -328,6 +530,9 @@
       return { ok: false, reason: CLEARED_BY_BE };
     }
     const type = q.getType?.() || "";
+    if (field.matrix === "members") {
+      return { ...(await setMemberMatrix(survey, q, field.value, field.chuHoFrom)), qName: q.name };
+    }
     if (field.comp === "sjs-matrix" || type === "matrixdynamic") return setMatrix(q, field.value);
     if (field.comp === "sjs-boolean" || type === "boolean") {
       q.value = field.value === true || ["true", "1", "co"].includes(fold(field.value));

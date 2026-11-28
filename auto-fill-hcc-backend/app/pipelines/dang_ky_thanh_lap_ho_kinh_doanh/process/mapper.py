@@ -44,6 +44,29 @@ KHOAN_WARNING = ("Giấy đề nghị chọn 'Phương pháp khoán' nhưng bi�
                  "với người nộp trước khi nộp.")
 HO_GIA_DINH_WARNING = ("Chủ thể thành lập là 'Các thành viên hộ gia đình': nhập tay bảng thành viên hộ gia đình trên "
                        "cổng và đính văn bản ủy quyền của các thành viên vào dòng 2.")
+HO_GIA_DINH_MEMBERS_WARNING = ("Chủ thể thành lập là 'Các thành viên hộ gia đình': đã điền bảng thành viên hộ gia đình "
+                               "(dòng 1 là chủ hộ) — đối chiếu trên cổng, đính văn bản ủy quyền của các thành viên vào "
+                               "dòng 2.")
+
+# Bảng "Thành viên hộ gia đình" (matrixdynamic, chỉ hiện khi chủ thể là các thành viên hộ gia đình; mẫu giấy bắt kê
+# khai CẢ chủ hộ). Tên câu hỏi trên cổng chưa thấy (bảng ẩn khi chụp DOM) → extension tìm bảng theo tiêu đề cột (Họ và
+# tên, Ngày sinh, Số định danh…), cột nào có thì điền cột đó.
+MEMBERS_FIELD = "thanhVienHoGiaDinh"
+MEMBERS_FACT = "ThanhVien_DanhSach"
+# Dòng chủ hộ: extension lấy theo các ô chủ hộ trên chính biểu mẫu (chủ hộ tự nộp thì cổng đổ theo CSDLQG, nộp thay thì
+# là ô vừa điền), thiếu mới dùng giá trị BE gửi. Ô theo lựa chọn người nộp; địa chỉ ghép số nhà, xã, tỉnh.
+_OWNER_FROM = {
+    CHU_HO: {"hoTen": ["citizenName"], "ngaySinh": ["citizenDateOfBirth"], "gioiTinh": ["citizengioiTinh"],
+             "soDinhDanh": ["citizenIdentity"], "quocTich": ["citizenQuocTich"], "danToc": ["citizenDantoc"],
+             "noiThuongTru": ["citizenDiachithuongtruDiachichitietSonhaTenduongToThonPho", "citizenxa",
+                              "citizenDiaChiThuongTruTinh"],
+             "noiOHienTai": ["câu hỏi1__1782221422172", "phuongXahientai", "tinhThanhhientai"]},
+    UY_QUYEN: {"hoTen": ["citizennguoidangkyhkd"], "ngaySinh": ["citizenngaythang"],
+               "gioiTinh": ["citizengioitinhnguoidangky"], "soDinhDanh": ["SoDinhdanhcanhanNDK"],
+               "quocTich": ["citizenQuocTich_NDK"], "danToc": ["citizenDantoc_NDK"],
+               "noiThuongTru": ["Diachichitietnoithuongtrunguoidangky", "citizenxanguoidangky", "bảng3__1782890713158"],
+               "noiOHienTai": ["Noiohientaichitiet", "Noiohientaiphuong", "Noiohientaitinh"]},
+}
 ACCOUNT_WARNING = ("Tài khoản đang nộp không phải chủ hộ cũng không phải bên được ủy quyền trên giấy ủy quyền — tự nhập "
                    "điện thoại, email, nơi ở hiện tại của người nộp.")
 PHONE_EMAIL_WARNING = "Giấy tờ không ghi {what} của người nộp — cổng bắt buộc, nhập tay."
@@ -159,6 +182,9 @@ def facts_from_to_khai(form: dict[str, Any]) -> list[dict]:
         # "150.000.000 đồng (Một trăm năm mươi triệu đồng)" → chỉ phần bằng số; không có số thì bỏ.
         "Von_SoTien": amount.group(1) if amount else "",
     })
+    if _text(form.get("chuThe")) == "ho_gia_dinh":
+        values[MEMBERS_FACT] = [m for m in form.get("thanhVien") or []
+                                if isinstance(m, dict) and any(_text(v) for v in m.values())]
     nguoi_nop = form.get("nguoiNop") if isinstance(form.get("nguoiNop"), dict) else {}
     variant = _TO_KHAI_NGUOI_NOP.get(_text(nguoi_nop.get("loai")), "")
     values[NGUOI_NOP_FACT] = variant
@@ -231,6 +257,50 @@ def business_lines(values: dict, line_mode: str = "") -> tuple[list[dict], list[
             out.append({"ma": "", "ten": row["ten"], "chiTiet": row["ten"], "chinh": row["chinh"]})
             warnings.append(f"Ngành '{row['ten']}' chưa có mã ngành cấp 4 — cổng bắt buộc mã cho mọi dòng, chọn tay.")
     return out, warnings
+
+
+def _place_text(value: Any) -> str:
+    """Địa chỉ một dòng cho ô chữ của bảng thành viên: số nhà, xã, tỉnh."""
+    if isinstance(value, dict):
+        area = _area(value) or {}
+        return ", ".join(part for part in (area.get("diaChi"), area.get("xa"), area.get("tinh")) if part)
+    return _text(value)
+
+
+def _member_row(raw: dict) -> dict:
+    """Một dòng bảng thành viên {hoTen, ngaySinh, soDinhDanh, gioiTinh, quocTich, danToc, noiThuongTru, noiOHienTai}
+    (bỏ ô trống). Có số định danh 12 số mà thiếu quốc tịch → Việt Nam như ô quốc tịch chủ hộ."""
+    number = _digits(raw.get("soDinhDanh"))
+    row = {
+        "hoTen": upper_person_name(raw.get("hoTen")),
+        "ngaySinh": _full_date(raw.get("ngaySinh")),
+        "soDinhDanh": number,
+        "gioiTinh": _gender(raw.get("gioiTinh")),
+        "quocTich": _text(raw.get("quocTich")) or (_VIET_NAM if len(number) == 12 else ""),
+        "danToc": _text(raw.get("danToc")),
+        "noiThuongTru": _place_text(raw.get("noiThuongTru")),
+        "noiOHienTai": _place_text(raw.get("noiOHienTai")),
+    }
+    return {key: value for key, value in row.items() if value}
+
+
+def household_members(values: dict, owner: dict) -> list[dict]:
+    """Dòng bảng thành viên hộ gia đình: dòng 1 luôn là chủ hộ (``chuHo`` — extension lấy theo các ô chủ hộ trên biểu
+    mẫu, ``owner`` chỉ bù chỗ form trống), sau đó các thành viên khác. Danh sách đã có chủ hộ (tờ khai bắt kê khai cả
+    chủ hộ) thì gộp vào dòng 1. Không có thành viên nào ngoài chủ hộ → [] (cán bộ nhập tay như trước)."""
+    raw = values.get(MEMBERS_FACT)
+    rows = [_member_row(r) for r in raw if isinstance(r, dict)] if isinstance(raw, list) else []
+    rows = [r for r in rows if r.get("hoTen") or r.get("soDinhDanh")]
+    head = _member_row(owner)
+    others: list[dict] = []
+    merged = False
+    for row in rows:
+        if not merged and _same_person(head.get("hoTen", ""), head.get("soDinhDanh", ""), row.get("hoTen"),
+                                       row.get("soDinhDanh")):
+            head, merged = {**head, **row}, True
+        else:
+            others.append(row)
+    return [{**head, "chuHo": True}, *others] if others else []
 
 
 def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict], list[str]]:
@@ -368,7 +438,16 @@ def enrich(fields: list[dict], options: dict | None = None) -> tuple[list[dict],
         CA_NHAN if "ca nhan" in _fold(values.get("ChuTheThanhLap")) else "")
     add("doiTuongThanhLap", subject or CA_NHAN, default=not subject, code=_CHU_THE_CODE[subject or CA_NHAN])
     if subject == HO_GIA_DINH:
-        warnings.append(HO_GIA_DINH_WARNING)
+        # Bảng thành viên chỉ hiện SAU khi chọn chủ thể → field đứng ngay sau radio chủ thể.
+        owner = {"hoTen": values.get("ChuHo_HoTen") or owner_card.get("hoTen"),
+                 "ngaySinh": values.get("ChuHo_NgaySinh") or owner_card.get("ngaySinh"),
+                 "gioiTinh": values.get("ChuHo_GioiTinh") or owner_card.get("gioiTinh"),
+                 "soDinhDanh": values.get("ChuHo_SoDinhDanh") or owner_card.get("soDinhDanh"),
+                 "quocTich": values.get("ChuHo_QuocTich"), "danToc": values.get("ChuHo_DanToc"),
+                 "noiThuongTru": residence, "noiOHienTai": current}
+        members = household_members(values, owner)
+        add(MEMBERS_FIELD, members, matrix="members", chuHoFrom=_OWNER_FROM[variant])
+        warnings.append(HO_GIA_DINH_MEMBERS_WARNING if members else HO_GIA_DINH_WARNING)
 
     add("hinhThucNhanKetQua", RESULT_METHOD, default=True)
 

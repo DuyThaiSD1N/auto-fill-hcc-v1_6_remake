@@ -19,4 +19,7 @@ BỔ SUNG CHO BIỂU MẪU CỔNG DỊCH VỤ CÔNG QUỐC GIA (vẫn giữ mọ
 - ChuTheThanhLap: mục 6 "Chủ thể thành lập hộ kinh doanh" — "Cá nhân" hoặc "Các thành viên hộ gia đình" theo ô đánh dấu
   (☒, X); ô không đánh dấu thì không chọn.
 - TruSo_KhongKinhDoanhTaiTruSo: true CHỈ khi ô "Không kinh doanh tại trụ sở" ở mục 2 được đánh dấu; ô "☐" trống → bỏ.
+- ThanhVien_DanhSach: CHỈ khi mục 6 chọn "Các thành viên hộ gia đình" — đọc bảng mục 7 "Thông tin về các thành viên hộ
+  gia đình", mỗi dòng có họ tên một object (giữ cả dòng chủ hộ), đúng cột: họ tên, ngày sinh, số định danh cá nhân,
+  giới tính, quốc tịch, dân tộc, nơi thường trú, nơi ở hiện tại; ô trống → bỏ khoá đó. Không lấy cột "Chữ ký".
 """
